@@ -1,0 +1,1570 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<!--#artifact-begin-->
+<title>康禾長照營運入口 Kanghe Ops Portal</title>
+<style>
+:root{
+  --ground:#F5F7F6; --surface:#FFFFFF; --surface-2:#EEF2F0; --rail:#12211D;
+  --rail-ink:#CFDCD7; --rail-ink-dim:#8AA09A; --line:#DCE3E0; --line-strong:#C3CFCB;
+  --ink:#16211E; --ink-2:#43534E; --ink-3:#6B7C77;
+  --accent:#1F6F5C; --accent-ink:#FFFFFF; --accent-soft:#DCEAE4; --accent-line:#A9CDC1;
+  --ok:#2E7D4F; --ok-soft:#DFF0E5; --warn:#9A6410; --warn-soft:#FBEFD8; --warn-line:#E4C489;
+  --crit:#A93A46; --crit-soft:#F8E3E5; --info:#2F5F7D; --info-soft:#E1ECF3;
+  --shadow:0 1px 2px rgba(22,33,30,.06), 0 8px 24px -16px rgba(22,33,30,.35);
+  --radius:8px;
+  --sans:"IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono","Noto Sans TC",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1513; --surface:#151E1B; --surface-2:#1B2724; --rail:#0A100E;
+    --rail-ink:#D3E0DB; --rail-ink-dim:#7A908A; --line:#28352F; --line-strong:#3A4A44;
+    --ink:#E7EEEA; --ink-2:#B3C2BC; --ink-3:#869892;
+    --accent:#57B99B; --accent-ink:#08201A; --accent-soft:#1C332C; --accent-line:#2F5A4C;
+    --ok:#6FC98D; --ok-soft:#17301F; --warn:#E0B061; --warn-soft:#33280F; --warn-line:#5C481D;
+    --crit:#E8909A; --crit-soft:#361B1F; --info:#8FBCD8; --info-soft:#14252F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1513; --surface:#151E1B; --surface-2:#1B2724; --rail:#0A100E;
+  --rail-ink:#D3E0DB; --rail-ink-dim:#7A908A; --line:#28352F; --line-strong:#3A4A44;
+  --ink:#E7EEEA; --ink-2:#B3C2BC; --ink-3:#869892;
+  --accent:#57B99B; --accent-ink:#08201A; --accent-soft:#1C332C; --accent-line:#2F5A4C;
+  --ok:#6FC98D; --ok-soft:#17301F; --warn:#E0B061; --warn-soft:#33280F; --warn-line:#5C481D;
+  --crit:#E8909A; --crit-soft:#361B1F; --info:#8FBCD8; --info-soft:#14252F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;text-wrap:balance;font-weight:600;letter-spacing:-.01em}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);font-weight:500}
+
+/* ---------- shell ---------- */
+.app{display:grid;grid-template-columns:242px 1fr;min-height:100vh}
+.rail{background:var(--rail);color:var(--rail-ink);display:flex;flex-direction:column;gap:2px;padding:18px 12px 14px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{padding:4px 10px 16px;display:flex;flex-direction:column;gap:2px}
+.brand b{color:#fff;font-size:15px;font-weight:600;letter-spacing:-.01em}
+.brand span{font-size:11px;color:var(--rail-ink-dim);letter-spacing:.04em}
+.rail-group{margin:14px 10px 6px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--rail-ink-dim)}
+.navitem{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:6px;color:var(--rail-ink);cursor:pointer;font-size:13.5px;white-space:nowrap}
+.navitem:hover{background:rgba(255,255,255,.06)}
+.navitem[aria-current="true"]{background:var(--accent);color:var(--accent-ink);font-weight:500}
+.navitem[disabled]{opacity:.42;cursor:not-allowed}
+.navitem .en{font-size:10.5px;color:inherit;opacity:.6;margin-left:auto;font-family:var(--mono);flex:none}
+.navdot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.55;flex:none}
+.rail-foot{margin-top:auto;padding:12px 10px 0;border-top:1px solid rgba(255,255,255,.09);font-size:11px;color:var(--rail-ink-dim);line-height:1.5}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.utility{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 22px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.ufield{display:flex;align-items:center;gap:6px}
+.ulabel{font-size:11px;color:var(--ink-3);letter-spacing:.04em}
+select,input[type=search],input[type=text]{font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:6px;padding:5px 8px}
+select[disabled]{background:var(--surface-2);color:var(--ink-3);cursor:not-allowed}
+.spacer{flex:1 1 auto}
+.seg{display:flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden}
+.seg button{background:var(--surface);border:0;padding:5px 10px;font-size:12.5px;color:var(--ink-2);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:500}
+.seg button+button{border-left:1px solid var(--line-strong)}
+
+/* assumption toggle */
+.assume{display:flex;align-items:center;gap:8px;border:1px dashed var(--warn-line);background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:4px 9px;cursor:pointer}
+.assume b{font-weight:600;font-size:12px}
+.assume small{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+.switch{width:30px;height:17px;border-radius:99px;background:var(--line-strong);position:relative;flex:none;transition:background .16s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#fff;transition:transform .16s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.assume[aria-pressed="true"] .switch{background:var(--warn)}
+.assume[aria-pressed="true"] .switch::after{transform:translateX(13px)}
+
+.content{padding:20px 22px 60px;display:flex;flex-direction:column;gap:16px;max-width:1320px;width:100%}
+.content-solo{padding:20px 22px 60px;display:flex;flex-direction:column;gap:16px;max-width:900px;width:100%}
+.pagehead{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.pagehead h1{font-size:20px}
+.pagehead .sub{color:var(--ink-3);font-size:12.5px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-top:2px;overflow-x:auto}
+.tabs button{background:none;border:0;padding:8px 12px;cursor:pointer;color:var(--ink-2);font-size:13.5px;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+.tabs .ten{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-left:5px}
+
+/* ---------- scope banner ---------- */
+.scopebar{display:flex;gap:12px;align-items:flex-start;padding:11px 14px;border-radius:var(--radius);border-left:3px solid var(--accent);background:var(--accent-soft);color:var(--ink);font-size:12.5px}
+.scopebar.is-open{border-left-color:var(--warn);background:var(--warn-soft)}
+.scopebar b{font-weight:600}
+.scopebar .q{font-size:11.5px;color:var(--ink-2);display:block;margin-top:3px}
+
+/* ---------- primitives ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.card-h h2{font-size:14px}
+.card-h .en{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
+.card-b{padding:14px}
+.grid{display:grid;gap:14px}
+.tiles{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(158px,1fr))}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;display:flex;flex-direction:column;gap:2px}
+.tile .k{font-size:11px;color:var(--ink-3)}
+.tile .v{font-size:22px;font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.tile .d{font-size:11px;color:var(--ink-3)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:2px 7px;border-radius:99px;border:1px solid var(--line-strong);color:var(--ink-2);background:var(--surface-2);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.chip.crit{background:var(--crit-soft);color:var(--crit);border-color:transparent}
+.chip.info{background:var(--info-soft);color:var(--info);border-color:transparent}
+.chip.acc{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.lock{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--ink-3);font-style:normal}
+.lock svg{width:11px;height:11px;flex:none}
+.btn{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--accent-ink);border:1px solid transparent;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;font-weight:500}
+.btn.ghost{background:var(--surface);color:var(--ink-2);border-color:var(--line-strong);font-weight:400}
+.btn.mini{padding:3px 9px;font-size:12px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-weight:500;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);padding:8px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.clickable{cursor:pointer}
+tbody tr.clickable:hover{background:var(--surface-2)}
+tbody tr[aria-selected="true"]{background:var(--accent-soft)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-3)}
+.empty{padding:26px 14px;text-align:center;color:var(--ink-3);font-size:13px}
+.bi{display:flex;flex-direction:column;line-height:1.25}
+.bi .en{font-size:11px;color:var(--ink-3)}
+</style>
+<style>
+/* ---------- announcements ---------- */
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:14px;align-items:start}
+.annlist{display:flex;flex-direction:column}
+.annrow{display:flex;gap:11px;align-items:flex-start;padding:11px 14px;border-bottom:1px solid var(--line);cursor:pointer;background:none;border-left:3px solid transparent;text-align:left;width:100%;border-top:0;border-right:0}
+.annrow:hover{background:var(--surface-2)}
+.annrow[aria-current="true"]{background:var(--accent-soft);border-left-color:var(--accent)}
+.annrow .t{font-weight:500;font-size:13.5px}
+.annrow .t-en{font-size:11.5px;color:var(--ink-3)}
+.annrow .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:5px}
+.annrow .date{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin-left:auto;flex:none}
+.anndetail .body{padding:14px;font-size:13.5px;line-height:1.75;color:var(--ink-2);white-space:pre-line}
+.anndetail .body .zh{color:var(--ink);display:block;margin-bottom:10px;white-space:pre-line}
+.pin{color:var(--warn)}
+
+/* ---------- calendar ---------- */
+.calhead{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.caldow{padding:6px 8px;font-size:11px;color:var(--ink-3);text-align:center;border-bottom:1px solid var(--line);letter-spacing:.04em}
+.calday{min-height:82px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:5px 6px;display:flex;flex-direction:column;gap:3px;background:none;text-align:left;cursor:pointer;border-top:0;border-left:0;color:inherit}
+.calday:nth-child(7n){border-right:0}
+.calday:hover{background:var(--surface-2)}
+.calday[aria-pressed="true"]{background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-line)}
+.calday.out{background:var(--surface-2);color:var(--ink-3)}
+.calday .d{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.calday .d.today{background:var(--accent);color:var(--accent-ink);border-radius:4px;padding:0 4px}
+.ev{font-size:11px;border-radius:4px;padding:1px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-left:2px solid}
+.ev.train{background:var(--info-soft);color:var(--info);border-color:var(--info)}
+.ev.audit{background:var(--crit-soft);color:var(--crit);border-color:var(--crit)}
+.ev.hr{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+.ev.event{background:var(--warn-soft);color:var(--warn);border-color:var(--warn)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;padding:10px 14px;font-size:11.5px;color:var(--ink-3);border-top:1px solid var(--line)}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+
+/* ---------- org chart ---------- */
+.orgwrap{overflow-x:auto;padding:18px 14px}
+.orgtop{display:flex;flex-direction:column;align-items:center;gap:0}
+.node{border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;padding:7px 11px;min-width:150px;text-align:center;cursor:pointer;font:inherit;color:inherit}
+.node:hover{border-color:var(--accent);background:var(--accent-soft)}
+.node .n{font-size:13px;font-weight:500}
+.node .r{font-size:11px;color:var(--ink-3)}
+.node.exec{background:var(--rail);color:#fff;border-color:var(--rail)}
+.node.exec .r{color:var(--rail-ink-dim)}
+.node.scoped{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.node.dim{opacity:.42}
+.vline{width:1px;height:16px;background:var(--line-strong)}
+.orgrow{display:flex;gap:12px;align-items:flex-start;justify-content:center;position:relative;padding-top:16px}
+.orgrow::before{content:"";position:absolute;top:0;left:9%;right:9%;height:1px;background:var(--line-strong)}
+.orgcol{display:flex;flex-direction:column;align-items:center;position:relative}
+.orgcol::before{content:"";position:absolute;top:-16px;height:16px;width:1px;background:var(--line-strong)}
+.orgcol .kids{display:flex;flex-direction:column;gap:5px;margin-top:14px;position:relative;width:100%}
+.orgcol .kids::before{content:"";position:absolute;top:-14px;left:50%;height:14px;width:1px;background:var(--line-strong)}
+.leaf{font-size:11.5px;padding:4px 8px;border:1px solid var(--line);border-radius:5px;background:var(--surface);text-align:left;cursor:pointer;color:var(--ink-2);font-family:inherit}
+.leaf:hover{border-color:var(--accent);color:var(--ink)}
+
+/* ---------- directory ---------- */
+.dirgrid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(238px,1fr));padding:14px}
+.dircard{border:1px solid var(--line);border-radius:var(--radius);padding:11px 12px;display:flex;gap:10px;align-items:flex-start;background:var(--surface)}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:13px;font-weight:600;flex:none}
+.dircard .n{font-weight:500}
+.dircard .meta{font-size:11.5px;color:var(--ink-3)}
+.dircard .rows{margin-top:6px;display:flex;flex-direction:column;gap:2px;font-size:12px}
+.dircard .rows span{display:flex;gap:6px}
+.dircard .rows .lbl{color:var(--ink-3);min-width:52px}
+
+/* ---------- drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(12,20,18,.42);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(430px,94vw);background:var(--surface);border-left:1px solid var(--line);z-index:41;display:flex;flex-direction:column;box-shadow:-12px 0 40px -24px rgba(0,0,0,.6)}
+.drawer-h{padding:14px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:flex-start}
+.drawer-b{padding:14px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.kv{display:grid;grid-template-columns:104px 1fr;gap:6px 10px;font-size:13px}
+.kv dt{color:var(--ink-3);font-size:12px}
+.kv dd{margin:0}
+.x{margin-left:auto;background:none;border:1px solid var(--line-strong);border-radius:6px;width:26px;height:26px;cursor:pointer;color:var(--ink-2);line-height:1;flex:none}
+
+/* ---------- attendance ---------- */
+.attgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(15px,1fr));gap:3px}
+.attcell{aspect-ratio:1;border-radius:3px;background:var(--ok-soft);position:relative}
+.attcell.late{background:var(--warn-soft);box-shadow:inset 0 0 0 1px var(--warn-line)}
+.attcell.leave{background:var(--info-soft)}
+.attcell.miss{background:var(--crit-soft);box-shadow:inset 0 0 0 1px var(--crit)}
+.attcell.off{background:var(--surface-2)}
+.bar{height:7px;border-radius:99px;background:var(--surface-2);overflow:hidden;min-width:76px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.bar i.low{background:var(--warn)}
+
+/* ---------- misc ---------- */
+.note{font-size:12px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--line-strong);border-radius:6px;padding:9px 12px;line-height:1.6}
+.note.q{border-left-color:var(--warn);background:var(--warn-soft);color:var(--ink)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--rail);color:#fff;padding:9px 16px;border-radius:99px;font-size:13px;z-index:60;box-shadow:var(--shadow)}
+.permtable td:first-child{white-space:normal}
+.permtable td{white-space:nowrap}
+.yes{color:var(--ok);font-weight:600}
+.no{color:var(--ink-3)}
+.partial{color:var(--warn);font-weight:500}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:1000px){
+  .app{grid-template-columns:1fr}
+  .rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 14px}
+  .brand{padding:0 14px 0 4px}
+  .rail-group,.rail-foot{display:none}
+  .navitem{width:auto}
+  .navitem .en{display:none}
+  .split{grid-template-columns:1fr}
+  .content{padding:16px 14px 60px}
+  .utility{padding:10px 14px}
+}
+</style>
+<!--#artifact-split-->
+</head>
+<body>
+<div id="app"></div>
+<div id="overlay"></div>
+<div id="toast"></div>
+<script>
+/* =========================================================================
+   康禾長照 營運入口 — 原型 (Kanghe Long-Term Care — Operations Portal prototype)
+   All data below is FICTIONAL and generated in-memory. No auth, no database.
+   ========================================================================= */
+
+/* ---------- offices (2 care homes in Hsinchu + operations HQ) ---------- */
+/* v2.0 prototype: currently Hsinchu only. Future phases: Taichung (Phase 2), Changhua (Phase 3) */
+const OFFICES = [
+  {id:'O1', zh:'竹北照護院',  en:'Hsinchu Zhuibei',  code:'HC-01', city:{zh:'新竹縣竹北市',en:'Hsinchu Zhuibei'},  beds:64},
+  {id:'O2', zh:'竹東照護院',  en:'Hsinchu Zhudong',  code:'HC-02', city:{zh:'新竹縣竹東鎮',en:'Hsinchu Zhudong'},  beds:56}
+];
+const HQ = {id:'HQ', zh:'新竹營運中心', en:'Hsinchu Operations Center', code:'HQ', city:{zh:'新竹縣',en:'Hsinchu'}, beds:0};
+const ALL_UNITS = [HQ].concat(OFFICES);
+const unit = id => ALL_UNITS.find(o=>o.id===id) || HQ;
+
+/* ---------- v2.0: company structure (currently single entity; Phase 2–3: multi-region) ---------- */
+const COMPANIES = [
+  {id:'C1', zh:'康禾長照 · 新竹區', en:'Kanghe Care • Hsinchu Region', hq:'HQ', offices:['O1','O2']}
+];
+const companyOf = officeId => COMPANIES.find(c=>c.offices.includes(officeId));
+const companyOffices = companyId => (COMPANIES.find(c=>c.id===companyId)?.offices||[]).map(id=>OFFICES.find(o=>o.id===id));
+
+/* ---------- job titles ---------- */
+const TITLES = {
+  ceo:{zh:'執行長',en:'Chief Executive'},         coo:{zh:'營運長',en:'Chief Operating Officer'},
+  hrd:{zh:'人資部經理',en:'HR Manager'},           fin:{zh:'財務部經理',en:'Finance Manager'},
+  it:{zh:'資訊管理專員',en:'IT Administrator'},     hrs:{zh:'人資專員',en:'HR Specialist'},
+  dir:{zh:'院長',en:'Facility Director'},          hn:{zh:'護理長',en:'Head Nurse'},
+  rn:{zh:'護理師',en:'Registered Nurse'},          ca:{zh:'照顧服務員',en:'Care Attendant'},
+  sw:{zh:'社工師',en:'Social Worker'},             ot:{zh:'職能治療師',en:'Occupational Therapist'},
+  adm:{zh:'行政專員',en:'Administrative Officer'},  die:{zh:'營養師',en:'Dietitian'},
+  drv:{zh:'交通服務員',en:'Transport Attendant'}
+};
+const DEPTS = {
+  exec:{zh:'經營管理處',en:'Executive Office'}, hr:{zh:'人力資源部',en:'Human Resources'},
+  fin:{zh:'財務部',en:'Finance'},               isd:{zh:'資訊室',en:'IT'},
+  care:{zh:'照護部',en:'Care Services'},        nur:{zh:'護理部',en:'Nursing'},
+  soc:{zh:'社工室',en:'Social Work'},           rehab:{zh:'復健治療部',en:'Rehabilitation'},
+  ops:{zh:'行政部',en:'Administration'}
+};
+
+/* ---------- employees (demo personnel for Hsinchu operations) ---------- */
+/* [id, title, unit, titleKey, deptKey, hireDate, ext, band, salary, type, managerId] */
+const RAW = [
+ ['E1001','執行長','HQ','ceo','exec','2018-01-15','101','M5',185000,'full',null],
+ ['E1002','營運長','HQ','coo','exec','2017-03-20','102','M4',152000,'full','E1001'],
+ ['E1003','人資部經理','HQ','hrd','hr','2019-06-10','120','M3',108000,'full','E1002'],
+ ['E1004','財務部經理','HQ','fin','fin','2020-02-14','130','M3',112000,'full','E1002'],
+ ['E1005','資訊管理員','HQ','it','isd','2021-08-01','140','P3',78000,'full','E1002'],
+ ['E1006','人資專員','HQ','hrs','hr','2022-05-18','121','P2',54000,'full','E1003'],
+
+ ['E2101','院長','O1','dir','exec','2017-09-11','201','M3',125000,'full','E1002'],
+ ['E2102','護理長','O1','hn','nur','2018-11-05','202','P3',76000,'full','E2101'],
+ ['E2103','護理師','O1','rn','nur','2020-01-23','203','P2',58000,'full','E2102'],
+ ['E2104','照服員','O1','ca','care','2021-04-16','204','G2',38000,'full','E2102'],
+ ['E2105','社工師','O1','sw','soc','2021-10-20','205','P2',52000,'full','E2101'],
+ ['E2106','行政專員','O1','adm','ops','2022-12-06','206','G3',42000,'full','E2101'],
+ ['E2107','照服員','O1','ca','care','2023-03-14','207','G2',37500,'part','E2102'],
+ ['E2108','護理師','O1','rn','nur','2023-07-21','208','P2',57000,'full','E2102'],
+
+ ['E2201','院長','O2','dir','exec','2016-05-27','301','M3',125000,'full','E1002'],
+ ['E2202','護理長','O2','hn','nur','2018-02-08','302','P3',76500,'full','E2201'],
+ ['E2203','護理師','O2','rn','nur','2019-09-13','303','P2',58500,'full','E2202'],
+ ['E2204','照服員','O2','ca','care','2020-07-01','304','G2',38500,'full','E2202'],
+ ['E2205','職能治療師','O2','ot','rehab','2021-01-25','305','P2',62500,'full','E2201'],
+ ['E2206','照服員','O2','ca','care','2023-02-10','306','G2',37000,'part','E2202'],
+ ['E2207','交通服務員','O2','drv','ops','2022-06-15','307','G1',34000,'full','E2201'],
+ ['E2208','社工師','O2','sw','soc','2022-09-05','308','P2',51500,'full','E2201'],
+ ['E2209','營養師','O2','die','care','2023-08-19','309','P2',54500,'full','E2202']
+];
+const STAFF = RAW.map(r=>({
+  id:r[0], zh:r[1], unit:r[2], titleKey:r[3], dept:r[4],
+  hired:r[5], ext:r[6], band:r[7], salary:r[8], type:r[9], mgr:r[10]
+}));
+const person = id => STAFF.find(s=>s.id===id);
+</script>
+<script>
+/* ---------- fixed demo clock (prototype has no live data feed) ---------- */
+const TODAY = new Date(2026,8,8);           // 2026-09-08
+const ymd = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+
+/* ---------- announcements ---------- */
+const ANN_CAT = {
+  policy:{zh:'政策公告',en:'Policy',cls:'info'}, hr:{zh:'人事',en:'HR',cls:'acc'},
+  training:{zh:'教育訓練',en:'Training',cls:'ok'}, safety:{zh:'感控與安全',en:'Safety',cls:'crit'},
+  facility:{zh:'院務',en:'Facility',cls:'warn'}
+};
+const ANNOUNCEMENTS = [
+ {id:'A09', date:'2026-09-07', cat:'safety', scope:'ALL', pin:true, author:'E1002',
+  zh:'115年度秋季流感疫苗接種作業啟動',
+  en:'2026 Autumn Influenza Vaccination Programme Begins',
+  bodyZh:'各院區自 9 月 15 日起依序辦理住民及工作人員流感疫苗接種。請各院護理長於 9 月 12 日前完成接種意願造冊，並回傳至總部護理督導信箱。\n\n接種當日請安排一名護理師全程留觀 30 分鐘，並確實記錄不良反應通報表。',
+  bodyEn:'Influenza vaccination for residents and staff starts 15 Sept at all facilities. Head nurses must submit consent rosters to the group nursing supervisor by 12 Sept.\n\nOn vaccination day, assign one nurse to observe recipients for 30 minutes and complete the adverse-reaction reporting form.'},
+ {id:'A08', date:'2026-09-04', cat:'policy', scope:'ALL', pin:true, author:'E1001',
+  zh:'長照機構評鑑準備啟動說明',
+  en:'Facility Accreditation Preparation Kick-off',
+  bodyZh:'新竹衛生部門將於 115 年第四季辦理長照機構評鑑。營運中心已成立準備小組，第一次會議訂於 9 月 22 日下午 2 時舉行，各院請派院長及護理長出席。\n\n文件準備清單將另行於「文件管理」模組發布（本原型尚未建置）。',
+  bodyEn:'Local health authorities will conduct facility accreditation in Q4 2026. A preparation team has been formed; the first meeting is 22 Sept, 14:00. Each facility should send its director and head nurse.\n\nThe document checklist will be published in the Document Control module (not built in this prototype).'},
+ {id:'A07', date:'2026-09-02', cat:'hr', scope:'ALL', pin:false, author:'E1003',
+  zh:'115年度特休假結算與請假系統轉換',
+  en:'2026 Annual Leave Reconciliation & Leave System Migration',
+  bodyZh:'自 10 月 1 日起，紙本請假單停止使用，一律改由本系統線上申請。9 月 30 日前未使用之特休假時數將依勞基法規定結算。\n\n各院主管請於 9 月 25 日前完成部屬待審請假單簽核。',
+  bodyEn:'From 1 Oct, paper leave forms are discontinued; all leave must be filed in this system. Unused annual leave as of 30 Sept will be reconciled per the Labor Standards Act.\n\nFacility directors must clear all pending leave approvals for their staff by 25 Sept.'},
+ {id:'A06', date:'2026-08-28', cat:'training', scope:'ALL', pin:false, author:'E1003',
+  zh:'照顧服務員繼續教育時數提醒（第三季）',
+  en:'Care Attendant Continuing Education Hours — Q3 Reminder',
+  bodyZh:'依規定照顧服務員每年須完成 20 小時繼續教育。系統統計截至 8 月底，本院區仍有同仁時數不足，名單已由主管級發送。\n\n9 月 18 日將於竹北院辦理實體補課場次，竹東院同仁可跨院報名。',
+  bodyEn:'Care attendants must complete 20 hours of continuing education per year. As of end-August, some staff are short of hours; lists have been sent to directors.\n\nA make-up session runs 18 Sept at Zhuibei and is open to all facilities.'},
+ {id:'A05', date:'2026-09-05', cat:'facility', scope:'O1', pin:false, author:'E2101',
+  zh:'竹北院二樓浴室整修施工通知（9/14–9/25）',
+  en:'Zhuibei 2F Bathroom Renovation Notice (14–25 Sept)',
+  bodyZh:'二樓公共浴室自 9 月 14 日起整修，期間住民沐浴改於三樓浴室，請照服員依調整後之沐浴時段表執行。\n\n施工時間為每日 09:00–16:00，如有噪音影響住民作息請即時回報行政。',
+  bodyEn:'The 2F shared bathroom will be renovated from 14 Sept. Residents will bathe on 3F during this period; care attendants should follow the revised bathing schedule.\n\nWork runs 09:00–16:00 daily. Report any disturbance to residents to the administration office.'},
+ {id:'A04', date:'2026-09-03', cat:'facility', scope:'O2', pin:false, author:'E2201',
+  zh:'竹東院新住民入住前置作業分工',
+  en:'Zhudong — Pre-admission Workflow for New Residents',
+  bodyZh:'本月新增住民，入住前評估請於入住前 3 個工作天完成，社工與護理各自完成評估表後上傳共用資料夾。',
+  bodyEn:'New residents arrive this month. Pre-admission assessments must be completed three working days before admission; social work and nursing each upload their assessment forms to the shared folder.'},
+ {id:'A03', date:'2026-08-31', cat:'safety', scope:'O1', pin:false, author:'E2101',
+  zh:'竹北院消防演練檢討與改善事項',
+  en:'Zhuibei — Fire Drill Review and Corrective Actions',
+  bodyZh:'8 月 26 日消防演練檢討：夜間人力疏散動線需再演練一次，訂於 9 月 11 日夜班時段辦理，請夜班同仁全員參加。',
+  bodyEn:'Review of the 26 Aug fire drill: the night-shift evacuation route needs one more run-through, scheduled for 11 Sept during the night shift. All night-shift staff must attend.'},
+ {id:'A02', date:'2026-08-26', cat:'hr', scope:'O1', pin:false, author:'E2101',
+  zh:'竹北院九月班表公布',
+  en:'Zhuibei — September Shift Roster Published',
+  bodyZh:'九月班表已公布於護理站，換班需經護理長同意並登錄於本系統出勤模組。',
+  bodyEn:'The September roster is posted at the nursing station. Shift swaps require head-nurse approval and must be logged in the attendance module.'},
+ {id:'A01', date:'2026-08-20', cat:'training', scope:'ALL', pin:false, author:'E1006',
+  zh:'新進人員職前訓練（9/1 梯次）報到須知',
+  en:'New-hire Orientation (1 Sept Cohort) — Check-in Notes',
+  bodyZh:'請新進同仁於 9 月 1 日上午 8 時 30 分至總部 5 樓報到，攜帶身分證明文件與健康檢查報告。',
+  bodyEn:'New hires should check in at HQ 5F at 08:30 on 1 Sept with identification documents and their health examination report.'}
+];
+
+/* ---------- calendar events (Sept 2026) ---------- */
+const EVENTS = [
+ {d:'2026-09-01', type:'hr',    scope:'ALL', zh:'新進人員職前訓練', en:'New-hire orientation'},
+ {d:'2026-09-03', type:'train', scope:'O2',  zh:'失智照護實務工作坊', en:'Dementia care workshop'},
+ {d:'2026-09-05', type:'event', scope:'O1',  zh:'住民中秋手作活動', en:'Resident Mid-Autumn craft activity'},
+ {d:'2026-09-08', type:'hr',    scope:'ALL', zh:'月度營運會議', en:'Monthly operations meeting'},
+ {d:'2026-09-09', type:'train', scope:'O1',  zh:'感染管制在職教育', en:'Infection control in-service'},
+ {d:'2026-09-11', type:'audit', scope:'O1',  zh:'夜間消防疏散演練', en:'Night-shift evacuation drill'},
+ {d:'2026-09-14', type:'audit', scope:'O1',  zh:'二樓浴室整修進場', en:'2F bathroom renovation starts'},
+ {d:'2026-09-15', type:'hr',    scope:'ALL', zh:'流感疫苗接種開始', en:'Influenza vaccination begins'},
+ {d:'2026-09-16', type:'train', scope:'O2',  zh:'跌倒預防個案研討', en:'Fall-prevention case review'},
+ {d:'2026-09-18', type:'train', scope:'O1',  zh:'照服員繼續教育補課', en:'Care attendant make-up session'},
+ {d:'2026-09-22', type:'audit', scope:'ALL', zh:'評鑑準備小組第一次會議', en:'Accreditation prep meeting #1'},
+ {d:'2026-09-24', type:'event', scope:'O2',  zh:'家屬座談會', en:'Family council meeting'},
+ {d:'2026-09-25', type:'hr',    scope:'ALL', zh:'請假單簽核截止', en:'Leave approval deadline'},
+ {d:'2026-09-28', type:'audit', scope:'O2',  zh:'衛生局不定期查核', en:'Health bureau spot check'},
+ {d:'2026-09-30', type:'hr',    scope:'ALL', zh:'特休假結算日', en:'Annual leave reconciliation'}
+];
+const EV_TYPE = {
+  train:{zh:'教育訓練',en:'Training'}, audit:{zh:'查核與演練',en:'Audit & drill'},
+  hr:{zh:'人事行政',en:'HR & admin'},  event:{zh:'住民活動',en:'Resident activity'}
+};
+
+/* ---------- leave requests ---------- */
+const LEAVE_TYPES = {
+  annual:{zh:'特休',en:'Annual'}, sick:{zh:'病假',en:'Sick'}, personal:{zh:'事假',en:'Personal'},
+  family:{zh:'家庭照顧假',en:'Family care'}, comp:{zh:'補休',en:'Comp time'}
+};
+let LEAVE = [
+ {id:'L241', emp:'E2103', type:'annual',   from:'2026-09-14', to:'2026-09-16', days:3,  filed:'2026-09-01', status:'pending',  note:{zh:'家庭旅遊，已與同仁換班',en:'Family trip; shift swap arranged'}},
+ {id:'L242', emp:'E2104', type:'sick',     from:'2026-09-09', to:'2026-09-09', days:1,  filed:'2026-09-08', status:'pending',  note:{zh:'附診斷證明',en:'Medical certificate attached'}},
+ {id:'L243', emp:'E2107', type:'family',   from:'2026-09-18', to:'2026-09-18', days:1,  filed:'2026-09-05', status:'pending',  note:{zh:'子女學校活動',en:'Child school event'}},
+ {id:'L244', emp:'E2102', type:'annual',   from:'2026-09-28', to:'2026-09-30', days:3,  filed:'2026-09-06', status:'pending',  note:{zh:'需確認班表覆蓋',en:'Roster coverage to be confirmed'}},
+ {id:'L245', emp:'E2203', type:'personal', from:'2026-09-11', to:'2026-09-11', days:1,  filed:'2026-09-04', status:'pending',  note:{zh:'家中事務',en:'Personal matter'}},
+ {id:'L246', emp:'E2204', type:'sick',     from:'2026-09-07', to:'2026-09-08', days:2,  filed:'2026-09-07', status:'pending',  note:{zh:'腸胃不適',en:'Gastrointestinal illness'}},
+ {id:'L247', emp:'E2206', type:'annual',   from:'2026-09-21', to:'2026-09-22', days:2,  filed:'2026-09-02', status:'pending',  note:{zh:'',en:''}},
+ {id:'L248', emp:'E2208', type:'comp',     from:'2026-09-12', to:'2026-09-12', days:1,  filed:'2026-09-03', status:'pending',  note:{zh:'中秋加班補休',en:'Comp time for holiday shift'}},
+ {id:'L231', emp:'E2105', type:'annual',   from:'2026-08-24', to:'2026-08-26', days:3,  filed:'2026-08-10', status:'approved', note:{zh:'',en:''}},
+ {id:'L232', emp:'E2203', type:'sick',     from:'2026-08-19', to:'2026-08-20', days:2,  filed:'2026-08-19', status:'approved', note:{zh:'',en:''}},
+ {id:'L233', emp:'E2209', type:'personal', from:'2026-08-28', to:'2026-08-28', days:1,  filed:'2026-08-21', status:'rejected', note:{zh:'當日人力不足，建議改期',en:'Insufficient coverage; asked to reschedule'}}
+];
+</script>
+<script>
+/* ---------- roles & permissions ---------- */
+/* v2.0: 9 roles per specification, but only 3 fully working in this prototype */
+const ROLES = {
+  /* --- Built (working in this prototype) --- */
+  admin:{ id:'admin', zh:'系統管理員', en:'System Admin', persona:'E1005', allOffices:true, built:true,
+    perms:{ salary:false, editEmp:true, mobile:true, approve:false, finalize:false,
+            annGroup:true, annOffice:true, perms:true, exportAll:true } },
+  hr:{ id:'hr', zh:'人資部經理', en:'HR Manager', persona:'E1003', allOffices:true, built:true,
+    perms:{ salary:true, editEmp:true, mobile:true, approve:true, finalize:true,
+            annGroup:true, annOffice:true, perms:false, exportAll:true } },
+  manager:{ id:'manager', zh:'院長／單位主管', en:'Facility Director', persona:'E2401', allOffices:false, built:true,
+    perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false,
+            annGroup:false, annOffice:true, perms:false, exportAll:false } },
+
+  /* --- Planned for Phase 2–3 (stubs only) --- */
+  coo:{ id:'coo', zh:'營運長', en:'COO', built:false, phase:'Phase 1+' },
+  finance:{ id:'finance', zh:'財務部經理', en:'Finance Manager', built:false, phase:'Phase 2' },
+  nurse:{ id:'nurse', zh:'護理部主管', en:'Nursing Director', built:false, phase:'Phase 2' },
+  care:{ id:'care', zh:'照護部主管', en:'Care Services Manager', built:false, phase:'Phase 2' },
+  social:{ id:'social', zh:'社工室主任', en:'Social Work Supervisor', built:false, phase:'Phase 3' },
+  company:{ id:'company', zh:'公司經理', en:'Company Manager', built:false, phase:'Phase 2' }
+};
+
+/* ---------- state ---------- */
+const state = {
+  lang:'zh', role:'admin', module:'arch', tab:'scope',
+  crossOffice:false,          // ASSUMPTION TOGGLE: managers see all offices?
+  office:'ALL',               // office filter within the allowed scope
+  annId:'A09', calMonth:'2026-09', calDay:null,
+  q:'', dirQ:'', empId:null, attMonth:'2026-08', attView:'summary', nodeId:null
+};
+const role = () => ROLES[state.role];
+const me = () => person(role().persona);
+const can = k => role().perms[k];
+/* offices this role may read right now */
+function scopeUnits(){
+  const r = role();
+  if(r.allOffices || state.crossOffice) return ALL_UNITS.map(u=>u.id);
+  return [me().unit];
+}
+const inScope = uid => scopeUnits().includes(uid);
+const scopedStaff = () => STAFF.filter(s=>inScope(s.unit));
+/* offices offered in the office filter (HQ excluded from care-home filters) */
+function filterUnits(){ return ALL_UNITS.filter(u=>inScope(u.id)); }
+function activeUnitIds(){
+  const allowed = scopeUnits();
+  return state.office==='ALL' ? allowed : allowed.filter(id=>id===state.office);
+}
+const scopeLocked = () => !role().allOffices && !state.crossOffice;
+
+/* ---------- i18n helpers ---------- */
+const L = o => !o ? '' : (state.lang==='zh' ? o.zh : (o.en||o.zh));
+const S = o => state.lang==='zh' ? (o.en||o.zh) : o.zh;      // secondary language
+const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* bilingual block: primary line + secondary line, always both languages */
+const bi = (zh,en) => `<span class="bi"><span>${esc(state.lang==='zh'?zh:en)}</span><span class="en">${esc(state.lang==='zh'?en:zh)}</span></span>`;
+const biO = o => bi(o.zh,o.en);
+const both = (zh,en) => state.lang==='zh' ? `${zh} / ${en}` : `${en} / ${zh}`;
+const nameOf = p => state.lang==='zh' ? p.zh : p.en;
+const nameFull = p => state.lang==='zh' ? `${p.zh}` : `${p.en}`;
+const money = n => 'NT$'+n.toLocaleString('en-US');
+
+/* ---------- deterministic mock attendance ---------- */
+function seed(str){ let h=2166136261;
+  for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); }
+  h^=h>>>13; h=Math.imul(h,1540483477); h^=h>>>15;   // avalanche, so nearby ids don't correlate
+  return (h>>>0)/4294967296; }
+const ATT_STATUS = {
+  present:{zh:'正常',en:'On time',cls:'ok'}, late:{zh:'遲到',en:'Late',cls:'warn'},
+  leave:{zh:'請假',en:'On leave',cls:'info'}, miss:{zh:'未打卡',en:'Missing punch',cls:'crit'},
+  off:{zh:'排休',en:'Rest day',cls:''}
+};
+function attendance(empId, y, m){        // m = 1-12
+  const days = new Date(y, m, 0).getDate();
+  const out = [];
+  const last = (y===TODAY.getFullYear() && m===TODAY.getMonth()+1) ? TODAY.getDate() : days;
+  for(let d=1; d<=days; d++){
+    const date = new Date(y,m-1,d), dow = date.getDay();
+    if(d>last){ out.push({d, status:null}); continue; }
+    const r = seed(empId+'-'+y+'-'+m+'-'+d);
+    let status = 'present';
+    if(dow===0 || (dow===6 && r<0.7)) status='off';
+    else if(r>0.985) status='miss';
+    else if(r>0.945) status='leave';
+    else if(r>0.900) status='late';
+    const inH = status==='late' ? 8 : 7, inM = status==='late' ? 8+Math.floor(r*40) : 40+Math.floor(r*18);
+    out.push({ d, dow, status,
+      in: (status==='off'||status==='leave') ? null : String(inH).padStart(2,'0')+':'+String(inM%60).padStart(2,'0'),
+      out:(status==='off'||status==='leave') ? null : (status==='miss' ? null : (r>0.6?'18:1':'17:3')+Math.floor(r*9)),
+      ot: (status!=='off' && status!=='leave' && r>0.78) ? Math.round(r*20)/10 : 0 });
+  }
+  return out;
+}
+function attSummary(empId, y, m){
+  const rows = attendance(empId,y,m).filter(r=>r.status);
+  const c = {present:0,late:0,leave:0,miss:0,off:0, ot:0};
+  rows.forEach(r=>{ c[r.status]++; c.ot += r.ot||0; });
+  const work = c.present+c.late+c.miss;
+  c.rate = work+c.leave ? Math.round(100*(work)/(work+c.leave)) : 100;
+  c.punctual = work ? Math.round(100*(c.present)/work) : 100;
+  return c;
+}
+</script>
+<script>
+/* ---------- module / tab map ---------- */
+const MODULES = [
+  {id:'arch', zh:'原型說明', en:'Prototype Info', built:true, tabs:[
+    {id:'scope',  zh:'範圍與進展', en:'Scope & Status'},
+    {id:'roles',  zh:'角色與權限', en:'Roles & Permissions'}
+  ]},
+  {id:'ann', zh:'公告欄', en:'Announcements', built:true, tabs:[
+    {id:'board',  zh:'公告',     en:'Board'},
+    {id:'cal',    zh:'公司行事曆', en:'Calendar'},
+    {id:'org',    zh:'組織圖',    en:'Org chart'},
+    {id:'dir',    zh:'內部通訊錄', en:'Directory'}
+  ]},
+  {id:'hr', zh:'人事系統', en:'HR', built:true, tabs:[
+    {id:'emp',   zh:'員工資料', en:'Employee records'},
+    {id:'att',   zh:'出勤管理', en:'Attendance'},
+    {id:'leave', zh:'請假審核', en:'Leave approvals'}
+  ]},
+  {id:'perm', zh:'權限與範圍', en:'Roles & scope', built:true, tabs:[
+    {id:'matrix', zh:'權限對照表', en:'Permission matrix'},
+    {id:'open',   zh:'待決議題',   en:'Open questions'}
+  ]}
+];
+const NOT_BUILT = [
+  {id:'doc',  zh:'文件管理',   en:'Document Control'},
+  {id:'svc',  zh:'服務管理',   en:'Service Management'},
+  {id:'fin',  zh:'財務與採購', en:'Finance & Procurement'},
+  {id:'rpt',  zh:'報表匯出',   en:'Reports Export'},
+  {id:'set',  zh:'系統設定',   en:'Settings'}
+];
+
+/* ---------- shell ---------- */
+function renderShell(){
+  const mod = MODULES.find(m=>m.id===state.module);
+  document.getElementById('app').innerHTML = `
+  <div class="app">
+    <nav class="rail">
+      <div class="brand">
+        <b>康禾長照集團</b>
+        <span>Kanghe Long-Term Care</span>
+        <span>${state.lang==='zh'?'營運入口 · Ops Portal':'Ops Portal · 營運入口'}</span>
+      </div>
+      <div class="rail-group">${both('本次原型','In this prototype')}</div>
+      ${MODULES.map(m=>`<button class="navitem" data-mod="${m.id}" aria-current="${m.id===state.module}">
+          <span class="navdot"></span>${esc(state.lang==='zh'?m.zh:m.en)}<span class="en">${esc(state.lang==='zh'?m.en:m.zh)}</span>
+        </button>`).join('')}
+      <div class="rail-group">${both('尚未建置','Not built yet')}</div>
+      ${NOT_BUILT.map(m=>`<button class="navitem" disabled title="${both('本階段不建置','Out of scope for this MVP')}">
+          <span class="navdot"></span>${esc(state.lang==='zh'?m.zh:m.en)}<span class="en">${esc(state.lang==='zh'?m.en:m.zh)}</span>
+        </button>`).join('')}
+      <div class="rail-foot">
+        ${both('展示資料為虛構','Demo data is fictional')}<br>
+        ${both('無帳號登入・無資料庫','No login · no database')}<br>
+        <span class="mono">${both('展示日期','Demo date')} ${ymd(TODAY)}</span>
+      </div>
+    </nav>
+    <div class="main">
+      <div class="utility">
+        <div class="ufield">
+          <span class="ulabel">${both('身分','Role')}</span>
+          <select id="roleSel">${Object.values(ROLES).filter(r=>r.built).map(r=>`<option value="${r.id}" ${r.id===state.role?'selected':''}>${esc(both(r.zh,r.en))}</option>`).join('')}</select>
+        </div>
+        <div class="ufield">
+          <span class="ulabel">${both('資料範圍','Data scope')}</span>
+          <select id="offSel" ${scopeLocked()?'disabled':''}>
+            ${scopeLocked()
+              ? `<option>${esc(both(me().unit==='HQ'?HQ.zh:unit(me().unit).zh, unit(me().unit).en))}</option>`
+              : `<option value="ALL">${esc(both('全部據點','All facilities'))}</option>`+
+                filterUnits().map(u=>`<option value="${u.id}" ${u.id===state.office?'selected':''}>${esc(both(u.zh,u.en))}</option>`).join('')}
+          </select>
+        </div>
+        <button class="assume" id="assumeBtn" aria-pressed="${state.crossOffice}" title="${both('切換此假設以進行討論','Toggle this assumption for discussion')}">
+          <span class="switch"></span>
+          <span><small>${both('假設','Assumption')}</small> <b>${both('主管可跨院查看','Managers see all facilities')}</b></span>
+        </button>
+        <div class="spacer"></div>
+        <div class="seg" role="group" aria-label="Language">
+          <button data-lang="zh" aria-pressed="${state.lang==='zh'}">中文</button>
+          <button data-lang="en" aria-pressed="${state.lang==='en'}">EN</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="pagehead">
+          <div>
+            <h1>${esc(state.lang==='zh'?mod.zh:mod.en)}</h1>
+            <div class="sub">${esc(state.lang==='zh'?mod.en:mod.zh)}</div>
+          </div>
+          <div class="spacer"></div>
+          <span class="chip acc">${both('目前視角','Viewing as')}: ${esc(nameOf(me()))} · ${esc(L(TITLES[me().title]))}</span>
+        </div>
+        <div class="tabs" role="tablist">
+          ${mod.tabs.map(t=>`<button role="tab" data-tab="${t.id}" aria-selected="${t.id===state.tab}">
+             ${esc(state.lang==='zh'?t.zh:t.en)}<span class="ten">${esc(state.lang==='zh'?t.en:t.zh)}</span></button>`).join('')}
+        </div>
+        ${scopeBanner()}
+        <div id="view"></div>
+      </div>
+    </div>
+  </div>`;
+
+  document.querySelectorAll('[data-mod]').forEach(b=>b.onclick=()=>{
+    state.module=b.dataset.mod; state.tab=MODULES.find(m=>m.id===state.module).tabs[0].id; render();
+  });
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; render(); });
+  document.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{ state.lang=b.dataset.lang; render(); });
+  document.getElementById('roleSel').onchange = e=>{
+    state.role=e.target.value; state.office='ALL'; state.empId=null; state.nodeId=null;
+    if(state.module==='perm'&&state.tab==='matrix'&&!can('perms')){} render();
+    toast(both('已切換視角：'+ROLES[state.role].zh, 'Now viewing as '+ROLES[state.role].en));
+  };
+  const os=document.getElementById('offSel'); if(os&&!os.disabled) os.onchange=e=>{ state.office=e.target.value; render(); };
+  document.getElementById('assumeBtn').onclick = ()=>{
+    state.crossOffice=!state.crossOffice; state.office='ALL'; render();
+    toast(state.crossOffice
+      ? both('假設已開啟：主管可查看全部 7 個據點','Assumption ON: managers can see all 7 facilities')
+      : both('假設已關閉：主管僅限本院資料','Assumption OFF: managers are limited to their own facility'));
+  };
+}
+
+function scopeBanner(){
+  const r=role(), open=state.crossOffice;
+  const scopeTxt = r.allOffices
+    ? both('此身分可跨 7 個據點查看','This role reads across all 7 facilities')
+    : (open ? both('假設開啟中：主管目前可跨 7 個據點查看','Assumption ON: this manager currently reads all 7 facilities')
+            : both('預設：主管僅能查看所屬據點（'+unit(me().unit).zh+'）','Default: this manager reads only '+unit(me().unit).en));
+  return `<div class="scopebar ${open&&!r.allOffices?'is-open':''}">
+    <div>
+      <b>${both('資料範圍','Data scope')}</b> — ${esc(scopeTxt)}
+      <span class="q">${esc(both(
+        '待決議題：主管應看到全集團 7 院的人事與出勤資料，還是僅限自己院區？請用上方「假設」開關比較兩種情境。',
+        'Open question: should facility directors see HR and attendance data for all 7 facilities, or only their own? Use the Assumption switch above to compare both.'))}</span>
+    </div>
+  </div>`;
+}
+
+let toastTimer;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.innerHTML = `<div class="toast">${esc(msg)}</div>`;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.innerHTML='',2600);
+}
+function closeOverlay(){ document.getElementById('overlay').innerHTML=''; state.empId=null; state.nodeId=null; }
+
+function render(){
+  renderShell();
+  const v=document.getElementById('view');
+  const key=state.module+':'+state.tab;
+  const fn={
+    'arch:scope':viewArchScope, 'arch:roles':viewArchRoles,
+    'ann:board':viewBoard, 'ann:cal':viewCalendar, 'ann:org':viewOrg, 'ann:dir':viewDirectory,
+    'hr:emp':viewEmployees, 'hr:att':viewAttendance, 'hr:leave':viewLeave,
+    'perm:matrix':viewMatrix, 'perm:open':viewOpen
+  }[key];
+  v.innerHTML = fn ? fn() : '';
+  (BINDERS[key]||function(){})();
+}
+const BINDERS={};
+</script>
+<script>
+/* =============================== 原型說明 Prototype Info =============================== */
+function viewArchScope(){
+  return `
+  <div class="content-solo">
+    <div class="pagehead">
+      <h1>${esc(both('原型 v2.0 範圍與進展','Prototype v2.0 Scope & Status'))}</h1>
+      <span class="sub">${esc(both('9/30 會議展示版本','Delivery: 30 Sept Meeting'))}</span>
+    </div>
+
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('原型說明','Prototype Status'))}</b><br>
+      ${esc(both(
+        '本原型為互動式示意，展示 UI 設計與權限架構。所有資料均為虛構示意，無真實資料庫。',
+        'This prototype is an interactive mockup for UI design and permission modeling. All data is fictional for demonstration purposes only.'))}
+    </div>
+
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('已建置功能','Built Features'))}</h2></div>
+      <div class="card-b">
+        <div style="display:grid;gap:12px">
+          <div style="border-left:3px solid var(--ok);padding-left:12px">
+            <div style="font-weight:600">${esc(both('公告欄 / Announcements','Announcements'))}</div>
+            <div style="font-size:13px;color:var(--ink-2)">
+              ${esc(both('✓ 公告管理、公司行事曆、組織圖、通訊錄 · 多語言 · 資料範圍篩選',
+                         '✓ Announcements, calendar, org chart, directory. Bilingual. Data scoping by role & facility.'))}
+            </div>
+          </div>
+          <div style="border-left:3px solid var(--ok);padding-left:12px">
+            <div style="font-weight:600">${esc(both('人事系統 / HR','HR System'))}</div>
+            <div style="font-size:13px;color:var(--ink-2)">
+              ${esc(both('✓ 員工資料（虛構示意）、出勤管理（演算法生成）、請假審核流程',
+                         '✓ Employee records (fictional), attendance (algorithmic), leave approval workflow.'))}
+            </div>
+          </div>
+          <div style="border-left:3px solid var(--ok);padding-left:12px">
+            <div style="font-weight:600">${esc(both('權限與範圍 / Roles','Roles & Permissions'))}</div>
+            <div style="font-size:13px;color:var(--ink-2)">
+              ${esc(both('✓ 3 個完整角色示意（系管、人資、院長）、權限矩陣、跨院區假設開關',
+                         '✓ 3 full roles demonstrated (admin, HR, director), permission matrix, cross-facility toggle.'))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('計畫中功能','Planned Features'))}</h2></div>
+      <div class="card-b">
+        <div style="display:grid;gap:12px">
+          <div style="border-left:3px solid var(--warn);padding-left:12px">
+            <div style="font-weight:600">${esc(both('第 2 階段 (11–12 月) / Phase 2 (Nov–Dec)','Phase 2 (Nov–Dec)'))}</div>
+            <div style="font-size:13px;color:var(--ink-2)">
+              ${esc(both('薪資管理、詳細報表、營運長與公司經理角色、多公司帳務分離',
+                         'Payroll, detailed reports, COO & Company Manager roles, multi-company accounting.'))}
+            </div>
+          </div>
+          <div style="border-left:3px solid var(--warn);padding-left:12px">
+            <div style="font-weight:600">${esc(both('第 3 階段 (2027 Q1) / Phase 3 (Q1 2027)','Phase 3 (Q1 2027)'))}</div>
+            <div style="font-size:13px;color:var(--ink-2)">
+              ${esc(both('仁仁系統整合、個案管理、社工評估模組',
+                         'Renren system integration, case management, social worker assessment module.'))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('多公司結構 / Multi-Company Architecture','Multi-Company Structure'))}</h2></div>
+      <div class="card-b">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+          ${COMPANIES.map(co=>`
+          <div style="border:1px solid var(--line);border-radius:6px;padding:12px">
+            <div style="font-weight:600;margin-bottom:6px">${esc(both(co.zh,co.en))}</div>
+            <div style="font-size:12px;color:var(--ink-2);line-height:1.6">
+              ${co.offices.map(id=>unit(id)).map(u=>`<div>• ${esc(L(u))}</div>`).join('')}
+            </div>
+          </div>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('團隊資源 / Resources','Development Resources'))}</h2></div>
+      <div class="card-b">
+        <div class="kv">
+          <dt>${esc(both('開發','Development'))}</dt>
+          <dd>${esc(both('使用者 + AI 工具','User + AI Tools'))}</dd>
+          <dt>${esc(both('時程','Timeline'))}</dt>
+          <dd>${esc(both('9 月 6–30 日（原型 v1 + v2）','6–30 Sept (prototype v1 + v2)'))}</dd>
+          <dt>${esc(both('交付','Delivery'))}</dt>
+          <dd>${esc(both('原型 + 文檔 + 技術說明','Prototype + docs + technical spec'))}</dd>
+          <dt>${esc(both('後續','Follow-up'))}</dt>
+          <dd>${esc(both('若核准，完整開發 2027 年投入','If approved, full development Q4 2026–Q1 2027'))}</dd>
+        </div>
+      </div>
+    </section>
+  </div>
+  `;
+}
+
+function viewArchRoles(){
+  const builtRoles = Object.values(ROLES).filter(r=>r.built);
+  const plannedRoles = Object.values(ROLES).filter(r=>!r.built);
+  return `
+  <div class="content-solo">
+    <div class="pagehead">
+      <h1>${esc(both('角色與權限說明','Roles & Permissions Guide'))}</h1>
+    </div>
+
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('v2.0 角色矩陣','v2.0 Role Matrix'))}</b><br>
+      ${esc(both(
+        '規劃 9 個角色以支援多層級組織。本原型展示其中 3 個完整實現；其餘為計畫示意。',
+        'The v2.0 specification defines 9 roles to support the multi-level organization. This prototype implements 3 in full; others are planned for Phase 2–3.'))}
+    </div>
+
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('✓ 已實現角色','✓ Implemented Roles'))}</h2></div>
+      <div class="card-b">
+        <table class="permtable" style="width:100%">
+          <thead><tr><th style="width:160px">${esc(both('角色','Role'))}</th><th>${esc(both('說明','Description'))}</th></tr></thead>
+          <tbody>
+            ${builtRoles.map(r=>`
+            <tr style="border-bottom:1px solid var(--line);padding:8px 0">
+              <td style="padding:8px;font-weight:500">${esc(L(r))}</td>
+              <td style="padding:8px;font-size:13px;color:var(--ink-2)">
+                ${r.id==='admin' ? esc(both('系統配置、全集團公告、員工資料編輯、所有院區存取','Configuration, group announcements, employee data management, all facilities access.')) :
+                  r.id==='hr' ? esc(both('薪資/請假核定、人資審核、教育訓練記錄、全集團報表','Salary approvals, leave finalization, training records, group reports.')) :
+                  r.id==='manager' ? esc(both('本院公告、請假核准（初層）、員工出勤查詢、本院組織圖','Facility announcements, leave initial approval, attendance viewing, own facility org chart.')) :
+                  ''}
+              </td>
+            </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('→ 計畫角色','→ Planned Roles'))}</h2></div>
+      <div class="card-b">
+        <table class="permtable" style="width:100%">
+          <thead><tr><th style="width:160px">${esc(both('角色','Role'))}</th><th style="width:80px">${esc(both('階段','Phase'))}</th><th>${esc(both('說明','Scope'))}</th></tr></thead>
+          <tbody>
+            ${plannedRoles.map(r=>`
+            <tr style="border-bottom:1px solid var(--line);padding:8px 0">
+              <td style="padding:8px;font-weight:500;color:var(--ink-3)">${esc(L(r))}</td>
+              <td style="padding:8px;font-size:12px"><span class="chip">${esc(r.phase)}</span></td>
+              <td style="padding:8px;font-size:13px;color:var(--ink-3)">
+                ${r.id==='coo' ? esc(both('營運數據、多公司統整、績效指標','Ops metrics, multi-company rollup, KPIs.')) :
+                  r.id==='finance' ? esc(both('薪資、採購、帳務、月結','Payroll, procurement, accounting, month-end close.')) :
+                  r.id==='nurse' ? esc(both('護理管理、感控、照護計畫覆核','Nursing management, infection control, care plan review.')) :
+                  r.id==='care' ? esc(both('照顧服務管理、評估表、滿意度追蹤','Care services mgmt, assessments, satisfaction tracking.')) :
+                  r.id==='social' ? esc(both('個案管理、家屬溝通、資源轉介','Case management, family communication, resource referrals.')) :
+                  r.id==='company' ? esc(both('公司層級營運、跨院區協調','Company-level operations, cross-facility coordination.')) :
+                  ''}
+              </td>
+            </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('查看其他角色','Try Other Roles'))}</h2></div>
+      <div class="card-b">
+        <p style="margin:0 0 12px 0;color:var(--ink-2);font-size:13px">
+          ${esc(both('選擇左側 [以此身份登入 / Switch role] 下拉選單，試試其他已實現的角色。計畫角色目前無法使用。',
+                     'Use the "Switch role" selector in the left sidebar to test the 3 implemented roles. Planned roles are not selectable yet.'))}
+        </p>
+        <div class="seg">
+          ${['admin','hr','manager'].map(rid=>`
+          <button onclick="state.role='${rid}'; render()" style="padding:8px 14px;cursor:pointer">
+            ${esc(L(ROLES[rid]))}
+          </button>
+          `).join('')}
+        </div>
+      </div>
+    </section>
+  </div>
+  `;
+}
+</script>
+<script>
+/* =============================== 公告欄 Announcements =============================== */
+function visibleAnn(){
+  const units = activeUnitIds();
+  return ANNOUNCEMENTS.filter(a=>a.scope==='ALL' || units.includes(a.scope))
+    .sort((a,b)=> (b.pin?1:0)-(a.pin?1:0) || b.date.localeCompare(a.date));
+}
+function scopeChip(s){
+  return s==='ALL'
+    ? `<span class="chip acc">${esc(both('全集團','Group-wide'))}</span>`
+    : `<span class="chip">${esc(both(unit(s).zh,unit(s).en))}</span>`;
+}
+function viewBoard(){
+  const list = visibleAnn();
+  const sel = list.find(a=>a.id===state.annId) || list[0];
+  const hidden = ANNOUNCEMENTS.length - list.length;
+  return `
+  <div class="split">
+    <section class="card annlist">
+      <div class="card-h">
+        <h2>${esc(both('公告列表','Announcement board'))}</h2>
+        <span class="en">${list.length} ${esc(both('則','posts'))}</span>
+        <div class="spacer"></div>
+        ${can('annGroup')
+          ? `<button class="btn mini" data-new="group">${esc(both('發布公告','New post'))}</button>`
+          : can('annOffice')
+            ? `<button class="btn mini" data-new="office">${esc(both('發布本院公告','New facility post'))}</button>`
+            : ''}
+      </div>
+      ${list.map(a=>`
+        <button class="annrow" data-ann="${a.id}" aria-current="${sel&&a.id===sel.id}">
+          <span style="flex:1;min-width:0">
+            <span class="t">${a.pin?'<span class="pin">◆ </span>':''}${esc(state.lang==='zh'?a.zh:a.en)}</span>
+            <span class="t-en">${esc(state.lang==='zh'?a.en:a.zh)}</span>
+            <span class="meta">
+              <span class="chip ${ANN_CAT[a.cat].cls}">${esc(both(ANN_CAT[a.cat].zh,ANN_CAT[a.cat].en))}</span>
+              ${scopeChip(a.scope)}
+              <span class="date">${a.date}</span>
+            </span>
+          </span>
+        </button>`).join('')}
+      ${hidden>0 && !role().allOffices ? `<div class="note" style="margin:12px;border-left-color:var(--warn)">
+          ${esc(both(hidden+' 則其他院區公告未顯示 — 依目前資料範圍過濾。',
+                     hidden+' announcements from other facilities are hidden by the current data scope.'))}
+        </div>`:''}
+    </section>
+    <section class="card anndetail">
+      ${sel ? `
+      <div class="card-h">
+        <div>
+          <h2>${esc(state.lang==='zh'?sel.zh:sel.en)}</h2>
+          <span class="en">${esc(state.lang==='zh'?sel.en:sel.zh)}</span>
+        </div>
+      </div>
+      <div class="card-b" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line)">
+        <span class="chip ${ANN_CAT[sel.cat].cls}">${esc(both(ANN_CAT[sel.cat].zh,ANN_CAT[sel.cat].en))}</span>
+        ${scopeChip(sel.scope)}
+        <span class="chip">${esc(both('發布人','Posted by'))}: ${esc(nameOf(person(sel.author)))}</span>
+        <span class="chip mono">${sel.date}</span>
+      </div>
+      <div class="body">
+        <span class="zh">${esc(state.lang==='zh'?sel.bodyZh:sel.bodyEn)}</span>
+        <span class="muted" style="font-size:12.5px">${esc(state.lang==='zh'?sel.bodyEn:sel.bodyZh)}</span>
+      </div>
+      <div class="legend">${esc(both('原型說明：公告內容為靜態示意，未串接檔案附件或已讀回條。',
+        'Prototype note: announcement content is static — no attachments or read receipts are wired up.'))}</div>`
+      : `<div class="empty">${esc(both('目前資料範圍內沒有公告','No announcements in the current data scope'))}</div>`}
+    </section>
+  </div>`;
+}
+BINDERS['ann:board']=function(){
+  document.querySelectorAll('[data-ann]').forEach(b=>b.onclick=()=>{ state.annId=b.dataset.ann; render(); });
+  document.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>{
+    const g=b.dataset.new==='group';
+    toast(both(g?'原型示意：此身分可發布全集團公告':'原型示意：此身分僅能發布本院（'+unit(me().unit).zh+'）公告',
+               g?'Prototype: this role can post group-wide announcements':'Prototype: this role can post only for '+unit(me().unit).en));
+  });
+};
+
+/* =============================== 行事曆 Calendar =============================== */
+function visibleEvents(){
+  const units = activeUnitIds();
+  return EVENTS.filter(e=>e.scope==='ALL' || units.includes(e.scope));
+}
+function viewCalendar(){
+  const [y,m] = state.calMonth.split('-').map(Number);
+  const first = new Date(y,m-1,1), start = first.getDay(), days = new Date(y,m,0).getDate();
+  const prevDays = new Date(y,m-1,0).getDate();
+  const evs = visibleEvents();
+  const dowZh=['日','一','二','三','四','五','六'], dowEn=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let cells='';
+  for(let i=0;i<42;i++){
+    const n=i-start+1;
+    const out = n<1 || n>days;
+    const dd = out ? (n<1?prevDays+n:n-days) : n;
+    const dstr = out ? '' : `${y}-${String(m).padStart(2,'0')}-${String(n).padStart(2,'0')}`;
+    const dayEv = out?[]:evs.filter(e=>e.d===dstr);
+    const isToday = dstr===ymd(TODAY);
+    cells += `<button class="calday ${out?'out':''}" ${out?'disabled':''} data-day="${dstr}" aria-pressed="${dstr&&dstr===state.calDay}">
+      <span class="d ${isToday?'today':''}">${dd}</span>
+      ${dayEv.slice(0,3).map(e=>`<span class="ev ${e.type}">${esc(state.lang==='zh'?e.zh:e.en)}</span>`).join('')}
+      ${dayEv.length>3?`<span class="ev" style="border-color:var(--line-strong);color:var(--ink-3)">+${dayEv.length-3}</span>`:''}
+    </button>`;
+  }
+  const dayList = state.calDay ? evs.filter(e=>e.d===state.calDay) : [];
+  return `
+  <div class="split" style="grid-template-columns:minmax(0,2.1fr) minmax(0,1fr)">
+    <section class="card">
+      <div class="calhead">
+        <button class="btn ghost mini" data-mon="-1">←</button>
+        <h2 class="mono">${state.calMonth}</h2>
+        <span class="muted" style="font-size:12px">${esc(both('公司行事曆','Company calendar'))}</span>
+        <button class="btn ghost mini" data-mon="1">→</button>
+        <div class="spacer"></div>
+        <span class="chip">${evs.length} ${esc(both('筆行程','events in scope'))}</span>
+      </div>
+      <div class="calgrid">
+        ${dowZh.map((z,i)=>`<div class="caldow">${esc(state.lang==='zh'?z:dowEn[i])}</div>`).join('')}
+        ${cells}
+      </div>
+      <div class="legend">
+        ${Object.entries(EV_TYPE).map(([k,v])=>`<span><i class="ev ${k}" style="border:0"></i>${esc(both(v.zh,v.en))}</span>`).join('')}
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${state.calDay?`<span class="mono">${state.calDay}</span>`:esc(both('選取日期','Selected day'))}</h2>
+        <span class="en">${esc(both('點選左方日期','Click a date'))}</span></div>
+      ${dayList.length ? dayList.map(e=>`
+        <div class="card-b" style="border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px">
+          <div>${bi(e.zh,e.en)}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="chip ${e.type==='audit'?'crit':e.type==='train'?'info':e.type==='hr'?'acc':'warn'}">${esc(both(EV_TYPE[e.type].zh,EV_TYPE[e.type].en))}</span>
+            ${scopeChip(e.scope)}
+          </div>
+        </div>`).join('')
+        : `<div class="empty">${esc(state.calDay?both('本日無行程','No events on this day'):both('尚未選取日期','No date selected'))}</div>`}
+      <div class="legend">${esc(both('原型說明：行事曆為唯讀示意，未串接 Google 日曆或排班系統。',
+        'Prototype note: the calendar is read-only — not connected to Google Calendar or the rostering system.'))}</div>
+    </section>
+  </div>`;
+}
+BINDERS['ann:cal']=function(){
+  document.querySelectorAll('[data-mon]').forEach(b=>b.onclick=()=>{
+    let [y,m]=state.calMonth.split('-').map(Number); m+=Number(b.dataset.mon);
+    if(m<1){m=12;y--;} if(m>12){m=1;y++;}
+    state.calMonth=y+'-'+String(m).padStart(2,'0'); state.calDay=null; render();
+  });
+  document.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{
+    if(!b.dataset.day) return; state.calDay = state.calDay===b.dataset.day?null:b.dataset.day; render();
+  });
+};
+</script>
+<script>
+/* =============================== 組織圖 Org chart =============================== */
+function viewOrg(){
+  const ceo=person('E1001'), coo=person('E1002');
+  const hqStaff=STAFF.filter(s=>s.unit==='HQ' && !['E1001','E1002'].includes(s.id));
+  const dirs=OFFICES.map(o=>({o, d:STAFF.find(s=>s.unit===o.id && s.title==='dir')}));
+  const nodeBtn=(p,cls)=>{
+    const vis=inScope(p.unit);
+    return `<button class="node ${cls||''} ${vis?'':'dim'}" data-node="${p.id}">
+      <span class="n">${esc(nameOf(p))}</span>
+      <span class="r">${esc(both(TITLES[p.title].zh,TITLES[p.title].en))}</span></button>`;
+  };
+  return `
+  <section class="card">
+    <div class="card-h">
+      <h2>${esc(both('集團組織圖','Group org chart'))}</h2>
+      <span class="en">${STAFF.length} ${esc(both('人 · 7 據點 + 總部','people · 7 facilities + HQ'))}</span>
+      <div class="spacer"></div>
+      <span class="chip ${scopeLocked()?'warn':'acc'}">${esc(scopeLocked()
+        ? both('灰階節點超出您的資料範圍','Dimmed nodes are outside your data scope')
+        : both('可檢視全部節點','All nodes visible'))}</span>
+    </div>
+    <div class="orgwrap">
+      <div class="orgtop">
+        ${nodeBtn(ceo,'exec')}
+        <span class="vline"></span>
+        ${nodeBtn(coo,'exec')}
+        <div class="orgrow" style="--n:4">
+          <div class="orgcol">
+            <div class="node" style="cursor:default">
+              <span class="n">${esc(both('總部幕僚','HQ functions'))}</span>
+              <span class="r">${esc(both('人資・財務・資訊','HR · Finance · IT'))}</span></div>
+            <div class="kids">${hqStaff.map(p=>`<button class="leaf" data-node="${p.id}">${esc(nameOf(p))} · ${esc(both(TITLES[p.title].zh,TITLES[p.title].en))}</button>`).join('')}</div>
+          </div>
+          ${dirs.map(({o,d})=>{
+            const kids=STAFF.filter(s=>s.unit===o.id && s.id!==d.id);
+            const vis=inScope(o.id);
+            return `<div class="orgcol">
+              ${nodeBtn(d, vis&&scopeLocked()?'scoped':'')}
+              <div class="kids">
+                ${vis ? kids.map(p=>`<button class="leaf" data-node="${p.id}">${esc(nameOf(p))} · ${esc(both(TITLES[p.title].zh,TITLES[p.title].en))}</button>`).join('')
+                      : `<span class="leaf" style="cursor:default;color:var(--ink-3)">${esc(both(kids.length+' 位同仁（不在範圍內）', kids.length+' staff (out of scope)'))}</span>`}
+              </div>
+              <div class="muted" style="font-size:11px;margin-top:6px">${esc(both(o.zh,o.en))}</div>
+            </div>`;}).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="legend">${esc(both(
+      '原型假設：組織「結構」全集團可見，但個人明細（分機、到職日、薪資）依身分範圍限制。這是另一個可討論的邊界。',
+      'Prototype assumption: the org structure is visible group-wide, but personal detail (extension, hire date, pay) follows role scope. This boundary is also open for discussion.'))}</div>
+  </section>`;
+}
+BINDERS['ann:org']=function(){ document.querySelectorAll('[data-node]').forEach(b=>b.onclick=()=>openPerson(b.dataset.node)); };
+
+/* =============================== 通訊錄 Directory =============================== */
+function viewDirectory(){
+  const units=activeUnitIds();
+  const q=state.dirQ.trim().toLowerCase();
+  const list=STAFF.filter(s=>units.includes(s.unit)).filter(s=>!q ||
+    (s.zh+s.en+s.ext+L(TITLES[s.title])+L(DEPTS[s.dept])+L(unit(s.unit))).toLowerCase().includes(q));
+  const hidden=STAFF.length-STAFF.filter(s=>units.includes(s.unit)).length;
+  return `
+  <section class="card">
+    <div class="card-h">
+      <h2>${esc(both('內部通訊錄','Internal directory'))}</h2>
+      <span class="en">${list.length} / ${STAFF.length}</span>
+      <div class="spacer"></div>
+      <input type="search" id="dirQ" placeholder="${esc(both('搜尋姓名、職稱、分機','Search name, title, extension'))}" value="${esc(state.dirQ)}" style="min-width:230px">
+    </div>
+    ${hidden>0?`<div class="note ${scopeLocked()?'q':''}" style="margin:12px 14px 0">${esc(both(
+        hidden+' 位其他院區同仁未顯示（資料範圍：'+(scopeLocked()?unit(me().unit).zh:'已篩選')+'）。若主管需跨院聯絡，通訊錄是否應全集團開放？',
+        hidden+' colleagues at other facilities are hidden by the current data scope. If directors need to contact peers across facilities, should the directory be group-wide?'))}</div>`:''}
+    <div class="dirgrid">
+      ${list.map(p=>`
+        <div class="dircard">
+          <span class="avatar">${esc(p.zh.slice(0,1))}</span>
+          <div style="min-width:0">
+            <div class="n">${esc(nameOf(p))} <span class="muted" style="font-size:11.5px">${esc(state.lang==='zh'?p.en:p.zh)}</span></div>
+            <div class="meta">${esc(both(TITLES[p.title].zh,TITLES[p.title].en))} · ${esc(both(unit(p.unit).zh,unit(p.unit).en))}</div>
+            <div class="rows">
+              <span><span class="lbl">${esc(both('分機','Ext.'))}</span><span class="mono">${p.ext}</span></span>
+              <span><span class="lbl">${esc(both('手機','Mobile'))}</span>${can('mobile')
+                ? `<span class="mono">${p.mobile}</span>`
+                : `<span class="lock">${lockIcon()}${esc(both('僅人資／管理員','HR & Admin only'))}</span>`}</span>
+              <span><span class="lbl">${esc(both('部門','Dept.'))}</span>${esc(both(DEPTS[p.dept].zh,DEPTS[p.dept].en))}</span>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>
+    ${list.length?'':`<div class="empty">${esc(both('查無符合條件的同仁','No matching colleagues'))}</div>`}
+    <div class="legend">${esc(both('原型說明：手機號碼為虛構且部分遮罩，用以示意欄位級權限。',
+      'Prototype note: mobile numbers are fictional and partly masked to demonstrate field-level permissions.'))}</div>
+  </section>`;
+}
+BINDERS['ann:dir']=function(){
+  const i=document.getElementById('dirQ');
+  if(i) i.oninput=e=>{ state.dirQ=e.target.value; const p=e.target.selectionStart; render();
+    const j=document.getElementById('dirQ'); if(j){ j.focus(); j.setSelectionRange(p,p);} };
+};
+function lockIcon(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 1 1 8 0v3"></path></svg>'; }
+</script>
+<script>
+/* =============================== 員工資料 Employee records =============================== */
+function viewEmployees(){
+  const units=activeUnitIds();
+  const q=state.q.trim().toLowerCase();
+  const list=STAFF.filter(s=>units.includes(s.unit)).filter(s=>!q ||
+    (s.id+s.zh+s.en+L(TITLES[s.title])+L(DEPTS[s.dept])).toLowerCase().includes(q));
+  const hidden=STAFF.length-STAFF.filter(s=>units.includes(s.unit)).length;
+  const tenure = list.length ? (list.reduce((a,s)=>a+(TODAY-new Date(s.hired))/31557600000,0)/list.length).toFixed(1) : '0';
+  const part=list.filter(s=>s.type==='part').length;
+  return `
+  <div class="grid">
+    <div class="tiles">
+      <div class="tile"><span class="k">${esc(both('範圍內人數','Headcount in scope'))}</span><span class="v">${list.length}</span>
+        <span class="d">${esc(both('全集團 '+STAFF.length+' 人','of '+STAFF.length+' group-wide'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('據點數','Facilities in scope'))}</span><span class="v">${units.filter(u=>u!=='HQ').length}</span>
+        <span class="d">${esc(both('全集團 7 據點','of 7 facilities'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('平均年資','Average tenure'))}</span><span class="v">${tenure}</span><span class="d">${esc(both('年','years'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('部分工時','Part-time'))}</span><span class="v">${part}</span><span class="d">${esc(both('人','people'))}</span></div>
+    </div>
+    ${hidden>0?`<div class="note ${scopeLocked()?'q':''}">${esc(both(
+      '目前資料範圍隱藏了 '+hidden+' 位同仁的人事資料。'+(scopeLocked()?'這正是待決議題：院長是否需要看到其他院區的人事資料（例如支援調度、跨院徵才）？':''),
+      hidden+' employee records are hidden by the current data scope.'+(scopeLocked()?' This is the open question: do facility directors need records from other facilities (e.g. staff loans, cross-facility hiring)?':'')))}</div>`:''}
+    <section class="card">
+      <div class="card-h">
+        <h2>${esc(both('員工資料','Employee records'))}</h2>
+        <div class="spacer"></div>
+        <input type="search" id="empQ" placeholder="${esc(both('搜尋員工編號或姓名','Search employee no. or name'))}" value="${esc(state.q)}" style="min-width:220px">
+        <button class="btn mini" ${can('editEmp')?'':'disabled'} data-newemp>${esc(both('新增員工','Add employee'))}</button>
+      </div>
+      <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th>${bi('員工編號','Employee no.')}</th><th>${bi('姓名','Name')}</th><th>${bi('職稱','Title')}</th>
+          <th>${bi('部門','Department')}</th><th>${bi('服務據點','Facility')}</th><th>${bi('到職日','Hire date')}</th>
+          <th>${bi('僱用別','Employment')}</th><th>${bi('月薪','Monthly pay')}</th>
+        </tr></thead>
+        <tbody>
+        ${list.map(s=>`<tr class="clickable" data-emp="${s.id}">
+          <td class="mono">${s.id}</td>
+          <td>${esc(nameOf(s))}<span class="muted" style="font-size:11px"> ${esc(state.lang==='zh'?s.en:s.zh)}</span></td>
+          <td>${esc(both(TITLES[s.title].zh,TITLES[s.title].en))}</td>
+          <td>${esc(both(DEPTS[s.dept].zh,DEPTS[s.dept].en))}</td>
+          <td>${esc(both(unit(s.unit).zh,unit(s.unit).en))}</td>
+          <td class="mono">${s.hired}</td>
+          <td><span class="chip ${s.type==='part'?'warn':''}">${esc(s.type==='part'?both('部分工時','Part-time'):both('全職','Full-time'))}</span></td>
+          <td>${can('salary')?`<span class="mono">${money(s.salary)}</span>`
+              :`<span class="lock">${lockIcon()}${esc(both('僅人資可見','HR only'))}</span>`}</td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+      </div>
+      ${list.length?'':`<div class="empty">${esc(both('查無資料','No records'))}</div>`}
+      <div class="legend">${esc(both(
+        '原型說明：資料僅存於瀏覽器記憶體，重新整理即還原；「新增員工」未實作寫入。'+(can('salary')?'':'薪資欄位依身分隱藏 — 系統管理員是否應看到薪資，是第二個待決議題。'),
+        'Prototype note: data lives in browser memory and resets on reload; "Add employee" does not write anything.'+(can('salary')?'':' Pay is hidden for this role — whether the system administrator should see compensation is the second open question.')))}</div>
+    </section>
+  </div>`;
+}
+BINDERS['hr:emp']=function(){
+  const i=document.getElementById('empQ');
+  if(i) i.oninput=e=>{ state.q=e.target.value; const p=e.target.selectionStart; render();
+    const j=document.getElementById('empQ'); if(j){ j.focus(); j.setSelectionRange(p,p);} };
+  document.querySelectorAll('[data-emp]').forEach(r=>r.onclick=()=>openPerson(r.dataset.emp));
+  const n=document.querySelector('[data-newemp]');
+  if(n&&!n.disabled) n.onclick=()=>toast(both('原型示意：新增員工表單未建置','Prototype: the add-employee form is not built'));
+};
+
+/* =============================== 員工抽屜 Person drawer =============================== */
+function openPerson(id){
+  const p=person(id); if(!p) return;
+  state.empId=id;
+  const [y,m]=state.attMonth.split('-').map(Number);
+  const visible=inScope(p.unit);
+  const sum=visible?attSummary(p.id,y,m):null;
+  const mgr=p.mgr?person(p.mgr):null;
+  const leaves=LEAVE.filter(l=>l.emp===p.id);
+  document.getElementById('overlay').innerHTML=`
+    <div class="scrim" data-close></div>
+    <aside class="drawer" role="dialog" aria-modal="true">
+      <div class="drawer-h">
+        <span class="avatar" style="width:40px;height:40px;font-size:15px">${esc(p.zh.slice(0,1))}</span>
+        <div>
+          <h2 style="font-size:16px">${esc(nameOf(p))} <span class="muted" style="font-size:12px">${esc(state.lang==='zh'?p.en:p.zh)}</span></h2>
+          <div class="muted" style="font-size:12px">${esc(both(TITLES[p.title].zh,TITLES[p.title].en))} · ${esc(both(unit(p.unit).zh,unit(p.unit).en))}</div>
+        </div>
+        <button class="x" data-close aria-label="${esc(both('關閉','Close'))}">✕</button>
+      </div>
+      <div class="drawer-b">
+        ${!visible?`<div class="note q">${esc(both(
+          '此同仁不在您目前的資料範圍內（'+unit(p.unit).zh+'）。組織位置可見，個人明細受限。',
+          'This colleague is outside your current data scope ('+unit(p.unit).en+'). Position is visible; personal detail is restricted.'))}</div>`:''}
+        <section>
+          <div class="eyebrow" style="margin-bottom:8px">${esc(both('基本資料','Profile'))}</div>
+          <dl class="kv">
+            <dt>${esc(both('員工編號','Employee no.'))}</dt><dd class="mono">${p.id}</dd>
+            <dt>${esc(both('部門','Department'))}</dt><dd>${esc(both(DEPTS[p.dept].zh,DEPTS[p.dept].en))}</dd>
+            <dt>${esc(both('直屬主管','Reports to'))}</dt><dd>${mgr?esc(nameOf(mgr)+' · '+L(TITLES[mgr.title])):esc(both('無','—'))}</dd>
+            <dt>${esc(both('到職日','Hire date'))}</dt><dd class="mono">${visible?p.hired:'—'}</dd>
+            <dt>${esc(both('分機','Extension'))}</dt><dd class="mono">${p.ext}</dd>
+            <dt>${esc(both('手機','Mobile'))}</dt><dd>${visible&&can('mobile')?`<span class="mono">${p.mobile}</span>`:`<span class="lock">${lockIcon()}${esc(both('受限','Restricted'))}</span>`}</dd>
+            <dt>${esc(both('職等','Pay band'))}</dt><dd>${visible&&can('salary')?`<span class="mono">${p.band}</span>`:`<span class="lock">${lockIcon()}${esc(both('受限','Restricted'))}</span>`}</dd>
+            <dt>${esc(both('月薪','Monthly pay'))}</dt><dd>${visible&&can('salary')?`<span class="mono">${money(p.salary)}</span>`:`<span class="lock">${lockIcon()}${esc(both('僅人資可見','HR only'))}</span>`}</dd>
+          </dl>
+        </section>
+        ${visible?`
+        <section>
+          <div class="eyebrow" style="margin-bottom:8px">${esc(both('出勤摘要','Attendance summary'))} · <span class="mono">${state.attMonth}</span></div>
+          <div class="tiles" style="grid-template-columns:repeat(3,1fr)">
+            <div class="tile"><span class="k">${esc(both('出勤率','Attendance'))}</span><span class="v">${sum.rate}%</span></div>
+            <div class="tile"><span class="k">${esc(both('準時率','Punctuality'))}</span><span class="v">${sum.punctual}%</span></div>
+            <div class="tile"><span class="k">${esc(both('加班','Overtime'))}</span><span class="v">${sum.ot.toFixed(1)}</span><span class="d">${esc(both('小時','hours'))}</span></div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+            <span class="chip ok">${esc(both('正常','On time'))} ${sum.present}</span>
+            <span class="chip warn">${esc(both('遲到','Late'))} ${sum.late}</span>
+            <span class="chip info">${esc(both('請假','Leave'))} ${sum.leave}</span>
+            <span class="chip crit">${esc(both('未打卡','Missing punch'))} ${sum.miss}</span>
+            <span class="chip">${esc(both('排休','Rest'))} ${sum.off}</span>
+          </div>
+          <div class="attgrid" style="margin-top:10px">
+            ${attendance(p.id,y,m).map(r=>`<span class="attcell ${r.status==='present'?'':(r.status||'off')}" title="${state.attMonth}-${String(r.d).padStart(2,'0')} ${r.status?L(ATT_STATUS[r.status]):''}"></span>`).join('')}
+          </div>
+        </section>
+        <section>
+          <div class="eyebrow" style="margin-bottom:8px">${esc(both('請假紀錄','Leave records'))}</div>
+          ${leaves.length?leaves.map(l=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px">
+              <span class="chip">${esc(both(LEAVE_TYPES[l.type].zh,LEAVE_TYPES[l.type].en))}</span>
+              <span class="mono">${l.from}${l.to!==l.from?' → '+l.to:''}</span>
+              <span class="spacer" style="flex:1"></span>${statusChip(l.status)}</div>`).join('')
+            :`<div class="muted" style="font-size:12.5px">${esc(both('無紀錄','No records'))}</div>`}
+        </section>`:''}
+      </div>
+    </aside>`;
+  document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeOverlay);
+}
+</script>
+<script>
+/* =============================== 出勤管理 Attendance =============================== */
+const ATT_MONTHS=['2026-06','2026-07','2026-08','2026-09'];
+function viewAttendance(){
+  const units=activeUnitIds();
+  const list=STAFF.filter(s=>units.includes(s.unit));
+  const [y,m]=state.attMonth.split('-').map(Number);
+  const sums=list.map(s=>({s, c:attSummary(s.id,y,m)}));
+  const agg=sums.reduce((a,x)=>({rate:a.rate+x.c.rate, punc:a.punc+x.c.punctual, late:a.late+x.c.late,
+    miss:a.miss+x.c.miss, leave:a.leave+x.c.leave, ot:a.ot+x.c.ot}),{rate:0,punc:0,late:0,miss:0,leave:0,ot:0});
+  const n=sums.length||1;
+  const byUnit=units.map(u=>{
+    const rows=sums.filter(x=>x.s.unit===u);
+    return {u, n:rows.length, rate: rows.length?Math.round(rows.reduce((a,x)=>a+x.c.rate,0)/rows.length):0,
+      late: rows.reduce((a,x)=>a+x.c.late,0), miss: rows.reduce((a,x)=>a+x.c.miss,0)};
+  }).filter(r=>r.n);
+  return `
+  <div class="grid">
+    <div class="tiles">
+      <div class="tile"><span class="k">${esc(both('平均出勤率','Average attendance'))}</span><span class="v">${Math.round(agg.rate/n)}%</span>
+        <span class="d">${esc(both(list.length+' 位同仁','across '+list.length+' staff'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('平均準時率','Average punctuality'))}</span><span class="v">${Math.round(agg.punc/n)}%</span><span class="d">${esc(both('打卡準時比例','on-time punches'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('遲到次數','Late arrivals'))}</span><span class="v">${agg.late}</span><span class="d">${esc(both('人次','instances'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('未打卡','Missing punches'))}</span><span class="v">${agg.miss}</span><span class="d">${esc(both('待補登','pending correction'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('加班時數','Overtime hours'))}</span><span class="v">${agg.ot.toFixed(0)}</span><span class="d">${esc(both('小時','hours'))}</span></div>
+    </div>
+    <section class="card">
+      <div class="card-h">
+        <h2>${esc(both('各據點出勤概況','Attendance by facility'))}</h2>
+        <span class="en">${esc(both('長條刻度 85–100%','Bar scale 85–100%'))}</span>
+        <div class="spacer"></div>
+        <span class="ulabel">${esc(both('月份','Month'))}</span>
+        <select id="attMon">${ATT_MONTHS.map(mm=>`<option ${mm===state.attMonth?'selected':''}>${mm}</option>`).join('')}</select>
+      </div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('據點','Facility')}</th><th>${bi('人數','Staff')}</th><th>${bi('出勤率','Attendance rate')}</th>
+          <th>${bi('遲到','Late')}</th><th>${bi('未打卡','Missing')}</th></tr></thead>
+        <tbody>${byUnit.map(r=>`<tr>
+          <td>${esc(both(unit(r.u).zh,unit(r.u).en))}</td>
+          <td class="num">${r.n}</td>
+          <td><div style="display:flex;align-items:center;gap:8px"><span class="num" style="min-width:38px">${r.rate}%</span>
+            <span class="bar"><i class="${r.rate<95?'low':''}" style="width:${Math.max(2,Math.min(100,(r.rate-85)/15*100))}%"></i></span></div></td>
+          <td class="num">${r.late}</td><td class="num">${r.miss}</td></tr>`).join('')}
+        </tbody></table></div>
+      ${scopeLocked()?`<div class="note q" style="margin:12px 14px">${esc(both(
+        '目前僅顯示 '+unit(me().unit).zh+' 的出勤。跨院比較（例如人力調度、加班控管）是否應開放給院長？請切換上方假設開關。',
+        'Only '+unit(me().unit).en+' is shown. Should cross-facility comparison (staff loans, overtime control) be available to directors? Use the Assumption switch above.'))}</div>`:''}
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('個人出勤明細','Attendance by person'))}</h2>
+        <span class="en">${esc(both('點選列可展開個人資料','Click a row for the person record'))}</span></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('姓名','Name')}</th><th>${bi('據點','Facility')}</th><th>${bi('職稱','Title')}</th>
+          <th>${bi('出勤率','Rate')}</th><th>${bi('正常','On time')}</th><th>${bi('遲到','Late')}</th>
+          <th>${bi('請假','Leave')}</th><th>${bi('未打卡','Missing')}</th><th>${bi('加班','OT hrs')}</th>
+          <th>${bi('當月出勤圖','Month pattern')}</th></tr></thead>
+        <tbody>${sums.map(({s,c})=>`<tr class="clickable" data-emp="${s.id}">
+          <td>${esc(nameOf(s))}</td>
+          <td>${esc(both(unit(s.unit).zh,unit(s.unit).en))}</td>
+          <td>${esc(both(TITLES[s.title].zh,TITLES[s.title].en))}</td>
+          <td class="num">${c.rate}%</td>
+          <td class="num">${c.present}</td>
+          <td class="num ${c.late>3?'':''}">${c.late?`<span class="chip warn">${c.late}</span>`:'0'}</td>
+          <td class="num">${c.leave}</td>
+          <td class="num">${c.miss?`<span class="chip crit">${c.miss}</span>`:'0'}</td>
+          <td class="num">${c.ot.toFixed(1)}</td>
+          <td><span class="attgrid" style="display:grid;grid-template-columns:repeat(31,6px);gap:2px;width:248px">
+            ${attendance(s.id,y,m).map(r=>`<span class="attcell ${r.status==='present'?'':(r.status||'off')}"></span>`).join('')}</span></td>
+        </tr>`).join('')}</tbody></table></div>
+      <div class="legend">
+        <span><i style="background:var(--ok-soft)" class="ev"></i>${esc(both('正常','On time'))}</span>
+        <span><i style="background:var(--warn-soft)" class="ev"></i>${esc(both('遲到','Late'))}</span>
+        <span><i style="background:var(--info-soft)" class="ev"></i>${esc(both('請假','Leave'))}</span>
+        <span><i style="background:var(--crit-soft)" class="ev"></i>${esc(both('未打卡','Missing punch'))}</span>
+        <span><i style="background:var(--surface-2)" class="ev"></i>${esc(both('排休','Rest day'))}</span>
+        <span class="spacer" style="flex:1"></span>
+        <span>${esc(both('原型說明：出勤資料為程式產生的示意資料，未串接打卡機或班表。','Prototype note: attendance is generated demo data — no time-clock or roster integration.'))}</span>
+      </div>
+    </section>
+  </div>`;
+}
+BINDERS['hr:att']=function(){
+  const s=document.getElementById('attMon'); if(s) s.onchange=e=>{ state.attMonth=e.target.value; render(); };
+  document.querySelectorAll('[data-emp]').forEach(r=>r.onclick=()=>openPerson(r.dataset.emp));
+};
+
+/* =============================== 請假審核 Leave approvals =============================== */
+const LEAVE_STATUS={
+  pending:{zh:'待主管簽核',en:'Awaiting director',cls:'warn'},
+  countersign:{zh:'待人資複核',en:'Awaiting HR countersign',cls:'info'},
+  approved:{zh:'已核准',en:'Approved',cls:'ok'},
+  rejected:{zh:'已駁回',en:'Rejected',cls:'crit'}
+};
+function statusChip(s){ const o=LEAVE_STATUS[s]; return `<span class="chip ${o.cls}">${esc(both(o.zh,o.en))}</span>`; }
+function viewLeave(){
+  const units=activeUnitIds();
+  const list=LEAVE.filter(l=>units.includes(person(l.emp).unit))
+    .sort((a,b)=>({pending:0,countersign:1,approved:2,rejected:3})[a.status]-({pending:0,countersign:1,approved:2,rejected:3})[b.status] || a.from.localeCompare(b.from));
+  const pend=list.filter(l=>l.status==='pending').length, cs=list.filter(l=>l.status==='countersign').length;
+  const rowAction=l=>{
+    if(l.status==='pending' && can('approve'))
+      return `<button class="btn mini" data-act="approve" data-id="${l.id}">${esc(both('核准','Approve'))}</button>
+              <button class="btn ghost mini" data-act="reject" data-id="${l.id}">${esc(both('駁回','Reject'))}</button>`;
+    if(l.status==='countersign' && can('finalize'))
+      return `<button class="btn mini" data-act="final" data-id="${l.id}">${esc(both('人資複核','Countersign'))}</button>`;
+    if(l.status==='countersign' && !can('finalize'))
+      return `<span class="lock">${lockIcon()}${esc(both('待人資處理','With HR'))}</span>`;
+    if(l.status==='pending' && !can('approve'))
+      return `<span class="lock">${lockIcon()}${esc(both('無簽核權限','No approval rights'))}</span>`;
+    return `<span class="muted">—</span>`;
+  };
+  return `
+  <div class="grid">
+    <div class="tiles">
+      <div class="tile"><span class="k">${esc(both('待主管簽核','Awaiting director'))}</span><span class="v">${pend}</span><span class="d">${esc(both('件','requests'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('待人資複核','Awaiting HR'))}</span><span class="v">${cs}</span><span class="d">${esc(both('件','requests'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('範圍內申請總數','Requests in scope'))}</span><span class="v">${list.length}</span><span class="d">${esc(both('全集團 '+LEAVE.length+' 件','of '+LEAVE.length+' group-wide'))}</span></div>
+    </div>
+    <div class="note q">${esc(both(
+      '待決議題（流程）：院長核准後，是否仍需人資複核才生效？本原型預設「需要」— 院長核准 → 待人資複核 → 生效。',
+      'Open question (workflow): after a director approves, must HR countersign before the leave takes effect? The prototype assumes YES — director approves → HR countersigns → effective.'))}</div>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('請假申請','Leave requests'))}</h2>
+        <span class="en">${esc(both('操作僅存於本次瀏覽','Actions persist for this browser session only'))}</span></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('單號','Request')}</th><th>${bi('申請人','Employee')}</th><th>${bi('據點','Facility')}</th>
+          <th>${bi('假別','Leave type')}</th><th>${bi('起訖','Dates')}</th><th>${bi('天數','Days')}</th>
+          <th>${bi('狀態','Status')}</th><th>${bi('備註','Note')}</th><th>${bi('簽核','Action')}</th></tr></thead>
+        <tbody>${list.map(l=>{const p=person(l.emp);return `<tr>
+          <td class="mono">${l.id}</td>
+          <td>${esc(nameOf(p))}</td>
+          <td>${esc(both(unit(p.unit).zh,unit(p.unit).en))}</td>
+          <td>${esc(both(LEAVE_TYPES[l.type].zh,LEAVE_TYPES[l.type].en))}</td>
+          <td class="mono">${l.from}${l.to!==l.from?' → '+l.to:''}</td>
+          <td class="num">${l.days}</td>
+          <td>${statusChip(l.status)}</td>
+          <td class="muted" style="white-space:normal;max-width:200px">${esc(L(l.note)||'—')}</td>
+          <td style="display:flex;gap:6px">${rowAction(l)}</td>
+        </tr>`;}).join('')}</tbody></table></div>
+      ${list.length?'':`<div class="empty">${esc(both('目前資料範圍內沒有請假申請','No leave requests in the current data scope'))}</div>`}
+      <div class="legend">${esc(both(
+        '原型說明：簽核不會寄送通知、不寫入資料庫、也未計算特休餘額；重新整理即還原。',
+        'Prototype note: approvals send no notifications, write to no database, and do not compute leave balances; reload resets them.'))}</div>
+    </section>
+  </div>`;
+}
+BINDERS['hr:leave']=function(){
+  document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
+    const l=LEAVE.find(x=>x.id===b.dataset.id); if(!l) return;
+    const p=person(l.emp);
+    if(b.dataset.act==='approve'){ l.status='countersign';
+      toast(both(l.id+'：'+nameOf(p)+' 已核准，轉人資複核', l.id+': approved for '+nameOf(p)+', sent to HR for countersign')); }
+    if(b.dataset.act==='reject'){ l.status='rejected';
+      toast(both(l.id+'：已駁回', l.id+': rejected')); }
+    if(b.dataset.act==='final'){ l.status='approved';
+      toast(both(l.id+'：人資複核完成，假單生效', l.id+': countersigned by HR — leave is effective')); }
+    render();
+  });
+};
+</script>
+<script>
+/* =============================== 權限對照表 Permission matrix =============================== */
+const CAPS=[
+ {zh:'查看全部 7 個據點資料', en:'Read data across all 7 facilities',
+  admin:'yes', hr:'yes', manager:'assume'},
+ {zh:'查看員工人事資料', en:'View employee records', admin:'yes', hr:'yes', manager:'own'},
+ {zh:'查看薪資與職等', en:'View pay and pay band', admin:'no', hr:'yes', manager:'no'},
+ {zh:'查看同仁手機號碼', en:'View colleague mobile numbers', admin:'yes', hr:'yes', manager:'no'},
+ {zh:'新增／修改員工資料', en:'Create / edit employee records', admin:'yes', hr:'yes', manager:'no'},
+ {zh:'查看出勤明細', en:'View attendance detail', admin:'yes', hr:'yes', manager:'own'},
+ {zh:'簽核部屬請假', en:'Approve subordinate leave', admin:'no', hr:'yes', manager:'own'},
+ {zh:'人資複核（假單生效）', en:'HR countersign (makes leave effective)', admin:'no', hr:'yes', manager:'no'},
+ {zh:'發布全集團公告', en:'Publish group-wide announcements', admin:'yes', hr:'yes', manager:'no'},
+ {zh:'發布本院公告', en:'Publish facility announcements', admin:'yes', hr:'yes', manager:'own'},
+ {zh:'管理角色與權限', en:'Manage roles and permissions', admin:'yes', hr:'no', manager:'no'}
+];
+const CAPMARK={
+  yes:{zh:'可',en:'Yes',cls:'yes'}, no:{zh:'不可',en:'No',cls:'no'},
+  own:{zh:'限本院',en:'Own facility',cls:'partial'}, assume:{zh:'預設不可（可調整）',en:'No by default (toggle)',cls:'partial'}
+};
+function viewMatrix(){
+  return `
+  <div class="grid">
+    <div class="note">${esc(both(
+      '本表是原型內建的權限假設，供本次討論修改。切換上方「身分」即可實際看到對應畫面差異。',
+      'This matrix is the permission assumption built into the prototype, for this session to amend. Switch the Role selector above to see each view for real.'))}</div>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('權限對照表','Permission matrix'))}</h2>
+        <span class="en">${esc(both('3 種身分 · 11 項權限','3 roles · 11 capabilities'))}</span></div>
+      <div class="tablewrap"><table class="permtable">
+        <thead><tr><th>${bi('權限項目','Capability')}</th>
+          ${Object.values(ROLES).map(r=>`<th style="text-align:center">${bi(r.zh,r.en)}</th>`).join('')}</tr></thead>
+        <tbody>${CAPS.map(c=>`<tr>
+          <td>${bi(c.zh,c.en)}</td>
+          ${['admin','hr','manager'].map(k=>{const v=CAPMARK[c[k]];
+            return `<td style="text-align:center" class="${v.cls}">${esc(both(v.zh,v.en))}</td>`;}).join('')}
+        </tr>`).join('')}</tbody></table></div>
+      <div class="legend">${esc(both(
+        '「限本院」= 僅限使用者所屬據點；「預設不可（可調整）」= 由上方假設開關控制，即本次要決定的事項。',
+        '"Own facility" = limited to the user’s own site; "No by default (toggle)" = controlled by the Assumption switch — the decision this walkthrough needs.'))}</div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('目前登入身分對應的實際範圍','What the current role actually sees'))}</h2></div>
+      <div class="card-b">
+        <dl class="kv">
+          <dt>${esc(both('身分','Role'))}</dt><dd>${esc(both(role().zh,role().en))}</dd>
+          <dt>${esc(both('人員','Persona'))}</dt><dd>${esc(nameOf(me()))} · ${esc(L(TITLES[me().title]))} · ${esc(L(unit(me().unit)))}</dd>
+          <dt>${esc(both('可讀據點','Facilities readable'))}</dt><dd>${scopeUnits().map(u=>esc(L(unit(u)))).join('、')}</dd>
+          <dt>${esc(both('可讀人數','People readable'))}</dt><dd class="mono">${scopedStaff().length} / ${STAFF.length}</dd>
+          <dt>${esc(both('薪資欄位','Pay fields'))}</dt><dd>${can('salary')?esc(both('可見','Visible')):`<span class="lock">${lockIcon()}${esc(both('隱藏','Hidden'))}</span>`}</dd>
+        </dl>
+      </div>
+    </section>
+  </div>`;
+}
+
+/* =============================== 待決議題 Open questions =============================== */
+const QUESTIONS=[
+ {n:1, zh:'院長／單位主管應該看到全集團 7 院的資料，還是僅限自己院區？',
+  en:'Should facility directors see data for all 7 facilities, or only their own?',
+  assumeZh:'原型預設：僅限本院。院長只看得到自己院區的員工、出勤與請假；公告只看得到全集團公告與本院公告。',
+  assumeEn:'Prototype default: own facility only. A director sees only their own staff, attendance and leave; announcements are group-wide plus their own facility.',
+  flipZh:'若改為可跨院：人力調度與跨院支援會容易許多，但薪資以外的個資（分機、到職日、出勤異常）也會全數互通，且日後每新增一個據點都會擴大暴露面。',
+  flipEn:'If opened up: staff loans and cross-facility cover get much easier, but personal data beyond pay (extensions, hire dates, attendance exceptions) becomes mutually visible, and every new facility widens that exposure.',
+  askZh:'請在畫面上方切換「假設」開關，比較兩種情境後決定。若答案是「部分開放」，需要進一步定義：哪些欄位、哪些情境（例如支援排班期間限時開放）。',
+  askEn:'Use the Assumption switch above to compare both, then decide. If the answer is "partly", we must define which fields and which situations (e.g. time-limited access during a staffing cover period).'},
+ {n:2, zh:'系統管理員應不應該看到薪資資料？',
+  en:'Should the system administrator be able to see pay data?',
+  assumeZh:'原型預設：不應該。管理員可管理帳號與權限、可跨院查看人事與出勤，但薪資與職等欄位隱藏，僅人資可見。',
+  assumeEn:'Prototype default: no. The administrator manages accounts and permissions and reads HR and attendance across facilities, but pay and pay band are hidden — HR only.',
+  flipZh:'實務上系統管理員通常握有資料庫層級存取權，「畫面隱藏」只是流程控制而非技術阻擋。若貴院要求技術層級隔離，需在架構階段就決定。',
+  flipEn:'In practice an administrator usually holds database-level access, so hiding a field in the UI is a process control, not a technical barrier. If you need technical separation, that is an architecture-stage decision.',
+  askZh:'請確認：畫面層級的隱藏是否足夠？或需要稽核紀錄（誰在何時查看了薪資）？',
+  askEn:'Confirm: is UI-level hiding sufficient, or do you also need an audit trail of who viewed pay data and when?'},
+ {n:3, zh:'院長核准請假後，是否仍需人資複核才生效？',
+  en:'After a director approves leave, must HR countersign before it takes effect?',
+  assumeZh:'原型預設：需要。流程為 待主管簽核 → 待人資複核 → 生效，可在「請假審核」分頁實際操作。',
+  assumeEn:'Prototype default: yes. The flow is Awaiting director → Awaiting HR countersign → Effective; you can run it in the Leave approvals tab.',
+  flipZh:'若取消複核，院長簽核即生效，流程快但特休餘額與勞基法時數控管必須由系統自動把關。',
+  flipEn:'Without countersigning, a director’s approval is final — faster, but the system must then enforce leave balances and Labor Standards Act limits automatically.',
+  askZh:'請確認假別是否分流：病假／事假由院長決行，特休與長天數假別才需人資複核？',
+  askEn:'Confirm whether this should differ by leave type: sick and personal leave decided by the director, with HR countersigning only annual and long absences?'}
+];
+function viewOpen(){
+  return `
+  <div class="grid">
+    <div class="note q">${esc(both(
+      '本原型的目的不是展示完成品，而是把三個必須由貴院決定的問題變成看得見、點得到的畫面。',
+      'This prototype exists to turn three decisions your team must make into something visible and clickable — not to show a finished product.'))}</div>
+    ${QUESTIONS.map(q=>`
+      <section class="card">
+        <div class="card-h">
+          <span class="chip acc mono">Q${q.n}</span>
+          <div><h2>${esc(state.lang==='zh'?q.zh:q.en)}</h2>
+            <span class="en">${esc(state.lang==='zh'?q.en:q.zh)}</span></div>
+        </div>
+        <div class="card-b" style="display:grid;gap:10px">
+          <div><div class="eyebrow">${esc(both('原型目前的假設','What the prototype assumes'))}</div>
+            <div>${esc(state.lang==='zh'?q.assumeZh:q.assumeEn)}</div>
+            <div class="muted" style="font-size:12px">${esc(state.lang==='zh'?q.assumeEn:q.assumeZh)}</div></div>
+          <div><div class="eyebrow">${esc(both('若改成另一種做法','If the decision goes the other way'))}</div>
+            <div>${esc(state.lang==='zh'?q.flipZh:q.flipEn)}</div>
+            <div class="muted" style="font-size:12px">${esc(state.lang==='zh'?q.flipEn:q.flipZh)}</div></div>
+          <div class="note q"><div class="eyebrow">${esc(both('需要貴院回答','What we need from you'))}</div>
+            <div>${esc(state.lang==='zh'?q.askZh:q.askEn)}</div>
+            <div class="muted" style="font-size:12px">${esc(state.lang==='zh'?q.askEn:q.askZh)}</div></div>
+        </div>
+      </section>`).join('')}
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('本原型建置範圍','Scope of this prototype'))}</h2></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('項目','Item')}</th><th>${bi('狀態','Status')}</th><th>${bi('說明','Detail')}</th></tr></thead>
+        <tbody>
+          <tr><td>${bi('公告欄','Announcements')}</td><td><span class="chip ok">${esc(both('已建置','Built'))}</span></td>
+            <td style="white-space:normal">${esc(both('公告列表與內文、公司行事曆、組織圖、內部通訊錄，皆套用身分範圍。','Board and detail, company calendar, org chart and internal directory — all scoped by role.'))}</td></tr>
+          <tr><td>${bi('人事系統','HR core')}</td><td><span class="chip ok">${esc(both('已建置','Built'))}</span></td>
+            <td style="white-space:normal">${esc(both('員工資料、出勤統計與個人出勤圖、請假簽核流程。','Employee records, attendance statistics with per-person month patterns, and the leave approval workflow.'))}</td></tr>
+          <tr><td>${bi('其他 5 個模組','Other 5 modules')}</td><td><span class="chip">${esc(both('未建置','Not built'))}</span></td>
+            <td style="white-space:normal">${esc(both('文件管理、服務管理、財務與採購、報表匯出、系統設定 — 左側選單以停用狀態呈現，僅示意整體架構。','Document Control, Service Management, Finance & Procurement, Reports Export, Settings — shown disabled in the left rail to convey the whole system shape.'))}</td></tr>
+          <tr><td>${bi('登入與帳號','Login & accounts')}</td><td><span class="chip warn">${esc(both('模擬','Mocked'))}</span></td>
+            <td style="white-space:normal">${esc(both('沒有真實驗證，身分以上方下拉選單切換。','No real authentication — role is switched from the dropdown above.'))}</td></tr>
+          <tr><td>${bi('資料儲存','Data storage')}</td><td><span class="chip warn">${esc(both('模擬','Mocked'))}</span></td>
+            <td style="white-space:normal">${esc(both('全部資料存在瀏覽器記憶體，重新整理即還原；無資料庫、無後端。','All data lives in browser memory and resets on reload — no database, no backend.'))}</td></tr>
+          <tr><td>${bi('人員與院區','People & facilities')}</td><td><span class="chip warn">${esc(both('虛構','Fictional'))}</span></td>
+            <td style="white-space:normal">${esc(both('47 位同仁、7 個院區與總部皆為虛構，不含任何真實個資。','47 staff, 7 facilities and an HQ — all fictional, containing no real personal data.'))}</td></tr>
+        </tbody></table></div>
+    </section>
+  </div>`;
+}
+
+/* ---------- init ---------- */
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeOverlay(); });
+render();
+</script>
+<!--#artifact-end-->
+</body>
+</html>
