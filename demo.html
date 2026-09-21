@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>誠馨長照 運營入口 | Zengxin Operations Portal</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --primary: #667eea;
+      --primary-dark: #764ba2;
+      --accent: #f093fb;
+      --success: #28a745;
+      --warning: #ffc107;
+      --text: #333;
+      --text-light: #666;
+      --bg: #f8f9fa;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    header {
+      background: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-breadcrumb {
+      font-size: 13px;
+      color: var(--text-light);
+    }
+    .nav-breadcrumb a {
+      color: var(--primary);
+      text-decoration: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .nav-breadcrumb a:hover {
+      text-decoration: underline;
+    }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 60px 40px;
+      border-radius: 12px;
+      margin-bottom: 60px;
+      text-align: center;
+    }
+    .hero h1 { font-size: 42px; margin-bottom: 20px; }
+    .hero p { font-size: 18px; opacity: 0.95; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto; }
+
+    .cta-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 12px 28px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: white;
+      color: var(--primary);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+
+    .nav-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 60px;
+    }
+    .nav-card {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: all 0.3s;
+      border-left: 4px solid var(--primary);
+    }
+    .nav-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      border-left-color: var(--accent);
+    }
+    .nav-card-icon { font-size: 32px; margin-bottom: 12px; }
+    .nav-card h3 { font-size: 18px; margin-bottom: 8px; color: var(--primary); }
+    .nav-card p { font-size: 13px; color: var(--text-light); }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 60px;
+    }
+    .stat-card {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+    .stat-number { font-size: 32px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .stat-label { font-size: 13px; color: var(--text-light); }
+
+    .about {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 60px;
+    }
+    .about h2 {
+      font-size: 28px;
+      margin-bottom: 20px;
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 15px;
+    }
+    .about-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 30px;
+      margin-top: 30px;
+    }
+    .about-item h3 { color: var(--primary); margin-bottom: 10px; font-size: 16px; }
+    .about-item p { font-size: 13px; color: var(--text-light); line-height: 1.8; }
+
+    .roadmap { margin-bottom: 60px; }
+    .roadmap h2 {
+      font-size: 28px;
+      margin-bottom: 30px;
+      text-align: center;
+      color: var(--primary);
+    }
+    .phases {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 25px;
+    }
+    .phase {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-top: 4px solid var(--primary);
+    }
+    .phase h3 { color: var(--primary); margin-bottom: 15px; font-size: 18px; }
+    .phase-time { font-size: 12px; color: var(--text-light); margin-bottom: 15px; font-style: italic; }
+    .phase-list { list-style: none; font-size: 13px; color: var(--text-light); }
+    .phase-list li {
+      padding: 5px 0 5px 20px;
+      position: relative;
+    }
+    .phase-list li:before {
+      content: "▸";
+      position: absolute;
+      left: 0;
+      color: var(--primary);
+    }
+
+    footer {
+      background: white;
+      border-top: 1px solid #e0e0e0;
+      padding: 30px 20px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-light);
+    }
+
+    .ops-container {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 60px;
+    }
+    .ops-note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #2196F3;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #333;
+    }
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+    }
+
+    h2 { margin-bottom: 25px; color: var(--primary); }
+
+    @media (max-width: 768px) {
+      .header-inner { flex-direction: column; gap: 15px; }
+      .hero { padding: 30px 20px; }
+      .hero h1 { font-size: 28px; }
+      .cta-buttons { flex-direction: column; }
+      .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="logo">誠馨長照</div>
+      <div class="nav-breadcrumb">
+        <span id="breadcrumb">入口網站</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Entry Portal View -->
+  <div id="portalView" class="view active">
+    <div class="container">
+      <div class="hero">
+        <h1>公司共用入口網站</h1>
+        <p>統一的帳號、差勤、人事、薪資、申請流程管理平台</p>
+        <div class="cta-buttons">
+          <button class="btn btn-primary" onclick="switchView('opsView')">📊 進入運營入口</button>
+          <button class="btn btn-primary" onclick="document.getElementById('about').scrollIntoView()">📖 了解系統</button>
+        </div>
+      </div>
+
+      <h2>快速導航</h2>
+      <div class="nav-grid">
+        <div class="nav-card" onclick="switchView('opsView')">
+          <div class="nav-card-icon">📊</div>
+          <h3>運營管理系統</h3>
+          <p>帳號權限、差勤、人事資料、薪資計算、在線申請</p>
+        </div>
+        <div class="nav-card">
+          <div class="nav-card-icon">📈</div>
+          <h3>報表與統計</h3>
+          <p>部門績效、員工統計、薪資報表、出勤分析</p>
+        </div>
+        <div class="nav-card">
+          <div class="nav-card-icon">👥</div>
+          <h3>員工管理</h3>
+          <p>員工資料、組織架構、績效考核、職務異動</p>
+        </div>
+        <div class="nav-card">
+          <div class="nav-card-icon">📄</div>
+          <h3>文件與規範</h3>
+          <p>合規文件、操作指南、會議紀錄、系統說明</p>
+        </div>
+      </div>
+
+      <h2>系統概況</h2>
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-number">19</div>
+          <div class="stat-label">演示員工數</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">2</div>
+          <div class="stat-label">示範照護院區</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">6</div>
+          <div class="stat-label">核心功能模組</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">3</div>
+          <div class="stat-label">分期發展階段</div>
+        </div>
+      </div>
+
+      <div class="about" id="about">
+        <h2>🎯 系統目標與功能</h2>
+        <div class="about-grid">
+          <div class="about-item">
+            <h3>帳號與權限</h3>
+            <p>一人一帳號，員工編號為身分識別。管理者可依授權跨公司切換查看，確保資料安全與隱私。</p>
+          </div>
+          <div class="about-item">
+            <h3>差勤管理</h3>
+            <p>補打卡、請假申請、加班申請、出差申請、出勤異常檢核，逐步取代現有 104 系統。</p>
+          </div>
+          <div class="about-item">
+            <h3>人事資料</h3>
+            <p>員工資料建置、績效管理、招募管理、職務異動、與帳號權限連動，一次管理所有HR資訊。</p>
+          </div>
+          <div class="about-item">
+            <h3>薪資計算</h3>
+            <p>支援月薪制、時薪制、拆帳制，依核准的差勤紀錄計算，保留版本與覆核紀錄。</p>
+          </div>
+          <div class="about-item">
+            <h3>線上申請</h3>
+            <p>採購申請、零用金申請、維修申請、人事異動申請、意見反映，統一申請框架與流程。</p>
+          </div>
+          <div class="about-item">
+            <h3>個案管理</h3>
+            <p>個案主檔、契約管理、依授權產出報表，整合衛福部下載資料與內部管理流程。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="roadmap">
+        <h2>🚀 分期發展計畫</h2>
+        <div class="phases">
+          <div class="phase">
+            <h3>Phase 1 · 短期（9月）</h3>
+            <div class="phase-time">基礎建設與決策</div>
+            <ul class="phase-list">
+              <li>帳號權限管理建置</li>
+              <li>差勤管理基礎功能</li>
+              <li>人事資料欄位規劃</li>
+              <li>104 系統取代評估</li>
+              <li>會議紀錄與決議</li>
+            </ul>
+          </div>
+          <div class="phase">
+            <h3>Phase 2 · 中期（11–12月）</h3>
+            <div class="phase-time">功能擴展與優化</div>
+            <ul class="phase-list">
+              <li>薪資計算模組開發</li>
+              <li>個案資料匯入工具</li>
+              <li>契約文件產出</li>
+              <li>營運報表統計</li>
+              <li>系統性能優化</li>
+            </ul>
+          </div>
+          <div class="phase">
+            <h3>Phase 3 · 長期（2027 Q1）</h3>
+            <div class="phase-time">深度整合與進階功能</div>
+            <ul class="phase-list">
+              <li>仁寶系統串接</li>
+              <li>異常事件通報機制</li>
+              <li>跨系統資料驗證</li>
+              <li>進階分析報表</li>
+              <li>使用者經驗優化</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Operations Portal View -->
+  <div id="opsView" class="view">
+    <div class="container">
+      <div style="margin-bottom: 40px;">
+        <button class="btn btn-primary" onclick="switchView('portalView')">← 返回入口</button>
+      </div>
+
+      <div class="ops-note">
+        <strong>運營管理系統 · Operations Portal</strong><br>
+        完整的 HR 管理、差勤簽核、人事資料系統。使用左上角「身分」下拉選單切換角色（系管、人資、院長）查看不同權限視圖。
+      </div>
+
+      <div class="ops-container">
+        <iframe src="ltc-portal.html" title="Operations Portal"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>誠馨公司共用入口網站 v2.0 · Demo Build 2026年9月</p>
+    <p style="margin-top: 10px; font-size: 12px; opacity: 0.7;">For demonstration purposes · 為誠馨三家公司提供統一的行政運營平台</p>
+  </footer>
+
+  <script>
+    function switchView(viewId) {
+      // Hide all views
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      // Show selected view
+      document.getElementById(viewId).classList.add('active');
+      // Update breadcrumb
+      document.getElementById('breadcrumb').textContent = viewId === 'opsView' ? '運營入口' : '入口網站';
+      // Scroll to top
+      window.scrollTo(0, 0);
+    }
+  </script>
+</body>
+</html>
