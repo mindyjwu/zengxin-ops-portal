@@ -556,12 +556,25 @@ const MODULES = [
   {id:'perm', zh:'權限與範圍', en:'Roles & scope', built:true, tabs:[
     {id:'matrix', zh:'權限對照表', en:'Permission matrix'},
     {id:'open',   zh:'待決議題',   en:'Open questions'}
+  ]},
+  {id:'doc', zh:'文件管理', en:'Document Control', built:true, tabs:[
+    {id:'comp',   zh:'合規文件',   en:'Compliance documents'},
+    {id:'guide',  zh:'操作指南',   en:'Operations guides'},
+    {id:'meeting',zh:'會議紀錄',   en:'Meeting minutes'},
+    {id:'sysinfo',zh:'系統說明',   en:'System info'}
+  ]},
+  {id:'svc', zh:'服務管理', en:'Service Management', built:true, tabs:[
+    {id:'case',  zh:'個案管理',   en:'Case management'},
+    {id:'contract',zh:'契約管理', en:'Contract management'},
+    {id:'assess',zh:'服務評估',   en:'Service assessments'}
+  ]},
+  {id:'fin', zh:'財務與採購', en:'Finance & Procurement', built:true, tabs:[
+    {id:'proc',   zh:'採購申請',   en:'Procurement'},
+    {id:'petty',  zh:'零用金申請', en:'Petty cash'},
+    {id:'report', zh:'月結報告',   en:'Month-end close'}
   ]}
 ];
 const NOT_BUILT = [
-  {id:'doc',  zh:'文件管理',   en:'Document Control'},
-  {id:'svc',  zh:'服務管理',   en:'Service Management'},
-  {id:'fin',  zh:'財務與採購', en:'Finance & Procurement'},
   {id:'rpt',  zh:'報表匯出',   en:'Reports Export'},
   {id:'set',  zh:'系統設定',   en:'Settings'}
 ];
@@ -686,7 +699,10 @@ function render(){
     'arch:scope':viewArchScope, 'arch:roles':viewArchRoles,
     'ann:board':viewBoard, 'ann:cal':viewCalendar, 'ann:org':viewOrg, 'ann:dir':viewDirectory,
     'hr:emp':viewEmployees, 'hr:att':viewAttendance, 'hr:leave':viewLeave,
-    'perm:matrix':viewMatrix, 'perm:open':viewOpen
+    'perm:matrix':viewMatrix, 'perm:open':viewOpen,
+    'doc:comp':viewDocCompliance, 'doc:guide':viewDocGuides, 'doc:meeting':viewDocMeeting, 'doc:sysinfo':viewDocSysInfo,
+    'svc:case':viewSvcCase, 'svc:contract':viewSvcContract, 'svc:assess':viewSvcAssess,
+    'fin:proc':viewFinProcurement, 'fin:petty':viewFinPettyCash, 'fin:report':viewFinReport
   }[key];
   v.innerHTML = fn ? fn() : '';
   (BINDERS[key]||function(){})();
@@ -1430,6 +1446,505 @@ BINDERS['hr:leave']=function(){
     render();
   });
 };
+
+/* =============================== 文件管理 Document Control =============================== */
+function viewDocCompliance(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('合規文件','Compliance Documents'))}</b><br>
+      ${esc(both(
+        '本模組蒐集評鑑與監管所需之文件清單。新竹區評鑑準備進行中（評鑑準備小組第一次會議訂於 9 月 22 日）。',
+        'This module collects regulatory and accreditation documentation. The Hsinchu region evaluation preparation is underway (first prep meeting scheduled for 22 Sept).'))}
+    </div>
+    <section class="card">
+      <div class="card-h">
+        <h2>${esc(both('文件清單','Document checklist'))}</h2>
+        <div class="spacer"></div>
+        <span class="chip">${esc(both('新竹評鑑準備','Hsinchu accreditation prep'))}</span>
+      </div>
+      <div class="tablewrap"><table>
+        <thead><tr>
+          <th>${bi('文件類別','Category')}</th><th>${bi('要求單位','Required by')}</th>
+          <th>${bi('狀態','Status')}</th><th>${bi('說明','Notes')}</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td>${esc(both('機構基本資料與執照','Facility registration & license'))}</td>
+            <td>${esc(both('行政部','Administration'))}</td>
+            <td><span class="chip acc">${esc(both('備齊','Complete'))}</span></td>
+            <td class="muted">${esc(both('2 院區營利登記、長照執照','Both facilities, business registration'))}</td>
+          </tr>
+          <tr>
+            <td>${esc(both('人事檔案與職業安全','Staff files & occupational safety'))}</td>
+            <td>${esc(both('人資部','Human Resources'))}</td>
+            <td><span class="chip info">${esc(both('準備中','In progress'))}</span></td>
+            <td class="muted">${esc(both('評鑑準備小組檢視中','Under accreditation team review'))}</td>
+          </tr>
+          <tr>
+            <td>${esc(both('感染管制與衛生','Infection control & hygiene'))}</td>
+            <td>${esc(both('護理部','Nursing'))}</td>
+            <td><span class="chip info">${esc(both('準備中','In progress'))}</span></td>
+            <td class="muted">${esc(both('文件集成中','Documentation in progress'))}</td>
+          </tr>
+          <tr>
+            <td>${esc(both('照護計畫與評估表','Care plans & assessments'))}</td>
+            <td>${esc(both('照護部・社工室','Care Services & Social Work'))}</td>
+            <td><span class="chip info">${esc(both('準備中','In progress'))}</span></td>
+            <td class="muted">${esc(both('個案主檔範本建置中','Case file templates in progress'))}</td>
+          </tr>
+          <tr>
+            <td>${esc(both('財務與採購紀錄','Financial & procurement records'))}</td>
+            <td>${esc(both('財務部','Finance'))}</td>
+            <td><span class="chip">${esc(both('預計 10 月提交','Expected Oct'))}</span></td>
+            <td class="muted">${esc(both('年度採購、月結報告','Annual procurement & monthly closes'))}</td>
+          </tr>
+        </tbody>
+      </table></div>
+      <div class="legend">${esc(both(
+        '原型說明：文件狀態為示意，不代表實際進度。文件上傳與版本控管在完整系統中實現。',
+        'Prototype note: document statuses are illustrative — not the actual status. File upload and version control are features of the complete system.'))}</div>
+    </section>
+  </div>`;
+}
+
+function viewDocGuides(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('操作指南','Operations Guides'))}</b><br>
+      ${esc(both(
+        '本系統的各模組操作手冊與最佳實踐。分為教職員版、系統管理員版、主管版三類。',
+        'Guides for using each module in this system, organized by role: general staff, system administrators, and managers.'))}
+    </div>
+    <section class="card">
+      <div class="card-h">
+        <h2>${esc(both('在線指南','Available guides'))}</h2>
+      </div>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
+          <div style="font-weight:500">${esc(both('人事系統操作手冊','HR System User Guide'))}</div>
+          <div style="font-size:12px;color:var(--ink-3)">
+            ${esc(both('查詢員工資料、申請請假、查看出勤紀錄。','How to view staff records, file leave requests, and check attendance.'))}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="chip">${esc(both('全員','All staff'))}</span>
+            <span class="chip">${esc(both('主管版','Manager edition'))}</span>
+          </div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
+          <div style="font-weight:500">${esc(both('公告系統使用說明','Announcements Module Guide'))}</div>
+          <div style="font-size:12px;color:var(--ink-3)">
+            ${esc(both('發布公告、查詢行事曆、檢索組織結構與通訊錄。','Publishing announcements, checking the calendar, searching the org chart and directory.'))}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="chip">${esc(both('主管版','Manager edition'))}</span>
+            <span class="chip">${esc(both('行政版','Admin edition'))}</span>
+          </div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
+          <div style="font-weight:500">${esc(both('系統管理員手冊','System Administrator Manual'))}</div>
+          <div style="font-size:12px;color:var(--ink-3)">
+            ${esc(both('帳號設置、權限配置、備份與稽核紀錄。','Account setup, permission configuration, backups, and audit logs.'))}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span class="chip">${esc(both('資訊管理員','IT staff'))}</span>
+          </div>
+        </div>
+      </div>
+      <div class="legend">${esc(both(
+        '原型說明：指南內容為結構示意，完整文檔在生產系統中維護。',
+        'Prototype note: guide list is illustrative; full documentation is maintained in the production system.'))}</div>
+    </section>
+  </div>`;
+}
+
+function viewDocMeeting(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('會議紀錄','Meeting Minutes'))}</b><br>
+      ${esc(both(
+        '公司重大會議紀錄存檔。按日期與主持人分類。',
+        'Archive of company meetings, organized by date and chair.'))}
+    </div>
+    <section class="card">
+      <div class="card-h">
+        <h2>${esc(both('會議記錄','Meeting records'))}</h2>
+        <div class="spacer"></div>
+        <span class="chip acc">${esc(both('新竹評鑑準備','Hsinchu accreditation prep'))}</span>
+      </div>
+      <div class="tablewrap"><table>
+        <thead><tr>
+          <th>${bi('日期','Date')}</th><th>${bi('會議名稱','Meeting')}</th>
+          <th>${bi('主持人','Chair')}</th><th>${bi('參與單位','Attendees')}</th><th>${bi('主要議題','Key topics')}</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono">2026-09-22</td>
+            <td>${esc(both('評鑑準備小組第一次會議','Accreditation Prep Meeting #1'))}</td>
+            <td>${esc(both('執行長','CEO'))}</td>
+            <td>${esc(both('各院院長、護理長','Facility directors & head nurses'))}</td>
+            <td style="white-space:normal;max-width:220px">${esc(both(
+              '文件清單說明、評鑑時程、各部門分工',
+              'Document checklist, timeline, departmental tasks'))}</td>
+          </tr>
+          <tr>
+            <td class="mono">2026-09-08</td>
+            <td>${esc(both('月度營運會議','Monthly Operations Meeting'))}</td>
+            <td>${esc(both('營運長','COO'))}</td>
+            <td>${esc(both('中心與院區主管','HQ & facility management'))}</td>
+            <td style="white-space:normal;max-width:220px">${esc(both(
+              '9 月營運概況、Q4 預算、評鑑準備進度',
+              'Sept operations, Q4 budget, accreditation progress'))}</td>
+          </tr>
+        </tbody>
+      </table></div>
+      <div class="legend">${esc(both(
+        '原型說明：會議詳細內容（決議、行動項目、後續追蹤）在實際系統中存檔。',
+        'Prototype note: detailed meeting content (resolutions, action items, follow-ups) are archived in the production system.'))}</div>
+    </section>
+  </div>`;
+}
+
+function viewDocSysInfo(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('系統說明','System Information'))}</b><br>
+      ${esc(both(
+        '本營運入口系統的架構、模組、資料定義與關聯。',
+        'This operations portal: system architecture, modules, data definitions, and relationships.'))}</div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('系統組成','System Components'))}</h2></div>
+      <div style="padding:14px;display:grid;gap:14px">
+        <div style="border-left:3px solid var(--accent);padding-left:12px">
+          <div style="font-weight:600">${esc(both('組織架構','Organization'))}</div>
+          <div style="font-size:13px;color:var(--ink-2);margin-top:6px">
+            ${esc(both(
+              '新竹區：竹北照護院（64 床）、竹東照護院（56 床）、營運中心',
+              'Hsinchu region: Zhuibei facility (64 beds), Zhudong facility (56 beds), Operations Center'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-top:6px">${esc(both(
+            '共 19 位員工，跨護理、照護、社工、復健等部門。',
+            '19 staff across nursing, care services, social work, rehabilitation.'))}
+          </div>
+        </div>
+        <div style="border-left:3px solid var(--accent);padding-left:12px">
+          <div style="font-weight:600">${esc(both('核心模組','Core Modules'))}</div>
+          <div style="font-size:13px;color:var(--ink-2);margin-top:6px">
+            <ul style="margin:6px 0;padding-left:20px">
+              <li>${esc(both('公告欄：公告、行事曆、組織圖、通訊錄','Announcements: board, calendar, org chart, directory'))}</li>
+              <li>${esc(both('人事系統：員工資料、出勤、請假','HR: employee records, attendance, leave'))}</li>
+              <li>${esc(both('文件管理：合規、指南、會議記錄','Documents: compliance, guides, meeting minutes'))}</li>
+              <li>${esc(both('服務管理：個案、契約、評估','Services: cases, contracts, assessments'))}</li>
+              <li>${esc(both('財務與採購：申請、零用金、月結','Finance: procurement, petty cash, month-end'))}</li>
+            </ul>
+          </div>
+        </div>
+        <div style="border-left:3px solid var(--accent);padding-left:12px">
+          <div style="font-weight:600">${esc(both('角色與權限','Roles & Permissions'))}</div>
+          <div style="font-size:13px;color:var(--ink-2);margin-top:6px">
+            ${esc(both(
+              '9 個角色規劃，目前 3 個完整實現：系統管理員、人資部經理、院長。其餘於 Phase 2–3 追加。',
+              '9 roles planned; 3 fully implemented: System Admin, HR Manager, Facility Director. Others in Phase 2–3.'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-top:6px">${esc(both(
+            '每個角色可讀取的資料範圍（據點）與可用功能（薪資、簽核、公告等）由權限矩陣定義。',
+            'Each role has defined data scope (facilities) and capabilities (pay access, approvals, announcements).'))}
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>`;
+}
+
+BINDERS['doc:comp']=function(){};
+BINDERS['doc:guide']=function(){};
+BINDERS['doc:meeting']=function(){};
+BINDERS['doc:sysinfo']=function(){};
+
+/* =============================== 服務管理 Service Management =============================== */
+
+function viewSvcCase(){
+  const units=activeUnitIds();
+  const staffCount=STAFF.filter(s=>units.includes(s.unit)).length;
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('個案管理','Case Management'))}</b><br>
+      ${esc(both(
+        '住民個案主檔、評估表、照護計畫。目前範圍內共 '+staffCount+' 位工作人員。',
+        'Resident case files, assessments, and care plans. '+staffCount+' staff in scope.'))}</div>
+    </section>
+    <section class="card">
+      <div class="card-h">
+        <h2>${esc(both('個案主檔','Case files'))}</h2>
+        <div class="spacer"></div>
+        <button class="btn mini">${esc(both('新增住民','Add resident'))}</button>
+      </div>
+      <div class="tablewrap"><table>
+        <thead><tr>
+          <th>${bi('個案編號','Case no.')}</th><th>${bi('入住院區','Facility')}</th>
+          <th>${bi('照護等級','Care level')}</th><th>${bi('負責社工','Assigned worker')}</th>
+          <th>${bi('主照顧者','Primary caregiver')}</th><th>${bi('最近評估','Last assessment')}</th>
+        </tr></thead>
+        <tbody>
+          <tr><td colspan="6" class="empty">${esc(both(
+            '原型說明：個案資料為結構示意，無虛構個資。實際個案資料由護理與社工部門管理。',
+            'Prototype note: case structure shown without fictional personal data. Actual cases managed by nursing and social work teams.'))}</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note q" style="margin:12px 14px">${esc(both(
+        '個案主檔功能包括：基本資料、入住協議與簽約、照護評估表、照護計畫、定期複核。完整系統中與醫療、照護、社工三大部門整合。',
+        'Case file features: demographics, admission agreements, care assessments, care plans, periodic reviews. Full system integrates nursing, care services, social work.'))}</div>
+    </section>
+  </div>`;
+}
+
+function viewSvcContract(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('契約管理','Contract Management'))}</b><br>
+      ${esc(both(
+        '住民服務契約、特約廠商合約、服務等級協議書 (SLA)。',
+        'Resident service contracts, vendor agreements, and service level agreements.'))}</div>
+    </section>
+    <section class="card">
+      <div class="card-h">
+        <h2>${esc(both('契約清單','Contracts'))}</h2>
+        <span class="en">${esc(both('分類檢視','By type'))}</span>
+        <div class="spacer"></div>
+        <div class="seg">
+          <button aria-pressed="true">${esc(both('住民契約','Resident'))}</button>
+          <button>${esc(both('廠商合約','Vendor'))}</button>
+          <button>${esc(both('SLA','SLA'))}</button>
+        </div>
+      </div>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
+          <div style="font-weight:500">${esc(both('住民服務契約','Resident Service Contracts'))}</div>
+          <div style="font-size:12px;color:var(--ink-3)">
+            ${esc(both('包含服務項目、費用、權利義務、終止條款等。','Service items, fees, rights & obligations, termination clauses.'))}
+          </div>
+          <button class="btn mini ghost">${esc(both('上傳新契約','Upload new contract'))}</button>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
+          <div style="font-weight:500">${esc(both('廠商合約','Vendor Agreements'))}</div>
+          <div style="font-size:12px;color:var(--ink-3)">
+            ${esc(both('醫療、設備、餐飲等特約廠商合約。','Medical, equipment, food service contracts.'))}
+          </div>
+          <button class="btn mini ghost">${esc(both('上傳新合約','Upload new agreement'))}</button>
+        </div>
+      </div>
+      <div class="legend">${esc(both(
+        '原型說明：契約管理模組提供上傳、版本控管、期限提醒、更新簽署流程。',
+        'Prototype note: the complete system provides upload, version control, expiry alerts, and renewal workflows.'))}</div>
+    </section>
+  </div>`;
+}
+
+function viewSvcAssess(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('服務評估','Service Assessments'))}</b><br>
+      ${esc(both(
+        '住民滿意度調查、服務品質評估、定期複核表。',
+        'Resident satisfaction surveys, service quality assessments, and periodic review forms.'))}</div>
+    </section>
+    <section class="card">
+      <div class="card-h">
+        <h2>${esc(both('評估範本','Assessment Templates'))}</h2>
+      </div>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
+          <div style="font-weight:500">${esc(both('入住滿意度調查','Admission Satisfaction'))}
+            <span class="chip mini" style="margin-left:8px">${esc(both('每月','Monthly'))}</span></div>
+          <div style="font-size:12px;color:var(--ink-3)">
+            ${esc(both('照護品質、環境、飲食、醫療協助等 5 大面向 5 點量表評分。','5-point scale on care quality, environment, meals, medical assistance.'))}</div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
+          <div style="font-weight:500">${esc(both('照護計畫複核表','Care Plan Review'))}
+            <span class="chip mini" style="margin-left:8px">${esc(both('3 個月','Quarterly'))}</span></div>
+          <div style="font-size:12px;color:var(--ink-3)">
+            ${esc(both('檢視照護目標達成情形、身心狀況變化、調整計畫需求。','Review goal progress, health changes, plan adjustments.'))}
+          </div>
+        </div>
+        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
+          <div style="font-weight:500">${esc(both('家屬滿意度問卷','Family Satisfaction'))}
+            <span class="chip mini" style="margin-left:8px">${esc(both('每季','Quarterly'))}</span></div>
+          <div style="font-size:12px;color:var(--ink-3)">
+            ${esc(both('家屬對住民照護、員工服務態度、溝通透明度之評價。','Family ratings on resident care, staff attitude, communication.'))}
+          </div>
+        </div>
+      </div>
+      <div class="legend">${esc(both(
+        '原型說明：評估結果用於服務改善與品質管理。完整系統中提供線上填表、統計分析、改善追蹤。',
+        'Prototype note: assessment results inform service improvements. Complete system provides online forms, analytics, and improvement tracking.'))}</div>
+    </section>
+  </div>`;
+}
+
+BINDERS['svc:case']=function(){};
+BINDERS['svc:contract']=function(){};
+BINDERS['svc:assess']=function(){};
+
+/* =============================== 財務與採購 Finance & Procurement =============================== */
+
+function viewFinProcurement(){
+  const units=activeUnitIds();
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('採購申請','Procurement Requests'))}</b><br>
+      ${esc(both(
+        '設備、醫療耗材、日常物資採購申請。依院區分別提交。',
+        'Equipment, medical supplies, daily consumables. Submitted by facility.'))}</div>
+    </section>
+    <section class="card">
+      <div class="card-h">
+        <h2>${esc(both('採購申請單','Procurement forms'))}</h2>
+        <div class="spacer"></div>
+        <button class="btn mini">${esc(both('新增採購申請','New requisition'))}</button>
+      </div>
+      <div class="tablewrap"><table>
+        <thead><tr>
+          <th>${bi('申請單號','Request no.')}</th><th>${bi('申請院區','Facility')}</th>
+          <th>${bi('申請人','Requester')}</th><th>${bi('申請日期','Date')}</th>
+          <th>${bi('金額','Amount')}</th><th>${bi('品項','Items')}</th>
+          <th>${bi('審核狀態','Status')}</th>
+        </tr></thead>
+        <tbody>
+          <tr><td colspan="7" class="empty">${esc(both(
+            '原型說明：採購申請單為表單結構示意，無虛構交易資料。',
+            'Prototype note: form structure shown without fictional transaction data.'))}</td></tr>
+        </tbody>
+      </table></div>
+      <div style="padding:14px;background:var(--surface-2);border-radius:6px;margin-top:12px">
+        <div style="font-size:12px;font-weight:500;margin-bottom:8px">${esc(both('採購申請流程','Procurement workflow'))}</div>
+        <div style="font-size:12px;color:var(--ink-2);line-height:1.6">
+          1. ${esc(both('單位主管提交申請','Unit supervisor submits'))}<br>
+          2. ${esc(both('財務部初審（金額、預算）','Finance screening (amount, budget)'))}<br>
+          3. ${esc(both('公司主管核決（簽核權限）','Executive approval (per authority)'))}<br>
+          4. ${esc(both('行政部執行採購','Admin executes procurement'))}<br>
+          5. ${esc(both('驗收入帳','Receipt and posting'))}
+        </div>
+      </div>
+    </section>
+  </div>`;
+}
+
+function viewFinPettyCash(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('零用金申請','Petty Cash Requests'))}</b><br>
+      ${esc(both(
+        '日常小額支出申請與報銷。如交通、修繕、臨時採購等。',
+        'Daily small-amount expenses: transportation, repairs, ad-hoc purchases.'))}</div>
+    </section>
+    <section class="card">
+      <div class="card-h">
+        <h2>${esc(both('零用金申請單','Petty cash requests'))}</h2>
+        <div class="spacer"></div>
+        <button class="btn mini">${esc(both('新增申請','New request'))}</button>
+      </div>
+      <div style="padding:14px;background:var(--surface-2);border-radius:6px">
+        <div class="eyebrow" style="margin-bottom:8px">${esc(both('申請人資料','Applicant info'))}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px">
+          <div><div style="color:var(--ink-3);margin-bottom:2px">${esc(both('姓名','Name'))}</div>
+            <div style="height:20px;border:1px solid var(--line);border-radius:4px;background:var(--surface)"></div></div>
+          <div><div style="color:var(--ink-3);margin-bottom:2px">${esc(both('部門','Department'))}</div>
+            <div style="height:20px;border:1px solid var(--line);border-radius:4px;background:var(--surface)"></div></div>
+          <div><div style="color:var(--ink-3);margin-bottom:2px">${esc(both('申請日期','Date'))}</div>
+            <div style="height:20px;border:1px solid var(--line);border-radius:4px;background:var(--surface)"></div></div>
+          <div><div style="color:var(--ink-3);margin-bottom:2px">${esc(both('總金額','Total amount'))}</div>
+            <div style="height:20px;border:1px solid var(--line);border-radius:4px;background:var(--surface)"></div></div>
+        </div>
+        <div style="margin-top:12px">
+          <div style="color:var(--ink-3);margin-bottom:6px;font-weight:500">${esc(both('明細','Items'))}</div>
+          <div style="border:1px solid var(--line);border-radius:4px;padding:6px;font-size:11px;color:var(--ink-3)">
+            ${esc(both('日期 | 用途 | 金額 | 備註','Date | Purpose | Amount | Notes'))}<br>
+            <div style="border-top:1px solid var(--line);margin-top:6px;padding-top:6px;height:60px"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn">${esc(both('保存草稿','Save draft'))}</button>
+          <button class="btn ghost">${esc(both('提交申請','Submit'))}</button>
+        </div>
+      </div>
+      <div class="legend">${esc(both(
+        '原型說明：零用金申請表供線上填表與簽核。金額限制、核決權限由組織規則定義。',
+        'Prototype note: petty cash form structure shown. Amount limits and approval authority per organizational policy.'))}</div>
+    </section>
+  </div>`;
+}
+
+function viewFinReport(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
+      <b>${esc(both('月結報告','Month-End Close'))}</b><br>
+      ${esc(both(
+        '每月財務總結、採購統計、零用金結算。各院區分別編製。',
+        'Monthly financial summary, procurement statistics, petty cash reconciliation by facility.'))}</div>
+    </section>
+    <section class="card">
+      <div class="card-h">
+        <h2>${esc(both('報告清單','Reports'))}</h2>
+        <div class="spacer"></div>
+        <span class="ulabel">${esc(both('月份','Month'))}</span>
+        <select style="font-size:13px"><option>2026-09</option><option>2026-08</option><option>2026-07</option></select>
+        <span class="ulabel" style="margin-left:16px">${esc(both('院區','Facility'))}</span>
+        <select style="font-size:13px">
+          <option>${esc(both('全部','All'))}</option>
+          <option>${esc(both('竹北照護院','Zhuibei'))}</option>
+          <option>${esc(both('竹東照護院','Zhudong'))}</option>
+        </select>
+      </div>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div style="border:1px solid var(--line);border-radius:6px;padding:12px">
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('9 月份月結報告','September Close Report'))}</div>
+          <table style="width:100%;font-size:12px">
+            <tr style="border-bottom:1px solid var(--line-strong)">
+              <td style="padding:6px 0">${esc(both('項目','Item'))}</td>
+              <td style="text-align:right;padding:6px 0">${esc(both('竹北院','Zhuibei'))}</td>
+              <td style="text-align:right;padding:6px 0">${esc(both('竹東院','Zhudong'))}</td>
+              <td style="text-align:right;padding:6px 0">${esc(both('合計','Total'))}</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--line)">
+              <td style="padding:6px 0">${esc(both('月度採購總額','Procurement'))}</td>
+              <td style="text-align:right;padding:6px 0">—</td>
+              <td style="text-align:right;padding:6px 0">—</td>
+              <td style="text-align:right;padding:6px 0">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--line)">
+              <td style="padding:6px 0">${esc(both('零用金支出','Petty cash'))}</td>
+              <td style="text-align:right;padding:6px 0">—</td>
+              <td style="text-align:right;padding:6px 0">—</td>
+              <td style="text-align:right;padding:6px 0">—</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--line)">
+              <td style="padding:6px 0">${esc(both('預算執行率','Budget utilization'))}</td>
+              <td style="text-align:right;padding:6px 0">—</td>
+              <td style="text-align:right;padding:6px 0">—</td>
+              <td style="text-align:right;padding:6px 0">—</td>
+            </tr>
+          </table>
+          <div style="display:flex;gap:6px;margin-top:12px">
+            <button class="btn mini ghost">${esc(both('下載 PDF','Download PDF'))}</button>
+            <button class="btn mini ghost">${esc(both('列印','Print'))}</button>
+          </div>
+        </div>
+      </div>
+      <div class="legend">${esc(both(
+        '原型說明：月結報告彙整採購、零用金、預算執行等數據。報表範本與資料串接在完整系統中實現。',
+        'Prototype note: month-end reports consolidate procurement, petty cash, and budget data. Full system provides templates and integrates live data.'))}</div>
+    </section>
+  </div>`;
+}
+
+BINDERS['fin:proc']=function(){};
+BINDERS['fin:petty']=function(){};
+BINDERS['fin:report']=function(){};
 </script>
 <script>
 /* =============================== 權限對照表 Permission matrix =============================== */
