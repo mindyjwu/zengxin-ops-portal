@@ -335,7 +335,7 @@ const RAW = [
  ['E2308','職能治療師','O3','ot','rehab','2022-08-14','408','P2',61000,'full','E2301']
 ];
 const STAFF = RAW.map(r=>({
-  id:r[0], zh:r[1], unit:r[2], titleKey:r[3], dept:r[4],
+  id:r[0], zh:r[1], unit:r[2], title:r[3], dept:r[4],
   hired:r[5], ext:r[6], band:r[7], salary:r[8], type:r[9], mgr:r[10]
 }));
 const person = id => STAFF.find(s=>s.id===id);
@@ -1247,7 +1247,7 @@ function viewEmployees(){
           return `<tr class="clickable" data-emp="${s.id}">
             <td class="mono">${s.id}</td>
             <td>${esc(nameOf(s))}<span class="muted" style="font-size:11px"> ${esc(state.lang==='zh'?s.en:s.zh)}</span></td>
-            <td>${esc(both(TITLES[s.titleKey].zh,TITLES[s.titleKey].en))}</td>
+            <td>${esc(both(TITLES[s.title].zh,TITLES[s.title].en))}</td>
             <td>${esc(both(DEPTS[s.dept].zh,DEPTS[s.dept].en))}</td>
             <td>${esc(both(unit(s.unit).zh,unit(s.unit).en))}</td>
             <td class="mono">${s.hired}</td>
@@ -1308,7 +1308,7 @@ function openPerson(id){
           <dl class="kv">
             <dt>${esc(both('員工編號','Employee no.'))}</dt><dd class="mono">${p.id}</dd>
             <dt>${esc(both('部門','Department'))}</dt><dd>${esc(both(DEPTS[p.dept].zh,DEPTS[p.dept].en))}</dd>
-            <dt>${esc(both('直屬主管','Reports to'))}</dt><dd>${mgr?esc(nameOf(mgr)+' · '+L(TITLES[mgr.titleKey])):esc(both('無','—'))}</dd>
+            <dt>${esc(both('直屬主管','Reports to'))}</dt><dd>${mgr?esc(nameOf(mgr)+' · '+L(TITLES[mgr.title])):esc(both('無','—'))}</dd>
             <dt>${esc(both('到職日','Hire date'))}</dt><dd class="mono">${visible?p.hired:'—'}</dd>
             <dt>${esc(both('分機','Extension'))}</dt><dd class="mono">${p.ext}</dd>
           </dl>
