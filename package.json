@@ -1,0 +1,26 @@
+{
+  "name": "zengxin-ops-portal",
+  "version": "1.0.0",
+  "description": "**互動式原型** — 討論用系統，用於確定關鍵決策（院長跨院權限、管理員薪資可見性、請假簽核流程）。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mindyjwu/zengxin-ops-portal.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mindyjwu/zengxin-ops-portal/issues"
+  },
+  "homepage": "https://github.com/mindyjwu/zengxin-ops-portal#readme",
+  "devDependencies": {
+    "jest": "^30.5.2"
+  }
+}
