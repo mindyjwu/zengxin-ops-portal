@@ -259,11 +259,12 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
    All data below is FICTIONAL and generated in-memory. No auth, no database.
    ========================================================================= */
 
-/* ---------- offices (2 care homes in Hsinchu + operations HQ) ---------- */
-/* v2.0 prototype: currently Hsinchu only. Future phases: Taichung (Phase 2), Changhua (Phase 3) */
+/* ---------- offices (3 care homes in Hsinchu + operations HQ) ---------- */
+/* v2.0 prototype: 3 facilities in Hsinchu greater area. Future phases: expansion to other regions */
 const OFFICES = [
-  {id:'O1', zh:'竹北照護院',  en:'Hsinchu Zhuibei',  code:'HC-01', city:{zh:'新竹縣竹北市',en:'Hsinchu Zhuibei'},  beds:64},
-  {id:'O2', zh:'竹東照護院',  en:'Hsinchu Zhudong',  code:'HC-02', city:{zh:'新竹縣竹東鎮',en:'Hsinchu Zhudong'},  beds:56}
+  {id:'O1', zh:'誠馨照護院',  en:'Zengxin Care Home',  code:'ZX-01', city:{zh:'新竹市',en:'Hsinchu City'},  beds:64},
+  {id:'O2', zh:'誠芯照護院',  en:'Zengxin Heart Care',  code:'ZX-02', city:{zh:'新竹縣竹北市',en:'Hsinchu Zhuibei'},  beds:60},
+  {id:'O3', zh:'牛津照護院',  en:'Oxford Care Home',  code:'OX-01', city:{zh:'新竹縣竹東鎮',en:'Hsinchu Zhudong'},  beds:58}
 ];
 const HQ = {id:'HQ', zh:'新竹營運中心', en:'Hsinchu Operations Center', code:'HQ', city:{zh:'新竹縣',en:'Hsinchu'}, beds:0};
 const ALL_UNITS = [HQ].concat(OFFICES);
@@ -271,7 +272,7 @@ const unit = id => ALL_UNITS.find(o=>o.id===id) || HQ;
 
 /* ---------- v2.0: company structure (currently single entity; Phase 2–3: multi-region) ---------- */
 const COMPANIES = [
-  {id:'C1', zh:'誠馨長照 · 新竹區', en:'Zengxin Care • Hsinchu Region', hq:'HQ', offices:['O1','O2']}
+  {id:'C1', zh:'誠馨長照 · 新竹區', en:'Zengxin Care • Hsinchu Region', hq:'HQ', offices:['O1','O2','O3']}
 ];
 const companyOf = officeId => COMPANIES.find(c=>c.offices.includes(officeId));
 const companyOffices = companyId => (COMPANIES.find(c=>c.id===companyId)?.offices||[]).map(id=>OFFICES.find(o=>o.id===id));
@@ -322,13 +323,58 @@ const RAW = [
  ['E2206','照服員','O2','ca','care','2023-02-10','306','G2',37000,'part','E2202'],
  ['E2207','交通服務員','O2','drv','ops','2022-06-15','307','G1',34000,'full','E2201'],
  ['E2208','社工師','O2','sw','soc','2022-09-05','308','P2',51500,'full','E2201'],
- ['E2209','營養師','O2','die','care','2023-08-19','309','P2',54500,'full','E2202']
+ ['E2209','營養師','O2','die','care','2023-08-19','309','P2',54500,'full','E2202'],
+
+ ['E2301','院長','O3','dir','exec','2018-07-10','401','M3',128000,'full','E1002'],
+ ['E2302','護理長','O3','hn','nur','2019-01-15','402','P3',77500,'full','E2301'],
+ ['E2303','護理師','O3','rn','nur','2020-05-20','403','P2',59000,'full','E2302'],
+ ['E2304','照服員','O3','ca','care','2021-09-08','404','G2',38000,'full','E2302'],
+ ['E2305','社工師','O3','sw','soc','2022-03-17','405','P2',51000,'full','E2301'],
+ ['E2306','行政專員','O3','adm','ops','2021-11-22','406','G3',41500,'full','E2301'],
+ ['E2307','照服員','O3','ca','care','2023-04-10','407','G2',37000,'part','E2302'],
+ ['E2308','職能治療師','O3','ot','rehab','2022-08-14','408','P2',61000,'full','E2301']
 ];
 const STAFF = RAW.map(r=>({
   id:r[0], zh:r[1], unit:r[2], titleKey:r[3], dept:r[4],
   hired:r[5], ext:r[6], band:r[7], salary:r[8], type:r[9], mgr:r[10]
 }));
 const person = id => STAFF.find(s=>s.id===id);
+
+/* ---------- personnel detailed data (基本資料、薪資、績效、保險) ---------- */
+const PERSONNEL_DATA = {
+  'E1001':{bankAcct:'1234567890',idNum:'A123456789',phone:'0912345001',email:'ceo@zengxin.tw',performanceRating:'優秀',reviewDate:'2026-06-15',insuranceType:'全額投保',coverageLevel:'最高級'},
+  'E1002':{bankAcct:'1234567891',idNum:'A123456790',phone:'0912345002',email:'coo@zengxin.tw',performanceRating:'優秀',reviewDate:'2026-06-15',insuranceType:'全額投保',coverageLevel:'最高級'},
+  'E1003':{bankAcct:'1234567892',idNum:'A123456791',phone:'0912345003',email:'hr@zengxin.tw',performanceRating:'良好',reviewDate:'2026-06-20',insuranceType:'全額投保',coverageLevel:'高級'},
+  'E1004':{bankAcct:'1234567893',idNum:'A123456792',phone:'0912345004',email:'fin@zengxin.tw',performanceRating:'良好',reviewDate:'2026-06-20',insuranceType:'全額投保',coverageLevel:'高級'},
+  'E1005':{bankAcct:'1234567894',idNum:'A123456793',phone:'0912345005',email:'it@zengxin.tw',performanceRating:'良好',reviewDate:'2026-06-25',insuranceType:'全額投保',coverageLevel:'中級'},
+  'E1006':{bankAcct:'1234567895',idNum:'A123456794',phone:'0912345006',email:'hrs@zengxin.tw',performanceRating:'良好',reviewDate:'2026-07-01',insuranceType:'全額投保',coverageLevel:'中級'},
+  'E2101':{bankAcct:'2234567890',idNum:'B123456789',phone:'0912346101',email:'dir1@zengxin.tw',performanceRating:'優秀',reviewDate:'2026-06-15',insuranceType:'全額投保',coverageLevel:'高級'},
+  'E2102':{bankAcct:'2234567891',idNum:'B123456790',phone:'0912346102',email:'hn1@zengxin.tw',performanceRating:'優秀',reviewDate:'2026-06-20',insuranceType:'全額投保',coverageLevel:'高級'},
+  'E2103':{bankAcct:'2234567892',idNum:'B123456791',phone:'0912346103',email:'rn1@zengxin.tw',performanceRating:'良好',reviewDate:'2026-07-05',insuranceType:'全額投保',coverageLevel:'中級'},
+  'E2104':{bankAcct:'2234567893',idNum:'B123456792',phone:'0912346104',email:'ca1@zengxin.tw',performanceRating:'及格',reviewDate:'2026-07-10',insuranceType:'部分投保',coverageLevel:'基本級'},
+  'E2105':{bankAcct:'2234567894',idNum:'B123456793',phone:'0912346105',email:'sw1@zengxin.tw',performanceRating:'良好',reviewDate:'2026-07-15',insuranceType:'全額投保',coverageLevel:'中級'},
+  'E2106':{bankAcct:'2234567895',idNum:'B123456794',phone:'0912346106',email:'adm1@zengxin.tw',performanceRating:'良好',reviewDate:'2026-08-01',insuranceType:'全額投保',coverageLevel:'基本級'},
+  'E2107':{bankAcct:'2234567896',idNum:'B123456795',phone:'0912346107',email:'ca2@zengxin.tw',performanceRating:'及格',reviewDate:'2026-08-05',insuranceType:'部分投保',coverageLevel:'基本級'},
+  'E2108':{bankAcct:'2234567897',idNum:'B123456796',phone:'0912346108',email:'rn2@zengxin.tw',performanceRating:'良好',reviewDate:'2026-08-10',insuranceType:'全額投保',coverageLevel:'中級'},
+  'E2201':{bankAcct:'2234567898',idNum:'C123456789',phone:'0912347201',email:'dir2@zengxin.tw',performanceRating:'優秀',reviewDate:'2026-06-15',insuranceType:'全額投保',coverageLevel:'高級'},
+  'E2202':{bankAcct:'2234567899',idNum:'C123456790',phone:'0912347202',email:'hn2@zengxin.tw',performanceRating:'優秀',reviewDate:'2026-06-20',insuranceType:'全額投保',coverageLevel:'高級'},
+  'E2203':{bankAcct:'2234567900',idNum:'C123456791',phone:'0912347203',email:'rn3@zengxin.tw',performanceRating:'良好',reviewDate:'2026-07-05',insuranceType:'全額投保',coverageLevel:'中級'},
+  'E2204':{bankAcct:'2234567901',idNum:'C123456792',phone:'0912347204',email:'ca3@zengxin.tw',performanceRating:'及格',reviewDate:'2026-07-10',insuranceType:'部分投保',coverageLevel:'基本級'},
+  'E2205':{bankAcct:'2234567902',idNum:'C123456793',phone:'0912347205',email:'ot1@zengxin.tw',performanceRating:'良好',reviewDate:'2026-07-15',insuranceType:'全額投保',coverageLevel:'中級'},
+  'E2206':{bankAcct:'2234567903',idNum:'C123456794',phone:'0912347206',email:'ca4@zengxin.tw',performanceRating:'及格',reviewDate:'2026-08-01',insuranceType:'部分投保',coverageLevel:'基本級'},
+  'E2207':{bankAcct:'2234567904',idNum:'C123456795',phone:'0912347207',email:'drv1@zengxin.tw',performanceRating:'良好',reviewDate:'2026-08-05',insuranceType:'全額投保',coverageLevel:'基本級'},
+  'E2208':{bankAcct:'2234567905',idNum:'C123456796',phone:'0912347208',email:'sw2@zengxin.tw',performanceRating:'良好',reviewDate:'2026-08-10',insuranceType:'全額投保',coverageLevel:'中級'},
+  'E2209':{bankAcct:'2234567906',idNum:'C123456797',phone:'0912347209',email:'die1@zengxin.tw',performanceRating:'良好',reviewDate:'2026-08-15',insuranceType:'全額投保',coverageLevel:'中級'},
+  'E2301':{bankAcct:'2234567907',idNum:'D123456789',phone:'0912348301',email:'dir3@zengxin.tw',performanceRating:'優秀',reviewDate:'2026-06-15',insuranceType:'全額投保',coverageLevel:'高級'},
+  'E2302':{bankAcct:'2234567908',idNum:'D123456790',phone:'0912348302',email:'hn3@zengxin.tw',performanceRating:'優秀',reviewDate:'2026-06-20',insuranceType:'全額投保',coverageLevel:'高級'},
+  'E2303':{bankAcct:'2234567909',idNum:'D123456791',phone:'0912348303',email:'rn4@zengxin.tw',performanceRating:'良好',reviewDate:'2026-07-05',insuranceType:'全額投保',coverageLevel:'中級'},
+  'E2304':{bankAcct:'2234567910',idNum:'D123456792',phone:'0912348304',email:'ca5@zengxin.tw',performanceRating:'及格',reviewDate:'2026-07-10',insuranceType:'部分投保',coverageLevel:'基本級'},
+  'E2305':{bankAcct:'2234567911',idNum:'D123456793',phone:'0912348305',email:'sw3@zengxin.tw',performanceRating:'良好',reviewDate:'2026-07-15',insuranceType:'全額投保',coverageLevel:'中級'},
+  'E2306':{bankAcct:'2234567912',idNum:'D123456794',phone:'0912348306',email:'adm2@zengxin.tw',performanceRating:'良好',reviewDate:'2026-08-01',insuranceType:'全額投保',coverageLevel:'基本級'},
+  'E2307':{bankAcct:'2234567913',idNum:'D123456795',phone:'0912348307',email:'ca6@zengxin.tw',performanceRating:'及格',reviewDate:'2026-08-05',insuranceType:'部分投保',coverageLevel:'基本級'},
+  'E2308':{bankAcct:'2234567914',idNum:'D123456796',phone:'0912348308',email:'ot2@zengxin.tw',performanceRating:'良好',reviewDate:'2026-08-10',insuranceType:'全額投保',coverageLevel:'中級'}
+};
+const personelData = id => PERSONNEL_DATA[id] || {};
 </script>
 <script>
 /* ---------- fixed demo clock (prototype has no live data feed) ---------- */
@@ -435,24 +481,25 @@ let LEAVE = [
 /* ---------- roles & permissions ---------- */
 /* v2.0: 9 roles per specification, but only 3 fully working in this prototype */
 const ROLES = {
-  /* --- Built (working in this prototype) --- */
-  admin:{ id:'admin', zh:'系統管理員', en:'System Admin', persona:'E1005', allOffices:true, built:true,
-    perms:{ salary:false, editEmp:true, mobile:true, approve:false, finalize:false,
+  /* --- Role-based access control (6 roles) --- */
+  ceo:{ id:'ceo', zh:'老闆', en:'CEO/Owner', persona:'E1001', allOffices:true, built:true,
+    perms:{ viewSalary:true, viewPerf:true, viewLeave:true, viewSensitive:true, editEmp:true, approve:true, finalize:true,
             annGroup:true, annOffice:true, perms:true, exportAll:true } },
-  hr:{ id:'hr', zh:'人資部經理', en:'HR Manager', persona:'E1003', allOffices:true, built:true,
-    perms:{ salary:true, editEmp:true, mobile:true, approve:true, finalize:true,
+  manager:{ id:'manager', zh:'管理者', en:'Manager', persona:'E1002', allOffices:true, built:true,
+    perms:{ viewSalary:false, viewPerf:true, viewLeave:true, viewSensitive:false, editEmp:true, approve:true, finalize:false,
             annGroup:true, annOffice:true, perms:false, exportAll:true } },
-  manager:{ id:'manager', zh:'院長／單位主管', en:'Facility Director', persona:'E2401', allOffices:false, built:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false,
-            annGroup:false, annOffice:true, perms:false, exportAll:false } },
-
-  /* --- Planned for Phase 2–3 (stubs only) --- */
-  coo:{ id:'coo', zh:'營運長', en:'COO', built:false, phase:'Phase 1+' },
-  finance:{ id:'finance', zh:'財務部經理', en:'Finance Manager', built:false, phase:'Phase 2' },
-  nurse:{ id:'nurse', zh:'護理部主管', en:'Nursing Director', built:false, phase:'Phase 2' },
-  care:{ id:'care', zh:'照護部主管', en:'Care Services Manager', built:false, phase:'Phase 2' },
-  social:{ id:'social', zh:'社工室主任', en:'Social Work Supervisor', built:false, phase:'Phase 3' },
-  company:{ id:'company', zh:'公司經理', en:'Company Manager', built:false, phase:'Phase 2' }
+  hr:{ id:'hr', zh:'人資', en:'HR Specialist', persona:'E1003', allOffices:true, built:true,
+    perms:{ viewSalary:true, viewPerf:false, viewLeave:true, viewSensitive:true, editEmp:true, approve:true, finalize:true,
+            annGroup:true, annOffice:true, perms:false, exportAll:true } },
+  training:{ id:'training', zh:'教育訓練專員', en:'Training Specialist', persona:'E1006', allOffices:true, built:true,
+    perms:{ viewSalary:false, viewPerf:false, viewLeave:false, viewSensitive:false, editEmp:false, approve:false, finalize:false,
+            annGroup:false, annOffice:false, perms:false, exportAll:false } },
+  accountant:{ id:'accountant', zh:'會計', en:'Accountant', persona:'E1004', allOffices:true, built:true,
+    perms:{ viewSalary:true, viewPerf:false, viewLeave:false, viewSensitive:false, editEmp:false, approve:true, finalize:false,
+            annGroup:false, annOffice:false, perms:false, exportAll:false } },
+  staff:{ id:'staff', zh:'員工', en:'Staff', persona:'E2103', allOffices:false, built:true,
+    perms:{ viewSalary:false, viewPerf:false, viewLeave:true, viewSensitive:false, editEmp:false, approve:false, finalize:false,
+            annGroup:false, annOffice:false, perms:false, exportAll:false } }
 };
 
 /* ---------- state ---------- */
