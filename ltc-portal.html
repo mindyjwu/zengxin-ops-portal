@@ -620,8 +620,19 @@ const MODULES = [
     {id:'petty',  zh:'零用金申請', en:'Petty cash'},
     {id:'report', zh:'月結報告',   en:'Month-end close'}
   ]},
-  {id:'rpt', zh:'報表匯出', en:'Reports Export', built:true, tabs:[]},
-  {id:'set', zh:'系統設定', en:'Settings', built:true, tabs:[]}
+  {id:'rpt', zh:'報表匯出', en:'Reports Export', built:true, tabs:[
+    {id:'att',  zh:'出勤統計', en:'Attendance'},
+    {id:'hr',   zh:'人事資料', en:'Personnel'},
+    {id:'leave',zh:'請假申請', en:'Leave applications'},
+    {id:'fin',  zh:'財務報表', en:'Financial'},
+    {id:'svc',  zh:'服務個案', en:'Service cases'}
+  ]},
+  {id:'set', zh:'系統設定', en:'Settings', built:true, tabs:[
+    {id:'general', zh:'一般設定',   en:'General'},
+    {id:'account', zh:'帳號管理',   en:'Account'},
+    {id:'security',zh:'安全設定',   en:'Security'},
+    {id:'notif',   zh:'通知設定',   en:'Notifications'}
+  ]}
 ];
 const NOT_BUILT = [];
 
@@ -749,7 +760,8 @@ function render(){
     'doc:comp':viewDocCompliance, 'doc:guide':viewDocGuides, 'doc:meeting':viewDocMeeting, 'doc:sysinfo':viewDocSysInfo,
     'svc:case':viewSvcCase, 'svc:contract':viewSvcContract, 'svc:assess':viewSvcAssess,
     'fin:proc':viewFinProcurement, 'fin:petty':viewFinPettyCash, 'fin:report':viewFinReport,
-    'rpt':viewReports, 'set':viewSettings
+    'rpt:att':viewReportAtt, 'rpt:hr':viewReportHR, 'rpt:leave':viewReportLeave, 'rpt:fin':viewReportFin, 'rpt:svc':viewReportSvc,
+    'set:general':viewSettingsGeneral, 'set:account':viewSettingsAccount, 'set:security':viewSettingsSecurity, 'set:notif':viewSettingsNotif
   }[key];
   v.innerHTML = fn ? fn() : '';
   (BINDERS[key]||function(){})();
@@ -2040,204 +2052,417 @@ BINDERS['fin:petty']=function(){};
 BINDERS['fin:report']=function(){};
 
 /* =============================== 報表匯出 Reports Export =============================== */
-function viewReports(){
-  const units=activeUnitIds();
+function viewReportAtt(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--ok);background:var(--ok-soft)">
+      <b>${esc(both('出勤統計報表','Attendance Statistics Report'))}</b><br>
+      ${esc(both(
+        '按據點、部門、個人彙總出勤率、遲到、請假、加班等統計。',
+        'Summarizes attendance rate, late arrivals, leave, overtime by facility, department, or individual.'))}
+    </div>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('報表產生','Generate report'))}</h2></div>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div class="eyebrow">${esc(both('統計月份','Period'))}</div>
+            <select style="width:100%;margin-top:4px"><option>2026-09</option><option>2026-08</option><option>2026-07</option></select>
+          </div>
+          <div>
+            <div class="eyebrow">${esc(both('統計層級','Scope'))}</div>
+            <select style="width:100%;margin-top:4px">
+              <option>${esc(both('全體員工','All staff'))}</option>
+              <option>${esc(both('按據點','By facility'))}</option>
+              <option>${esc(both('按部門','By department'))}</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <button class="btn" style="width:100%;background:var(--accent);color:var(--accent-ink)">${esc(both('產生報表 CSV','Generate CSV'))}</button>
+        </div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('預覽','Preview'))}</h2></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('員工','Employee')}</th><th>${bi('出勤率','Rate')}</th><th>${bi('遲到','Late')}</th><th>${bi('請假','Leave')}</th><th>${bi('加班','OT')}</th></tr></thead>
+        <tbody>
+          <tr><td>${esc('王小芬')}</td><td class="mono">95.2%</td><td class="mono">2</td><td class="mono">1</td><td class="mono">3.5h</td></tr>
+          <tr><td>${esc('劉家康')}</td><td class="mono">92.8%</td><td class="mono">1</td><td class="mono">2</td><td class="mono">2.0h</td></tr>
+          <tr><td>${esc('陳小芬')}</td><td class="mono">98.5%</td><td class="mono">0</td><td class="mono">0</td><td class="mono">5.5h</td></tr>
+        </tbody>
+      </table></div>
+      <div style="margin-top:12px;display:flex;gap:6px">
+        <button class="btn mini ghost">${esc(both('下載 CSV','Download CSV'))}</button>
+        <button class="btn mini ghost">${esc(both('下載 PDF','Download PDF'))}</button>
+      </div>
+    </section>
+  </div>`;
+}
+
+function viewReportHR(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--accent);background:var(--accent-soft)">
+      <b>${esc(both('人事資料報表','Personnel Records Report'))}</b><br>
+      ${esc(both(
+        '員工清冊、薪資清單、職等分佈、在職年資統計。',
+        'Employee roster, payroll, pay band distribution, tenure statistics.'))}
+    </div>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('報表產生','Generate report'))}</h2></div>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div class="eyebrow">${esc(both('報告類型','Report type'))}</div>
+            <select style="width:100%;margin-top:4px">
+              <option>${esc(both('員工清冊','Employee roster'))}</option>
+              <option>${esc(both('薪資清單','Payroll'))}</option>
+              <option>${esc(both('職等分佈','Pay band distribution'))}</option>
+            </select>
+          </div>
+          <div>
+            <div class="eyebrow">${esc(both('據點','Facility'))}</div>
+            <select style="width:100%;margin-top:4px">
+              <option>${esc(both('全部','All'))}</option>
+              <option>${esc(both('誠馨院','Zengxin 1'))}</option>
+              <option>${esc(both('誠芯院','Zengxin 2'))}</option>
+              <option>${esc(both('牛津院','Zengxin 3'))}</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <button class="btn" style="width:100%;background:var(--accent);color:var(--accent-ink)">${esc(both('產生報表','Generate report'))}</button>
+        </div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('最近匯出','Recent exports'))}</h2></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('報告','Report')}</th><th>${bi('產生時間','Generated')}</th><th>${bi('操作','Action')}</th></tr></thead>
+        <tbody>
+          <tr><td>${esc(both('2026-09 員工清冊','2026-09 Roster'))}</td><td class="mono">2026-09-22 14:23</td><td><button class="btn mini ghost">${esc(both('下載','Download'))}</button></td></tr>
+          <tr><td>${esc(both('2026-09 薪資清單','2026-09 Payroll'))}</td><td class="mono">2026-09-20 10:15</td><td><button class="btn mini ghost">${esc(both('下載','Download'))}</button></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+  </div>`;
+}
+
+function viewReportLeave(){
   return `
   <div class="grid">
     <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
-      <b>${esc(both('報表匯出','Reports Export'))}</b><br>
+      <b>${esc(both('請假申請報表','Leave Application Report'))}</b><br>
       ${esc(both(
-        '系統各模組數據彙總與統計分析。按月份、據點、角色篩選匯出。',
-        'Consolidated data and statistical analysis across all modules. Filter by month, facility, and role.'))}
+        '按月份、假別、審核狀態彙總所有請假申請與核准進度。',
+        'Summarizes all leave applications by month, type, approval status and processing pace.'))}
     </div>
     <section class="card">
-      <div class="card-h">
-        <h2>${esc(both('可匯出報表','Available reports'))}</h2>
-        <div class="spacer"></div>
-      </div>
+      <div class="card-h"><h2>${esc(both('報表產生','Generate report'))}</h2></div>
       <div style="padding:14px;display:grid;gap:12px">
-        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('出勤統計報表','Attendance Statistics Report'))}</div>
-          <div style="font-size:12px;color:var(--ink-3)">
-            ${esc(both('按據點、部門、個人匯總出勤率、遲到、請假、加班等數據。','Summarizes attendance rate, late arrivals, leave, and overtime by facility, department, or individual.'))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip">${esc(both('月份選擇','Month'))}</span>
-            <span class="chip">${esc(both('據點篩選','Facility filter'))}</span>
-            <span class="chip">${esc(both('CSV 匯出','CSV export'))}</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div class="eyebrow">${esc(both('統計月份','Period'))}</div>
+            <select style="width:100%;margin-top:4px"><option>2026-09</option><option>2026-08</option><option>2026-07</option></select>
+          </div>
+          <div>
+            <div class="eyebrow">${esc(both('審核狀態','Status'))}</div>
+            <select style="width:100%;margin-top:4px">
+              <option>${esc(both('全部','All'))}</option>
+              <option>${esc(both('待審','Pending'))}</option>
+              <option>${esc(both('已核准','Approved'))}</option>
+              <option>${esc(both('已駁回','Rejected'))}</option>
+            </select>
           </div>
         </div>
-        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('人事資料報表','Personnel Records Report'))}</div>
-          <div style="font-size:12px;color:var(--ink-3)">
-            ${esc(both('員工清冊、薪資清單、職等分佈、在職年資統計。','Employee roster, payroll, pay band distribution, tenure statistics.'))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip">${esc(both('部門','Department'))}</span>
-            <span class="chip">${esc(both('職等','Pay band'))}</span>
-            <span class="chip">${esc(both('僱用別','Employment type'))}</span>
-          </div>
+        <div>
+          <button class="btn" style="width:100%;background:var(--accent);color:var(--accent-ink)">${esc(both('產生報表','Generate report'))}</button>
         </div>
-        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('請假申請報表','Leave Application Report'))}</div>
-          <div style="font-size:12px;color:var(--ink-3)">
-            ${esc(both('按月份、類型、審核狀態彙總所有請假申請。','Summarizes all leave applications by month, type, and approval status.'))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip">${esc(both('狀態篩選','Status'))}</span>
-            <span class="chip">${esc(both('假別分類','Leave type'))}</span>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('統計摘要','Summary'))}</h2></div>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+          <div style="border:1px solid var(--line);border-radius:6px;padding:12px;text-align:center">
+            <div class="mono" style="font-size:18px;font-weight:600;color:var(--accent)">${esc('12')}</div>
+            <div style="font-size:11px;color:var(--ink-3);margin-top:4px">${esc(both('待審','Pending'))}</div>
           </div>
-        </div>
-        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('財務報表','Financial Reports'))}</div>
-          <div style="font-size:12px;color:var(--ink-3)">
-            ${esc(both('月結報告、採購統計、零用金結算、預算執行。','Month-end close, procurement statistics, petty cash reconciliation, budget execution.'))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip">${esc(both('據點','Facility'))}</span>
-            <span class="chip">${esc(both('月份','Month'))}</span>
+          <div style="border:1px solid var(--line);border-radius:6px;padding:12px;text-align:center">
+            <div class="mono" style="font-size:18px;font-weight:600;color:var(--ok)">${esc('8')}</div>
+            <div style="font-size:11px;color:var(--ink-3);margin-top:4px">${esc(both('已核准','Approved'))}</div>
           </div>
-        </div>
-        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('服務與個案報表','Service & Case Reports'))}</div>
-          <div style="font-size:12px;color:var(--ink-3)">
-            ${esc(both('個案主檔統計、入住狀況、照護等級分佈、滿意度調查。','Case file statistics, occupancy, care level distribution, satisfaction surveys.'))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip">${esc(both('據點','Facility'))}</span>
-            <span class="chip">${esc(both('期間','Period'))}</span>
+          <div style="border:1px solid var(--line);border-radius:6px;padding:12px;text-align:center">
+            <div class="mono" style="font-size:18px;font-weight:600;color:var(--crit)">${esc('1')}</div>
+            <div style="font-size:11px;color:var(--ink-3);margin-top:4px">${esc(both('已駁回','Rejected'))}</div>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:6px;padding:12px;text-align:center">
+            <div class="mono" style="font-size:18px;font-weight:600">${esc('21')}</div>
+            <div style="font-size:11px;color:var(--ink-3);margin-top:4px">${esc(both('申請天數','Days requested'))}</div>
           </div>
         </div>
       </div>
-      <div style="padding:14px;background:var(--surface-2);border-radius:6px;margin-top:12px">
-        <div style="font-size:12px;font-weight:500;margin-bottom:8px">${esc(both('報表篩選與匯出','Report filters and export'))}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:12px;margin-top:8px">
+    </section>
+  </div>`;
+}
+
+function viewReportFin(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--warn);background:var(--warn-soft)">
+      <b>${esc(both('財務報表','Financial Reports'))}</b><br>
+      ${esc(both(
+        '月結報告、採購統計、零用金結算、預算執行進度。',
+        'Month-end close, procurement statistics, petty cash reconciliation, budget execution.'))}
+    </div>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('報表產生','Generate report'))}</h2></div>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
-            <div style="color:var(--ink-3);margin-bottom:4px;font-weight:500">${esc(both('報表類型','Report type'))}</div>
-            <select style="font-size:13px;width:100%">
-              <option>${esc(both('出勤統計','Attendance'))}</option>
-              <option>${esc(both('人事資料','Personnel'))}</option>
-              <option>${esc(both('請假申請','Leave'))}</option>
-              <option>${esc(both('財務報表','Financial'))}</option>
-              <option>${esc(both('服務個案','Service'))}</option>
-            </select>
+            <div class="eyebrow">${esc(both('統計月份','Period'))}</div>
+            <select style="width:100%;margin-top:4px"><option>2026-09</option><option>2026-08</option><option>2026-07</option></select>
           </div>
           <div>
-            <div style="color:var(--ink-3);margin-bottom:4px;font-weight:500">${esc(both('統計期間','Period'))}</div>
-            <select style="font-size:13px;width:100%">
-              <option>${esc(both('2026-09','2026-09'))}</option>
-              <option>${esc(both('2026-08','2026-08'))}</option>
-              <option>${esc(both('Q3 2026','Q3 2026'))}</option>
-              <option>${esc(both('本年度','FY 2026'))}</option>
-            </select>
-          </div>
-          <div>
-            <div style="color:var(--ink-3);margin-bottom:4px;font-weight:500">${esc(both('匯出格式','Export format'))}</div>
-            <select style="font-size:13px;width:100%">
-              <option>${esc(both('PDF','PDF'))}</option>
-              <option>${esc(both('Excel','Excel'))}</option>
-              <option>${esc(both('CSV','CSV'))}</option>
+            <div class="eyebrow">${esc(both('報告類型','Report type'))}</div>
+            <select style="width:100%;margin-top:4px">
+              <option>${esc(both('月結報告','Month-end close'))}</option>
+              <option>${esc(both('採購統計','Procurement'))}</option>
+              <option>${esc(both('零用金結算','Petty cash'))}</option>
+              <option>${esc(both('預算執行','Budget'))})</option>
             </select>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="btn">${esc(both('預覽','Preview'))}</button>
-          <button class="btn">${esc(both('下載報表','Download'))}</button>
-          <button class="btn ghost">${esc(both('排程送信','Schedule email'))}</button>
+        <div>
+          <button class="btn" style="width:100%;background:var(--accent);color:var(--accent-ink)">${esc(both('產生報表','Generate report'))}</button>
         </div>
       </div>
-      <div class="legend">${esc(both(
-        '原型說明：報表功能為結構示意，完整系統提供動態數據彙總、圖表化展示、排程自動送信等功能。',
-        'Prototype note: reports are shown as structure. Full system provides live data aggregation, charts, and scheduled delivery.'))}</div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('9 月份月結摘要','September Summary'))}</h2></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('項目','Item')}</th><th>${bi('金額','Amount')}</th><th>${bi('執行率','Rate')}</th></tr></thead>
+        <tbody>
+          <tr><td>${esc(both('月度採購總額','Procurement'))}</td><td class="mono" style="text-align:right">NT$128,500</td><td class="mono" style="text-align:right">68%</td></tr>
+          <tr><td>${esc(both('零用金支出','Petty cash'))}</td><td class="mono" style="text-align:right">NT$12,300</td><td class="mono" style="text-align:right">82%</td></tr>
+          <tr><td>${esc(both('預算執行','Budget utilization'))}</td><td class="mono" style="text-align:right">NT$456,200</td><td class="mono" style="text-align:right">75%</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+  </div>`;
+}
+
+function viewReportSvc(){
+  return `
+  <div class="grid">
+    <div class="note" style="border-left-color:var(--crit);background:var(--crit-soft)">
+      <b>${esc(both('服務與個案報表','Service & Case Reports'))}</b><br>
+      ${esc(both(
+        '個案主檔統計、入住狀況、照護等級分佈、滿意度調查。',
+        'Case file statistics, occupancy, care level distribution, satisfaction surveys.'))}
+    </div>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('報表產生','Generate report'))}</h2></div>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div class="eyebrow">${esc(both('統計日期','As of'))}</div>
+            <select style="width:100%;margin-top:4px"><option>2026-09-22</option><option>2026-09-15</option><option>2026-09-01</option></select>
+          </div>
+          <div>
+            <div class="eyebrow">${esc(both('據點','Facility'))}</div>
+            <select style="width:100%;margin-top:4px">
+              <option>${esc(both('全部','All'))}</option>
+              <option>${esc(both('誠馨院','Zengxin 1'))}</option>
+              <option>${esc(both('誠芯院','Zengxin 2'))}</option>
+              <option>${esc(both('牛津院','Zengxin 3'))}</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <button class="btn" style="width:100%;background:var(--accent);color:var(--accent-ink)">${esc(both('產生報表','Generate report'))}</button>
+        </div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('入住統計','Occupancy Status'))}</h2></div>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+          <div style="border:1px solid var(--line);border-radius:6px;padding:12px;text-align:center">
+            <div class="mono" style="font-size:18px;font-weight:600">${esc('156')}</div>
+            <div style="font-size:11px;color:var(--ink-3);margin-top:4px">${esc(both('在住住民','Current residents'))}</div>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:6px;padding:12px;text-align:center">
+            <div class="mono" style="font-size:18px;font-weight:600">${esc('94%')}</div>
+            <div style="font-size:11px;color:var(--ink-3);margin-top:4px">${esc(both('佔床率','Occupancy rate'))}</div>
+          </div>
+          <div style="border:1px solid var(--line);border-radius:6px;padding:12px;text-align:center">
+            <div class="mono" style="font-size:18px;font-weight:600">${esc('11')}</div>
+            <div style="font-size:11px;color:var(--ink-3);margin-top:4px">${esc(both('待入住','Pending admission'))}</div>
+          </div>
+        </div>
+      </div>
     </section>
   </div>`;
 }
 
 /* =============================== 系統設定 Settings =============================== */
-function viewSettings(){
+function viewSettingsGeneral(){
   return `
   <div class="grid">
-    <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
-      <b>${esc(both('系統設定','Settings'))}</b><br>
-      ${esc(both(
-        '營運入口系統的組態、權限、安全設定。限系統管理員存取。',
-        'System configuration, permissions, and security settings. System administrators only.'))}
-    </div>
     <section class="card">
-      <div class="card-h">
-        <h2>${esc(both('系統參數','System parameters'))}</h2>
-      </div>
-      <div style="padding:14px;display:grid;gap:12px">
+      <div class="card-h"><h2>${esc(both('一般設定','General Settings'))}</h2></div>
+      <div style="padding:14px;display:grid;gap:16px">
         <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
           <div style="font-weight:500;margin-bottom:8px">${esc(both('顯示語言','Display language'))}</div>
-          <div style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(both('系統介面語言偏好。所有頁面均支援繁體中文與英文。','System interface language preference. All pages support Traditional Chinese and English.'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('系統介面語言偏好。所有頁面均支援繁體中文與英文。','System interface language preference. All pages support Traditional Chinese and English.'))}</div>
           <div style="display:flex;gap:8px">
-            <button class="btn mini ghost">${esc(both('繁體中文','Traditional Chinese'))}</button>
+            <button class="btn mini" style="background:var(--accent);color:var(--accent-ink)">${esc(both('繁體中文','Traditional Chinese'))}</button>
             <button class="btn mini ghost">${esc(both('English','English'))}</button>
           </div>
         </div>
         <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
-          <div style="font-weight:500;margin-bottom:8px">${esc(both('資料範圍假設','Data scope assumption'))}</div>
-          <div style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(both(
-            '測試模式：切換此開關以改變當前身分所見之資料範圍。生產環境中權限由系統與人資部定義，無法由使用者變更。',
-            'Test mode: Toggle to change the data scope for the current role. In production, permissions are defined by IT & HR and cannot be changed by users.'))}</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <input type="checkbox" id="lockScope" style="width:18px;height:18px;cursor:pointer">
-            <label for="lockScope" style="cursor:pointer;font-size:12px">${esc(both('鎖定資料範圍（僅檢視當前據點）','Limit to current facility only'))}</label>
-          </div>
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('時區設定','Time zone'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('系統所用時區。預設為台北時間 (UTC+8)。','System time zone. Default is Taipei time (UTC+8).'))}</div>
+          <select style="width:100%;max-width:300px"><option>UTC+8 (台北 / Taipei)</option><option>UTC+0 (GMT)</option></select>
         </div>
-        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
-          <div style="font-weight:500;margin-bottom:8px">${esc(both('登入與帳號','Login & Account'))}</div>
-          <div style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(both(
-            '原型環境無帳號登入機制。完整系統將支援 LDAP、SSO、MFA 等企業身份管理。',
-            'This prototype has no login. Production will support LDAP, SSO, MFA and enterprise identity management.'))}</div>
-          <div style="display:grid;gap:6px;font-size:12px">
-            <div><span style="color:var(--ink-3)">帳號身份切換</span> · <button class="btn mini ghost">${esc(both('切換身分','Switch role'))}</button></div>
-            <div><span style="color:var(--ink-3)">登出</span> · <button class="btn mini ghost">${esc(both('登出系統','Sign out'))}</button></div>
-          </div>
-        </div>
-        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
-          <div style="font-weight:500;margin-bottom:8px">${esc(both('通知與提醒','Notifications & Alerts'))}</div>
-          <div style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(both(
-            '設定請假審核、公告發布、待辦事項等通知偏好。',
-            'Configure notification preferences for leave approvals, announcements, and to-do items.'))}</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <input type="checkbox" checked id="notif1" style="width:18px;height:18px;cursor:pointer">
-            <label for="notif1" style="cursor:pointer;font-size:12px">${esc(both('請假審核提醒','Leave approval alerts'))}</label>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-            <input type="checkbox" checked id="notif2" style="width:18px;height:18px;cursor:pointer">
-            <label for="notif2" style="cursor:pointer;font-size:12px">${esc(both('公告推播','Announcement notifications'))}</label>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-            <input type="checkbox" id="notif3" style="width:18px;height:18px;cursor:pointer">
-            <label for="notif3" style="cursor:pointer;font-size:12px">${esc(both('日報摘要信件','Daily digest email'))}</label>
-          </div>
-        </div>
-        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
-          <div style="font-weight:500;margin-bottom:8px">${esc(both('資訊安全','Security'))}</div>
-          <div style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(both(
-            '密碼策略、IP 白名單、API 金鑰、稽核日誌等安全設定。',
-            'Password policies, IP whitelisting, API keys, audit logs, and security settings.'))}</div>
-          <div style="display:grid;gap:6px;font-size:12px">
-            <div><span style="color:var(--ink-3)">變更密碼</span> · <button class="btn mini ghost">${esc(both('更新','Update'))}</button></div>
-            <div><span style="color:var(--ink-3)">稽核日誌</span> · <button class="btn mini ghost">${esc(both('檢視','View'))}</button></div>
-            <div><span style="color:var(--ink-3)">API 金鑰</span> · <button class="btn mini ghost">${esc(both('管理','Manage'))}</button></div>
-          </div>
-        </div>
-        <div style="padding-bottom:12px">
-          <div style="font-weight:500;margin-bottom:8px">${esc(both('系統版本與更新','System version & updates'))}</div>
-          <div style="font-size:12px;color:var(--ink-3)">
-            <div>${esc(both('版本：v2.0 · 原型展示版','Version: v2.0 · Prototype demo'))}</div>
-            <div style="margin-top:4px">${esc(both('最後更新：2026 年 9 月 22 日','Last updated: 22 Sept 2026'))}</div>
-            <div style="margin-top:4px">${esc(both('下次計畫更新：2026 年 11 月（Phase 2 功能）','Next update: Nov 2026 (Phase 2 features)'))}</div>
+        <div>
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('主題配色','Theme'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('選擇淺色或深色主題，跟隨系統設定或手動選擇。','Choose light or dark theme, follow system settings or manual.'))}</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn mini ghost">${esc(both('淺色','Light'))}</button>
+            <button class="btn mini ghost">${esc(both('深色','Dark'))}</button>
+            <button class="btn mini ghost">${esc(both('跟隨系統','System'))}</button>
           </div>
         </div>
       </div>
-      <div class="legend">${esc(both(
-        '原型說明：系統設定為結構展示。完整系統需符合個資保護、資訊安全、稽核等法規要求。',
-        'Prototype note: settings shown as structure. Full system must comply with data protection, security, and audit regulations.'))}</div>
     </section>
   </div>`;
 }
 
-BINDERS['rpt']=function(){};
-BINDERS['set']=function(){};
+function viewSettingsAccount(){
+  return `
+  <div class="grid">
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('帳號管理','Account Management'))}</h2></div>
+      <div style="padding:14px;display:grid;gap:16px">
+        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('帳號資訊','Account Info'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);display:grid;gap:6px;margin-bottom:12px">
+            <div>身份：${esc(both('執行長','CEO'))}</div>
+            <div>帳號：${esc(both('王執行','Wang Executive'))}</div>
+            <div>部門：${esc(both('經營管理處','Executive'))}</div>
+            <div>登入時間：2026-09-22 09:15</div>
+          </div>
+        </div>
+        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('變更密碼','Change password'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('定期更新密碼以保護帳號安全。','Update your password regularly to keep your account secure.'))}</div>
+          <button class="btn mini">${esc(both('變更密碼','Change password'))}</button>
+        </div>
+        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('登出','Sign out'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('登出目前帳號並返回登入頁面。','Sign out of your account and return to login.'))}</div>
+          <button class="btn mini ghost">${esc(both('登出','Sign out'))}</button>
+        </div>
+        <div>
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('帳號綁定','Account linking'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('綁定 LDAP、SSO 或其他身份服務。','Link to LDAP, SSO or other identity services.'))}</div>
+          <button class="btn mini ghost">${esc(both('管理綁定','Manage links'))}</button>
+        </div>
+      </div>
+    </section>
+  </div>`;
+}
+
+function viewSettingsSecurity(){
+  return `
+  <div class="grid">
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('安全設定','Security Settings'))}</h2></div>
+      <div style="padding:14px;display:grid;gap:16px">
+        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('多因子驗證 (MFA)','Multi-factor authentication'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('啟用 MFA 提高帳號安全性。','Enable MFA for enhanced account security.'))}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="mfa" style="width:18px;height:18px;cursor:pointer">
+            <label for="mfa" style="cursor:pointer;font-size:12px">${esc(both('啟用 MFA','Enable MFA'))}</label>
+          </div>
+        </div>
+        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('IP 白名單','IP whitelist'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('限制只能從指定 IP 位址登入。','Restrict login to specific IP addresses only.'))}</div>
+          <button class="btn mini ghost">${esc(both('管理白名單','Manage whitelist'))}</button>
+        </div>
+        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('作業階段 (Session)','Session management'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('檢視和終止目前的登入階段。','View and terminate your current sessions.'))}</div>
+          <button class="btn mini ghost">${esc(both('檢視階段','View sessions'))}</button>
+        </div>
+        <div>
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('稽核日誌','Audit log'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('查詢帳號登入、資料存取等行為紀錄。','View account login, data access, and action records.'))}</div>
+          <button class="btn mini ghost">${esc(both('查詢日誌','View audit log'))}</button>
+        </div>
+      </div>
+    </section>
+  </div>`;
+}
+
+function viewSettingsNotif(){
+  return `
+  <div class="grid">
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('通知設定','Notification Settings'))}</h2></div>
+      <div style="padding:14px;display:grid;gap:16px">
+        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('請假審核提醒','Leave approval notifications'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('有新的請假申請等待審核時提醒。','Alert when new leave applications need approval.'))}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" checked id="notif_leave" style="width:18px;height:18px;cursor:pointer">
+            <label for="notif_leave" style="cursor:pointer;font-size:12px">${esc(both('啟用','Enable'))}</label>
+          </div>
+        </div>
+        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('公告推播','Announcement notifications'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('發布新公告時推播提醒。','Notify when new announcements are published.'))}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" checked id="notif_ann" style="width:18px;height:18px;cursor:pointer">
+            <label for="notif_ann" style="cursor:pointer;font-size:12px">${esc(both('啟用','Enable'))}</label>
+          </div>
+        </div>
+        <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('系統維護提醒','System maintenance notices'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('系統更新或維護排程通知。','Alert for system updates and maintenance schedules.'))}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" checked id="notif_maint" style="width:18px;height:18px;cursor:pointer">
+            <label for="notif_maint" style="cursor:pointer;font-size:12px">${esc(both('啟用','Enable'))}</label>
+          </div>
+        </div>
+        <div>
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('日報摘要','Daily digest'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:12px">${esc(both('每日摘要信件（包含待辦項目、新公告、考勤異常等）。','Daily email summary of to-do items, announcements, and attendance alerts.'))}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="notif_digest" style="width:18px;height:18px;cursor:pointer">
+            <label for="notif_digest" style="cursor:pointer;font-size:12px">${esc(both('啟用','Enable'))}</label>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>`;
+}
+
+BINDERS['rpt:att']=function(){};
+BINDERS['rpt:hr']=function(){};
+BINDERS['rpt:leave']=function(){};
+BINDERS['rpt:fin']=function(){};
+BINDERS['rpt:svc']=function(){};
+BINDERS['set:general']=function(){};
+BINDERS['set:account']=function(){};
+BINDERS['set:security']=function(){};
+BINDERS['set:notif']=function(){};
 </script>
 <script>
 /* =============================== 權限對照表 Permission matrix =============================== */
