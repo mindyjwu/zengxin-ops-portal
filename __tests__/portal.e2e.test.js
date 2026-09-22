@@ -368,7 +368,7 @@ test.describe('CSV exports', () => {
     attendance: ['出勤統計報表', '員工編號,職稱,據點'],
     personnel: ['人事資料報表', '員工編號,姓名,職稱'],
     leave: ['差勤申請報表', '單號,類型,員工編號'],
-    financial: ['財務報表', '員工編號,姓名,據點,月薪']
+    financial: ['財務報表', '員工編號,姓名,據點,部門,計薪方式,應發金額']
   };
   async function download(page, type) {
     const [dl] = await Promise.all([
@@ -417,6 +417,16 @@ test.describe('CSV exports', () => {
     ({ lines } = await download(page, 'personnel'));
     expect(col(lines, '薪資').every(v => /^\d+$/.test(v))).toBe(true);
   });
+
+  for (const role of ['admin', 'manager']) {
+    test(`${role} cannot export the payroll (financial) report`, async ({ page }) => {
+      await setRole(page, role);
+      await go(page, 'rpt');
+      await expect(page.locator('[data-export="financial"]')).toHaveCount(0);
+      await expect(page.locator('#view')).toContainText('僅人資可匯出薪資資料');
+      await expect(page.locator('[data-export="attendance"]')).toBeVisible();
+    });
+  }
 
   test('manager exports contain only O1 staff', async ({ page }) => {
     await setRole(page, 'manager');
