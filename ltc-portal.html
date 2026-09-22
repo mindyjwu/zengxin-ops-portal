@@ -2111,110 +2111,120 @@ BINDERS['fin:petty']=function(){};
 BINDERS['fin:report']=function(){};
 
 /* =============================== 報表匯出 Reports Export =============================== */
+function generatePersonnelReport(month){
+  const units=activeUnitIds();
+  const list=STAFF.filter(s=>units.includes(s.unit)).sort((a,b)=>nameOf(a).localeCompare(nameOf(b)));
+  const myLog=state.myHoursLog||{entries:[]};
+  const rows=[['員工編號','姓名','部門','據點','職稱','職等','薪資','月工時','工作類型統計']];
+  list.forEach(e=>{
+    const entries=myLog.entries.filter(x=>x.date.startsWith(month));
+    const totalHours=entries.reduce((s,x)=>s+(parseFloat(x.hours)||0),0);
+    const types={};
+    entries.forEach(x=>{ types[x.type]=(types[x.type]||0)+1; });
+    const typeStr=Object.entries(types).map(([k,v])=>`${k}:${v}`).join('; ') || '無';
+    rows.push([e.id, nameOf(e), L(DEPTS[e.dept]), L(unit(e.unit)), L(TITLES[e.title]), e.band, money(e.salary), totalHours.toFixed(1), typeStr]);
+  });
+  return rows.map(r=>r.map(v=>typeof v==='string'&&v.includes(',')?`"${v}"`:v).join(',')).join('\n');
+}
+function generateAttendanceReport(month){
+  const units=activeUnitIds();
+  const list=STAFF.filter(s=>units.includes(s.unit)).sort((a,b)=>nameOf(a).localeCompare(nameOf(b)));
+  const [y,m]=month.split('-').map(Number);
+  const rows=[['員工編號','姓名','據點','部門','出勤率%','正常','遲到','請假','未打卡','系統工時','員工登錄工時']];
+  list.forEach(e=>{
+    const sum=attSummary(e.id,y,m);
+    const myLog=state.myHoursLog||{entries:[]};
+    const logged=myLog.entries.filter(x=>x.date.startsWith(month)&&(x.empId===e.id||!x.empId));
+    const loggedHours=logged.reduce((s,x)=>s+(parseFloat(x.hours)||0),0);
+    rows.push([e.id, nameOf(e), L(unit(e.unit)), L(DEPTS[e.dept]), sum.rate, sum.present, sum.late, sum.leave, sum.miss, sum.ot.toFixed(1), loggedHours.toFixed(1)]);
+  });
+  return rows.map(r=>r.map(v=>typeof v==='string'&&v.includes(',')?`"${v}"`:v).join(',')).join('\n');
+}
+function generateLeaveReport(month){
+  const units=activeUnitIds();
+  const list=LEAVE.filter(l=>units.includes(person(l.emp).unit)&&l.from.startsWith(month.slice(0,7))).sort((a,b)=>a.from.localeCompare(b.from));
+  const rows=[['申請編號','員工編號','員工姓名','請假類別','起訖日期','天數','狀態','申請日','備註']];
+  list.forEach(l=>{
+    const p=person(l.emp);
+    rows.push([l.id, p.id, nameOf(p), L(LEAVE_TYPES[l.type]), `${l.from}~${l.to}`, l.days, L(LEAVE_STATUS[l.status]), l.filed, l.note?L(l.note):'']);
+  });
+  return rows.map(r=>r.map(v=>typeof v==='string'&&v.includes(',')?`"${v}"`:v).join(',')).join('\n');
+}
+function generateFinancialReport(month){
+  const units=activeUnitIds();
+  const list=STAFF.filter(s=>units.includes(s.unit)).sort((a,b)=>nameOf(a).localeCompare(nameOf(b)));
+  const [y,m]=month.split('-').map(Number);
+  const typeMap={full:'全職',part:'兼職'};
+  const rows=[['員工編號','姓名','據點','月薪','職等','僱用別','工作天數','預估薪資']];
+  list.forEach(e=>{
+    const sum=attSummary(e.id,y,m);
+    const workDays=sum.present+sum.late+Math.ceil(sum.ot/8);
+    const estimatedSal=e.salary*(workDays/22);
+    rows.push([e.id, nameOf(e), L(unit(e.unit)), money(e.salary), e.band, typeMap[e.type]||e.type, workDays, money(estimatedSal)]);
+  });
+  return rows.map(r=>r.map(v=>typeof v==='string'&&v.includes(',')?`"${v}"`:v).join(',')).join('\n');
+}
+function downloadCSV(data, filename){
+  const bom='﻿';
+  const csv=new Blob([bom+data], {type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(csv);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download=filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 function viewReports(){
   const units=activeUnitIds();
+  const month=state.reportMonth||'2026-09';
   return `
   <div class="grid">
     <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
-      <b>${esc(both('報表匯出','Reports Export'))}</b><br>
-      ${esc(both(
-        '系統各模組數據彙總與統計分析。按月份、據點、角色篩選匯出。',
-        'Consolidated data and statistical analysis across all modules. Filter by month, facility, and role.'))}
+      <b>報表匯出</b><br>
+      系統各模組數據彙總與統計分析。按月份、據點匯出成 CSV 檔案。
     </div>
     <section class="card">
-      <div class="card-h">
-        <h2>${esc(both('可匯出報表','Available reports'))}</h2>
-        <div class="spacer"></div>
-      </div>
+      <div class="card-h"><h2>可匯出報表</h2></div>
       <div style="padding:14px;display:grid;gap:12px">
         <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('出勤統計報表','Attendance Statistics Report'))}</div>
-          <div style="font-size:12px;color:var(--ink-3)">
-            ${esc(both('按據點、部門、個人匯總出勤率、遲到、請假、加班等數據。','Summarizes attendance rate, late arrivals, leave, and overtime by facility, department, or individual.'))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip">${esc(both('月份選擇','Month'))}</span>
-            <span class="chip">${esc(both('據點篩選','Facility filter'))}</span>
-            <span class="chip">${esc(both('CSV 匯出','CSV export'))}</span>
-          </div>
+          <div style="font-weight:500">出勤統計報表</div>
+          <div style="font-size:12px;color:var(--ink-3)">包含系統記錄出勤與員工登錄工時。按據點、部門彙總出勤率、遲到、請假、加班等數據。</div>
+          <button class="btn mini" data-export="attendance">下載 CSV</button>
         </div>
         <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('人事資料報表','Personnel Records Report'))}</div>
-          <div style="font-size:12px;color:var(--ink-3)">
-            ${esc(both('員工清冊、薪資清單、職等分佈、在職年資統計。','Employee roster, payroll, pay band distribution, tenure statistics.'))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip">${esc(both('部門','Department'))}</span>
-            <span class="chip">${esc(both('職等','Pay band'))}</span>
-            <span class="chip">${esc(both('僱用別','Employment type'))}</span>
-          </div>
+          <div style="font-weight:500">人事資料報表</div>
+          <div style="font-size:12px;color:var(--ink-3)">員工清冊、月工時、薪資清單、登錄工作類型統計。</div>
+          <button class="btn mini" data-export="personnel">下載 CSV</button>
         </div>
         <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('請假申請報表','Leave Application Report'))}</div>
-          <div style="font-size:12px;color:var(--ink-3)">
-            ${esc(both('按月份、類型、審核狀態彙總所有請假申請。','Summarizes all leave applications by month, type, and approval status.'))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip">${esc(both('狀態篩選','Status'))}</span>
-            <span class="chip">${esc(both('假別分類','Leave type'))}</span>
-          </div>
+          <div style="font-weight:500">請假申請報表</div>
+          <div style="font-size:12px;color:var(--ink-3)">按月份、類型、審核狀態彙總所有請假申請。</div>
+          <button class="btn mini" data-export="leave">下載 CSV</button>
         </div>
         <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('財務報表','Financial Reports'))}</div>
-          <div style="font-size:12px;color:var(--ink-3)">
-            ${esc(both('月結報告、採購統計、零用金結算、預算執行。','Month-end close, procurement statistics, petty cash reconciliation, budget execution.'))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip">${esc(both('據點','Facility'))}</span>
-            <span class="chip">${esc(both('月份','Month'))}</span>
-          </div>
-        </div>
-        <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('服務與個案報表','Service & Case Reports'))}</div>
-          <div style="font-size:12px;color:var(--ink-3)">
-            ${esc(both('個案主檔統計、入住狀況、照護等級分佈、滿意度調查。','Case file statistics, occupancy, care level distribution, satisfaction surveys.'))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <span class="chip">${esc(both('據點','Facility'))}</span>
-            <span class="chip">${esc(both('期間','Period'))}</span>
-          </div>
+          <div style="font-weight:500">財務報表</div>
+          <div style="font-size:12px;color:var(--ink-3)">月結報告、出勤天數、預估薪資計算。</div>
+          <button class="btn mini" data-export="financial">下載 CSV</button>
         </div>
       </div>
-      <div style="padding:14px;background:var(--surface-2);border-radius:6px;margin-top:12px">
-        <div style="font-size:12px;font-weight:500;margin-bottom:8px">${esc(both('報表篩選與匯出','Report filters and export'))}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:12px;margin-top:8px">
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>報表篩選與匯出</h2></div>
+      <div style="padding:14px;background:var(--surface-2);border-radius:6px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:12px;margin-bottom:12px">
           <div>
-            <div style="color:var(--ink-3);margin-bottom:4px;font-weight:500">${esc(both('報表類型','Report type'))}</div>
-            <select style="font-size:13px;width:100%">
-              <option>${esc(both('出勤統計','Attendance'))}</option>
-              <option>${esc(both('人事資料','Personnel'))}</option>
-              <option>${esc(both('請假申請','Leave'))}</option>
-              <option>${esc(both('財務報表','Financial'))}</option>
-              <option>${esc(both('服務個案','Service'))}</option>
-            </select>
-          </div>
-          <div>
-            <div style="color:var(--ink-3);margin-bottom:4px;font-weight:500">${esc(both('統計期間','Period'))}</div>
-            <select style="font-size:13px;width:100%">
-              <option>${esc(both('2026-09','2026-09'))}</option>
-              <option>${esc(both('2026-08','2026-08'))}</option>
-              <option>${esc(both('Q3 2026','Q3 2026'))}</option>
-              <option>${esc(both('本年度','FY 2026'))}</option>
-            </select>
-          </div>
-          <div>
-            <div style="color:var(--ink-3);margin-bottom:4px;font-weight:500">${esc(both('匯出格式','Export format'))}</div>
-            <select style="font-size:13px;width:100%">
-              <option>${esc(both('PDF','PDF'))}</option>
-              <option>${esc(both('Excel','Excel'))}</option>
-              <option>${esc(both('CSV','CSV'))}</option>
+            <label style="color:var(--ink-3);margin-bottom:4px;font-weight:500;display:block">統計月份</label>
+            <select id="reportMonth" style="font-size:13px;width:100%">
+              <option value="2026-09" ${month==='2026-09'?'selected':''}>2026-09</option>
+              <option value="2026-08" ${month==='2026-08'?'selected':''}>2026-08</option>
+              <option value="2026-07" ${month==='2026-07'?'selected':''}>2026-07</option>
+              <option value="2026-06" ${month==='2026-06'?'selected':''}>2026-06</option>
             </select>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="btn">${esc(both('預覽','Preview'))}</button>
-          <button class="btn">${esc(both('下載報表','Download'))}</button>
-          <button class="btn ghost">${esc(both('排程送信','Schedule email'))}</button>
-        </div>
+        <div style="font-size:12px;color:var(--ink-3)">✓ 選擇月份後自動套用到所有報表。CSV 檔案支援 Excel 與其他試算表軟體開啟。</div>
       </div>
-      <div class="legend">${esc(both(
-        '原型說明：報表功能為結構示意，完整系統提供動態數據彙總、圖表化展示、排程自動送信等功能。',
-        'Prototype note: reports are shown as structure. Full system provides live data aggregation, charts, and scheduled delivery.'))}</div>
     </section>
   </div>`;
 }
@@ -2307,7 +2317,24 @@ function viewSettings(){
   </div>`;
 }
 
-BINDERS['rpt']=function(){};
+BINDERS['rpt']=function(){
+  const month=state.reportMonth||'2026-09';
+  const monthSel=document.getElementById('reportMonth');
+  if(monthSel) monthSel.onchange=e=>{ state.reportMonth=e.target.value; render(); };
+
+  document.querySelectorAll('[data-export]').forEach(btn=>{
+    btn.onclick=e=>{
+      const type=e.target.dataset.export;
+      const filename=`報表_${type}_${month}.csv`;
+      let data='';
+      if(type==='personnel') data=generatePersonnelReport(month);
+      else if(type==='attendance') data=generateAttendanceReport(month);
+      else if(type==='leave') data=generateLeaveReport(month);
+      else if(type==='financial') data=generateFinancialReport(month);
+      if(data) downloadCSV(data, filename);
+    };
+  });
+};
 BINDERS['set']=function(){};
 </script>
 <script>
