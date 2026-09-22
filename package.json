@@ -7,7 +7,9 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest && playwright test",
+    "test:unit": "jest",
+    "test:e2e": "playwright test"
   },
   "repository": {
     "type": "git",
@@ -21,6 +23,7 @@
   },
   "homepage": "https://github.com/mindyjwu/zengxin-ops-portal#readme",
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "jest": "^30.5.2"
   }
 }
