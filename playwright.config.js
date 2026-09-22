@@ -24,9 +24,12 @@ module.exports = defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        launchArgs: [
-          '--disable-blink-features=AutomationControlled'
-        ]
+        launchOptions: {
+          // Local sandboxes may ship a different Chromium build than the one
+          // @playwright/test expects; point at it with PW_CHROMIUM_PATH.
+          executablePath: process.env.PW_CHROMIUM_PATH || undefined,
+          args: ['--disable-blink-features=AutomationControlled'],
+        },
       },
     },
   ],
