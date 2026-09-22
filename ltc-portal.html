@@ -1232,27 +1232,41 @@ function viewEmployees(){
         <thead><tr>
           <th>${bi('員工編號','Employee no.')}</th><th>${bi('姓名','Name')}</th><th>${bi('職稱','Title')}</th>
           <th>${bi('部門','Department')}</th><th>${bi('服務據點','Facility')}</th><th>${bi('到職日','Hire date')}</th>
-          <th>${bi('僱用別','Employment')}</th><th>${bi('月薪','Monthly pay')}</th>
+          <th>${bi('僱用別','Employment')}</th>
+          ${can('viewSalary')?'<th>'+bi('月薪','Monthly pay')+'</th>':''}
+          ${can('viewSalary')?'<th>'+bi('職等','Pay band')+'</th>':''}
+          ${can('viewSensitive')?'<th>'+bi('聯絡電話','Contact')+'</th>':''}
+          ${can('viewSensitive')?'<th>'+bi('銀行帳號','Bank account')+'</th>':''}
+          ${can('viewPerf')?'<th>'+bi('績效評分','Performance')+'</th>':''}
+          ${can('viewSensitive')?'<th>'+bi('保險類別','Insurance')+'</th>':''}
         </tr></thead>
         <tbody>
-        ${list.map(s=>`<tr class="clickable" data-emp="${s.id}">
-          <td class="mono">${s.id}</td>
-          <td>${esc(nameOf(s))}<span class="muted" style="font-size:11px"> ${esc(state.lang==='zh'?s.en:s.zh)}</span></td>
-          <td>${esc(both(TITLES[s.title].zh,TITLES[s.title].en))}</td>
-          <td>${esc(both(DEPTS[s.dept].zh,DEPTS[s.dept].en))}</td>
-          <td>${esc(both(unit(s.unit).zh,unit(s.unit).en))}</td>
-          <td class="mono">${s.hired}</td>
-          <td><span class="chip ${s.type==='part'?'warn':''}">${esc(s.type==='part'?both('部分工時','Part-time'):both('全職','Full-time'))}</span></td>
-          <td>${can('salary')?`<span class="mono">${money(s.salary)}</span>`
-              :`<span class="lock">${lockIcon()}${esc(both('僅人資可見','HR only'))}</span>`}</td>
-        </tr>`).join('')}
+        ${list.map(s=>{
+          const pd=personelData(s.id);
+          const seesSensitive = can('viewSensitive') || me().id===s.id;
+          return `<tr class="clickable" data-emp="${s.id}">
+            <td class="mono">${s.id}</td>
+            <td>${esc(nameOf(s))}<span class="muted" style="font-size:11px"> ${esc(state.lang==='zh'?s.en:s.zh)}</span></td>
+            <td>${esc(both(TITLES[s.titleKey].zh,TITLES[s.titleKey].en))}</td>
+            <td>${esc(both(DEPTS[s.dept].zh,DEPTS[s.dept].en))}</td>
+            <td>${esc(both(unit(s.unit).zh,unit(s.unit).en))}</td>
+            <td class="mono">${s.hired}</td>
+            <td><span class="chip ${s.type==='part'?'warn':''}">${esc(s.type==='part'?both('部分工時','Part-time'):both('全職','Full-time'))}</span></td>
+            ${can('viewSalary')?`<td><span class="mono">${money(s.salary)}</span></td>`:''}
+            ${can('viewSalary')?`<td><span class="mono">${s.band}</span></td>`:''}
+            ${can('viewSensitive')?`<td>${seesSensitive?'<span class="mono">'+esc(pd.phone||'—')+'</span>':'<span class="lock">'+lockIcon()+esc(both('僅能看自己','View own only'))+'</span>'}</td>`:''}
+            ${can('viewSensitive')?`<td>${seesSensitive?'<span class="mono">'+esc(pd.bankAcct||'—')+'</span>':'<span class="lock">'+lockIcon()+esc(both('受限','Restricted'))+'</span>'}</td>`:''}
+            ${can('viewPerf')?`<td>${esc(pd.performanceRating||'—')}</td>`:''}
+            ${can('viewSensitive')?`<td>${seesSensitive?esc(pd.insuranceType||'—'):'<span class="lock">'+lockIcon()+esc(both('受限','Restricted'))+'</span>'}</td>`:''}
+          </tr>`;
+        }).join('')}
         </tbody>
       </table>
       </div>
       ${list.length?'':`<div class="empty">${esc(both('查無資料','No records'))}</div>`}
       <div class="legend">${esc(both(
-        '原型說明：資料僅存於瀏覽器記憶體，重新整理即還原；「新增員工」未實作寫入。'+(can('salary')?'':'薪資欄位依身分隱藏 — 系統管理員是否應看到薪資，是第二個待決議題。'),
-        'Prototype note: data lives in browser memory and resets on reload; "Add employee" does not write anything.'+(can('salary')?'':' Pay is hidden for this role — whether the system administrator should see compensation is the second open question.')))}</div>
+        '原型說明：資料僅存於瀏覽器記憶體，重新整理即還原；敏感欄位（薪資、績效、保險、聯絡資訊）依角色與權限隱藏。員工僅能看自己的敏感資料，主管與人資可看全員。',
+        'Prototype note: data lives in browser memory and resets on reload. Sensitive fields (pay, performance, insurance, contact) are hidden by role. Staff see only their own sensitive data; managers and HR see all employees.'))}</div>
     </section>
   </div>`;
 }
@@ -1294,14 +1308,46 @@ function openPerson(id){
           <dl class="kv">
             <dt>${esc(both('員工編號','Employee no.'))}</dt><dd class="mono">${p.id}</dd>
             <dt>${esc(both('部門','Department'))}</dt><dd>${esc(both(DEPTS[p.dept].zh,DEPTS[p.dept].en))}</dd>
-            <dt>${esc(both('直屬主管','Reports to'))}</dt><dd>${mgr?esc(nameOf(mgr)+' · '+L(TITLES[mgr.title])):esc(both('無','—'))}</dd>
+            <dt>${esc(both('直屬主管','Reports to'))}</dt><dd>${mgr?esc(nameOf(mgr)+' · '+L(TITLES[mgr.titleKey])):esc(both('無','—'))}</dd>
             <dt>${esc(both('到職日','Hire date'))}</dt><dd class="mono">${visible?p.hired:'—'}</dd>
             <dt>${esc(both('分機','Extension'))}</dt><dd class="mono">${p.ext}</dd>
-            <dt>${esc(both('手機','Mobile'))}</dt><dd>${visible&&can('mobile')?`<span class="mono">${p.mobile}</span>`:`<span class="lock">${lockIcon()}${esc(both('受限','Restricted'))}</span>`}</dd>
-            <dt>${esc(both('職等','Pay band'))}</dt><dd>${visible&&can('salary')?`<span class="mono">${p.band}</span>`:`<span class="lock">${lockIcon()}${esc(both('受限','Restricted'))}</span>`}</dd>
-            <dt>${esc(both('月薪','Monthly pay'))}</dt><dd>${visible&&can('salary')?`<span class="mono">${money(p.salary)}</span>`:`<span class="lock">${lockIcon()}${esc(both('僅人資可見','HR only'))}</span>`}</dd>
           </dl>
         </section>
+        ${(() => {
+          const pd = personelData(p.id);
+          const seesSensitive = can('viewSensitive') || me().id===p.id;
+          return `<section>
+            <div class="eyebrow" style="margin-bottom:8px">${esc(both('聯絡與帳戶','Contact & Account'))}</div>
+            <dl class="kv">
+              <dt>${esc(both('手機','Mobile'))}</dt><dd>${seesSensitive?`<span class="mono">${esc(pd.phone||'—')}</span>`:`<span class="lock">${lockIcon()}${esc(both('僅能看自己','View own only'))}</span>`}</dd>
+              <dt>${esc(both('電郵','Email'))}</dt><dd>${seesSensitive?`<span class="mono" style="word-break:break-all">${esc(pd.email||'—')}</span>`:`<span class="lock">${lockIcon()}${esc(both('受限','Restricted'))}</span>`}</dd>
+              <dt>${esc(both('身份證','ID number'))}</dt><dd>${seesSensitive?`<span class="mono">${esc(pd.idNum||'—')}</span>`:`<span class="lock">${lockIcon()}${esc(both('受限','Restricted'))}</span>`}</dd>
+              <dt>${esc(both('銀行帳號','Bank account'))}</dt><dd>${seesSensitive?`<span class="mono">${esc(pd.bankAcct||'—')}</span>`:`<span class="lock">${lockIcon()}${esc(both('受限','Restricted'))}</span>`}</dd>
+            </dl>
+          </section>`;
+        })()}
+        ${can('viewSalary')?`<section>
+          <div class="eyebrow" style="margin-bottom:8px">${esc(both('薪資資料','Compensation'))}</div>
+          <dl class="kv">
+            <dt>${esc(both('職等','Pay band'))}</dt><dd><span class="mono">${p.band}</span></dd>
+            <dt>${esc(both('月薪','Monthly pay'))}</dt><dd><span class="mono">${money(p.salary)}</span></dd>
+            <dt>${esc(both('僱用別','Employment type'))}</dt><dd>${esc(p.type==='part'?both('部分工時','Part-time'):both('全職','Full-time'))}</dd>
+          </dl>
+        </section>`:''}
+        ${can('viewPerf')?`<section>
+          <div class="eyebrow" style="margin-bottom:8px">${esc(both('績效與評核','Performance & Review'))}</div>
+          <dl class="kv">
+            <dt>${esc(both('績效評分','Performance rating'))}</dt><dd>${esc(personelData(p.id).performanceRating||'—')}</dd>
+            <dt>${esc(both('評核日期','Review date'))}</dt><dd class="mono">${esc(personelData(p.id).reviewDate||'—')}</dd>
+          </dl>
+        </section>`:''}
+        ${can('viewSensitive')?`<section>
+          <div class="eyebrow" style="margin-bottom:8px">${esc(both('保險資料','Insurance'))}</div>
+          <dl class="kv">
+            <dt>${esc(both('保險類別','Insurance type'))}</dt><dd>${esc(personelData(p.id).insuranceType||'—')}</dd>
+            <dt>${esc(both('投保級距','Coverage level'))}</dt><dd>${esc(personelData(p.id).coverageLevel||'—')}</dd>
+          </dl>
+        </section>`:''}
         ${visible?`
         <section>
           <div class="eyebrow" style="margin-bottom:8px">${esc(both('出勤摘要','Attendance summary'))} · <span class="mono">${state.attMonth}</span></div>
