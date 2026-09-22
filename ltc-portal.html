@@ -550,6 +550,7 @@ const MODULES = [
   ]},
   {id:'hr', zh:'人事系統', en:'HR', built:true, tabs:[
     {id:'emp',   zh:'員工資料', en:'Employee records'},
+    {id:'mylog', zh:'我的工時', en:'My Hours'},
     {id:'att',   zh:'出勤管理', en:'Attendance'},
     {id:'leave', zh:'請假審核', en:'Leave approvals'}
   ]},
@@ -697,7 +698,7 @@ function render(){
   const fn={
     'arch:scope':viewArchScope, 'arch:roles':viewArchRoles,
     'ann:board':viewBoard, 'ann:cal':viewCalendar, 'ann:org':viewOrg, 'ann:dir':viewDirectory,
-    'hr:emp':viewEmployees, 'hr:att':viewAttendance, 'hr:leave':viewLeave,
+    'hr:emp':viewEmployees, 'hr:mylog':viewMyHours, 'hr:att':viewAttendance, 'hr:leave':viewLeave,
     'perm:matrix':viewMatrix, 'perm:open':viewOpen,
     'doc:comp':viewDocCompliance, 'doc:guide':viewDocGuides, 'doc:meeting':viewDocMeeting, 'doc:sysinfo':viewDocSysInfo,
     'svc:case':viewSvcCase, 'svc:contract':viewSvcContract, 'svc:assess':viewSvcAssess,
@@ -1286,6 +1287,169 @@ function openPerson(id){
     </aside>`;
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeOverlay);
 }
+</script>
+<script>
+/* =============================== 我的工時 My Hours (Employee Time Logging) =============================== */
+function viewMyHours(){
+  const user=me();
+  const today=new Date().toISOString().split('T')[0];
+  const thisMonth=today.slice(0,7);
+  const myLogged=state.myHoursLog || {entries:[], requests:[], cases:[]};
+  const thisMonthEntries=myLogged.entries.filter(e=>e.date.startsWith(thisMonth));
+  const totalHours=thisMonthEntries.reduce((s,e)=>s+(parseFloat(e.hours)||0),0);
+  return `
+  <div class="grid">
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('日工時登錄','Daily Hours Log'))}</h2>
+        <span class="en">${esc(both('記錄每日工時與工作內容','Record daily hours and work details'))}</span></div>
+      <form id="logHours" style="display:grid;gap:12px;padding:12px 0">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px">
+          <div>
+            <label>${esc(both('日期','Date'))}</label>
+            <input type="date" name="date" value="${today}" required>
+          </div>
+          <div>
+            <label>${esc(both('工時','Hours'))}</label>
+            <input type="number" name="hours" min="0" max="12" step="0.5" placeholder="8.5" required>
+          </div>
+          <div>
+            <label>${esc(both('工作類別','Work Type'))}</label>
+            <select name="type" required>
+              <option value="">${esc(both('選擇','—'))}</option>
+              <option value="direct">${esc(both('直接照護','Direct care'))}</option>
+              <option value="admin">${esc(both('行政','Administration'))}</option>
+              <option value="training">${esc(both('教育訓練','Training'))}</option>
+              <option value="meeting">${esc(both('會議','Meeting'))}</option>
+              <option value="other">${esc(both('其他','Other'))}</option>
+            </select>
+          </div>
+          <div style="align-self:flex-end">
+            <button type="submit" class="btn">${esc(both('登錄','Log'))}</button>
+          </div>
+        </div>
+        <div>
+          <label>${esc(both('工作內容 (選填)','Work Details (optional)'))}</label>
+          <textarea name="notes" placeholder="${esc(both('例如：照護住民A、處理新住民入住、參加感染控制會議','e.g., Cared for Resident A, Processed new admissions, Attended infection control meeting'))}" style="height:80px"></textarea>
+        </div>
+      </form>
+      <div style="margin-top:16px;padding:12px;background:var(--surface-2);border-radius:6px">
+        <strong>${esc(both('本月累計','This Month Total'))}: ${totalHours.toFixed(1)} ${esc(both('小時','hours'))}</strong>
+        ${thisMonthEntries.length ? `<div style="font-size:12px;margin-top:6px;color:var(--text-2)">${thisMonthEntries.length} ${esc(both('筆記錄','entries'))}</div>` : ''}
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('工時記錄','Time Log'))}</h2></div>
+      ${thisMonthEntries.length ? `
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('日期','Date')}</th><th>${bi('工時','Hours')}</th><th>${bi('工作類別','Type')}</th><th>${bi('備註','Notes')}</th></tr></thead>
+        <tbody>${thisMonthEntries.map((e,i)=>`<tr>
+          <td class="mono">${e.date}</td>
+          <td class="num">${e.hours}</td>
+          <td>${esc(both(e.typeZh||'其他',e.type||'Other'))}</td>
+          <td style="font-size:12px;color:var(--text-2)">${e.notes ? esc(e.notes) : '—'}</td>
+          <td><button class="btn ghost mini" data-del="${i}">${esc(both('刪除','Delete'))}</button></td>
+        </tr>`).join('')}</tbody>
+      </table></div>` : `<div class="note">${esc(both('本月尚無記錄','No entries this month'))}</div>`}
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('請假申請','Leave Request'))}</h2>
+        <span class="en">${esc(both('向主管提出請假申請','Submit a leave request to your manager'))}</span></div>
+      <form id="leaveForm" style="display:grid;gap:12px;padding:12px 0">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label>${esc(both('請假類別','Type'))}</label>
+            <select name="type" required>
+              <option value="">${esc(both('選擇','—'))}</option>
+              <option value="sick">${esc(both('病假','Sick leave'))}</option>
+              <option value="personal">${esc(both('特休','Personal leave'))}</option>
+              <option value="family">${esc(both('家庭照顧假','Family care leave'))}</option>
+              <option value="other">${esc(both('其他','Other'))}</option>
+            </select>
+          </div>
+          <div>
+            <label>${esc(both('起訖日期','Dates'))}</label>
+            <input type="date" name="from" required>
+          </div>
+          <div>
+            <label></label>
+            <input type="date" name="to" required>
+          </div>
+          <div style="align-self:flex-end">
+            <button type="submit" class="btn">${esc(both('提出申請','Submit'))}</button>
+          </div>
+        </div>
+        <div>
+          <label>${esc(both('事由','Reason'))}</label>
+          <textarea name="reason" style="height:60px" required></textarea>
+        </div>
+      </form>
+      <div style="margin-top:16px">
+        <div class="eyebrow">${esc(both('待審核請假','Pending Approvals'))}</div>
+        ${myLogged.requests && myLogged.requests.length ? myLogged.requests.map(r=>`<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
+          <span class="chip">${esc(both(r.typeZh||'其他',r.type||'Other'))}</span>
+          <span class="mono" style="font-size:12px">${r.from}${r.to!==r.from?' → '+r.to:''}</span>
+          <span class="spacer" style="flex:1"></span>
+          <span class="chip warn">${esc(both('待主管簽核','Awaiting approval'))}</span>
+        </div>`).join('') : `<div class="muted" style="font-size:12px">${esc(both('無未結案申請','No pending requests'))}</div>`}
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('工作指派','Case Assignments'))}</h2>
+        <span class="en">${esc(both('您負責的個案','Your assigned cases'))}</span></div>
+      ${myLogged.cases && myLogged.cases.length ? `
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('個案名稱','Case Name')}</th><th>${bi('狀態','Status')}</th><th>${bi('起始日','Start')}</th></tr></thead>
+        <tbody>${myLogged.cases.map(c=>`<tr>
+          <td>${esc(c.name)}</td>
+          <td><span class="chip ok">${esc(both(c.status==='active'?'進行中':'已結案',c.status==='active'?'Active':'Closed'))}</span></td>
+          <td class="mono">${c.startDate}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>` : `<div class="note">${esc(both('目前無指派個案','No cases assigned'))}</div>`}
+    </section>
+  </div>`;
+}
+BINDERS['hr:mylog']=function(){
+  const state_myHoursLog = state.myHoursLog || {entries:[], requests:[], cases:[]};
+  const form=document.getElementById('logHours');
+  if(form){
+    form.onsubmit=e=>{
+      e.preventDefault();
+      const fd=new FormData(form);
+      const types={direct:'直接照護',admin:'行政',training:'教育訓練',meeting:'會議',other:'其他'};
+      const entry={
+        date:fd.get('date'), hours:fd.get('hours'), type:fd.get('type'),
+        typeZh:types[fd.get('type')], notes:fd.get('notes')
+      };
+      if(!state.myHoursLog) state.myHoursLog={entries:[],requests:[],cases:[]};
+      state.myHoursLog.entries.push(entry);
+      form.reset();
+      render();
+    };
+  }
+  const leaveForm=document.getElementById('leaveForm');
+  if(leaveForm){
+    leaveForm.onsubmit=e=>{
+      e.preventDefault();
+      const fd=new FormData(leaveForm);
+      const types={sick:'病假',personal:'特休',family:'家庭照顧假',other:'其他'};
+      const req={
+        type:fd.get('type'), typeZh:types[fd.get('type')],
+        from:fd.get('from'), to:fd.get('to'), reason:fd.get('reason'),
+        status:'pending'
+      };
+      if(!state.myHoursLog) state.myHoursLog={entries:[],requests:[],cases:[]};
+      state.myHoursLog.requests.push(req);
+      leaveForm.reset();
+      render();
+    };
+  }
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=e=>{
+    const i=+e.target.dataset.del;
+    if(!state.myHoursLog) state.myHoursLog={entries:[],requests:[],cases:[]};
+    state.myHoursLog.entries.splice(i,1);
+    render();
+  });
+};
 </script>
 <script>
 /* =============================== 出勤管理 Attendance =============================== */
