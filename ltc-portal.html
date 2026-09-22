@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
 <!--#artifact-begin-->
-<title>康禾長照營運入口 Kanghe Ops Portal</title>
+<title>誠馨長照營運入口 Zengxin Ops Portal</title>
 <style>
 :root{
   --ground:#F5F7F6; --surface:#FFFFFF; --surface-2:#EEF2F0; --rail:#12211D;
@@ -255,7 +255,7 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 <div id="toast"></div>
 <script>
 /* =========================================================================
-   康禾長照 營運入口 — 原型 (Kanghe Long-Term Care — Operations Portal prototype)
+   誠馨長照 營運入口 — 原型 (Zengxin Long-Term Care — Operations Portal prototype)
    All data below is FICTIONAL and generated in-memory. No auth, no database.
    ========================================================================= */
 
@@ -271,7 +271,7 @@ const unit = id => ALL_UNITS.find(o=>o.id===id) || HQ;
 
 /* ---------- v2.0: company structure (currently single entity; Phase 2–3: multi-region) ---------- */
 const COMPANIES = [
-  {id:'C1', zh:'康禾長照 · 新竹區', en:'Kanghe Care • Hsinchu Region', hq:'HQ', offices:['O1','O2']}
+  {id:'C1', zh:'誠馨長照 · 新竹區', en:'Zengxin Care • Hsinchu Region', hq:'HQ', offices:['O1','O2']}
 ];
 const companyOf = officeId => COMPANIES.find(c=>c.offices.includes(officeId));
 const companyOffices = companyId => (COMPANIES.find(c=>c.id===companyId)?.offices||[]).map(id=>OFFICES.find(o=>o.id===id));
@@ -585,8 +585,8 @@ function renderShell(){
   <div class="app">
     <nav class="rail">
       <div class="brand">
-        <b>康禾長照集團</b>
-        <span>Kanghe Long-Term Care</span>
+        <b>誠馨長照集團</b>
+        <span>Zengxin Long-Term Care</span>
         <span>${state.lang==='zh'?'營運入口 · Ops Portal':'Ops Portal · 營運入口'}</span>
       </div>
       <div class="rail-group">${both('本次原型','In this prototype')}</div>
