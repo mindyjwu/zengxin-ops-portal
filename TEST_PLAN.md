@@ -1,5 +1,7 @@
 # Zengxin LTC Portal - Role-Based Testing Plan
 
+> **Out of date:** this plan describes a 6-role redesign (ceo/manager/hr/training/accountant/staff) that is not in `ltc-portal.html`. The portal currently has 3 built roles (admin, hr, manager); see `__tests__/portal.e2e.test.js` for the tested behavior.
+
 ## Test Objectives
 Verify that the 6-role RBAC system correctly restricts/allows access to:
 - Sensitive employee data (salary, performance, insurance, contact info)

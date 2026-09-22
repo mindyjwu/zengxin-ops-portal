@@ -1,346 +1,448 @@
 /**
- * End-to-End UI Tests for Zengxin LTC Operations Portal
- * Tests actual browser interactions and RBAC enforcement in the UI
+ * End-to-end UI tests for the 康禾長照集團 operations portal (ltc-portal.html).
+ *
+ * The page is a single-file prototype with in-memory data and a fixed demo
+ * date of 2026-09-08. Built roles: admin (E1005, HQ), hr (E1003, HQ) and
+ * manager (E2101, director of O1 竹北照護院).
  */
 
+const fs = require('fs');
+const path = require('path');
 const { test, expect } = require('@playwright/test');
 
-test.describe('Portal Navigation & Module Access', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('file://' + require('path').resolve(__dirname, '../ltc-portal.html'));
-    await page.waitForLoadState('networkidle');
+const PORTAL = 'file://' + path.resolve(__dirname, '../ltc-portal.html');
+
+/* ---------- helpers ---------- */
+async function openPortal(page) {
+  await page.goto(PORTAL);
+  await expect(page.locator('#roleSel')).toBeVisible();
+}
+async function setRole(page, role) {
+  await page.selectOption('#roleSel', role);
+  await expect(page.locator('#roleSel')).toHaveValue(role);
+}
+async function go(page, mod, tab) {
+  await page.click(`[data-mod="${mod}"]`);
+  if (tab) await page.click(`[data-tab="${tab}"]`);
+}
+const empRows = page => page.locator('#view tbody tr[data-emp]');
+const requestRow = (page, id) =>
+  page.locator('#view tbody tr').filter({ has: page.locator('td.mono', { hasText: new RegExp(`^${id}$`) }) });
+const drawer = page => page.locator('aside.drawer');
+
+/* ================================================================ */
+test.describe('Shell & role switching', () => {
+  test.beforeEach(async ({ page }) => { await openPortal(page); });
+
+  test('loads with brand and admin as default role', async ({ page }) => {
+    await expect(page.locator('.brand')).toContainText('康禾長照集團');
+    await expect(page.locator('#roleSel')).toHaveValue('admin');
   });
 
-  test('should load portal with CEO role by default', async ({ page }) => {
-    await expect(page.locator('body')).toContainText('Zengxin LTC');
-    const roleDisplay = await page.locator('[data-role]').getAttribute('data-role');
-    expect(roleDisplay || 'ceo').toBe('ceo');
+  test('role selector offers only the built roles', async ({ page }) => {
+    const values = await page.locator('#roleSel option').evaluateAll(os => os.map(o => o.value));
+    expect(values).toEqual(['admin', 'hr', 'manager']);
   });
 
-  test('should display all modules in navigation', async ({ page }) => {
-    const modules = ['HR', 'Leave', 'Reports', 'Settings', 'Announcements'];
-    for (const mod of modules) {
-      await expect(page.locator('nav, [role="navigation"]')).toContainText(mod);
+  test('switching role updates the persona chip', async ({ page }) => {
+    const chip = page.locator('.pagehead .chip.acc');
+    await setRole(page, 'hr');
+    await expect(chip).toContainText('人資部經理');
+    await setRole(page, 'manager');
+    await expect(chip).toContainText('院長');
+  });
+
+  test('HR module exposes its four tabs', async ({ page }) => {
+    await go(page, 'hr');
+    for (const t of ['emp', 'mylog', 'att', 'leave']) {
+      await expect(page.locator(`[data-tab="${t}"]`)).toBeVisible();
     }
-  });
-
-  test('should switch roles via role selector', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'manager');
-    await page.waitForTimeout(300);
-    const contentArea = page.locator('main, .main-content, [role="main"]').first();
-    await expect(contentArea).toBeVisible();
-  });
-
-  test('should navigate between modules', async ({ page }) => {
-    const tabs = await page.locator('button[data-module], a[data-tab], .tab-button').all();
-    if (tabs.length > 0) {
-      await tabs[0].click();
-      await page.waitForTimeout(200);
-      const content = page.locator('main, .content, .view').first();
-      await expect(content).toBeVisible();
-    }
+    await expect(page.locator('[data-tab="emp"]')).toHaveAttribute('aria-selected', 'true');
   });
 });
 
-test.describe('Role-Based Visibility Tests', () => {
+/* ================================================================ */
+test.describe('Data scope', () => {
+  test.beforeEach(async ({ page }) => { await openPortal(page); });
+
+  test('admin and hr see all 23 employees', async ({ page }) => {
+    await go(page, 'hr', 'emp');
+    await expect(empRows(page)).toHaveCount(23);
+    await setRole(page, 'hr');
+    await expect(empRows(page)).toHaveCount(23);
+  });
+
+  test('manager sees only O1 staff and the office filter is locked', async ({ page }) => {
+    await setRole(page, 'manager');
+    await go(page, 'hr', 'emp');
+    await expect(empRows(page)).toHaveCount(8);
+    const ids = await empRows(page).evaluateAll(rs => rs.map(r => r.dataset.emp));
+    expect(ids.every(id => id.startsWith('E21'))).toBe(true);
+    await expect(page.locator('#view tbody')).not.toContainText('竹東照護院');
+    await expect(page.locator('#offSel')).toBeDisabled();
+    await expect(page.locator('#view .note.q')).toContainText('隱藏了 15 位');
+  });
+
+  test('assumption toggle opens the manager to every facility', async ({ page }) => {
+    await setRole(page, 'manager');
+    await go(page, 'hr', 'emp');
+    await page.click('#assumeBtn');
+    await expect(page.locator('#assumeBtn')).toHaveAttribute('aria-pressed', 'true');
+    await expect(empRows(page)).toHaveCount(23);
+    await expect(page.locator('#offSel')).toBeEnabled();
+  });
+
+  test('office filter narrows admin to one facility', async ({ page }) => {
+    await go(page, 'hr', 'emp');
+    await page.selectOption('#offSel', 'O2');
+    await expect(empRows(page)).toHaveCount(9);
+  });
+
+  test('manager attendance and leave views are limited to O1', async ({ page }) => {
+    await setRole(page, 'manager');
+    await go(page, 'hr', 'att');
+    await expect(page.locator('#view')).toContainText('竹北照護院');
+    await expect(page.locator('#view')).not.toContainText('竹東照護院');
+
+    await page.click('[data-tab="leave"]');
+    await expect(requestRow(page, 'L241')).toHaveCount(1);   // E2103, O1
+    await expect(requestRow(page, 'L245')).toHaveCount(0);   // E2203, O2
+    await expect(requestRow(page, 'L234')).toHaveCount(0);   // E1005, HQ
+  });
+});
+
+/* ================================================================ */
+test.describe('Salary visibility', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('file://' + require('path').resolve(__dirname, '../ltc-portal.html'));
-    await page.waitForLoadState('networkidle');
+    await openPortal(page);
+    await go(page, 'hr', 'emp');
   });
 
-  test('CEO can see salary column', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'ceo');
-    const hrTab = page.locator('button:has-text("HR"), [data-module="hr"], a:has-text("Employee")').first();
-    if (await hrTab.isVisible()) {
-      await hrTab.click();
-      await page.waitForTimeout(300);
-    }
-    const table = page.locator('table, [role="table"]').first();
-    const headers = await table.locator('th, [role="columnheader"]').allTextContents();
-    const headerText = headers.join(' ').toLowerCase();
-    expect(headerText).toContain('salary');
+  test('hr sees monthly pay', async ({ page }) => {
+    await setRole(page, 'hr');
+    const pay = page.locator('tr[data-emp="E2103"] td').last();
+    await expect(pay).toHaveText('NT$58,000');
+    await expect(page.locator('#view tbody .lock')).toHaveCount(0);
   });
 
-  test('Manager cannot see salary column', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'manager');
-    const hrTab = page.locator('button:has-text("HR"), [data-module="hr"], a:has-text("Employee")').first();
-    if (await hrTab.isVisible()) {
-      await hrTab.click();
-      await page.waitForTimeout(300);
-    }
-    const table = page.locator('table, [role="table"]').first();
-    const headers = await table.locator('th, [role="columnheader"]').allTextContents();
-    const headerText = headers.join(' ').toLowerCase();
-    expect(headerText).not.toContain('salary');
-  });
-
-  test('HR can see sensitive data', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'hr');
-    const hrTab = page.locator('button:has-text("HR"), [data-module="hr"], a:has-text("Employee")').first();
-    if (await hrTab.isVisible()) {
-      await hrTab.click();
-      await page.waitForTimeout(300);
-    }
-    const table = page.locator('table, [role="table"]').first();
-    const headers = await table.locator('th, [role="columnheader"]').allTextContents();
-    const headerText = headers.join(' ').toLowerCase();
-    expect(headerText).toContain('salary');
-  });
-
-  test('Staff cannot access Reports module', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'staff');
-    const reportsBtn = page.locator('button:has-text("Reports"), [data-module="rpt"], a:has-text("Reports")');
-    const isDisabled = await reportsBtn.evaluate(el => {
-      return el.disabled || el.classList.contains('disabled') || el.getAttribute('aria-disabled') === 'true';
+  for (const role of ['admin', 'manager']) {
+    test(`${role} sees the lock instead of pay`, async ({ page }) => {
+      await setRole(page, role);
+      const pay = page.locator('tr[data-emp="E2103"] td').last();
+      await expect(pay.locator('.lock')).toContainText('僅人資可見');
+      await expect(page.locator('#view tbody')).not.toContainText('NT$');
     });
-    expect(isDisabled).toBeTruthy();
+  }
+});
+
+/* ================================================================ */
+test.describe('Leave approval flow', () => {
+  test.beforeEach(async ({ page }) => { await openPortal(page); });
+
+  test('pending → countersign → approved', async ({ page }) => {
+    await setRole(page, 'manager');
+    await go(page, 'hr', 'leave');
+    let row = requestRow(page, 'L241');
+    await expect(row).toContainText('待主管簽核');
+
+    await row.locator('[data-act="approve"]').click();
+    row = requestRow(page, 'L241');
+    await expect(row).toContainText('待人資複核');
+    await expect(row.locator('.lock')).toContainText('待人資處理');
+    await expect(row.locator('[data-act]')).toHaveCount(0);
+
+    await setRole(page, 'hr');
+    row = requestRow(page, 'L241');
+    await expect(row).toContainText('待人資複核');
+    await row.locator('[data-act="final"]').click();
+    row = requestRow(page, 'L241');
+    await expect(row).toContainText('已核准');
+    await expect(row.locator('[data-act]')).toHaveCount(0);
   });
 
-  test('Training Specialist has limited permissions', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'training');
-    const settingsBtn = page.locator('button:has-text("Settings"), [data-module="set"], a:has-text("Settings")');
-    const isDisabled = await settingsBtn.evaluate(el => {
-      return el.disabled || el.classList.contains('disabled') || el.getAttribute('aria-disabled') === 'true';
+  test('reject ends the request', async ({ page }) => {
+    await setRole(page, 'manager');
+    await go(page, 'hr', 'leave');
+    await requestRow(page, 'L242').locator('[data-act="reject"]').click();
+    await expect(requestRow(page, 'L242')).toContainText('已駁回');
+  });
+
+  test('admin has no approval rights', async ({ page }) => {
+    await go(page, 'hr', 'leave');
+    const row = requestRow(page, 'L241');
+    await expect(row.locator('.lock')).toContainText('無簽核權限');
+    await expect(row.locator('[data-act]')).toHaveCount(0);
+  });
+
+  test('an approver cannot sign their own request', async ({ page }) => {
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'mylog');
+    await page.click('[data-mytab="leave"]');
+    await page.click('[data-quick="am"]');
+    await page.fill('#leaveForm textarea[name="reason"]', 'e2e');
+    await page.click('#leaveForm button[type="submit"]');
+    await page.click('[data-tab="leave"]');
+    const row = requestRow(page, 'L249');
+    await expect(row.locator('.lock')).toContainText('本人申請');
+    await expect(row.locator('[data-act]')).toHaveCount(0);
+  });
+});
+
+/* ================================================================ */
+test.describe('My Hours', () => {
+  test('clock in and out records the day and worked hours', async ({ page }) => {
+    await page.clock.setFixedTime(new Date(2026, 8, 8, 8, 0));
+    await openPortal(page);
+    await go(page, 'hr', 'mylog');
+
+    const inBtn = page.locator('[data-punch="in"]'), outBtn = page.locator('[data-punch="out"]');
+    await expect(inBtn).toBeEnabled();
+    await expect(outBtn).toBeDisabled();
+
+    await inBtn.click();
+    await expect(inBtn).toBeDisabled();
+    await expect(outBtn).toBeEnabled();
+    const today = page.locator('#view tbody tr').filter({ hasText: '2026-09-08' });
+    await expect(today.locator('td').nth(1)).toHaveText('08:00');
+
+    await page.clock.setFixedTime(new Date(2026, 8, 8, 17, 30));
+    await outBtn.click();
+    await expect(today.locator('td').nth(2)).toHaveText('17:30');
+    // 08:00–17:30 minus the 1 h lunch break
+    await expect(today.locator('td').nth(3)).toHaveText('8.5');
+    await expect(page.locator('.clockface')).toContainText('8.5');
+  });
+
+  test('half-day leave computes 4 h and is filed as pending', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'hr', 'mylog');
+    await page.click('[data-mytab="leave"]');
+    const calc = page.locator('#leaveCalc');
+    await expect(calc).toContainText('8 小時');           // default: full day
+
+    await page.click('[data-quick="am"]');
+    await expect(page.locator('#leaveForm select[name="fromT"]')).toHaveValue('08:00');
+    await expect(page.locator('#leaveForm select[name="toT"]')).toHaveValue('12:00');
+    await expect(calc).toContainText('4 小時（折合 0.5 天）');
+
+    await page.click('[data-quick="pm"]');
+    await expect(page.locator('#leaveForm select[name="fromT"]')).toHaveValue('13:00');
+    await expect(calc).toContainText('4 小時');
+
+    await page.fill('#leaveForm textarea[name="reason"]', '下午看診');
+    await page.click('#leaveForm button[type="submit"]');
+    const row = requestRow(page, 'L249');
+    await expect(row.locator('td.num')).toHaveText('4');
+    await expect(row).toContainText('待主管簽核');
+  });
+
+  test('overtime hours compute, including across midnight', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'hr', 'mylog');
+    await page.click('[data-mytab="ot"]');
+    const calc = page.locator('#otCalc');
+    await expect(calc).toContainText('2 小時 / 2 h');             // default 17:00–19:00
+
+    await page.fill('#otForm input[name="end"]', '20:30');
+    await expect(calc).toContainText('3.5 小時');
+
+    await page.fill('#otForm input[name="start"]', '22:00');
+    await page.fill('#otForm input[name="end"]', '02:00');
+    await expect(calc).toContainText('4 小時');
+
+    await page.fill('#otForm textarea[name="reason"]', '夜間支援');
+    await page.click('#otForm button[type="submit"]');
+    const row = requestRow(page, 'OT33');
+    await expect(row.locator('td.num')).toHaveText('4');
+    await expect(page.locator('.tile').filter({ hasText: '本月加班' }).locator('.v')).toHaveText('4');
+  });
+
+  test('balance tab reflects entitlement, used and pending hours', async ({ page }) => {
+    await openPortal(page);                              // admin = E1005, hired 2021-08-01
+    await go(page, 'hr', 'mylog');
+    await page.click('[data-mytab="balance"]');
+    const rows = page.locator('#view table').first().locator('tbody tr');
+    await expect(rows).toHaveCount(9);
+
+    const cells = rows.filter({ hasText: '特休' }).locator('td');
+    await expect(cells.nth(1)).toContainText('120 h');   // 15 days
+    await expect(cells.nth(2)).toHaveText('4 h');        // L234 approved
+    await expect(cells.nth(4)).toContainText('116 h');
+
+    const comp = rows.filter({ hasText: '補休' });
+    await expect(comp.locator('td').nth(1)).toContainText('4 h');  // OT22 approved as comp time
+
+    // a pending half day is held against the balance
+    await page.click('[data-mytab="leave"]');
+    await page.click('[data-quick="am"]');
+    await page.fill('#leaveForm textarea[name="reason"]', 'e2e');
+    await page.click('#leaveForm button[type="submit"]');
+    await page.click('[data-mytab="balance"]');
+    await expect(cells.nth(3)).toHaveText('4 h');
+    await expect(cells.nth(4)).toContainText('112 h');
+  });
+});
+
+/* ================================================================ */
+test.describe('Personnel file drawer', () => {
+  const SECS = {
+    sum: '出勤摘要', basic: '薪資帳戶', hist: '任職與薪資異動',
+    ins: '勞保', qual: '證照與資格', perf: '績效考核紀錄'
+  };
+  async function openRecord(page, role, id) {
+    await openPortal(page);
+    await setRole(page, role);
+    await go(page, 'hr', 'emp');
+    await page.click(`tr[data-emp="${id}"]`);
+    await expect(drawer(page)).toBeVisible();
+  }
+  async function openSec(page, sec) {
+    await page.click(`[data-sec="${sec}"]`);
+    await expect(page.locator(`[data-sec="${sec}"]`)).toHaveAttribute('aria-pressed', 'true');
+  }
+  const body = page => page.locator('aside.drawer .drawer-b');
+
+  test('every section renders and the drawer closes', async ({ page }) => {
+    await openRecord(page, 'hr', 'E2103');
+    await expect(page.locator('[data-sec]')).toHaveCount(6);
+    for (const [sec, text] of Object.entries(SECS)) {
+      await openSec(page, sec);
+      await expect(body(page)).toContainText(text);
+    }
+    await page.click('aside.drawer button.x');
+    await expect(drawer(page)).toHaveCount(0);
+  });
+
+  test('hr sees full ID, pay, bank account and insurance grades', async ({ page }) => {
+    await openRecord(page, 'hr', 'E2103');
+    await expect(body(page)).toContainText('NT$58,000');
+    const idNo = await page.evaluate(() => empRecord('E2103').basic.idNo);
+    await openSec(page, 'basic');
+    await expect(body(page)).toContainText(idNo);
+    await expect(body(page).locator('.lock')).toHaveCount(0);
+    await openSec(page, 'hist');
+    await expect(body(page)).toContainText('NT$');
+    await openSec(page, 'ins');
+    await expect(body(page)).toContainText('勞保投保薪資');
+  });
+
+  test('admin gets contact details but masked ID and locked pay', async ({ page }) => {
+    await openRecord(page, 'admin', 'E2103');
+    await expect(body(page)).toContainText('僅人資可見');
+    const { idNo, mobile } = await page.evaluate(() => empRecord('E2103').basic);
+    await openSec(page, 'basic');
+    await expect(body(page)).not.toContainText(idNo);
+    await expect(body(page)).toContainText('•'.repeat(idNo.length - 3) + idNo.slice(-3));
+    await expect(body(page)).toContainText(mobile);
+    await expect(body(page)).toContainText('薪資帳戶僅人資可見');
+    await openSec(page, 'hist');
+    await expect(body(page)).toContainText('•••');
+    await expect(body(page)).not.toContainText('NT$');
+    await openSec(page, 'ins');
+    await expect(body(page)).toContainText('投保薪資與保費僅人資可見');
+  });
+
+  test('manager cannot see contact details or pay', async ({ page }) => {
+    await openRecord(page, 'manager', 'E2103');
+    const { mobile } = await page.evaluate(() => empRecord('E2103').basic);
+    await openSec(page, 'basic');
+    await expect(body(page)).not.toContainText(mobile);
+    await expect(body(page).locator('.lock').first()).toContainText('受限');
+    await expect(body(page)).toContainText('薪資帳戶僅人資可見');
+  });
+
+  test('manager opening an out-of-scope person gets no sections', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'manager');
+    await go(page, 'ann', 'org');
+    await page.click('[data-node="E2201"]');              // O2 director
+    await expect(drawer(page)).toBeVisible();
+    await expect(body(page)).toContainText('不在您目前的資料範圍內');
+    await expect(page.locator('[data-sec]')).toHaveCount(0);
+  });
+});
+
+/* ================================================================ */
+test.describe('CSV exports', () => {
+  const FILES = {
+    attendance: ['出勤統計報表', '員工編號,職稱,據點'],
+    personnel: ['人事資料報表', '員工編號,姓名,職稱'],
+    leave: ['差勤申請報表', '單號,類型,員工編號'],
+    financial: ['財務報表', '員工編號,姓名,據點,部門,計薪方式,應發金額']
+  };
+  async function download(page, type) {
+    const [dl] = await Promise.all([
+      page.waitForEvent('download'),
+      page.click(`[data-export="${type}"]`)
+    ]);
+    const text = fs.readFileSync(await dl.path(), 'utf8');
+    return { name: dl.suggestedFilename(), text, lines: text.replace(/^﻿/, '').split('\n') };
+  }
+  const col = (lines, header) => {
+    const i = lines[0].split(',').indexOf(header);
+    return lines.slice(1).map(l => l.split(',')[i]);
+  };
+
+  test.beforeEach(async ({ page }) => { await openPortal(page); });
+
+  for (const [type, [prefix, header]] of Object.entries(FILES)) {
+    test(`${type} report downloads with a BOM and header`, async ({ page }) => {
+      await setRole(page, 'hr');
+      await go(page, 'rpt');
+      const { name, text, lines } = await download(page, type);
+      expect(name).toBe(`${prefix}_2026-09.csv`);
+      expect(text.charCodeAt(0)).toBe(0xFEFF);
+      expect(lines[0].startsWith(header)).toBe(true);
+      expect(lines.length).toBeGreaterThan(1);
     });
-    expect(isDisabled).toBeTruthy();
-  });
-});
+  }
 
-test.describe('Leave Approval Workflow', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('file://' + require('path').resolve(__dirname, '../ltc-portal.html'));
-    await page.waitForLoadState('networkidle');
-  });
-
-  test('Manager can access leave approvals', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'manager');
-    const leaveTab = page.locator('button:has-text("Leave"), [data-module="leave"], a:has-text("Leave")').first();
-    await expect(leaveTab).toBeVisible();
-    await leaveTab.click();
-    await page.waitForTimeout(300);
-    const content = page.locator('main, .content, .view').first();
-    await expect(content).toBeVisible();
+  test('month selector changes filename and content', async ({ page }) => {
+    await setRole(page, 'hr');
+    await go(page, 'rpt');
+    await page.selectOption('#reportMonth', '2026-08');
+    const { name, lines } = await download(page, 'leave');
+    expect(name).toBe('差勤申請報表_2026-08.csv');
+    const ids = lines.slice(1).map(l => l.split(',')[0]);
+    expect(ids).toContain('L231');
+    expect(ids).not.toContain('L241');
   });
 
-  test('CEO can approve leave requests', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'ceo');
-    const leaveTab = page.locator('button:has-text("Leave"), [data-module="leave"], a:has-text("Leave")').first();
-    await leaveTab.click();
-    await page.waitForTimeout(300);
-    const approveBtn = page.locator('button:has-text("Approve"), button:has-text("Yes"), button.approve-btn').first();
-    if (await approveBtn.isVisible()) {
-      await expect(approveBtn).not.toBeDisabled();
-    }
+  test('personnel report masks salary for admin, not for hr', async ({ page }) => {
+    await go(page, 'rpt');
+    let { lines } = await download(page, 'personnel');
+    expect(new Set(col(lines, '薪資'))).toEqual(new Set(['受限']));
+
+    await setRole(page, 'hr');
+    ({ lines } = await download(page, 'personnel'));
+    expect(col(lines, '薪資').every(v => /^\d+$/.test(v))).toBe(true);
   });
 
-  test('Staff cannot approve leave', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'staff');
-    const leaveTab = page.locator('button:has-text("Leave"), [data-module="leave"], a:has-text("Leave")').first();
-    if (await leaveTab.isVisible()) {
-      await leaveTab.click();
-      await page.waitForTimeout(300);
-    }
-    const approveBtn = page.locator('button:has-text("Approve"), button:has-text("Yes"), button.approve-btn');
-    if (await approveBtn.count() > 0) {
-      await expect(approveBtn.first()).toBeDisabled();
-    }
-  });
-});
+  for (const role of ['admin', 'manager']) {
+    test(`${role} cannot export the payroll (financial) report`, async ({ page }) => {
+      await setRole(page, role);
+      await go(page, 'rpt');
+      await expect(page.locator('[data-export="financial"]')).toHaveCount(0);
+      await expect(page.locator('#view')).toContainText('僅人資可匯出薪資資料');
+      await expect(page.locator('[data-export="attendance"]')).toBeVisible();
+    });
+  }
 
-test.describe('Module Features Access', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('file://' + require('path').resolve(__dirname, '../ltc-portal.html'));
-    await page.waitForLoadState('networkidle');
-  });
-
-  test('CEO can access all report types', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'ceo');
-    const reportsTab = page.locator('button:has-text("Reports"), [data-module="rpt"], a:has-text("Reports")').first();
-    if (await reportsTab.isVisible()) {
-      await reportsTab.click();
-      await page.waitForTimeout(300);
-      const reportTabs = page.locator('[data-tab], button[data-report], .report-tab').count();
-      expect(reportTabs).toBeGreaterThan(0);
-    }
+  test('manager exports contain only O1 staff', async ({ page }) => {
+    await setRole(page, 'manager');
+    await go(page, 'rpt');
+    const { lines } = await download(page, 'attendance');
+    const ids = col(lines, '員工編號');
+    expect(ids).toHaveLength(8);
+    expect(ids.every(id => id.startsWith('E21'))).toBe(true);
   });
 
-  test('Accountant can access Financial reports', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'accountant');
-    const reportsTab = page.locator('button:has-text("Reports"), [data-module="rpt"], a:has-text("Reports")').first();
-    if (await reportsTab.isVisible()) {
-      await reportsTab.click();
-      await page.waitForTimeout(300);
-      const finTab = page.locator('button:has-text("Financial"), [data-report="fin"], a:has-text("Financial")').first();
-      if (await finTab.isVisible()) {
-        await expect(finTab).not.toBeDisabled();
-      }
-    }
-  });
-
-  test('CEO can access Settings', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'ceo');
-    const settingsTab = page.locator('button:has-text("Settings"), [data-module="set"], a:has-text("Settings")').first();
-    await expect(settingsTab).toBeVisible();
-    await expect(settingsTab).not.toBeDisabled();
-  });
-
-  test('Training Specialist cannot access Settings', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'training');
-    const settingsTab = page.locator('button:has-text("Settings"), [data-module="set"], a:has-text("Settings")');
-    if (await settingsTab.count() > 0) {
-      const isDisabled = await settingsTab.first().evaluate(el => {
-        return el.disabled || el.classList.contains('disabled') || el.getAttribute('aria-disabled') === 'true';
-      });
-      expect(isDisabled).toBeTruthy();
-    }
-  });
-});
-
-test.describe('UI/UX Features', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('file://' + require('path').resolve(__dirname, '../ltc-portal.html'));
-    await page.waitForLoadState('networkidle');
-  });
-
-  test('should display bilingual UI elements', async ({ page }) => {
-    const content = await page.textContent('body');
-    expect(content).toMatch(/Zengxin|員工|Employee/);
-  });
-
-  test('should have language toggle available', async ({ page }) => {
-    const langToggle = page.locator('button:has-text("EN"), button:has-text("中文"), [data-lang]');
-    if (await langToggle.count() > 0) {
-      await expect(langToggle.first()).toBeVisible();
-    }
-  });
-
-  test('should switch between light and dark themes', async ({ page }) => {
-    const themeToggle = page.locator('button:has-text("🌙"), button:has-text("☀️"), [data-theme], .theme-toggle');
-    if (await themeToggle.count() > 0) {
-      await themeToggle.first().click();
-      await page.waitForTimeout(200);
-      const body = page.locator('body');
-      const isDark = await body.evaluate(el => {
-        return el.classList.contains('dark') || el.style.backgroundColor === 'rgb(0, 0, 0)';
-      });
-      expect(typeof isDark).toBe('boolean');
-    }
-  });
-
-  test('should display employee records in table format', async ({ page }) => {
-    const hrTab = page.locator('button:has-text("HR"), [data-module="hr"], a:has-text("Employee")').first();
-    if (await hrTab.isVisible()) {
-      await hrTab.click();
-      await page.waitForTimeout(300);
-      const table = page.locator('table, [role="table"]');
-      await expect(table.first()).toBeVisible();
-    }
-  });
-
-  test('should allow role switching without errors', async ({ page }) => {
-    const roles = ['ceo', 'manager', 'hr', 'training', 'accountant', 'staff'];
-    for (const role of roles) {
-      await page.selectOption('select[name="role"], select.role-selector', role);
-      await page.waitForTimeout(200);
-      const mainContent = page.locator('main, .main-content, [role="main"]').first();
-      await expect(mainContent).toBeVisible();
-    }
-  });
-});
-
-test.describe('Data Presentation & Filtering', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('file://' + require('path').resolve(__dirname, '../ltc-portal.html'));
-    await page.waitForLoadState('networkidle');
-  });
-
-  test('CEO sees all employees across all facilities', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'ceo');
-    const hrTab = page.locator('button:has-text("HR"), [data-module="hr"], a:has-text("Employee")').first();
-    if (await hrTab.isVisible()) {
-      await hrTab.click();
-      await page.waitForTimeout(300);
-      const rows = page.locator('table tbody tr, [role="rowgroup"] [role="row"]');
-      const count = await rows.count();
-      expect(count).toBeGreaterThan(0);
-    }
-  });
-
-  test('Staff sees limited employee records', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'staff');
-    const hrTab = page.locator('button:has-text("HR"), [data-module="hr"], a:has-text("Employee")').first();
-    if (await hrTab.isVisible()) {
-      await hrTab.click();
-      await page.waitForTimeout(300);
-      const alertText = await page.locator('.alert, [role="alert"]').allTextContents();
-      const hasViewOwnlyAlert = alertText.some(text => text.includes('own'));
-    }
-  });
-
-  test('Manager can filter by facility', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'manager');
-    const facilityFilter = page.locator('select[name="facility"], select.facility-filter, [data-facility]');
-    if (await facilityFilter.count() > 0) {
-      await expect(facilityFilter.first()).toBeVisible();
-    }
-  });
-});
-
-test.describe('Permission Enforcement', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('file://' + require('path').resolve(__dirname, '../ltc-portal.html'));
-    await page.waitForLoadState('networkidle');
-  });
-
-  test('should not show edit buttons for staff', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'staff');
-    const hrTab = page.locator('button:has-text("HR"), [data-module="hr"], a:has-text("Employee")').first();
-    if (await hrTab.isVisible()) {
-      await hrTab.click();
-      await page.waitForTimeout(300);
-      const editBtns = page.locator('button:has-text("Edit"), button.edit-btn, a.edit-link');
-      if (await editBtns.count() > 0) {
-        const isDisabled = await editBtns.first().evaluate(el => {
-          return el.disabled || el.classList.contains('disabled') || el.getAttribute('aria-disabled') === 'true';
-        });
-        expect(isDisabled).toBeTruthy();
-      }
-    }
-  });
-
-  test('should show sensitive fields only to authorized roles', async ({ page }) => {
-    // Test CEO can see
-    await page.selectOption('select[name="role"], select.role-selector', 'ceo');
-    const hrTab = page.locator('button:has-text("HR"), [data-module="hr"], a:has-text("Employee")').first();
-    if (await hrTab.isVisible()) {
-      await hrTab.click();
-      await page.waitForTimeout(300);
-      const headers = page.locator('th, [role="columnheader"]').allTextContents();
-      const headerText = (await headers).join(' ').toLowerCase();
-      expect(headerText).toMatch(/salary|sensitive|contact/);
-    }
-
-    // Test Manager cannot see
-    await page.selectOption('select[name="role"], select.role-selector', 'manager');
-    await page.waitForTimeout(300);
-    const managerHeaders = page.locator('th, [role="columnheader"]').allTextContents();
-    const managerHeaderText = (await managerHeaders).join(' ').toLowerCase();
-    expect(managerHeaderText).not.toContain('salary');
-  });
-
-  test('Accountant cannot edit employee records', async ({ page }) => {
-    await page.selectOption('select[name="role"], select.role-selector', 'accountant');
-    const hrTab = page.locator('button:has-text("HR"), [data-module="hr"], a:has-text("Employee")').first();
-    if (await hrTab.isVisible()) {
-      await hrTab.click();
-      await page.waitForTimeout(300);
-      const editBtns = page.locator('button:has-text("Edit"), button.edit-btn, a.edit-link');
-      if (await editBtns.count() > 0) {
-        const isDisabled = await editBtns.first().evaluate(el => {
-          return el.disabled || el.classList.contains('disabled') || el.getAttribute('aria-disabled') === 'true';
-        });
-        expect(isDisabled).toBeTruthy();
-      }
-    }
+  test('leave report reflects an approval made in the session', async ({ page }) => {
+    await setRole(page, 'manager');
+    await go(page, 'hr', 'leave');
+    await requestRow(page, 'L241').locator('[data-act="approve"]').click();
+    await go(page, 'rpt');
+    const { lines } = await download(page, 'leave');
+    expect(lines.find(l => l.startsWith('L241,'))).toContain('待人資複核');
   });
 });
