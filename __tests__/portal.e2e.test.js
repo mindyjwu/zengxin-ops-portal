@@ -203,13 +203,15 @@ test.describe('My Hours', () => {
     await expect(inBtn).toBeDisabled();
     await expect(outBtn).toBeEnabled();
     const today = page.locator('#view tbody tr').filter({ hasText: '2026-09-08' });
-    await expect(today.locator('td').nth(1)).toHaveText('08:00');
+    // columns: date, shift, in, out, hours
+    await expect(today.locator('td').nth(1)).toContainText('白班');
+    await expect(today.locator('td').nth(2)).toHaveText('08:00');
 
     await page.clock.setFixedTime(new Date(2026, 8, 8, 17, 30));
     await outBtn.click();
-    await expect(today.locator('td').nth(2)).toHaveText('17:30');
+    await expect(today.locator('td').nth(3)).toHaveText('17:30');
     // 08:00–17:30 minus the 1 h lunch break
-    await expect(today.locator('td').nth(3)).toHaveText('8.5');
+    await expect(today.locator('td').nth(4)).toHaveText('8.5');
     await expect(page.locator('.clockface')).toContainText('8.5');
   });
 
@@ -280,6 +282,48 @@ test.describe('My Hours', () => {
     await page.click('[data-mytab="balance"]');
     await expect(cells.nth(3)).toHaveText('4 h');
     await expect(cells.nth(4)).toContainText('112 h');
+  });
+});
+
+/* ================================================================ */
+test.describe('Payroll night-shift allowance', () => {
+  test.beforeEach(async ({ page }) => { await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'run'); });
+
+  test('rotating nurse is paid per evening / overnight shift and OT base includes it', async ({ page }) => {
+    // E2203 in 2026-08: 5 evening + 1 overnight shifts, 3.5 h approved weekday overtime
+    await page.click('[data-payemp="E2203"]');
+    const d = drawer(page);
+    await expect(d.locator('tr', { hasText: '小夜班津貼' })).toContainText('5 班 × 200');
+    await expect(d.locator('tr', { hasText: '小夜班津貼' })).toContainText('NT$1,000');
+    await expect(d.locator('tr', { hasText: '大夜班津貼' })).toContainText('NT$400');
+    // (58,500 + 1,400) ÷ 240 = 249.58 → 2 h × 4/3 = 666
+    await expect(d.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('249.58');
+    await expect(d.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$666');
+  });
+
+  test('day-shift staff get no allowance', async ({ page }) => {
+    await page.click('[data-payemp="E1003"]');
+    const d = drawer(page);
+    await expect(d.locator('tr', { hasText: '本薪（月薪）' })).toBeVisible();
+    await expect(d.locator('tr', { hasText: '小夜班津貼' })).toHaveCount(0);
+    await expect(d.locator('tr', { hasText: '大夜班津貼' })).toHaveCount(0);
+  });
+
+  test('calculator adds allowance per shift and can exclude it from the OT base', async ({ page }) => {
+    await go(page, 'pay', 'calc');
+    await page.selectOption('#calcForm [name=empId]', { value: '' });
+    const f = page.locator('#calcForm');
+    await f.locator('[name=monthly]').fill('48000');
+    await f.locator('[name=wd1]').fill('2');
+    await f.locator('[name=night]').fill('4');
+    await f.locator('[name=night]').dispatchEvent('input');
+    const out = page.locator('#calcOut');
+    await expect(out.locator('tr', { hasText: '大夜班津貼' })).toContainText('NT$1,600');
+    // (48,000 + 1,600) ÷ 240 = 206.67 → 2 h × 4/3 = 551
+    await expect(out.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$551');
+    await page.selectOption('#calcForm [name=nightInBase]', 'false');
+    // 48,000 ÷ 240 = 200 → 2 h × 4/3 = 533
+    await expect(out.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$533');
   });
 });
 
