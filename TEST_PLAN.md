@@ -119,9 +119,13 @@ Flow: **待主管簽核 (pending) → 待人資複核 (countersign) → 已核�
 
 ### Phase 4: My Hours (HR › 我的工時)
 
-Assumed shift: 08:00–17:00 with a 12:00–13:00 lunch; 1 day = 8 h; minimum leave unit 0.5 h.
+Shifts: 白班 (day) 08:00–17:00 with a 12:00–13:00 lunch; 小夜 (evening) 16:00–00:00 and
+大夜 (overnight) 00:00–08:00, 8 h straight with no lunch deduction. Only nurses and care attendants
+at O1 and O2 rotate; HQ staff and every other title always work day shifts. 1 day = 8 h; minimum
+leave unit 0.5 h.
 
-- [ ] Clock in at 08:00 and out at 17:30 → today's row shows 8.5 h — *My Hours › clock in and out…*
+- [ ] Clock in at 08:00 and out at 17:30 → today's row shows 白班 and 8.5 h — *My Hours › clock in and out…*
+- [ ] Punch records show a 班別 column; late and early flags follow each day's shift times — **manual**
 - [ ] Leave: the 上午 4h and 下午 4h quick picks each compute 4 h; submitting creates a pending request — *…half-day leave computes 4 h…*
 - [ ] Overtime: 17:00–19:00 = 2 h, 17:00–20:30 = 3.5 h, 22:00–02:00 = 4 h (crosses midnight) — *…overtime hours compute…*
 - [ ] Balance (admin, E1005): annual leave 120 h entitlement, 4 h used, 116 h left; comp time 4 h; a pending 4 h request leaves 112 h — *…balance tab reflects entitlement…*
@@ -136,6 +140,11 @@ Assumed shift: 08:00–17:00 with a 12:00–13:00 lunch; 1 day = 8 h; minimum le
 - [ ] The Payroll module appears in the menu for hr only — **manual**
 - [ ] Switching from hr to another role while on Payroll returns to 原型說明 — **manual**
 - [ ] 薪資試算 excludes requests that aren't approved yet and says how many — **manual**
+- [ ] Night-shift allowance: NT$200 per evening shift and NT$400 per overnight shift. For E2203 in 2026-08 (5 evening, 1 overnight), the breakdown shows NT$1,000 and NT$400, and the overtime hourly base becomes (58,500 + 1,400) ÷ 240 = 249.58 — *Payroll night-shift allowance › rotating nurse is paid per evening / overnight shift…*
+- [ ] Day-shift staff (E1003) get no allowance lines — *…day-shift staff get no allowance*
+- [ ] The calculator adds the allowance per shift, and the allowance can be excluded from the overtime base — *…calculator adds allowance per shift…*
+- [ ] The payroll CSV has 小夜班次, 大夜班次 and 夜班津貼 columns — **manual**
+- [ ] A warning shows when the labor insured salary is below the bracket for regular pay including the allowance — **manual**
 - [ ] 薪資計算機 shows the formula for every line — **manual**
 - [ ] 版本與覆核: save version → submit → approve (locks the month) or return; unlock to recalculate — **manual**
 
