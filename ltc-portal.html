@@ -437,6 +437,15 @@ const EV_TYPE = {
 /* 工時制度假設：日班 08:00–17:00，午休 12:00–13:00，每日 8 小時；請假最小單位 0.5 小時 */
 const WORK_DAY_H = 8, LEAVE_UNIT_H = 0.5, OT_MONTH_CAP_H = 46;
 const SHIFT = {start:'08:00', lunchS:'12:00', lunchE:'13:00', end:'17:00'};
+/* 班別：白班含 1 小時午休；小夜、大夜為連續 8 小時（休息時間由單位輪替安排） */
+const SHIFT_TYPES = {
+  day:  {zh:'白班', en:'Day',     start:'08:00', end:'17:00', lunch:true,  cls:''},
+  eve:  {zh:'小夜', en:'Evening', start:'16:00', end:'00:00', lunch:false, cls:'info'},
+  night:{zh:'大夜', en:'Night',   start:'00:00', end:'08:00', lunch:false, cls:'acc'}
+};
+const ROTATING_TITLES = ['rn','ca'];   // 24 小時照護需輪班的職務
+/* 分鐘差（跨午夜取最近的一側），正數 = 晚於基準 */
+const minDiff = (t, ref) => { let d=toMin(t)-toMin(ref); if(d>720) d-=1440; if(d<-720) d+=1440; return d; };
 /* quota: 每年額度（天）；null = 依年資計算（特休）或依事由核給 */
 const LEAVE_TYPES = {
   annual:   {pay:1, att:false, zh:'特休',       en:'Annual',          quota:null, basis:{zh:'依年資（勞基法§38）',en:'By seniority (LSA §38)'}},
@@ -607,6 +616,14 @@ const ATT_STATUS = {
   leave:{zh:'請假',en:'On leave',cls:'info'}, miss:{zh:'未打卡',en:'Missing punch',cls:'crit'},
   off:{zh:'排休',en:'Rest day',cls:''}
 };
+function shiftOf(empId, date){
+  const p=person(empId);
+  if(!p || !ROTATING_TITLES.includes(p.title) || p.unit==='HQ') return 'day';
+  const o=(state.roster||{})[empId+'|'+date]; if(o) return o;
+  if(OT_REQ.some(x=>x.emp===empId&&x.date===date)) return 'day';
+  const r=seed(empId+'|'+date+'|shift');
+  return r<0.18 ? 'night' : r<0.45 ? 'eve' : 'day';
+}
 function attendance(empId, y, m){        // m = 1-12
   const days = new Date(y, m, 0).getDate();
   const out = [], mon = y+'-'+String(m).padStart(2,'0');
@@ -625,13 +642,15 @@ function attendance(empId, y, m){        // m = 1-12
     const lvH = status==='off' ? 0 : leaves.filter(l=>l.from<=ds&&l.to>=ds)
       .reduce((a,l)=>a+leaveHours(ds, l.from===ds?l.fromT:SHIFT.start, ds, l.to===ds?l.toT:SHIFT.end),0);
     if(lvH>=WORK_DAY_H) status='leave';
-    const inH = status==='late' ? 8 : 7, inM = status==='late' ? 8+Math.floor(r*40) : 40+Math.floor(r*18);
-    let tin = (status==='off'||status==='leave') ? null : String(inH).padStart(2,'0')+':'+String(inM%60).padStart(2,'0');
-    let tout = (status==='off'||status==='leave'||status==='miss') ? null : (r>0.6?'18:1':'17:3')+Math.floor(r*9);
+    const shift = (status==='off'||status==='leave') ? null : shiftOf(empId, ds), st = SHIFT_TYPES[shift||'day'];
+    const hm = mins => { mins=((mins%1440)+1440)%1440; return String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0'); };
+    const inOff = status==='late' ? 8+Math.floor(r*40) : -(3+Math.floor(r*18));
+    let tin = shift ? hm(toMin(st.start)+inOff) : null;
+    let tout = (shift && status!=='miss') ? hm(toMin(st.end)+(r>0.6?10:30)+Math.floor(r*9)) : null;
     let fixed = false;
     fixes.filter(f=>f.date===ds).forEach(f=>{ if(f.kind==='in') tin=f.time; else tout=f.time; fixed=true; });
     if(status==='miss' && tin && tout) status='present';
-    out.push({ d, dow, status, in:tin, out:tout, lvH, fixed,
+    out.push({ d, dow, status, shift, in:tin, out:tout, lvH, fixed,
       ot: (status!=='off' && status!=='leave' && r>0.78) ? Math.round(r*20)/10 : 0 });
   }
   return out;
@@ -1728,10 +1747,10 @@ const nowHM = () => { const d=new Date(); return String(d.getHours()).padStart(2
 const myPunches = () => (state.punches||[]).filter(p=>p.emp===me().id);
 
 /* 工時：扣除午休 1 小時（若跨越午休） */
-function workedHours(inT, outT){
+function workedHours(inT, outT, shift='day'){
   if(!inT||!outT) return 0;
-  let m=toMin(outT)-toMin(inT);
-  if(toMin(inT)<=toMin(SHIFT.lunchS) && toMin(outT)>=toMin(SHIFT.lunchE)) m-=60;
+  let m=toMin(outT)-toMin(inT); if(m<=0) m+=1440;
+  if(SHIFT_TYPES[shift].lunch && toMin(inT)<=toMin(SHIFT.lunchS) && toMin(outT)>=toMin(SHIFT.lunchE)) m-=60;
   return Math.max(0, Math.round(m/6)/10);
 }
 /* 本月每日打卡紀錄：系統資料 + 本次打卡 + 已核准補打卡 */
@@ -1748,11 +1767,12 @@ function myMonthRows(){
     const issues=[];
     if(r.status!=='off' && r.status!=='leave' && date<=ymd(TODAY)){
       if(!inT && date<ymd(TODAY) && leaveH<WORK_DAY_H) issues.push('noin');
-      if(inT && toMin(inT)>toMin(SHIFT.start) && leaveH===0) issues.push('late');
+      const st=SHIFT_TYPES[r.shift||'day'];
+      if(inT && minDiff(inT,st.start)>0 && leaveH===0) issues.push('late');
       if(inT && !outT && date<ymd(TODAY)) issues.push('noout');
-      if(outT && toMin(outT)<toMin(SHIFT.end) && leaveH===0) issues.push('early');
+      if(outT && minDiff(outT,st.end)<0 && leaveH===0) issues.push('early');
     }
-    return {date, dow:r.dow, status:r.status, inT, outT, hours:workedHours(inT,outT), leaveH, src, issues};
+    return {date, dow:r.dow, status:r.status, shift:r.shift, inT, outT, hours:workedHours(inT,outT,r.shift||'day'), leaveH, src, issues};
   });
 }
 const ISSUE = {
@@ -1809,9 +1829,10 @@ function myClock(rows){
   <section class="card">
     <div class="card-h"><h2>${esc(both('本月打卡紀錄','Punch records this month'))}</h2></div>
     <div class="tablewrap"><table>
-      <thead><tr><th>${bi('日期','Date')}</th><th>${bi('上班','In')}</th><th>${bi('下班','Out')}</th><th>${bi('工時','Hours')}</th><th>${bi('請假時數','Leave h')}</th><th>${bi('狀態','Status')}</th></tr></thead>
+      <thead><tr><th>${bi('日期','Date')}</th><th>${bi('班別','Shift')}</th><th>${bi('上班','In')}</th><th>${bi('下班','Out')}</th><th>${bi('工時','Hours')}</th><th>${bi('請假時數','Leave h')}</th><th>${bi('狀態','Status')}</th></tr></thead>
       <tbody>${rows.slice().reverse().map(r=>`<tr>
         <td class="mono">${r.date} <span class="muted">(${DOW[r.dow]})</span></td>
+        <td>${r.shift?`<span class="chip ${SHIFT_TYPES[r.shift].cls}">${esc(both(SHIFT_TYPES[r.shift].zh,SHIFT_TYPES[r.shift].en))}</span>`:'—'}</td>
         <td class="mono">${r.inT||'—'}</td><td class="mono">${r.outT||'—'}</td>
         <td class="num">${r.hours?fmtH(r.hours):'—'}</td>
         <td class="num">${r.leaveH?fmtH(r.leaveH):'—'}</td>
@@ -3045,7 +3066,9 @@ const PAY_CFG = {
   fullAttBonus:2000,                         // 全勤獎金（全職）
   taxThreshold:88501, taxRate:0.05,          // 薪資扣繳：超過門檻以 5% 預扣（簡化）
   avgDep:0.56,                               // 健保雇主負擔平均眷口數
-  laborRate:0.125, healthRate:0.0517, pensionER:0.06
+  laborRate:0.125, healthRate:0.0517, pensionER:0.06,
+  eveRate:200, nightRate:400,                // 夜班津貼（每班）
+  nightInOTBase:true                         // 夜班津貼屬經常性給與，計入加班費時薪基準
 };
 const HOURLY_WAGE = {E2107:220, E2206:215};  // 部分工時人員時薪
 const HOLIDAYS = {'2026-09-25':'中秋節','2026-09-28':'教師節','2026-10-09':'國慶日補假','2026-10-26':'光復節補假'};
@@ -3092,6 +3115,7 @@ function payInputs(empId, month){
   const mS=month+'-01', mE=monthEnd(month), part=p.type==='part';
   const inp={empId, month, part, monthly:part?0:p.salary, hourly:part?(HOURLY_WAGE[empId]||PAY_CFG.minHourly):0,
     regH:0, wd1:0, wd2:0, rd1:0, rd2:0, rd3:0, hol:0, compH:0, leave:{}, lateMin:0, lateDays:0, missing:0,
+    eve:0, night:0, eveRate:PAY_CFG.eveRate, nightRate:PAY_CFG.nightRate, nightInBase:PAY_CFG.nightInOTBase, shiftDates:{eve:[],night:[]},
     bonus:!part, laborG:0, healthG:0, pensionG:0, dep:rec.dep, selfPct:rec.selfPension,
     adjust:(payrun(month).adj[empId]||[]).slice(), pending:0, otOver:[], sources:[]};
   LEAVE.filter(l=>l.emp===empId&&l.status==='approved'&&l.from<=mE&&l.to>=mS).forEach(l=>{
@@ -3099,10 +3123,11 @@ function payInputs(empId, month){
     inp.leave[l.type]=(inp.leave[l.type]||0)+h; inp.sources.push(l.id);
   });
   attendance(empId,y,m).filter(r=>r.status).forEach(r=>{
-    if(r.status==='late' && !r.lvH){ inp.lateMin+=toMin(r.in)-toMin(SHIFT.start); inp.lateDays++; }
+    if(r.status==='late' && !r.lvH){ inp.lateMin+=Math.max(0,minDiff(r.in,SHIFT_TYPES[r.shift].start)); inp.lateDays++; }
     if(r.status==='miss') inp.missing++;
+    if((r.shift==='eve'||r.shift==='night') && !r.lvH){ inp[r.shift]++; inp.shiftDates[r.shift].push(r.d); }
     if(part && ['present','late','miss'].includes(r.status)){
-      const w = r.status==='miss' ? WORK_DAY_H : Math.min(WORK_DAY_H, workedHours(r.in,r.out));
+      const w = r.status==='miss' ? WORK_DAY_H : Math.min(WORK_DAY_H, workedHours(r.in,r.out,r.shift));
       inp.regH += Math.max(0, w-(r.lvH||0));
     }
   });
@@ -3128,9 +3153,16 @@ function payMath(inp){
   const lines=[], add=(g,zh,en,formula,amt)=>{ const a=Math.round(amt); if(a||g==='earn') lines.push({g,zh,en,formula,amt:a}); return a; };
   const warn=[];
   let base, ot=0, att=0, paidLeave=0, bonus=0, adjPos=0, adjNeg=0;
+  const eveN=+inp.eve||0, nightN=+inp.night||0, nightAmt=eveN*(+inp.eveRate||0)+nightN*(+inp.nightRate||0);
+  const inBase = !inp.part && inp.nightInBase && nightAmt>0;
+  const Hot = inBase ? (+inp.monthly+nightAmt)/240 : H, HotS = Hot.toFixed(2);
   base = inp.part ? add('earn','正常工時薪資','Regular hours pay',`${fmtH(inp.regH)} 小時 × 時薪 ${n(H)}`, inp.regH*H)
                   : add('earn','本薪（月薪）','Base salary',`月薪 ${n(inp.monthly)}；時薪基準 = 月薪 ÷ 30 ÷ 8 = ${Hs}`, +inp.monthly);
-  OT_TIERS.forEach(t=>{ const h=+inp[t.k]||0; if(h>0) ot+=add('earn',t.zh,t.en,`${fmtH(h)} 小時 × ${Hs} × ${t.f}`, h*H*t.mult); });
+  let night=0;
+  if(eveN) night+=add('earn','小夜班津貼','Evening shift allowance',`${eveN} 班 × ${n(+inp.eveRate)}`, eveN*inp.eveRate);
+  if(nightN) night+=add('earn','大夜班津貼','Overnight shift allowance',`${nightN} 班 × ${n(+inp.nightRate)}`, nightN*inp.nightRate);
+  const otBase = inBase ? `（加班時薪基準 = (月薪 + 夜班津貼 ${n(nightAmt)}) ÷ 240）` : '';
+  OT_TIERS.forEach(t=>{ const h=+inp[t.k]||0; if(h>0) ot+=add('earn',t.zh,t.en,`${fmtH(h)} 小時 × ${HotS} × ${t.f}${otBase}`, h*Hot*t.mult); });
   Object.entries(inp.leave||{}).forEach(([k,h])=>{
     const t=LEAVE_TYPES[k]; h=+h; if(!h) return;
     if(inp.part){ if(t.pay>0) paidLeave+=add('earn',`${t.zh}（${t.pay===1?'給薪':'半薪'}）`,`${t.en} leave (${t.pay===1?'paid':'half pay'})`,`${fmtH(h)} 小時 × ${Hs} × ${t.pay}`, h*H*t.pay); }
@@ -3142,7 +3174,10 @@ function payMath(inp){
   (inp.adjust||[]).forEach(a=>{ const v=+a.amount||0;
     if(v>=0) adjPos+=add('earn','人工調整：'+a.label,'Manual: '+a.label,a.reason||'',v);
     else adjNeg+=add('other','人工調整：'+a.label,'Manual: '+a.label,a.reason||'',-v); });
-  const gross = base+ot+paidLeave+bonus+adjPos-att;
+  const gross = base+night+ot+paidLeave+bonus+adjPos-att;
+  const regular = (inp.part ? inp.regH*H : +inp.monthly)+night;
+  if(inp.laborG && gradeFor(regular,LABOR_GRADES)>inp.laborG) warn.push({zh:`勞保投保薪資 ${inp.laborG} 低於本月經常性薪資（含夜班津貼）${Math.round(regular)} 的級距 ${gradeFor(regular,LABOR_GRADES)}`,
+    en:`Labor insured salary ${inp.laborG} is below the bracket for regular pay incl. shift allowance (${gradeFor(regular,LABOR_GRADES)})`,cls:'warn'});
   const labor = inp.laborG ? add('stat','勞保費（個人負擔）','Labor insurance (employee)',`投保薪資 ${n(inp.laborG)} × 12.5% × 20%`, laborPremium(+inp.laborG)) : 0;
   const health = inp.healthG ? add('stat','健保費（個人負擔）','Health insurance (employee)',`投保金額 ${n(inp.healthG)} × 5.17% × 30% × (1 + 眷屬 ${Math.min(+inp.dep,3)})`, healthPremium(+inp.healthG,+inp.dep)) : 0;
   const pension = +inp.selfPct ? add('stat','勞退自提','Voluntary pension',`提繳工資 ${n(inp.pensionG)} × ${inp.selfPct}%`, inp.pensionG*inp.selfPct/100) : 0;
@@ -3161,7 +3196,7 @@ function payMath(inp){
   const otH=OT_TIERS.reduce((a,t)=>a+(+inp[t.k]||0),0)+(+inp.compH||0);
   if(otH>OT_MONTH_CAP_H) warn.push({zh:`本月加班 ${fmtH(otH)} 小時，超過 ${OT_MONTH_CAP_H} 小時上限`,en:`Overtime ${fmtH(otH)}h exceeds ${OT_MONTH_CAP_H}h cap`,cls:'crit'});
   if(net<0) warn.push({zh:'實發為負數',en:'Net pay is negative',cls:'crit'});
-  return {H, lines, base, ot, att, paidLeave, bonus, adjPos, adjNeg, adjNet:adjPos-adjNeg, gross, labor, health, pension, tax, stat, net,
+  return {H, Hot, eveN, nightN, lines, base, night, ot, att, paidLeave, bonus, adjPos, adjNeg, adjNet:adjPos-adjNeg, gross, labor, health, pension, tax, stat, net,
     er:{labor:erL, health:erH, pension:erP, total:erL+erH+erP}, warn};
 }
 const calcPay = (empId, month) => payMath(payInputs(empId, month));
@@ -3178,12 +3213,12 @@ const monthState = run => {
   return {zh:'試算中',en:'Draft',cls:'warn'};
 };
 function payCSV(res, month){
-  const rows=[['員工編號','姓名','職稱','據點','計薪方式','本薪/正常工時薪資','加班費','給薪假(時薪制)','差勤扣款','全勤獎金','人工調整淨額','應發金額',
+  const rows=[['員工編號','姓名','職稱','據點','計薪方式','本薪/正常工時薪資','小夜班次','大夜班次','夜班津貼','加班費','給薪假(時薪制)','差勤扣款','全勤獎金','人工調整淨額','應發金額',
     '勞保自付','健保自付','勞退自提','所得稅','其他扣款','實發金額','雇主勞保','雇主健保','雇主勞退','警示']];
   STAFF.forEach(s=>{ const r=res[s.id]; if(!r) return;
-    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, s.type==='part'?'時薪':'月薪', r.base, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
+    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, s.type==='part'?'時薪':'月薪', r.base, r.eveN, r.nightN, r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
       r.labor, r.health, r.pension, r.tax, r.adjNeg, r.net, r.er.labor, r.er.health, r.er.pension, r.warn.map(w=>w.zh).join('; ')]); });
-  const t=payTotals(res); rows.push(['合計','','','','','','','','','','',t.gross,'','','','','',t.net,'','','','']);
+  const t=payTotals(res); rows.push(['合計','','','','','','','','','','','','','',t.gross,'','','','','',t.net,'','','','']);
   return toCSV(rows);
 }
 
@@ -3222,13 +3257,13 @@ function viewPayRun(){
       <div class="card-h"><h2>${esc(both('薪資試算表','Payroll register'))} <span class="mono muted" style="font-size:12px">${month}</span></h2>
         <span class="en">${esc(both('點選員工查看計算明細與人工調整','Click an employee for the breakdown and adjustments'))}</span></div>
       <div class="tablewrap"><table>
-        <thead><tr><th>${bi('員工','Employee')}</th><th>${bi('計薪','Basis')}</th><th>${bi('本薪','Base')}</th><th>${bi('加班費','Overtime')}</th>
+        <thead><tr><th>${bi('員工','Employee')}</th><th>${bi('計薪','Basis')}</th><th>${bi('本薪','Base')}</th><th>${bi('夜班津貼','Shift allow.')}</th><th>${bi('加班費','Overtime')}</th>
           <th>${bi('差勤扣款','Attendance')}</th><th>${bi('全勤','Bonus')}</th><th>${bi('調整','Adjust')}</th><th>${bi('應發','Gross')}</th>
           <th>${bi('代扣','Withheld')}</th><th>${bi('實發','Net')}</th><th>${bi('警示','Flags')}</th></tr></thead>
         <tbody>${list.map(s=>{ const r=res[s.id]; return `<tr class="clickable" data-payemp="${s.id}">
           <td>${esc(empName(s.id))} <span class="muted mono" style="font-size:11px">${s.id}</span><div class="muted" style="font-size:11px">${esc(TITLES[s.title].zh)} · ${esc(unit(s.unit).zh)}</div></td>
           <td><span class="chip ${s.type==='part'?'warn':''}">${esc(s.type==='part'?both('時薪','Hourly'):both('月薪','Monthly'))}</span></td>
-          <td class="num">${money(r.base+r.paidLeave)}</td><td class="num">${r.ot?money(r.ot):'—'}</td>
+          <td class="num">${money(r.base+r.paidLeave)}</td><td class="num">${r.night?money(r.night):'—'}</td><td class="num">${r.ot?money(r.ot):'—'}</td>
           <td class="num">${r.att?'−'+money(r.att):'—'}</td><td class="num">${r.bonus?money(r.bonus):'—'}</td>
           <td class="num">${r.adjNet?(r.adjNet>0?'+':'−')+money(Math.abs(r.adjNet)):'—'}</td>
           <td class="num"><b>${money(r.gross)}</b></td><td class="num">−${money(r.stat+r.adjNeg)}</td><td class="num"><b>${money(r.net)}</b></td>
@@ -3292,6 +3327,8 @@ function openPayslip(empId, month){
           <div class="tablewrap"><table><tbody>
             ${lvRows.map(l=>`<tr><td class="mono">${l.id}</td><td>${esc(LEAVE_TYPES[l.type].zh)}</td><td class="mono">${l.from} ${l.fromT} → ${l.to} ${l.toT}</td><td class="num">${fmtH(l.hours)}h</td></tr>`).join('')}
             ${otRows.map(o=>{const s=splitOT(o);return `<tr><td class="mono">${o.id}</td><td>${esc(both('加班','Overtime'))} · ${esc(both(dt[s.t].zh,dt[s.t].en))}${HOLIDAYS[o.date]?' ('+HOLIDAYS[o.date]+')':''}</td><td class="mono">${o.date} ${o.start}–${o.end}</td><td class="num">${fmtH(o.hours)}h · ${esc(OT_COMP[o.comp].zh)}</td></tr>`;}).join('')}
+            ${['eve','night'].filter(k=>inp[k]).map(k=>`<tr><td class="mono">—</td><td><span class="chip ${SHIFT_TYPES[k].cls}">${esc(both(SHIFT_TYPES[k].zh,SHIFT_TYPES[k].en))}</span> ${SHIFT_TYPES[k].start}–${SHIFT_TYPES[k].end}</td>
+              <td class="mono" style="white-space:normal;font-size:11.5px">${inp.shiftDates[k].map(d=>month.slice(5)+'/'+String(d).padStart(2,'0')).join('、')}</td><td class="num">${inp[k]} ${esc(both('班','shifts'))}</td></tr>`).join('')}
             <tr><td class="mono">—</td><td>${esc(both('遲到','Late'))}</td><td>${inp.lateDays} ${esc(both('天','days'))}</td><td class="num">${inp.lateMin} ${esc(both('分','min'))}</td></tr>
             ${inp.part?`<tr><td class="mono">—</td><td>${esc(both('正常工時','Regular hours'))}</td><td class="muted">${esc(both('每日上限 8 小時','capped at 8h/day'))}</td><td class="num">${fmtH(inp.regH)}h</td></tr>`:''}
           </tbody></table></div>
@@ -3345,9 +3382,14 @@ const CALC_FIELDS = [
   ['lv_paid','給薪假（特休、婚喪、公假、補休）','Paid leave (annual, marriage, etc.)','h'],
   ['lateMin','遲到分鐘數','Late minutes','min']
 ];
+const NIGHT_FIELDS = [
+  ['eve','小夜班次','Evening shifts','班'], ['eveRate','小夜津貼／班','Evening allowance / shift','NT$'],
+  ['night','大夜班次','Overnight shifts','班'], ['nightRate','大夜津貼／班','Overnight allowance / shift','NT$']
+];
 function calcDefaults(empId, month){
   if(!empId) return {empId:'', month, part:false, monthly:40000, hourly:PAY_CFG.minHourly, regH:0, wd1:0, wd2:0, rd1:0, rd2:0, rd3:0, hol:0,
-    lv_sick:0, lv_personal:0, lv_family:0, lv_menstrual:0, lv_paid:0, lateMin:0, bonus:true, laborG:gradeFor(40000,LABOR_GRADES), healthG:gradeFor(40000,HEALTH_GRADES), dep:0, selfPct:0, addAmt:0, dedAmt:0};
+    lv_sick:0, lv_personal:0, lv_family:0, lv_menstrual:0, lv_paid:0, lateMin:0, bonus:true,
+    eve:0, night:0, eveRate:PAY_CFG.eveRate, nightRate:PAY_CFG.nightRate, nightInBase:PAY_CFG.nightInOTBase, laborG:gradeFor(40000,LABOR_GRADES), healthG:gradeFor(40000,HEALTH_GRADES), dep:0, selfPct:0, addAmt:0, dedAmt:0};
   const i=payInputs(empId, month), c={...i};
   DEDUCT_LEAVES.forEach(k=>c['lv_'+k]=i.leave[k]||0);
   c.lv_paid=Object.entries(i.leave).filter(([k])=>!DEDUCT_LEAVES.includes(k)).reduce((a,[,h])=>a+h,0);
@@ -3387,6 +3429,10 @@ function viewPayCalc(){
         </div>
         <div class="eyebrow">${esc(both('工時與加班','Hours & overtime'))}</div>
         <div class="row">${CALC_FIELDS.slice(0,7).map(f=>num(...f)).join('')}</div>
+        <div class="eyebrow">${esc(both('夜班津貼','Shift allowance'))}</div>
+        <div class="row">${NIGHT_FIELDS.map(f=>num(...f)).join('')}
+          <div><label>${esc(both('計入加班費基數','Include in OT base'))}</label><select name="nightInBase"><option value="true" ${c.nightInBase?'selected':''}>${esc(both('是','Yes'))}</option><option value="false" ${!c.nightInBase?'selected':''}>${esc(both('否','No'))}</option></select></div>
+        </div>
         <div class="eyebrow">${esc(both('請假與出勤異常','Leave & exceptions'))}</div>
         <div class="row">${CALC_FIELDS.slice(7).map(f=>num(...f)).join('')}
           <div><label>${esc(both('全勤獎金','Attendance bonus'))}</label><select name="bonus"><option value="true" ${c.bonus?'selected':''}>${esc(both('符合','Eligible'))}</option><option value="false" ${!c.bonus?'selected':''}>${esc(both('不符合','Not eligible'))}</option></select></div>
@@ -3418,6 +3464,8 @@ function payRulesNote(){
       ${[
         ['時薪基準 = 月薪 ÷ 30 ÷ 8（= ÷ 240）；時薪制人員以約定時薪計，不得低於基本工資 '+PAY_CFG.minHourly+' 元。','Hourly base = monthly ÷ 240; hourly staff use their agreed rate (minimum '+PAY_CFG.minHourly+').'],
         ['平日加班：前 2 小時 × 4/3、第 3–4 小時 × 5/3（勞基法 §24）；休息日：前 2 小時 × 4/3、第 3–8 小時 × 5/3、第 9–12 小時 × 8/3。','Weekday OT: first 2h × 4/3, hours 3–4 × 5/3 (LSA §24). Rest day: 4/3, 5/3, 8/3.'],
+        ['夜班津貼：小夜（16:00–24:00）每班 '+PAY_CFG.eveRate+' 元、大夜（00:00–08:00）每班 '+PAY_CFG.nightRate+' 元（示意，依公司規定）；當日請假滿班不發。津貼屬經常性給與，計入應發、所得與投保薪資，並計入加班費時薪基準。',
+          'Shift allowance: evening '+PAY_CFG.eveRate+' / overnight '+PAY_CFG.nightRate+' per shift (illustrative); none for shifts taken as leave. It is regular pay: counted in gross, taxable income, the insured-salary bracket and the overtime base.'],
         ['國定假日／例假出勤：工資加倍發給（月薪已含當日工資，故加發 1 倍）；選擇換補休者不計加班費。','Holiday work is paid double (monthly pay already includes the day, so one extra day is added). Overtime taken as comp time is not paid.'],
         ['請假：特休、婚假、喪假、公假、補休給薪；病假、生理假半薪；事假、家庭照顧假不給薪。','Leave: annual, marriage, bereavement, official and comp are paid; sick and menstrual are half pay; personal and family care are unpaid.'],
         ['遲到僅按實際未出勤時間比例扣薪，不得額外罰款。全勤獎金不因生理假、家庭照顧假、婚喪假、公假、特休而扣除。','Lateness is deducted only for time actually missed. Menstrual, family care, marriage, bereavement, official and annual leave cannot cost the attendance bonus.'],
@@ -3434,9 +3482,9 @@ BINDERS['pay:calc']=function(){
   const draw=()=>{
     if(f.empId.value!==(state.calcInp.empId||'')){ state.calcEmp=f.empId.value; state.calcInp=calcDefaults(f.empId.value, month()); render(); return; }
     const c={...state.calcInp}, el=k=>f.elements[k].value;
-    ['monthly','hourly','regH','wd1','wd2','rd1','rd2','rd3','hol','lv_sick','lv_personal','lv_family','lv_menstrual','lv_paid','lateMin','laborG','healthG','dep','selfPct','addAmt','dedAmt']
+    ['monthly','hourly','regH','wd1','wd2','rd1','rd2','rd3','hol','lv_sick','lv_personal','lv_family','lv_menstrual','lv_paid','lateMin','laborG','healthG','dep','selfPct','addAmt','dedAmt','eve','night','eveRate','nightRate']
       .forEach(k=>c[k]=Math.max(0,+el(k)||0));
-    c.part=el('part')==='true'; c.bonus=el('bonus')==='true';
+    c.part=el('part')==='true'; c.bonus=el('bonus')==='true'; c.nightInBase=el('nightInBase')==='true';
     f.monthly.disabled=c.part; f.hourly.disabled=!c.part; f.regH.disabled=!c.part;
     state.calcInp=c;
     const r=payMath(calcToInput(c));
