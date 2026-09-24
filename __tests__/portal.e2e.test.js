@@ -215,6 +215,17 @@ test.describe('My Hours', () => {
     await expect(page.locator('.clockface')).toContainText('8.5');
   });
 
+  test('clocking in and out in the same minute counts 0 h, not 24', async ({ page }) => {
+    await page.clock.setFixedTime(new Date(2026, 8, 8, 9, 15));
+    await openPortal(page);
+    await go(page, 'hr', 'mylog');
+    await page.click('[data-punch="in"]');
+    await page.click('[data-punch="out"]');
+    const today = page.locator('#view tbody tr').filter({ hasText: '2026-09-08' });
+    await expect(today.locator('td').nth(3)).toHaveText('09:15');
+    await expect(today.locator('td').nth(4)).toHaveText('—');
+  });
+
   test('half-day leave computes 4 h and is filed as pending', async ({ page }) => {
     await openPortal(page);
     await go(page, 'hr', 'mylog');
@@ -324,6 +335,49 @@ test.describe('Payroll night-shift allowance', () => {
     await page.selectOption('#calcForm [name=nightInBase]', 'false');
     // 48,000 ÷ 240 = 200 → 2 h × 4/3 = 533
     await expect(out.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$533');
+  });
+
+  test('calculator includes a part-timer\'s allowance in their OT rate', async ({ page }) => {
+    await go(page, 'pay', 'calc');
+    await page.selectOption('#calcForm [name=empId]', { value: '' });
+    const f = page.locator('#calcForm');
+    await page.selectOption('#calcForm [name=part]', 'true');
+    await f.locator('[name=hourly]').fill('200');
+    await f.locator('[name=regH]').fill('160');
+    await f.locator('[name=wd1]').fill('2');
+    await f.locator('[name=night]').fill('4');
+    await f.locator('[name=night]').dispatchEvent('input');
+    const out = page.locator('#calcOut');
+    await expect(out.locator('tr', { hasText: '大夜班津貼' })).toContainText('NT$1,600');
+    // (160 h × 200 + 1,600) ÷ 160 h = 210 → 2 h × 4/3 = 560
+    await expect(out.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$560');
+  });
+
+  test('leave is counted against the evening or overnight shift worked that day', async ({ page }) => {
+    const r = await page.evaluate(() => ({
+      // E2203 works overnight (00:00–08:00) on 2026-08-27 and evening (16:00–24:00) on 2026-08-21
+      nightShift: leaveHours('2026-08-27', '00:00', '2026-08-27', '08:00', 'E2203'),
+      nightFullDay: leaveHours('2026-08-27', '08:00', '2026-08-27', '17:00', 'E2203'),
+      evePartial: leaveHours('2026-08-21', '13:00', '2026-08-21', '17:00', 'E2203'),
+      dayStaff: leaveHours('2026-08-27', '13:00', '2026-08-27', '17:00', 'E1003'),
+    }));
+    expect(r).toEqual({ nightShift: 8, nightFullDay: 8, evePartial: 1, dayStaff: 4 });
+  });
+
+  test('partial leave on an overnight shift keeps the allowance', async ({ page }) => {
+    const r = await page.evaluate(() => {
+      // 4 h off at the end of E2203's 2026-08-27 overnight shift
+      LEAVE.push(mkLeave('L900', 'E2203', 'personal', '2026-08-27', '04:00', '2026-08-27', '08:00', '2026-08-26', 'approved', { zh: '', en: '' }));
+      const day = attendance('E2203', 2026, 8).find(x => x.d === 27);
+      const inp = payInputs('E2203', '2026-08');
+      // L238 is 08:00–12:00 on E2206's 2026-08-21 overnight shift, outside the hours worked
+      const e2206 = payInputs('E2206', '2026-08');
+      return { shift: day.shift, lvH: day.lvH, nights: inp.shiftDates.night, e2206Nights: e2206.shiftDates.night };
+    });
+    expect(r.shift).toBe('night');
+    expect(r.lvH).toBe(4);
+    expect(r.nights).toContain(27);
+    expect(r.e2206Nights).toContain(21);
   });
 });
 

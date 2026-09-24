@@ -125,7 +125,8 @@ at O1 and O2 rotate; HQ staff and every other title always work day shifts. 1 da
 leave unit 0.5 h.
 
 - [ ] Clock in at 08:00 and out at 17:30 → today's row shows 白班 and 8.5 h — *My Hours › clock in and out…*
-- [ ] Punch records show a 班別 column; late and early flags follow each day's shift times — **manual**
+- [ ] Clocking in and out in the same minute shows no hours (—), not 24 h — *…clocking in and out in the same minute counts 0 h…*
+- [ ] Punch records show a 班別 column. None of the three built roles works rotating shifts, so My Hours always shows 白班 here; evening and overnight shifts are checked from Payroll in Phase 5 — **manual**
 - [ ] Leave: the 上午 4h and 下午 4h quick picks each compute 4 h; submitting creates a pending request — *…half-day leave computes 4 h…*
 - [ ] Overtime: 17:00–19:00 = 2 h, 17:00–20:30 = 3.5 h, 22:00–02:00 = 4 h (crosses midnight) — *…overtime hours compute…*
 - [ ] Balance (admin, E1005): annual leave 120 h entitlement, 4 h used, 116 h left; comp time 4 h; a pending 4 h request leaves 112 h — *…balance tab reflects entitlement…*
@@ -143,6 +144,10 @@ leave unit 0.5 h.
 - [ ] Night-shift allowance: NT$200 per evening shift and NT$400 per overnight shift. For E2203 in 2026-08 (5 evening, 1 overnight), the breakdown shows NT$1,000 and NT$400, and the overtime hourly base becomes (58,500 + 1,400) ÷ 240 = 249.58 — *Payroll night-shift allowance › rotating nurse is paid per evening / overnight shift…*
 - [ ] Day-shift staff (E1003) get no allowance lines — *…day-shift staff get no allowance*
 - [ ] The calculator adds the allowance per shift, and the allowance can be excluded from the overtime base — *…calculator adds allowance per shift…*
+- [ ] For a part-time worker the allowance is also in the overtime rate: (160 h × 200 + 1,600) ÷ 160 h = 210 per hour — *…calculator includes a part-timer's allowance in their OT rate*
+- [ ] Leave is counted against the shift worked that day: on E2203's 2026-08-27 overnight shift, 00:00–08:00 or a full-day 08:00–17:00 request is 8 h; on the 2026-08-21 evening shift, 13:00–17:00 is 1 h — *…leave is counted against the evening or overnight shift…*
+- [ ] Partial leave on an evening or overnight shift keeps that shift's allowance; only a full-shift leave removes it — *…partial leave on an overnight shift keeps the allowance*
+- [ ] Open E2203's payslip for 2026-08: the 小夜 and 大夜 rows list the shift dates, and late minutes follow each shift's start time — **manual**
 - [ ] The payroll CSV has 小夜班次, 大夜班次 and 夜班津貼 columns — **manual**
 - [ ] A warning shows when the labor insured salary is below the bracket for regular pay including the allowance — **manual**
 - [ ] 薪資計算機 shows the formula for every line — **manual**

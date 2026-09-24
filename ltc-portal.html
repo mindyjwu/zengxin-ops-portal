@@ -466,8 +466,9 @@ function annualDays(hired, asOf){
 }
 const toMin = t => { const [h,m]=t.split(':').map(Number); return h*60+m; };
 const roundUnit = h => Math.ceil(h/LEAVE_UNIT_H-1e-9)*LEAVE_UNIT_H;
-/* 計算兩個時間點之間的「上班時數」（扣午休、跳過週六日） */
-function leaveHours(fromD, fromT, toD, toT){
+/* 計算兩個時間點之間的「上班時數」（扣午休、跳過週六日）。
+   有 empId 時依當日班別計算：小夜／大夜只計與該班重疊的時間；請假涵蓋整個白班時段（08:00–17:00）視為請整班 */
+function leaveHours(fromD, fromT, toD, toT, empId){
   if(!fromD||!toD||!fromT||!toT) return 0;
   const s=new Date(fromD+'T00:00'), e=new Date(toD+'T00:00'); if(e<s) return 0;
   const blocks=[[toMin(SHIFT.start),toMin(SHIFT.lunchS)],[toMin(SHIFT.lunchE),toMin(SHIFT.end)]];
@@ -476,7 +477,10 @@ function leaveHours(fromD, fromT, toD, toT){
     if(d.getDay()===0||d.getDay()===6) continue;
     const a = +d===+s ? toMin(fromT) : toMin(SHIFT.start);
     const b = +d===+e ? toMin(toT)   : toMin(SHIFT.end);
-    blocks.forEach(([x,y])=>{ min+=Math.max(0, Math.min(b,y)-Math.max(a,x)); });
+    const sh = empId && typeof shiftOf==='function' ? shiftOf(empId, ymd(d)) : 'day';
+    if(sh==='day'){ blocks.forEach(([x,y])=>{ min+=Math.max(0, Math.min(b,y)-Math.max(a,x)); }); continue; }
+    const x=toMin(SHIFT_TYPES[sh].start), y=toMin(SHIFT_TYPES[sh].end)||1440;
+    min += (a<=toMin(SHIFT.start) && b>=toMin(SHIFT.end)) ? y-x : Math.max(0, Math.min(b,y)-Math.max(a,x));
   }
   return roundUnit(min/60);
 }
@@ -490,7 +494,7 @@ const fmtH = h => (Math.round(h*10)/10).toString();
 const hToDays = h => fmtH(h/WORK_DAY_H);
 
 const mkLeave = (id,emp,type,from,fromT,to,toT,filed,status,note) =>
-  ({id,emp,type,from,fromT,to,toT,hours:leaveHours(from,fromT,to,toT),filed,status,note});
+  ({id,emp,type,from,fromT,to,toT,hours:leaveHours(from,fromT,to,toT,emp),filed,status,note});
 let LEAVE = [
  mkLeave('L241','E2103','annual',  '2026-09-14','08:00','2026-09-16','17:00','2026-09-01','pending', {zh:'家庭旅遊，已與同仁換班',en:'Family trip; shift swap arranged'}),
  mkLeave('L242','E2104','sick',    '2026-09-09','08:00','2026-09-09','17:00','2026-09-08','pending', {zh:'附診斷證明',en:'Medical certificate attached'}),
@@ -624,6 +628,8 @@ function shiftOf(empId, date){
   const r=seed(empId+'|'+date+'|shift');
   return r<0.18 ? 'night' : r<0.45 ? 'eve' : 'day';
 }
+/* 假單時數在載入時尚無班別資料，這裡依班別重算 */
+LEAVE.forEach(l=>{ l.hours=leaveHours(l.from,l.fromT,l.to,l.toT,l.emp); });
 function attendance(empId, y, m){        // m = 1-12
   const days = new Date(y, m, 0).getDate();
   const out = [], mon = y+'-'+String(m).padStart(2,'0');
@@ -640,7 +646,7 @@ function attendance(empId, y, m){        // m = 1-12
     else if(r>0.900 && r<=0.945) status='late';
     /* 請假只認已核准假單：當日請滿 8 小時才標為請假 */
     const lvH = status==='off' ? 0 : leaves.filter(l=>l.from<=ds&&l.to>=ds)
-      .reduce((a,l)=>a+leaveHours(ds, l.from===ds?l.fromT:SHIFT.start, ds, l.to===ds?l.toT:SHIFT.end),0);
+      .reduce((a,l)=>a+leaveHours(ds, l.from===ds?l.fromT:SHIFT.start, ds, l.to===ds?l.toT:SHIFT.end, empId),0);
     if(lvH>=WORK_DAY_H) status='leave';
     const shift = (status==='off'||status==='leave') ? null : shiftOf(empId, ds), st = SHIFT_TYPES[shift||'day'];
     const hm = mins => { mins=((mins%1440)+1440)%1440; return String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0'); };
@@ -1749,7 +1755,7 @@ const myPunches = () => (state.punches||[]).filter(p=>p.emp===me().id);
 /* 工時：扣除午休 1 小時（若跨越午休） */
 function workedHours(inT, outT, shift='day'){
   if(!inT||!outT) return 0;
-  let m=toMin(outT)-toMin(inT); if(m<=0) m+=1440;
+  let m=toMin(outT)-toMin(inT); if(m<0) m+=1440;   // 下班早於上班 = 跨午夜
   if(SHIFT_TYPES[shift].lunch && toMin(inT)<=toMin(SHIFT.lunchS) && toMin(outT)>=toMin(SHIFT.lunchE)) m-=60;
   return Math.max(0, Math.round(m/6)/10);
 }
@@ -1763,7 +1769,7 @@ function myMonthRows(){
     myPunches().filter(p=>p.date===date).forEach(p=>{ if(p.kind==='in'&&!inT) inT=p.time; if(p.kind==='out') outT=p.time; });
     PUNCH_FIX.filter(f=>f.emp===u.id&&f.date===date&&f.status==='approved').forEach(f=>{ if(f.kind==='in') inT=f.time; else outT=f.time; src='fix'; });
     const leaveH=LEAVE.filter(l=>l.emp===u.id&&l.status==='approved'&&l.from<=date&&l.to>=date)
-      .reduce((a,l)=>a+leaveHours(date, l.from===date?l.fromT:SHIFT.start, date, l.to===date?l.toT:SHIFT.end),0);
+      .reduce((a,l)=>a+leaveHours(date, l.from===date?l.fromT:SHIFT.start, date, l.to===date?l.toT:SHIFT.end, u.id),0);
     const issues=[];
     if(r.status!=='off' && r.status!=='leave' && date<=ymd(TODAY)){
       if(!inT && date<ymd(TODAY) && leaveH<WORK_DAY_H) issues.push('noin');
@@ -2059,7 +2065,7 @@ BINDERS['hr:mylog']=function(){
   const lf=document.getElementById('leaveForm');
   if(lf){
     const calc=()=>{
-      const fd=new FormData(lf), h=leaveHours(fd.get('from'),fd.get('fromT'),fd.get('to'),fd.get('toT'));
+      const fd=new FormData(lf), h=leaveHours(fd.get('from'),fd.get('fromT'),fd.get('to'),fd.get('toT'),u.id);
       const b=leaveBalance(u.id).find(x=>x.k===fd.get('type'));
       const over=b.left!=null && h>b.left, el=document.getElementById('leaveCalc');
       el.className='calc'+(h<=0||over?' bad':'');
@@ -3119,13 +3125,13 @@ function payInputs(empId, month){
     bonus:!part, laborG:0, healthG:0, pensionG:0, dep:rec.dep, selfPct:rec.selfPension,
     adjust:(payrun(month).adj[empId]||[]).slice(), pending:0, otOver:[], sources:[]};
   LEAVE.filter(l=>l.emp===empId&&l.status==='approved'&&l.from<=mE&&l.to>=mS).forEach(l=>{
-    const h=leaveHours(l.from<mS?mS:l.from, l.from<mS?SHIFT.start:l.fromT, l.to>mE?mE:l.to, l.to>mE?SHIFT.end:l.toT);
+    const h=leaveHours(l.from<mS?mS:l.from, l.from<mS?SHIFT.start:l.fromT, l.to>mE?mE:l.to, l.to>mE?SHIFT.end:l.toT, empId);
     inp.leave[l.type]=(inp.leave[l.type]||0)+h; inp.sources.push(l.id);
   });
   attendance(empId,y,m).filter(r=>r.status).forEach(r=>{
     if(r.status==='late' && !r.lvH){ inp.lateMin+=Math.max(0,minDiff(r.in,SHIFT_TYPES[r.shift].start)); inp.lateDays++; }
     if(r.status==='miss') inp.missing++;
-    if((r.shift==='eve'||r.shift==='night') && !r.lvH){ inp[r.shift]++; inp.shiftDates[r.shift].push(r.d); }
+    if(r.shift==='eve'||r.shift==='night'){ inp[r.shift]++; inp.shiftDates[r.shift].push(r.d); }
     if(part && ['present','late','miss'].includes(r.status)){
       const w = r.status==='miss' ? WORK_DAY_H : Math.min(WORK_DAY_H, workedHours(r.in,r.out,r.shift));
       inp.regH += Math.max(0, w-(r.lvH||0));
@@ -3154,14 +3160,16 @@ function payMath(inp){
   const warn=[];
   let base, ot=0, att=0, paidLeave=0, bonus=0, adjPos=0, adjNeg=0;
   const eveN=+inp.eve||0, nightN=+inp.night||0, nightAmt=eveN*(+inp.eveRate||0)+nightN*(+inp.nightRate||0);
-  const inBase = !inp.part && inp.nightInBase && nightAmt>0;
-  const Hot = inBase ? (+inp.monthly+nightAmt)/240 : H, HotS = Hot.toFixed(2);
+  const inBase = inp.nightInBase && nightAmt>0 && (!inp.part || +inp.regH>0);
+  const Hot = !inBase ? H : inp.part ? (inp.regH*H+nightAmt)/inp.regH : (+inp.monthly+nightAmt)/240, HotS = Hot.toFixed(2);
   base = inp.part ? add('earn','正常工時薪資','Regular hours pay',`${fmtH(inp.regH)} 小時 × 時薪 ${n(H)}`, inp.regH*H)
                   : add('earn','本薪（月薪）','Base salary',`月薪 ${n(inp.monthly)}；時薪基準 = 月薪 ÷ 30 ÷ 8 = ${Hs}`, +inp.monthly);
   let night=0;
   if(eveN) night+=add('earn','小夜班津貼','Evening shift allowance',`${eveN} 班 × ${n(+inp.eveRate)}`, eveN*inp.eveRate);
   if(nightN) night+=add('earn','大夜班津貼','Overnight shift allowance',`${nightN} 班 × ${n(+inp.nightRate)}`, nightN*inp.nightRate);
-  const otBase = inBase ? `（加班時薪基準 = (月薪 + 夜班津貼 ${n(nightAmt)}) ÷ 240）` : '';
+  const otBase = !inBase ? '' : inp.part
+    ? `（加班時薪基準 = (正常工時薪資 ${n(inp.regH*H)} + 夜班津貼 ${n(nightAmt)}) ÷ ${fmtH(+inp.regH)} 小時）`
+    : `（加班時薪基準 = (月薪 + 夜班津貼 ${n(nightAmt)}) ÷ 240）`;
   OT_TIERS.forEach(t=>{ const h=+inp[t.k]||0; if(h>0) ot+=add('earn',t.zh,t.en,`${fmtH(h)} 小時 × ${HotS} × ${t.f}${otBase}`, h*Hot*t.mult); });
   Object.entries(inp.leave||{}).forEach(([k,h])=>{
     const t=LEAVE_TYPES[k]; h=+h; if(!h) return;
