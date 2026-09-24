@@ -1,241 +1,213 @@
-# Zengxin LTC Portal - Role-Based Testing Plan
+# 康禾長照集團 Ops Portal — Role-Based Testing Plan
 
-> **Out of date:** this plan describes a 6-role redesign (ceo/manager/hr/training/accountant/staff) that is not in `ltc-portal.html`. The portal currently has 3 built roles (admin, hr, manager); see `__tests__/portal.e2e.test.js` for the tested behavior.
+Manual test plan for `ltc-portal.html`. Each check names the automated test in
+`__tests__/portal.e2e.test.js` that covers it, if one exists. Checks marked
+**manual** have no automated coverage yet.
+
+Run the automated suite with `npm run test:e2e`. If your machine's Chromium
+build doesn't match the one Playwright expects, point `PW_CHROMIUM_PATH` at it
+(see `playwright.config.js`), and set `LANG=C.UTF-8` so Chinese download
+filenames come through.
 
 ## Test Objectives
-Verify that the 6-role RBAC system correctly restricts/allows access to:
-- Sensitive employee data (salary, performance, insurance, contact info)
-- Module features based on role permissions
-- Cross-facility data visibility
-- Leave approval workflows
+Verify that the three built roles correctly restrict or allow:
+- Sensitive employee data (pay, bank account, national ID, contact details, insurance)
+- Cross-facility data visibility (data scope)
+- Leave, overtime and missed-punch approvals
+- Payroll and CSV exports
 
 ---
 
-## Role Definitions & Permissions Matrix
+## Test Data
 
-| Feature | CEO | Manager | HR | Training | Accountant | Staff |
-|---------|-----|---------|----|-----------|-----------| ------|
-| View all facilities | ✅ | ✅* | ✅ | ✅ | ✅ | ❌ |
-| View employee salary | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ |
-| View performance rating | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| View contact/ID info | ✅ | ❌ | ✅ | ❌ | ❌ | Own only |
-| Edit employee records | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Approve leave requests | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| Access Reports | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| Access Settings | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
+The prototype has no login and no database. All data is fictional and lives in
+browser memory, so **reloading the page resets everything**. The demo date is
+fixed at **2026-09-08**.
 
-*Manager: can see all if cross-office assumption toggle is ON
+| Unit | ID | Staff |
+|------|----|-------|
+| 新竹營運中心 (HQ) | HQ | 6 (E1001–E1006) |
+| 竹北照護院 | O1 | 8 (E2101–E2108) |
+| 竹東照護院 | O2 | 9 (E2201–E2209) |
+| **Total** | | **23** |
+
+---
+
+## Roles & Permissions Matrix
+
+Switch roles with the **身分 / Role** selector (`#roleSel`) at the top of every page.
+
+| | 系統管理員 System Admin (`admin`) | 人資部經理 HR Manager (`hr`) | 院長 Facility Director (`manager`) |
+|---|---|---|---|
+| Persona | E1005, HQ | E1003, HQ | E2101, director of O1 |
+| Data scope | All facilities | All facilities | O1 only (all if the assumption toggle is ON) |
+| See pay, band, bank account | ❌ | ✅ | ❌ |
+| Full national ID | ❌ (masked, last 3 shown) | ✅ | ❌ (masked) |
+| Contact details (mobile, address, emergency) | ✅ | ✅ | ❌ |
+| Edit personnel file | ✅ | ✅ | ❌ |
+| Add performance appraisal | ✅ | ✅ | ✅ |
+| Approve leave / overtime / punch fixes | ❌ | ✅ | ✅ |
+| HR countersign (final approval) | ❌ | ✅ | ❌ |
+| Post announcements | Group-wide | Group-wide | Own facility only |
+| Payroll module | Hidden | ✅ | Hidden |
+| Payroll (financial) CSV export | ❌ | ✅ | ❌ |
+| Other CSV exports | ✅ (all facilities) | ✅ (all facilities) | ✅ (O1 only) |
+
+The **假設 / Assumption: 主管可跨院查看** button (`#assumeBtn`) is a discussion
+toggle: when it is ON, the manager reads all facilities. In every role, nobody
+can approve their own request.
+
+Six more roles (COO, Finance, Nursing, Care, Social Work, Company Manager) are
+defined as Phase 2–3 stubs and don't appear in the role selector.
 
 ---
 
 ## Testing Procedure
 
-### Phase 1: Employee Records Module (HR → Employee records tab)
+### Phase 1: Shell & Data Scope
 
-#### Test 1.1: CEO Role
-- [ ] Log in as CEO (execute long)
-- [ ] Verify can see all 27 employees across 3 facilities
-- [ ] Verify salary column is visible
-- [ ] Verify performance rating column is visible
-- [ ] Verify contact info (phone, email, ID) is visible
-- [ ] Verify insurance info is visible
-- [ ] Click on an employee → verify all sensitive fields shown in person drawer
-- [ ] Try to edit an employee record → verify edit button works
+#### Test 1.1: Shell
+- [ ] The page loads with 康禾長照集團 branding, as `admin` — *Shell & role switching › loads with brand…*
+- [ ] The role selector offers only admin, hr and manager — *…role selector offers only the built roles*
+- [ ] The **目前視角 / Viewing as** chip changes with the role — *…switching role updates the persona chip*
+- [ ] HR shows four tabs: 員工資料, 我的工時, 出勤管理, 請假審核 — *…HR module exposes its four tabs*
 
-#### Test 1.2: Manager Role
-- [ ] Switch to Manager role
-- [ ] Verify can see employees from manager's facility (O1 - 誠馨院)
-- [ ] Verify salary column is HIDDEN (shows "隱藏" / "Hidden")
-- [ ] Verify performance rating is visible
-- [ ] Verify contact info is HIDDEN
-- [ ] Verify insurance is HIDDEN
-- [ ] Click on employee from own facility → verify drawer shows performance but hides salary/contact
-- [ ] Try to view employee from different facility (if cross-office OFF) → should be restricted
-- [ ] Toggle cross-office assumption ON → verify can now see other facilities
+#### Test 1.2: Data scope (HR › 員工資料)
+- [ ] admin and hr see all 23 employees — *Data scope › admin and hr see all 23 employees*
+- [ ] manager sees only the 8 O1 staff; the office filter is disabled; a note says 15 records are hidden — *…manager sees only O1 staff…*
+- [ ] With the assumption toggle ON, manager sees all 23 and the filter is enabled — *…assumption toggle opens the manager…*
+- [ ] admin filtering to 竹東照護院 shows 9 employees — *…office filter narrows admin…*
+- [ ] manager's 出勤管理 and 請假審核 show only O1 — *…manager attendance and leave views are limited to O1*
 
-#### Test 1.3: HR Role
-- [ ] Switch to HR role
-- [ ] Verify can see all 27 employees
-- [ ] Verify salary column is visible
-- [ ] Verify performance rating is HIDDEN
-- [ ] Verify contact info is visible
-- [ ] Verify insurance is visible
-- [ ] Click employee → drawer shows salary/contact/insurance but NOT performance
-
-#### Test 1.4: Training Specialist Role
-- [ ] Switch to Training Specialist
-- [ ] Verify Employee Records tab is accessible but very limited
-- [ ] Should see minimal data (likely just names and facilities)
-- [ ] Verify cannot see salary, performance, or sensitive data
-
-#### Test 1.5: Accountant Role
-- [ ] Switch to Accountant
-- [ ] Verify can see employees
-- [ ] Verify salary column is visible
-- [ ] Verify performance is HIDDEN
-- [ ] Verify contact info is HIDDEN
-- [ ] Verify insurance is HIDDEN
-
-#### Test 1.6: Staff Role
-- [ ] Switch to Staff (persona E2103 - nurse at O1)
-- [ ] Verify can ONLY see own record
-- [ ] Verify "View own only" alert appears
-- [ ] Verify cannot access other employees' records
-- [ ] Click own record → drawer shows own data only
+#### Test 1.3: Announcements, org chart, directory (公告欄)
+- [ ] Board: admin sees all 9 posts; manager sees 8 (group-wide plus O1) — **manual**
+- [ ] Board: admin and hr get **發布公告** (group post); manager gets **發布本院公告** (facility post) — **manual**
+- [ ] Org chart: every role sees the full structure; for manager, other facilities collapse to "N 位同仁（不在範圍內）" — **manual**
+- [ ] Directory: manager sees 8 / 23, with mobile numbers locked (僅人資／管理員) — **manual**
 
 ---
 
-### Phase 2: Leave Approval Workflow (HR → Leave approvals tab)
+### Phase 2: Salary Visibility & Personnel File
 
-#### Test 2.1: CEO Role
-- [ ] View leave approval tab
-- [ ] Verify can see all pending leave requests (12 pending)
-- [ ] Verify "Approve" button available
-- [ ] Verify "Reject" button available
-- [ ] Try approving a request → should work (no actual save needed for prototype)
+#### Test 2.1: Employee table (HR › 員工資料)
+- [ ] hr sees 月薪 amounts (E2103 = NT$58,000) — *Salary visibility › hr sees monthly pay*
+- [ ] admin and manager see 🔒 僅人資可見 and no NT$ amounts — *…admin / manager sees the lock instead of pay*
 
-#### Test 2.2: Manager Role
-- [ ] View leave tab
-- [ ] Verify can see leave requests for own facility staff
-- [ ] Verify can approve/reject own staff's requests
-- [ ] If cross-office ON, verify can see/approve other facilities
-
-#### Test 2.3: HR Role
-- [ ] View leave tab
-- [ ] Verify can see all requests (including rejected/approved history)
-- [ ] Verify can finalize approvals
-- [ ] Verify "HR Countersign" function available
-
-#### Test 2.4: Training/Accountant/Staff Roles
-- [ ] Switch to each role
-- [ ] Verify leave tab shows but with read-only permission
-- [ ] Training Specialist should see minimal data
-- [ ] Staff should only see own pending leave requests
+#### Test 2.2: Personnel-file drawer (click an employee row)
+The drawer has six sections: 概要, 基本與金融資料, 任職與薪資歷程, 勞健保資料, 資格與契約, 績效與文件.
+- [ ] Every section opens and the drawer closes with ✕ — *Personnel file drawer › every section renders…*
+- [ ] **hr:** full national ID, pay, bank account, pay history and insurance grades are shown — *…hr sees full ID, pay…*
+- [ ] **admin:** national ID masked (•••, last 3 shown), contact details shown, bank account locked, pay-history bands shown as •••, insurance premiums locked — *…admin gets contact details but masked ID…*
+- [ ] **manager:** mobile and address restricted (受限); bank account locked — *…manager cannot see contact details or pay*
+- [ ] **manager, out of scope:** opening an O2 person from the org chart shows the position only, a 不在您目前的資料範圍內 note, and no section buttons — *…manager opening an out-of-scope person…*
+- [ ] **admin / hr:** 編輯 on 基本與金融資料 saves changes for this browser session — **manual**
+- [ ] **manager:** no 編輯 button; 新增考核 is available under 績效與文件 — **manual**
 
 ---
 
-### Phase 3: Reports Module (Reports Export tab)
+### Phase 3: Leave Approval Workflow (HR › 請假審核)
 
-#### Test 3.1: Permission-Based Access
-- [ ] CEO → should access all 5 report tabs (Attendance, Personnel, Leave, Financial, Service)
-- [ ] Manager → should access all 5 report tabs
-- [ ] HR → should access all 5 report tabs
-- [ ] Accountant → should access Financial tab primarily
-- [ ] Training Specialist → should have NO access (disabled)
-- [ ] Staff → should have NO access (disabled)
+Flow: **待主管簽核 (pending) → 待人資複核 (countersign) → 已核准 (approved)**, or 已駁回 (rejected).
 
-#### Test 3.2: Report Content by Role
-- [ ] CEO: Verify can generate reports with "All facilities" filter
-- [ ] Manager: Verify can generate reports (should see own facility default)
-- [ ] HR: Verify Personnel report shows sensitive fields (salary, insurance)
-- [ ] Accountant: Verify Financial report accessible, salary data shown
+- [ ] manager approves L241 → it moves to 待人資複核 and shows 🔒 待人資處理; hr countersigns → 已核准 — *Leave approval flow › pending → countersign → approved*
+- [ ] manager rejects L242 → 已駁回 — *…reject ends the request*
+- [ ] admin sees 🔒 無簽核權限 with no buttons — *…admin has no approval rights*
+- [ ] hr files a leave request, then sees it locked as 本人申請 — *…an approver cannot sign their own request*
+- [ ] Overtime and missed-punch requests go through the same approve / countersign steps — **manual**
 
 ---
 
-### Phase 4: Settings Module (Settings tab)
+### Phase 4: My Hours (HR › 我的工時)
 
-#### Test 4.1: Admin-Only Features
-- [ ] CEO → should see all 4 settings tabs (General, Account, Security, Notifications)
-- [ ] Manager → should see General + Account tabs (limited security)
-- [ ] HR → should see General + Account tabs
-- [ ] Training/Accountant/Staff → should have LIMITED or NO access
+Shifts: 白班 (day) 08:00–17:00 with a 12:00–13:00 lunch; 小夜 (evening) 16:00–00:00 and
+大夜 (overnight) 00:00–08:00, 8 h straight with no lunch deduction. Only nurses and care attendants
+at O1 and O2 rotate; HQ staff and every other title always work day shifts. 1 day = 8 h; minimum
+leave unit 0.5 h.
 
-#### Test 4.2: Security Settings
-- [ ] CEO: Verify can see Security tab with MFA, IP whitelist, audit log options
-- [ ] Manager: Verify Security tab is hidden or read-only
-
----
-
-### Phase 5: Announcements Module (Announcements → Board tab)
-
-#### Test 5.1: Announcement Visibility by Scope
-- [ ] CEO: Should see ALL group + facility announcements
-- [ ] Manager: Should see group announcements + own facility
-- [ ] HR: Should see all (same as CEO for announcements)
-- [ ] Training/Accountant: Should see group announcements only
-- [ ] Staff: Should see group announcements + own facility
-
-#### Test 5.2: Org Chart & Directory (Announcements → Org chart & Directory tabs)
-- [ ] CEO: Should see all staff
-- [ ] Manager: Should see own facility staff + managers above
-- [ ] Staff: Should see own facility staff
-- [ ] All roles: Directory should show/hide contact info based on permissions
+- [ ] Clock in at 08:00 and out at 17:30 → today's row shows 白班 and 8.5 h — *My Hours › clock in and out…*
+- [ ] Clocking in and out in the same minute shows no hours (—), not 24 h — *…clocking in and out in the same minute counts 0 h…*
+- [ ] Punch records show a 班別 column. None of the three built roles works rotating shifts, so My Hours always shows 白班 here; evening and overnight shifts are checked from Payroll in Phase 5 — **manual**
+- [ ] Leave: the 上午 4h and 下午 4h quick picks each compute 4 h; submitting creates a pending request — *…half-day leave computes 4 h…*
+- [ ] Overtime: 17:00–19:00 = 2 h, 17:00–20:30 = 3.5 h, 22:00–02:00 = 4 h (crosses midnight) — *…overtime hours compute…*
+- [ ] Balance (admin, E1005): annual leave 120 h entitlement, 4 h used, 116 h left; comp time 4 h; a pending 4 h request leaves 112 h — *…balance tab reflects entitlement…*
+- [ ] Overtime over the 46 h monthly cap is refused — **manual**
+- [ ] 出勤異常 lists exceptions and links to 補打卡 or 補請假 — **manual**
+- [ ] 工作日誌 entries appear in the attendance and personnel CSVs — **manual**
 
 ---
 
-### Phase 6: UI/UX Testing
+### Phase 5: Payroll (薪資計算, hr only)
 
-#### Test 6.1: Bilingual UI
-- [ ] Toggle between 中文 (Chinese) and EN (English) via language buttons
-- [ ] Verify all UI elements switch language
-- [ ] Verify both languages display correctly (no broken characters)
-- [ ] Test in each module to ensure consistency
-
-#### Test 6.2: Responsive Design
-- [ ] Test on desktop (1920x1080) ✅
-- [ ] Test on tablet (768px width)
-- [ ] Test on mobile (375px width)
-- [ ] Verify tables and forms are readable
-
-#### Test 6.3: Dark/Light Theme
-- [ ] Toggle dark mode (if implemented)
-- [ ] Verify readability in both themes
-- [ ] Check color contrast meets accessibility standards
+- [ ] The Payroll module appears in the menu for hr only — **manual**
+- [ ] Switching from hr to another role while on Payroll returns to 原型說明 — **manual**
+- [ ] 薪資試算 excludes requests that aren't approved yet and says how many — **manual**
+- [ ] Night-shift allowance: NT$200 per evening shift and NT$400 per overnight shift. For E2203 in 2026-08 (5 evening, 1 overnight), the breakdown shows NT$1,000 and NT$400, and the overtime hourly base becomes (58,500 + 1,400) ÷ 240 = 249.58 — *Payroll night-shift allowance › rotating nurse is paid per evening / overnight shift…*
+- [ ] Day-shift staff (E1003) get no allowance lines — *…day-shift staff get no allowance*
+- [ ] The calculator adds the allowance per shift, and the allowance can be excluded from the overtime base — *…calculator adds allowance per shift…*
+- [ ] For a part-time worker the allowance is also in the overtime rate: (160 h × 200 + 1,600) ÷ 160 h = 210 per hour — *…calculator includes a part-timer's allowance in their OT rate*
+- [ ] Leave is counted against the shift worked that day: on E2203's 2026-08-27 overnight shift, 00:00–08:00 or a full-day 08:00–17:00 request is 8 h; on the 2026-08-21 evening shift, 13:00–17:00 is 1 h — *…leave is counted against the evening or overnight shift…*
+- [ ] Partial leave on an evening or overnight shift keeps that shift's allowance; only a full-shift leave removes it — *…partial leave on an overnight shift keeps the allowance*
+- [ ] Open E2203's payslip for 2026-08: the 小夜 and 大夜 rows list the shift dates, and late minutes follow each shift's start time — **manual**
+- [ ] The payroll CSV has 小夜班次, 大夜班次 and 夜班津貼 columns — **manual**
+- [ ] A warning shows when the labor insured salary is below the bracket for regular pay including the allowance — **manual**
+- [ ] 薪資計算機 shows the formula for every line — **manual**
+- [ ] 版本與覆核: save version → submit → approve (locks the month) or return; unlock to recalculate — **manual**
 
 ---
 
-### Phase 7: Cross-Role Scenarios
+### Phase 6: Reports Export (報表匯出)
 
-#### Test 7.1: Leave Approval Workflow (Multi-step)
-1. **Staff submits leave request** → Switch to Staff role, file leave request
-2. **Manager approves** → Switch to Manager, navigate to Leave tab, approve
-3. **HR countersigns** → Switch to HR, finalize approval
-4. **Verify status changes** → Switch back to Staff, check request status
-
-#### Test 7.2: Employee Data Edit Workflow
-1. **HR edits employee salary** → Switch to HR, find employee, edit salary field
-2. **Manager views edited data** → Switch to Manager, verify salary is still hidden
-3. **CEO views edited data** → Switch to CEO, verify salary shows updated value
-
-#### Test 7.3: Report Generation by Role
-1. **Accountant generates financial report** → Switch to Accountant, Reports → Financial tab, generate
-2. **Manager tries to access full payroll** → Switch to Manager, Personnel report should show limited data
-3. **HR exports full report** → Switch to HR, Personnel report shows all fields
+- [ ] Attendance, personnel, leave and payroll CSVs download as `<報表名>_<月份>.csv` with a UTF-8 BOM and the expected header row — *CSV exports › … report downloads with a BOM and header*
+- [ ] Changing the month changes the filename and the rows — *…month selector changes filename and content*
+- [ ] Personnel CSV: 薪資 is 受限 for admin and numeric for hr — *…personnel report masks salary…*
+- [ ] admin and manager see 🔒 僅人資可匯出薪資資料 instead of the payroll export — *…cannot export the payroll (financial) report*
+- [ ] manager's exports contain only O1 staff — *…manager exports contain only O1 staff*
+- [ ] An approval made in the session shows up in the leave CSV — *…leave report reflects an approval…*
 
 ---
 
-## Expected Failure Modes (Known Limitations)
+### Phase 7: UI
 
-- [ ] Actual data persistence (reports don't save to CSV/PDF - prototype only)
-- [ ] Leave approvals don't actually update status (UI only)
-- [ ] Employee edits don't persist (browser memory only)
-- [ ] No backend authentication (role switcher is for demo purposes)
-- [ ] No audit logging (audit tab is UI mockup only)
+- [ ] The 中文 / EN buttons switch the primary language; the other language stays as a secondary line — **manual**
+- [ ] Layout is readable at 1920px, 768px and 375px widths — **manual**
+
+---
+
+### Phase 8: Cross-Role Scenario
+
+1. As **admin**, file a half-day leave in 我的工時.
+2. Switch to **hr**, open 請假審核, and approve it. (manager can't: the request is from HQ, outside O1.)
+3. Still as **hr**, countersign it → 已核准.
+4. Switch back to **admin** and check 假別餘額: the hours move from pending to used.
+5. As **hr**, open Payroll, pick month 2026-09 (it defaults to 2026-08), and confirm the approved leave is counted.
+
+This flow is **manual** end to end; its individual steps are covered by the tests above.
+
+---
+
+## Known Gaps & Open Questions
+
+- [ ] **Settings access:** 系統設定 says "System administrators only", but all three roles can open it.
+- [ ] **Permission matrix:** admin's `perms` capability isn't enforced; every role can view 權限與範圍, and nothing on it is editable.
+- [ ] **Open question:** should facility directors see other facilities? (the assumption toggle)
+- [ ] **Open question:** must payroll calculation and review be done by different people?
+- [ ] No persistence, login, notifications or audit trail: prototype only.
 
 ---
 
 ## Test Results Template
 
-**Tester Name:** _______________  
-**Test Date:** _______________  
-**Browser:** _______________  
+**Tester Name:** _______________
+**Test Date:** _______________
+**Browser:** _______________
 
 ### Summary
-- Total Tests: 
-- Passed: 
-- Failed: 
+- Total Tests:
+- Passed:
+- Failed:
 - Known Issues:
 
 ### Issues Found
 | Role | Module | Feature | Expected | Actual | Severity |
 |------|--------|---------|----------|--------|----------|
 |      |        |         |          |        |          |
-
----
-
-## Next Steps After Testing
-1. [ ] Document all permission violations found
-2. [ ] Verify no sensitive data leakage across roles
-3. [ ] Confirm all UI elements properly hidden/shown
-4. [ ] Test with actual users from each role group
-5. [ ] Iterate on permission matrix based on feedback
