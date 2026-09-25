@@ -50,6 +50,8 @@ Switch roles with the **身分 / Role** selector (`#roleSel`) at the top of ever
 | HR countersign (final approval) | ❌ | ✅ | ❌ |
 | Post announcements | Group-wide | Group-wide | Own facility only |
 | Payroll module | Hidden | ✅ | Hidden |
+| Settings (系統設定) | ✅ | Hidden | Hidden |
+| Permission matrix (權限與範圍) | Full matrix, editable | Own column, read-only | Own column, read-only |
 | Payroll (financial) CSV export | ❌ | ✅ | ❌ |
 | Other CSV exports | ✅ (all facilities) | ✅ (all facilities) | ✅ (O1 only) |
 
@@ -71,6 +73,13 @@ defined as Phase 2–3 stubs and don't appear in the role selector.
 - [ ] The role selector offers only admin, hr and manager — *…role selector offers only the built roles*
 - [ ] The **目前視角 / Viewing as** chip changes with the role — *…switching role updates the persona chip*
 - [ ] HR shows four tabs: 員工資料, 我的工時, 出勤管理, 請假審核 — *…HR module exposes its four tabs*
+
+#### Test 1.1b: Settings & permission matrix
+- [ ] 系統設定 is in the nav for admin only — *Settings & permission matrix › settings is in the nav for admin only*
+- [ ] Switching to hr while on 系統設定 returns to 原型說明 — *…switching away from admin while on settings…*
+- [ ] admin sees all three role columns with 24 editable checkboxes (the payroll row follows 查看薪資); admin's own 管理角色與權限 box is disabled — *…admin sees the full matrix…*
+- [ ] hr and manager see only their own column, read-only, and can still open 待決議題 — *…sees only their own column…*
+- [ ] Granting manager 查看薪資 makes pay and Payroll appear for manager; 還原預設 removes them again — *…a change made by admin takes effect…*
 
 #### Test 1.2: Data scope (HR › 員工資料)
 - [ ] admin and hr see all 23 employees — *Data scope › admin and hr see all 23 employees*
@@ -187,8 +196,6 @@ This flow is **manual** end to end; its individual steps are covered by the test
 
 ## Known Gaps & Open Questions
 
-- [ ] **Settings access:** 系統設定 says "System administrators only", but all three roles can open it.
-- [ ] **Permission matrix:** admin's `perms` capability isn't enforced; every role can view 權限與範圍, and nothing on it is editable.
 - [ ] **Open question:** should facility directors see other facilities? (the assumption toggle)
 - [ ] **Open question:** must payroll calculation and review be done by different people?
 - [ ] No persistence, login, notifications or audit trail: prototype only.

@@ -112,6 +112,61 @@ test.describe('Data scope', () => {
 });
 
 /* ================================================================ */
+test.describe('Settings & permission matrix', () => {
+  test.beforeEach(async ({ page }) => { await openPortal(page); });
+
+  test('settings is in the nav for admin only', async ({ page }) => {
+    await expect(page.locator('[data-mod="set"]')).toBeVisible();
+    for (const r of ['hr', 'manager']) {
+      await setRole(page, r);
+      await expect(page.locator('[data-mod="set"]')).toHaveCount(0);
+    }
+  });
+
+  test('switching away from admin while on settings returns to 原型說明', async ({ page }) => {
+    await go(page, 'set');
+    await setRole(page, 'hr');
+    await expect(page.locator('[data-mod="arch"]')).toHaveAttribute('aria-current', 'true');
+  });
+
+  test('admin sees the full matrix with editable permission cells', async ({ page }) => {
+    await go(page, 'perm', 'matrix');
+    await expect(page.locator('.permtable thead th')).toHaveCount(4);
+    await expect(page.locator('[data-perm]')).toHaveCount(24);
+    await expect(page.locator('[data-perm="admin|perms"]')).toBeDisabled();
+  });
+
+  for (const r of ['hr', 'manager']) {
+    test(`${r} sees only their own column, read-only, and still gets open questions`, async ({ page }) => {
+      await setRole(page, r);
+      await go(page, 'perm', 'matrix');
+      await expect(page.locator('.permtable thead th')).toHaveCount(2);
+      await expect(page.locator('[data-perm]')).toHaveCount(0);
+      await expect(page.locator('#view')).toContainText('完整權限對照表僅系統管理員可檢視與調整');
+      await expect(page.locator('[data-tab="open"]')).toBeVisible();
+    });
+  }
+
+  test('a change made by admin takes effect for that role and can be restored', async ({ page }) => {
+    await go(page, 'perm', 'matrix');
+    await page.check('[data-perm="manager|salary"]');
+    await expect(page.locator('#view')).toContainText('權限異動紀錄');
+
+    await setRole(page, 'manager');
+    await expect(page.locator('[data-mod="pay"]')).toBeVisible();
+    await go(page, 'hr', 'emp');
+    await expect(empRows(page).first()).toContainText('NT$');
+
+    await setRole(page, 'admin');
+    await go(page, 'perm', 'matrix');
+    await page.click('[data-permreset]');
+    await expect(page.locator('[data-perm="manager|salary"]')).not.toBeChecked();
+    await setRole(page, 'manager');
+    await expect(page.locator('[data-mod="pay"]')).toHaveCount(0);
+  });
+});
+
+/* ================================================================ */
 test.describe('Salary visibility', () => {
   test.beforeEach(async ({ page }) => {
     await openPortal(page);
