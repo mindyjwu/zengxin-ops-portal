@@ -1748,7 +1748,18 @@ const MY_TABS = [
   {id:'log',     zh:'工作日誌',   en:'Work log'}
 ];
 const HALF_SLOTS = (()=>{ const o=[]; for(let m=toMin(SHIFT.start); m<=toMin(SHIFT.end); m+=30) o.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')); return o; })();
-const slotOpts = sel => HALF_SLOTS.map(t=>`<option ${t===sel?'selected':''}>${t}</option>`).join('');
+/* 輪班人員（小夜 16:00–24:00、大夜 00:00–08:00）可選 00:00–24:00 */
+const FULL_SLOTS = (()=>{ const o=[]; for(let m=0; m<=1440; m+=30) o.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')); return o; })();
+const rotates = p => ROTATING_TITLES.includes(p.title) && p.unit!=='HQ';
+const slotOpts = (sel, slots=HALF_SLOTS) => slots.map(t=>`<option ${t===sel?'selected':''}>${t}</option>`).join('');
+/* 當日班別的起訖與前後半班分界（白班以午休分界） */
+function shiftWindow(empId, date){
+  const sh=shiftOf(empId, date);
+  if(sh==='day') return {sh, start:SHIFT.start, end:SHIFT.end, firstEnd:SHIFT.lunchS, secondStart:SHIFT.lunchE};
+  const hm=m=>String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
+  const s=toMin(SHIFT_TYPES[sh].start), e=toMin(SHIFT_TYPES[sh].end)||1440, mid=hm((s+e)/2);
+  return {sh, start:hm(s), end:hm(e), firstEnd:mid, secondStart:mid};
+}
 const nowHM = () => { const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
 const myPunches = () => (state.punches||[]).filter(p=>p.emp===me().id);
 
@@ -1871,7 +1882,7 @@ function myFix(){
 }
 
 function myLeave(){
-  const bal=leaveBalance(me().id);
+  const bal=leaveBalance(me().id), rot=rotates(me()), slots=rot?FULL_SLOTS:HALF_SLOTS;
   const d=state.leaveDraft||{type:'annual',from:ymd(TODAY),fromT:SHIFT.start,to:ymd(TODAY),toT:SHIFT.end};
   return `
   <section class="card">
@@ -1883,19 +1894,20 @@ function myLeave(){
           ${bal.map(b=>`<option value="${b.k}" ${d.type===b.k?'selected':''}>${esc(both(b.t.zh,b.t.en))}${b.left!=null?esc(both('（剩 '+fmtH(b.left)+' 小時）',' ('+fmtH(b.left)+' h left)')):''}</option>`).join('')}</select></div>
         <div><label>${esc(both('快速選擇','Quick pick'))}</label>
           <div class="seg">
-            <button type="button" data-quick="full">${esc(both('全天 8h','Full day'))}</button>
-            <button type="button" data-quick="am">${esc(both('上午 4h','AM'))}</button>
-            <button type="button" data-quick="pm">${esc(both('下午 4h','PM'))}</button>
+            <button type="button" data-quick="full">${esc(rot?both('整班 8h','Whole shift'):both('全天 8h','Full day'))}</button>
+            <button type="button" data-quick="am">${esc(rot?both('前半班 4h','First half'):both('上午 4h','AM'))}</button>
+            <button type="button" data-quick="pm">${esc(rot?both('後半班 4h','Second half'):both('下午 4h','PM'))}</button>
           </div></div>
       </div>
       <div class="row">
         <div><label>${esc(both('開始日期','Start date'))}</label><input type="date" name="from" value="${d.from}" required></div>
-        <div><label>${esc(both('開始時間','Start time'))}</label><select name="fromT">${slotOpts(d.fromT)}</select></div>
+        <div><label>${esc(both('開始時間','Start time'))}</label><select name="fromT">${slotOpts(d.fromT, slots)}</select></div>
         <div><label>${esc(both('結束日期','End date'))}</label><input type="date" name="to" value="${d.to}" required></div>
-        <div><label>${esc(both('結束時間','End time'))}</label><select name="toT">${slotOpts(d.toT)}</select></div>
+        <div><label>${esc(both('結束時間','End time'))}</label><select name="toT">${slotOpts(d.toT, slots)}</select></div>
       </div>
       <div class="row">
         <div><label>${esc(both('請假時數','Leave hours'))}</label><div class="calc" id="leaveCalc"></div></div>
+        ${rot?`<div><label>${esc(both('開始日班別','Shift on start date'))}</label><div class="calc" id="leaveShift"></div></div>`:''}
       </div>
       <div><label>${esc(both('事由','Reason'))}</label><textarea name="reason" required></textarea></div>
       <div><button type="submit" class="btn">${esc(both('送出請假','Submit leave'))}</button></div>
@@ -2071,14 +2083,18 @@ BINDERS['hr:mylog']=function(){
       el.className='calc'+(h<=0||over?' bad':'');
       el.textContent = h<=0 ? both('請確認起訖時間','Check the start/end times')
         : both(fmtH(h)+' 小時（折合 '+hToDays(h)+' 天）', fmtH(h)+' h ('+hToDays(h)+' days)') + (over?both(' · 超過剩餘 '+fmtH(b.left)+' 小時',' · exceeds '+fmtH(b.left)+' h left'):'');
+      const sh=document.getElementById('leaveShift');
+      if(sh && fd.get('from')){ const w=shiftWindow(u.id, fd.get('from')), t=SHIFT_TYPES[w.sh];
+        sh.textContent=both(t.zh, t.en)+' '+w.start+'–'+w.end; }
       return {h, over, b};
     };
     lf.oninput=calc; lf.onchange=calc; calc();
     lf.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>{
       const q=b.dataset.quick;
       lf.to.value=lf.from.value;
-      lf.fromT.value = q==='pm'?SHIFT.lunchE:SHIFT.start;
-      lf.toT.value   = q==='am'?SHIFT.lunchS:SHIFT.end;
+      const w = shiftWindow(u.id, lf.from.value);   // 非輪班人員一律為白班
+      lf.fromT.value = q==='pm'?w.secondStart:w.start;
+      lf.toT.value   = q==='am'?w.firstEnd:w.end;
       calc();
     });
     lf.onsubmit=e=>{

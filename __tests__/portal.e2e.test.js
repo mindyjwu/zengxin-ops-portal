@@ -304,6 +304,43 @@ test.describe('My Hours', () => {
     await expect(row).toContainText('待主管簽核');
   });
 
+  test('rotating staff can request leave for evening and overnight shifts', async ({ page }) => {
+    await openPortal(page);
+    // No built role works rotating shifts, so point admin's persona at nurse E2203 (O2).
+    await page.evaluate(() => { ROLES.admin.persona = 'E2203'; render(); });
+    await go(page, 'hr', 'mylog');
+    await page.click('[data-mytab="leave"]');
+    const f = page.locator('#leaveForm'), calc = page.locator('#leaveCalc');
+    const slots = await f.locator('select[name="fromT"] option').evaluateAll(os => os.map(o => o.value));
+    expect(slots[0]).toBe('00:00');
+    expect(slots[slots.length - 1]).toBe('24:00');
+
+    // 2026-08-27 is an overnight shift (00:00–08:00)
+    await f.locator('[name=from]').fill('2026-08-27');
+    await expect(page.locator('#leaveShift')).toContainText('大夜');
+    await page.click('[data-quick="full"]');
+    await expect(f.locator('[name=fromT]')).toHaveValue('00:00');
+    await expect(f.locator('[name=toT]')).toHaveValue('08:00');
+    await expect(calc).toContainText('8 小時');
+    await page.click('[data-quick="am"]');
+    await expect(f.locator('[name=toT]')).toHaveValue('04:00');
+    await expect(calc).toContainText('4 小時');
+
+    // 2026-08-21 is an evening shift (16:00–24:00)
+    await f.locator('[name=from]').fill('2026-08-21');
+    await expect(page.locator('#leaveShift')).toContainText('小夜');
+    await page.click('[data-quick="pm"]');
+    await expect(f.locator('[name=fromT]')).toHaveValue('20:00');
+    await expect(f.locator('[name=toT]')).toHaveValue('24:00');
+    await expect(calc).toContainText('4 小時');
+
+    await f.locator('textarea[name="reason"]').fill('夜班後半請假');
+    await page.click('#leaveForm button[type="submit"]');
+    const row = requestRow(page, 'L249');
+    await expect(row).toContainText('2026-08-21 20:00 → 24:00');
+    await expect(row.locator('td.num')).toHaveText('4');
+  });
+
   test('overtime hours compute, including across midnight', async ({ page }) => {
     await openPortal(page);
     await go(page, 'hr', 'mylog');

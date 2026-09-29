@@ -137,6 +137,7 @@ leave unit 0.5 h.
 - [ ] Clocking in and out in the same minute shows no hours (—), not 24 h — *…clocking in and out in the same minute counts 0 h…*
 - [ ] Punch records show a 班別 column. None of the three built roles works rotating shifts, so My Hours always shows 白班 here; evening and overnight shifts are checked from Payroll in Phase 5 — **manual**
 - [ ] Leave: the 上午 4h and 下午 4h quick picks each compute 4 h; submitting creates a pending request — *…half-day leave computes 4 h…*
+- [ ] Rotating staff (nurses and care attendants at O1 and O2) get start and end times from 00:00 to 24:00, the start date's shift, and 整班 / 前半班 / 後半班 quick picks that fill in that day's shift: on an overnight day, 整班 = 00:00–08:00; on an evening day, 後半班 = 20:00–24:00 (4 h). No built role rotates, so the test points admin's persona at E2203 — *…rotating staff can request leave for evening and overnight shifts*
 - [ ] Overtime: 17:00–19:00 = 2 h, 17:00–20:30 = 3.5 h, 22:00–02:00 = 4 h (crosses midnight) — *…overtime hours compute…*
 - [ ] Balance (admin, E1005): annual leave 120 h entitlement, 4 h used, 116 h left; comp time 4 h; a pending 4 h request leaves 112 h — *…balance tab reflects entitlement…*
 - [ ] Overtime over the 46 h monthly cap is refused — **manual**
