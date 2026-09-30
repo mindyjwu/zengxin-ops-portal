@@ -1,9 +1,10 @@
 /**
- * End-to-end UI tests for the 康禾長照集團 operations portal (ltc-portal.html).
+ * End-to-end UI tests for the 誠馨日照 operations portal (ltc-portal.html).
  *
  * The page is a single-file prototype with in-memory data and a fixed demo
- * date of 2026-09-08. Built roles: admin (E1005, HQ), hr (E1003, HQ) and
- * manager (E2101, director of O1 竹北照護院).
+ * date of 2026-09-08. Built roles: admin (E1005, HQ), hr (E1003, HQ),
+ * manager (E2101, director of O1 竹北照護院) and employee (E2104, care
+ * attendant at O1, self-service 私人秘書 only).
  */
 
 const fs = require('fs');
@@ -35,13 +36,13 @@ test.describe('Shell & role switching', () => {
   test.beforeEach(async ({ page }) => { await openPortal(page); });
 
   test('loads with brand and admin as default role', async ({ page }) => {
-    await expect(page.locator('.brand')).toContainText('康禾長照集團');
+    await expect(page.locator('.brand')).toContainText('誠馨日照');
     await expect(page.locator('#roleSel')).toHaveValue('admin');
   });
 
   test('role selector offers only the built roles', async ({ page }) => {
     const values = await page.locator('#roleSel option').evaluateAll(os => os.map(o => o.value));
-    expect(values).toEqual(['admin', 'hr', 'manager']);
+    expect(values).toEqual(['admin', 'hr', 'manager', 'employee']);
   });
 
   test('switching role updates the persona chip', async ({ page }) => {
@@ -117,7 +118,7 @@ test.describe('Settings & permission matrix', () => {
 
   test('settings is in the nav for admin only', async ({ page }) => {
     await expect(page.locator('[data-mod="set"]')).toBeVisible();
-    for (const r of ['hr', 'manager']) {
+    for (const r of ['hr', 'manager', 'employee']) {
       await setRole(page, r);
       await expect(page.locator('[data-mod="set"]')).toHaveCount(0);
     }
@@ -131,9 +132,11 @@ test.describe('Settings & permission matrix', () => {
 
   test('admin sees the full matrix with editable permission cells', async ({ page }) => {
     await go(page, 'perm', 'matrix');
-    await expect(page.locator('.permtable thead th')).toHaveCount(4);
-    await expect(page.locator('[data-perm]')).toHaveCount(24);
+    await expect(page.locator('.permtable thead th')).toHaveCount(5);
+    await expect(page.locator('[data-perm]')).toHaveCount(36);
     await expect(page.locator('[data-perm="admin|perms"]')).toBeDisabled();
+    await expect(page.locator('[data-perm="admin|mgmt"]')).toBeDisabled();
+    await expect(page.locator('[data-perm="employee|mgmt"]')).not.toBeChecked();
   });
 
   for (const r of ['hr', 'manager']) {
@@ -163,6 +166,152 @@ test.describe('Settings & permission matrix', () => {
     await expect(page.locator('[data-perm="manager|salary"]')).not.toBeChecked();
     await setRole(page, 'manager');
     await expect(page.locator('[data-mod="pay"]')).toHaveCount(0);
+  });
+});
+
+/* ================================================================ */
+test.describe('Employee role & 私人秘書 (My Desk)', () => {
+  test.beforeEach(async ({ page }) => { await openPortal(page); });
+  const openForm = async (page, id) => { await page.click('[data-tab="forms"]'); await page.click(`[data-dform="${id}"]`); };
+  const rowOf = (page, id) => page.locator('#view tr', { hasText: id });
+
+  test('employee lands on 私人秘書 and sees only self-service modules', async ({ page }) => {
+    await setRole(page, 'employee');
+    await expect(page.locator('[data-mod="desk"]')).toHaveAttribute('aria-current', 'true');
+    await expect(page.locator('[data-tab="home"]')).toHaveAttribute('aria-selected', 'true');
+    const mods = await page.locator('[data-mod]').evaluateAll(n => n.map(x => x.dataset.mod));
+    expect(mods).toEqual(['arch', 'desk', 'ann']);
+    await expect(page.locator('#assumeBtn')).toHaveCount(0);
+    await expect(page.locator('.pagehead .chip.acc')).toContainText('照服員');
+  });
+
+  test('home calendar shows each day’s status and punch times', async ({ page }) => {
+    await setRole(page, 'employee');
+    const day = d => page.locator(`[data-dday="2026-09-${d}"]`);
+    await expect(day('07')).toContainText('正常');
+    await expect(day('07')).toContainText(/\d\d:\d\d/);
+    await expect(day('06')).toContainText('例假日');
+    await expect(day('08')).toContainText('尚未打卡');
+    await expect(day('25')).toContainText('中秋節');
+    await expect(day('09')).toContainText('審核中');          // L242 sick leave is pending
+  });
+
+  test('an employee has nothing to sign and tracks their own open forms', async ({ page }) => {
+    await setRole(page, 'employee');
+    await expect(page.locator('section.card', { hasText: '未簽核表單' })).toContainText('太好了！您目前沒有待處理事項');
+    const track = page.locator('section.card', { hasText: '追蹤表單' });
+    await expect(track.locator('tr', { hasText: 'L242' })).toBeVisible();
+    await expect(track.locator('tr', { hasText: 'OT31' })).toBeVisible();
+  });
+
+  test('withdrawing a pending leave closes it', async ({ page }) => {
+    await setRole(page, 'employee');
+    await page.click('[data-withdraw="L242"]');
+    await openForm(page, 'track');
+    await expect(rowOf(page, 'L242')).toContainText('已抽單');
+    await expect(page.locator('[data-withdraw="L242"]')).toHaveCount(0);
+  });
+
+  test('clicking a calendar day prefills the leave form for that day', async ({ page }) => {
+    await setRole(page, 'employee');
+    await page.click('[data-dday="2026-09-04"]');
+    await page.click('[data-dleave="2026-09-04"]');
+    await expect(page.locator('[data-dform="leave"]')).toHaveAttribute('aria-current', 'true');
+    await expect(page.locator('#leaveForm input[name="from"]')).toHaveValue('2026-09-04');
+    await expect(page.locator('#leaveForm input[name="to"]')).toHaveValue('2026-09-04');
+  });
+
+  test('an off-site form goes through director approval and HR countersign', async ({ page }) => {
+    await setRole(page, 'employee');
+    await page.locator('.qforms [data-goform="trip"]').click();
+    await page.fill('#tripForm input[name="place"]', '竹北市 個案住家');
+    await page.fill('#tripForm textarea[name="reason"]', '新個案評估');
+    await page.click('#tripForm button[type="submit"]');
+    await expect(rowOf(page, 'F14')).toContainText('待主管簽核');
+
+    await setRole(page, 'manager');
+    await openForm(page, 'sign');
+    await rowOf(page, 'F14').locator('[data-act="approve"]').click();
+    await expect(rowOf(page, 'F14')).toHaveCount(0);          // now with HR, not this director
+
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'leave');
+    await requestRow(page, 'F14').locator('[data-act="final"]').click();
+    await expect(requestRow(page, 'F14')).toContainText('已核准');
+  });
+
+  test('cancelling approved leave marks it cancelled once HR countersigns', async ({ page }) => {
+    await setRole(page, 'employee');
+    await openForm(page, 'cancel');
+    await page.selectOption('#cancelForm select[name="ref"]', 'L236');
+    await page.fill('#cancelForm textarea[name="reason"]', '當天改為正常上班');
+    await page.click('#cancelForm button[type="submit"]');
+    await expect(rowOf(page, 'F14')).toContainText('銷假單');
+
+    await setRole(page, 'manager');
+    await go(page, 'hr', 'leave');
+    await requestRow(page, 'F14').locator('[data-act="approve"]').click();
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'leave');
+    await requestRow(page, 'F14').locator('[data-act="final"]').click();
+    await expect(requestRow(page, 'L236')).toContainText('已銷假');
+  });
+
+  test('certificate requests skip the director and go straight to HR', async ({ page }) => {
+    await setRole(page, 'employee');
+    await openForm(page, 'cert');
+    await page.fill('#docForm input[name="purpose"]', '申辦房屋貸款');
+    await page.click('#docForm button[type="submit"]');
+    await expect(rowOf(page, 'F14')).toContainText('待人資複核');
+
+    await setRole(page, 'manager');
+    await openForm(page, 'sign');
+    await expect(rowOf(page, 'F14')).toHaveCount(0);
+    await setRole(page, 'hr');
+    await openForm(page, 'sign');
+    await expect(rowOf(page, 'F14').locator('[data-act="final"]')).toBeVisible();
+  });
+
+  test('payslip shows the employee’s own paid months without employer cost', async ({ page }) => {
+    await setRole(page, 'employee');
+    await page.click('[data-tab="query"]');
+    await page.click('[data-dq="slip"]');
+    const months = await page.locator('#slipMonth option').evaluateAll(o => o.map(x => x.value));
+    expect(months).toEqual(['2026-06', '2026-07', '2026-08']);
+    const net = await page.evaluate(() => calcPay('E2104', '2026-08').net);
+    await expect(page.locator('#view')).toContainText('NT$' + net.toLocaleString('en-US'));
+    await expect(page.locator('#view')).not.toContainText('雇主');
+  });
+
+  test('only approvers get the 部屬資料 look-ups', async ({ page }) => {
+    await setRole(page, 'employee');
+    await page.click('[data-tab="query"]');
+    await expect(page.locator('[data-dq="subatt"]')).toHaveCount(0);
+    await setRole(page, 'manager');
+    await page.click('[data-tab="query"]');
+    await page.click('[data-dq="subatt"]');
+    await expect(page.locator('#view tbody tr')).toHaveCount(7);   // direct and indirect reports at O1
+  });
+
+  test('who-is-out names colleagues but never their leave type', async ({ page }) => {
+    await setRole(page, 'employee');
+    await page.click('[data-pday="2026-09-18"]');                  // E2107 family-care leave (L243)
+    const name = await page.evaluate(() => empName('E2107'));
+    const box = page.locator('.peerbox', { hasText: '部門同事' });
+    await expect(box).toContainText(name);
+    await expect(box).not.toContainText('家庭照顧假');
+  });
+
+  test('batch missed punches files one correction per ticked day', async ({ page }) => {
+    await setRole(page, 'manager');
+    await page.click('[data-mod="desk"]');
+    await openForm(page, 'fix');
+    const n = await page.locator('#batchFix input[name="pick"]').count();
+    expect(n).toBeGreaterThan(0);
+    const before = await page.evaluate(() => PUNCH_FIX.length);
+    await page.click('#batchFix button[type="submit"]');
+    expect(await page.evaluate(() => PUNCH_FIX.length)).toBe(before + n);
+    await expect(page.locator('[data-dform="track"]')).toHaveAttribute('aria-current', 'true');
   });
 });
 
@@ -302,6 +451,43 @@ test.describe('My Hours', () => {
     const row = requestRow(page, 'L249');
     await expect(row.locator('td.num')).toHaveText('4');
     await expect(row).toContainText('待主管簽核');
+  });
+
+  test('rotating staff can request leave for evening and overnight shifts', async ({ page }) => {
+    await openPortal(page);
+    // No built role works rotating shifts, so point admin's persona at nurse E2203 (O2).
+    await page.evaluate(() => { ROLES.admin.persona = 'E2203'; render(); });
+    await go(page, 'hr', 'mylog');
+    await page.click('[data-mytab="leave"]');
+    const f = page.locator('#leaveForm'), calc = page.locator('#leaveCalc');
+    const slots = await f.locator('select[name="fromT"] option').evaluateAll(os => os.map(o => o.value));
+    expect(slots[0]).toBe('00:00');
+    expect(slots[slots.length - 1]).toBe('24:00');
+
+    // 2026-08-27 is an overnight shift (00:00–08:00)
+    await f.locator('[name=from]').fill('2026-08-27');
+    await expect(page.locator('#leaveShift')).toContainText('大夜');
+    await page.click('[data-quick="full"]');
+    await expect(f.locator('[name=fromT]')).toHaveValue('00:00');
+    await expect(f.locator('[name=toT]')).toHaveValue('08:00');
+    await expect(calc).toContainText('8 小時');
+    await page.click('[data-quick="am"]');
+    await expect(f.locator('[name=toT]')).toHaveValue('04:00');
+    await expect(calc).toContainText('4 小時');
+
+    // 2026-08-21 is an evening shift (16:00–24:00)
+    await f.locator('[name=from]').fill('2026-08-21');
+    await expect(page.locator('#leaveShift')).toContainText('小夜');
+    await page.click('[data-quick="pm"]');
+    await expect(f.locator('[name=fromT]')).toHaveValue('20:00');
+    await expect(f.locator('[name=toT]')).toHaveValue('24:00');
+    await expect(calc).toContainText('4 小時');
+
+    await f.locator('textarea[name="reason"]').fill('夜班後半請假');
+    await page.click('#leaveForm button[type="submit"]');
+    const row = requestRow(page, 'L249');
+    await expect(row).toContainText('2026-08-21 20:00 → 24:00');
+    await expect(row.locator('td.num')).toHaveText('4');
   });
 
   test('overtime hours compute, including across midnight', async ({ page }) => {

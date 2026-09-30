@@ -1,4 +1,4 @@
-# 康禾長照集團 Ops Portal — Role-Based Testing Plan
+# 誠馨日照 Ops Portal — Role-Based Testing Plan
 
 Manual test plan for `ltc-portal.html`. Each check names the automated test in
 `__tests__/portal.e2e.test.js` that covers it, if one exists. Checks marked
@@ -10,11 +10,12 @@ build doesn't match the one Playwright expects, point `PW_CHROMIUM_PATH` at it
 filenames come through.
 
 ## Test Objectives
-Verify that the three built roles correctly restrict or allow:
+Verify that the four built roles correctly restrict or allow:
 - Sensitive employee data (pay, bank account, national ID, contact details, insurance)
 - Cross-facility data visibility (data scope)
 - Leave, overtime and missed-punch approvals
 - Payroll and CSV exports
+- Employee self-service (私人秘書): own attendance, forms, payslips and nothing else
 
 ---
 
@@ -37,27 +38,30 @@ fixed at **2026-09-08**.
 
 Switch roles with the **身分 / Role** selector (`#roleSel`) at the top of every page.
 
-| | 系統管理員 System Admin (`admin`) | 人資部經理 HR Manager (`hr`) | 院長 Facility Director (`manager`) |
-|---|---|---|---|
-| Persona | E1005, HQ | E1003, HQ | E2101, director of O1 |
-| Data scope | All facilities | All facilities | O1 only (all if the assumption toggle is ON) |
-| See pay, band, bank account | ❌ | ✅ | ❌ |
-| Full national ID | ❌ (masked, last 3 shown) | ✅ | ❌ (masked) |
-| Contact details (mobile, address, emergency) | ✅ | ✅ | ❌ |
-| Edit personnel file | ✅ | ✅ | ❌ |
-| Add performance appraisal | ✅ | ✅ | ✅ |
-| Approve leave / overtime / punch fixes | ❌ | ✅ | ✅ |
-| HR countersign (final approval) | ❌ | ✅ | ❌ |
-| Post announcements | Group-wide | Group-wide | Own facility only |
-| Payroll module | Hidden | ✅ | Hidden |
-| Settings (系統設定) | ✅ | Hidden | Hidden |
-| Permission matrix (權限與範圍) | Full matrix, editable | Own column, read-only | Own column, read-only |
-| Payroll (financial) CSV export | ❌ | ✅ | ❌ |
-| Other CSV exports | ✅ (all facilities) | ✅ (all facilities) | ✅ (O1 only) |
+| | 系統管理員 System Admin (`admin`) | 人資部經理 HR Manager (`hr`) | 院長 Facility Director (`manager`) | 一般員工 Employee (`employee`) |
+|---|---|---|---|---|
+| Persona | E1005, HQ | E1003, HQ | E2101, director of O1 | E2104, care attendant at O1 |
+| Data scope | All facilities | All facilities | O1 only (all if the assumption toggle is ON) | Own records only; announcements and directory for O1 |
+| 私人秘書 My Desk (own calendar, forms, payslips) | ✅ | ✅ | ✅ | ✅ (lands here) |
+| Back office (人事、權限、文件、服務、財務、報表) | ✅ | ✅ | ✅ | Hidden |
+| See pay, band, bank account | ❌ | ✅ | ❌ | Own payslip only |
+| Full national ID | ❌ (masked, last 3 shown) | ✅ | ❌ (masked) | Own, masked |
+| Contact details (mobile, address, emergency) | ✅ | ✅ | ❌ | Own only |
+| Edit personnel file | ✅ | ✅ | ❌ | ❌ |
+| Add performance appraisal | ✅ | ✅ | ✅ | ❌ |
+| Approve leave / overtime / punch fixes / other forms | ❌ | ✅ | ✅ | ❌ |
+| HR countersign (final approval) | ❌ | ✅ | ❌ | ❌ |
+| Post announcements | Group-wide | Group-wide | Own facility only | ❌ |
+| Payroll module | Hidden | ✅ | Hidden | Hidden |
+| Settings (系統設定) | ✅ | Hidden | Hidden | Hidden |
+| Permission matrix (權限與範圍) | Full matrix, editable | Own column, read-only | Own column, read-only | Hidden |
+| Payroll (financial) CSV export | ❌ | ✅ | ❌ | ❌ |
+| Other CSV exports | ✅ (all facilities) | ✅ (all facilities) | ✅ (O1 only) | ❌ |
 
 The **假設 / Assumption: 主管可跨院查看** button (`#assumeBtn`) is a discussion
-toggle: when it is ON, the manager reads all facilities. In every role, nobody
-can approve their own request.
+toggle: when it is ON, the manager reads all facilities. It is hidden for the
+employee role, whose scope never widens. In every role, nobody can approve their
+own request.
 
 Six more roles (COO, Finance, Nursing, Care, Social Work, Company Manager) are
 defined as Phase 2–3 stubs and don't appear in the role selector.
@@ -69,15 +73,15 @@ defined as Phase 2–3 stubs and don't appear in the role selector.
 ### Phase 1: Shell & Data Scope
 
 #### Test 1.1: Shell
-- [ ] The page loads with 康禾長照集團 branding, as `admin` — *Shell & role switching › loads with brand…*
-- [ ] The role selector offers only admin, hr and manager — *…role selector offers only the built roles*
+- [ ] The page loads with 誠馨日照 branding, as `admin` — *Shell & role switching › loads with brand…*
+- [ ] The role selector offers only admin, hr, manager and employee — *…role selector offers only the built roles*
 - [ ] The **目前視角 / Viewing as** chip changes with the role — *…switching role updates the persona chip*
 - [ ] HR shows four tabs: 員工資料, 我的工時, 出勤管理, 請假審核 — *…HR module exposes its four tabs*
 
 #### Test 1.1b: Settings & permission matrix
-- [ ] 系統設定 is in the nav for admin only — *Settings & permission matrix › settings is in the nav for admin only*
+- [ ] 系統設定 is in the nav for admin only (not hr, manager or employee) — *Settings & permission matrix › settings is in the nav for admin only*
 - [ ] Switching to hr while on 系統設定 returns to 原型說明 — *…switching away from admin while on settings…*
-- [ ] admin sees all three role columns with 24 editable checkboxes (the payroll row follows 查看薪資); admin's own 管理角色與權限 box is disabled — *…admin sees the full matrix…*
+- [ ] admin sees all four role columns with 36 editable checkboxes (the payroll row follows 查看薪資); admin's own 管理角色與權限 and 使用管理後台 boxes are disabled; employee has no 管理後台 — *…admin sees the full matrix…*
 - [ ] hr and manager see only their own column, read-only, and can still open 待決議題 — *…sees only their own column…*
 - [ ] Granting manager 查看薪資 makes pay and Payroll appear for manager; 還原預設 removes them again — *…a change made by admin takes effect…*
 
@@ -93,6 +97,23 @@ defined as Phase 2–3 stubs and don't appear in the role selector.
 - [ ] Board: admin and hr get **發布公告** (group post); manager gets **發布本院公告** (facility post) — **manual**
 - [ ] Org chart: every role sees the full structure; for manager, other facilities collapse to "N 位同仁（不在範圍內）" — **manual**
 - [ ] Directory: manager sees 8 / 23, with mobile numbers locked (僅人資／管理員) — **manual**
+
+#### Test 1.4: Employee role & 私人秘書 (My Desk)
+Modelled on the 104 企業大師「私人秘書」employee page: 首頁 / 表單 / 查詢 / 課程.
+- [ ] Switching to employee lands on 私人秘書 › 首頁; the nav holds only 原型說明, 私人秘書 and 公告欄; the assumption toggle is gone — *Employee role & 私人秘書 › employee lands on 私人秘書…*
+- [ ] The month calendar shows 正常 / 遲到 / 未打卡 / 請假 / 例假日 / 休息日 / 國定假日 per day with punch times, 尚未打卡 today, and 審核中 on days with a pending form — *…home calendar shows each day's status…*
+- [ ] 未簽核表單 reads 太好了！您目前沒有待處理事項 for an employee; 追蹤表單 lists their open forms (L242, OT31) — *…nothing to sign and tracks their own open forms*
+- [ ] 抽單 on a pending leave marks it 已抽單 — *…withdrawing a pending leave closes it*
+- [ ] Clicking a day and 請假單 opens the leave form for that date — *…clicking a calendar day prefills the leave form…*
+- [ ] 公出差旅單: employee files → director approves (from 私人秘書 › 表單簽核) → HR countersigns → 已核准 — *…off-site form goes through director approval and HR countersign*
+- [ ] 銷假單 on approved leave L236: director → HR → L236 shows 已銷假 — *…cancelling approved leave marks it cancelled…*
+- [ ] 文件證明申請單 goes straight to HR (待人資複核); the director never sees it — *…certificate requests skip the director…*
+- [ ] 查詢 › 薪資袋 lists only paid months (06–08), matches the payroll figure, and shows no employer-cost lines — *…payslip shows the employee's own paid months…*
+- [ ] 部屬資料 (部屬出勤資料, 部屬工作日誌) appears only for approvers; the O1 director sees 7 reports — *…only approvers get the 部屬資料 look-ups*
+- [ ] 同事今天請假或公出嗎？ lists colleagues at the same site but never the leave type — *…who-is-out names colleagues but never their leave type*
+- [ ] 批次忘刷 files one 忘刷申請單 per ticked day — *…batch missed punches files one correction per ticked day*
+- [ ] 預先加班單, 勞健保證明申請單, 表單通知, 保險費, 所得稅, 人事資料, 年度假勤, 公司規章下載 and 課程 render and submit without errors — **manual**
+- [ ] At 390px width the calendar fits the screen with no sideways scrolling — **manual**
 
 ---
 
@@ -137,6 +158,7 @@ leave unit 0.5 h.
 - [ ] Clocking in and out in the same minute shows no hours (—), not 24 h — *…clocking in and out in the same minute counts 0 h…*
 - [ ] Punch records show a 班別 column. None of the three built roles works rotating shifts, so My Hours always shows 白班 here; evening and overnight shifts are checked from Payroll in Phase 5 — **manual**
 - [ ] Leave: the 上午 4h and 下午 4h quick picks each compute 4 h; submitting creates a pending request — *…half-day leave computes 4 h…*
+- [ ] Rotating staff (nurses and care attendants at O1 and O2) get start and end times from 00:00 to 24:00, the start date's shift, and 整班 / 前半班 / 後半班 quick picks that fill in that day's shift: on an overnight day, 整班 = 00:00–08:00; on an evening day, 後半班 = 20:00–24:00 (4 h). No built role rotates, so the test points admin's persona at E2203 — *…rotating staff can request leave for evening and overnight shifts*
 - [ ] Overtime: 17:00–19:00 = 2 h, 17:00–20:30 = 3.5 h, 22:00–02:00 = 4 h (crosses midnight) — *…overtime hours compute…*
 - [ ] Balance (admin, E1005): annual leave 120 h entitlement, 4 h used, 116 h left; comp time 4 h; a pending 4 h request leaves 112 h — *…balance tab reflects entitlement…*
 - [ ] Overtime over the 46 h monthly cap is refused — **manual**
@@ -198,6 +220,8 @@ This flow is **manual** end to end; its individual steps are covered by the test
 
 - [ ] **Open question:** should facility directors see other facilities? (the assumption toggle)
 - [ ] **Open question:** must payroll calculation and review be done by different people?
+- [ ] **Open question:** should employees see which colleagues are out (同事今天請假或公出嗎？)? The prototype shows names but never the leave type.
+- [ ] **Open question:** 預先加班單 is recorded but does not pay; should an approved pre-approval pre-fill the 加班單?
 - [ ] No persistence, login, notifications or audit trail: prototype only.
 
 ---
