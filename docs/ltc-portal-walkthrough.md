@@ -1,7 +1,7 @@
-# 誠馨日照 營運入口 — MVP 原型導覽 (v2.0)
-# Zengxin Day Care — Operations Portal MVP Walkthrough (v2.0)
+# 誠馨日照 營運入口 — MVP 原型導覽 (v2.1)
+# Zengxin Day Care — Operations Portal MVP Walkthrough (v2.1)
 
-> **原型 v2.0** — 2026年9月30日交付版本  
+> **原型 v2.1** — 2026年9月30日交付版本  
 > 這是一個「討論用原型」，不是可上線的系統。目的是把三個必須由貴單位決定的問題，變成看得見、點得到的畫面；同時展示完整的組織架構與角色設計。  
 > This is a **discussion prototype**, not production software. It visualizes three decisions your team must make, and demonstrates the full organizational structure and role model.
 

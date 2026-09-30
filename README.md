@@ -1,5 +1,5 @@
-# 誠馨日照營運入口 v2.0
-# Zengxin Day Care Operations Portal v2.0
+# 誠馨日照營運入口 v2.1
+# Zengxin Day Care Operations Portal v2.1
 
 **互動式原型** — 討論用系統，用於確定關鍵決策（中心主任跨據點權限、管理員薪資可見性、請假簽核流程）。
 
@@ -54,4 +54,4 @@ No authentication, no database, no backend required.
 ---
 
 Made with User + AI tools.  
-v2.0 · Sept 2026
+v2.1 · Sept 2026

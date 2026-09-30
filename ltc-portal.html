@@ -814,7 +814,7 @@ function renderShell(){
       <div class="brand">
         <b>誠馨日照</b>
         <span>Zengxin Day Care</span>
-        <span>${state.lang==='zh'?'營運入口 · Ops Portal':'Ops Portal · 營運入口'}</span>
+        <span>${state.lang==='zh'?'營運入口 · Ops Portal':'Ops Portal · 營運入口'} · v2.1</span>
       </div>
       <div class="rail-group">${both('本次原型','In this prototype')}</div>
       ${MODULES.filter(modVisible).map(m=>`<button class="navitem" data-mod="${m.id}" aria-current="${m.id===state.module}">
@@ -952,7 +952,7 @@ function viewArchScope(){
   return `
   <div class="content-solo">
     <div class="pagehead">
-      <h1>${esc(both('原型 v2.0 範圍與進展','Prototype v2.0 Scope & Status'))}</h1>
+      <h1>${esc(both('原型 v2.1 範圍與進展','Prototype v2.1 Scope & Status'))}</h1>
       <span class="sub">${esc(both('9/30 會議展示版本','Delivery: 30 Sept Meeting'))}</span>
     </div>
 
@@ -3908,7 +3908,7 @@ function viewSettings(){
         <div style="padding-bottom:12px">
           <div style="font-weight:500;margin-bottom:8px">${esc(both('系統版本與更新','System version & updates'))}</div>
           <div style="font-size:12px;color:var(--ink-3)">
-            <div>${esc(both('版本：v2.0 · 原型展示版','Version: v2.0 · Prototype demo'))}</div>
+            <div>${esc(both('版本：v2.1 · 原型展示版','Version: v2.1 · Prototype demo'))}</div>
             <div style="margin-top:4px">${esc(both('最後更新：2026 年 9 月 22 日','Last updated: 22 Sept 2026'))}</div>
             <div style="margin-top:4px">${esc(both('下次計畫更新：2026 年 11 月（Phase 2 功能）','Next update: Nov 2026 (Phase 2 features)'))}</div>
           </div>
