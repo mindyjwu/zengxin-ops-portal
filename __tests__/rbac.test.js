@@ -1,6 +1,6 @@
 /**
  * RBAC Permission Matrix Tests
- * Validates role-based access control for the Zengxin LTC Operations Portal
+ * Validates role-based access control for the Zengxin Day Care Operations Portal
  */
 
 describe('RBAC Permission System', () => {

@@ -1,4 +1,4 @@
-# 康禾長照集團 Ops Portal — Role-Based Testing Plan
+# 誠馨日照 Ops Portal — Role-Based Testing Plan
 
 Manual test plan for `ltc-portal.html`. Each check names the automated test in
 `__tests__/portal.e2e.test.js` that covers it, if one exists. Checks marked
@@ -69,7 +69,7 @@ defined as Phase 2–3 stubs and don't appear in the role selector.
 ### Phase 1: Shell & Data Scope
 
 #### Test 1.1: Shell
-- [ ] The page loads with 康禾長照集團 branding, as `admin` — *Shell & role switching › loads with brand…*
+- [ ] The page loads with 誠馨日照 branding, as `admin` — *Shell & role switching › loads with brand…*
 - [ ] The role selector offers only admin, hr and manager — *…role selector offers only the built roles*
 - [ ] The **目前視角 / Viewing as** chip changes with the role — *…switching role updates the persona chip*
 - [ ] HR shows four tabs: 員工資料, 我的工時, 出勤管理, 請假審核 — *…HR module exposes its four tabs*

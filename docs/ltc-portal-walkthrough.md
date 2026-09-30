@@ -1,5 +1,5 @@
-# 康禾長照 營運入口 — MVP 原型導覽 (v2.0)
-# Kanghe Long-Term Care — Operations Portal MVP Walkthrough (v2.0)
+# 誠馨日照 營運入口 — MVP 原型導覽 (v2.0)
+# Zengxin Day Care — Operations Portal MVP Walkthrough (v2.0)
 
 > **原型 v2.0** — 2026年9月30日交付版本  
 > 這是一個「討論用原型」，不是可上線的系統。目的是把三個必須由貴院決定的問題，變成看得見、點得到的畫面；同時展示完整的組織架構與角色設計。  

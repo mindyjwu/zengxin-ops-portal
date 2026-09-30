@@ -1,5 +1,5 @@
 /**
- * End-to-end UI tests for the 康禾長照集團 operations portal (ltc-portal.html).
+ * End-to-end UI tests for the 誠馨日照 operations portal (ltc-portal.html).
  *
  * The page is a single-file prototype with in-memory data and a fixed demo
  * date of 2026-09-08. Built roles: admin (E1005, HQ), hr (E1003, HQ) and
@@ -35,7 +35,7 @@ test.describe('Shell & role switching', () => {
   test.beforeEach(async ({ page }) => { await openPortal(page); });
 
   test('loads with brand and admin as default role', async ({ page }) => {
-    await expect(page.locator('.brand')).toContainText('康禾長照集團');
+    await expect(page.locator('.brand')).toContainText('誠馨日照');
     await expect(page.locator('#roleSel')).toHaveValue('admin');
   });
 
