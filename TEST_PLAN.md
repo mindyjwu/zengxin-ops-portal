@@ -110,7 +110,7 @@ Modelled on the 104 企業大師「私人秘書」employee page: 首頁 / 表單
 - [ ] 文件證明申請單 goes straight to HR (待人資複核); the director never sees it — *…certificate requests skip the director…*
 - [ ] 查詢 › 薪資袋 lists only paid months (06–08), matches the payroll figure, and shows no employer-cost lines — *…payslip shows the employee's own paid months…*
 - [ ] 部屬資料 (部屬出勤資料, 部屬工作日誌) appears only for approvers; the O1 director sees 7 reports — *…only approvers get the 部屬資料 look-ups*
-- [ ] 同事今天請假或公出嗎？ lists colleagues at the same site but never the leave type — *…who-is-out names colleagues but never their leave type*
+- [ ] 同事今天請假或公出嗎？ shows only the names of colleagues at the same site who are out — no title, leave or off-site, leave type or approval status — *…who-is-out shows only colleagues' names*
 - [ ] 批次忘刷 files one 忘刷申請單 per ticked day — *…batch missed punches files one correction per ticked day*
 - [ ] 預先加班單, 勞健保證明申請單, 表單通知, 保險費, 所得稅, 人事資料, 年度假勤, 公司規章下載 and 課程 render and submit without errors — **manual**
 - [ ] At 390px width the calendar fits the screen with no sideways scrolling — **manual**
@@ -149,16 +149,18 @@ Flow: **待主管簽核 (pending) → 待人資複核 (countersign) → 已核�
 
 ### Phase 4: My Hours (HR › 我的工時)
 
-Shifts: 白班 (day) 08:00–17:00 with a 12:00–13:00 lunch; 小夜 (evening) 16:00–00:00 and
-大夜 (overnight) 00:00–08:00, 8 h straight with no lunch deduction. Only nurses and care attendants
+Shifts: 白班 (day) 08:00–17:00 with a 12:00–13:00 lunch; 小夜 (evening) 16:00–00:00, 8 h straight
+with no lunch deduction. There is no 大夜 (overnight) shift at present: `NIGHT_SHIFT = false` in
+`ltc-portal.html` keeps it off the roster, and setting it to `true` brings back 00:00–08:00 with its
+leave and allowance rules. Only nurses and care attendants
 at O1 and O2 rotate; HQ staff and every other title always work day shifts. 1 day = 8 h; minimum
 leave unit 0.5 h.
 
 - [ ] Clock in at 08:00 and out at 17:30 → today's row shows 白班 and 8.5 h — *My Hours › clock in and out…*
 - [ ] Clocking in and out in the same minute shows no hours (—), not 24 h — *…clocking in and out in the same minute counts 0 h…*
-- [ ] Punch records show a 班別 column. None of the three built roles works rotating shifts, so My Hours always shows 白班 here; evening and overnight shifts are checked from Payroll in Phase 5 — **manual**
+- [ ] Punch records show a 班別 column. None of the management roles works rotating shifts, so My Hours shows 白班 for them; the employee role (E2104) rotates and its 私人秘書 calendar shows evening shifts — **manual**
 - [ ] Leave: the 上午 4h and 下午 4h quick picks each compute 4 h; submitting creates a pending request — *…half-day leave computes 4 h…*
-- [ ] Rotating staff (nurses and care attendants at O1 and O2) get start and end times from 00:00 to 24:00, the start date's shift, and 整班 / 前半班 / 後半班 quick picks that fill in that day's shift: on an overnight day, 整班 = 00:00–08:00; on an evening day, 後半班 = 20:00–24:00 (4 h). No built role rotates, so the test points admin's persona at E2203 — *…rotating staff can request leave for evening and overnight shifts*
+- [ ] Rotating staff (nurses and care attendants at O1 and O2) get start and end times from 00:00 to 24:00, the start date's shift, and 整班 / 前半班 / 後半班 quick picks that fill in that day's shift: on a day shift, 整班 = 08:00–17:00; on an evening day, 後半班 = 20:00–24:00 (4 h). 2026-08-27, formerly an overnight shift, is now a day shift. The test points admin's persona at E2203 — *…rotating staff can request leave for evening shifts; there is no overnight shift*
 - [ ] Overtime: 17:00–19:00 = 2 h, 17:00–20:30 = 3.5 h, 22:00–02:00 = 4 h (crosses midnight) — *…overtime hours compute…*
 - [ ] Balance (admin, E1005): annual leave 120 h entitlement, 4 h used, 116 h left; comp time 4 h; a pending 4 h request leaves 112 h — *…balance tab reflects entitlement…*
 - [ ] Overtime over the 46 h monthly cap is refused — **manual**
@@ -172,14 +174,18 @@ leave unit 0.5 h.
 - [ ] The Payroll module appears in the menu for hr only — **manual**
 - [ ] Switching from hr to another role while on Payroll returns to 原型說明 — **manual**
 - [ ] 薪資試算 excludes requests that aren't approved yet and says how many — **manual**
-- [ ] Night-shift allowance: NT$200 per evening shift and NT$400 per overnight shift. For E2203 in 2026-08 (5 evening, 1 overnight), the breakdown shows NT$1,000 and NT$400, and the overtime hourly base becomes (58,500 + 1,400) ÷ 240 = 249.58 — *Payroll night-shift allowance › rotating nurse is paid per evening / overnight shift…*
+- [ ] Shift allowance: NT$200 per evening shift (NT$400 per overnight shift once one opens). For E2203 in 2026-08 (5 evening shifts), the breakdown shows NT$1,000 and no 大夜 line, and the overtime hourly base becomes (58,500 + 1,000) ÷ 240 = 247.92 — *Payroll night-shift allowance › rotating nurse is paid per evening shift…*
+- [ ] No overnight shift appears in any month's roster, and the calculator hides the 大夜 fields — *…no overnight shifts are rostered…*
 - [ ] Day-shift staff (E1003) get no allowance lines — *…day-shift staff get no allowance*
 - [ ] The calculator adds the allowance per shift, and the allowance can be excluded from the overtime base — *…calculator adds allowance per shift…*
-- [ ] For a part-time worker the allowance is also in the overtime rate: (160 h × 200 + 1,600) ÷ 160 h = 210 per hour — *…calculator includes a part-timer's allowance in their OT rate*
-- [ ] Leave is counted against the shift worked that day: on E2203's 2026-08-27 overnight shift, 00:00–08:00 or a full-day 08:00–17:00 request is 8 h; on the 2026-08-21 evening shift, 13:00–17:00 is 1 h — *…leave is counted against the evening or overnight shift…*
+- [ ] For a part-time worker the allowance is also in the overtime rate: (160 h × 200 + 800) ÷ 160 h = 205 per hour — *…calculator includes a part-timer's allowance in their OT rate*
+- [ ] With `NIGHT_SHIFT` switched on, leave is counted against the shift worked that day: on E2203's 2026-08-27 overnight shift, 00:00–08:00 or a full-day 08:00–17:00 request is 8 h; on the 2026-08-21 evening shift, 13:00–17:00 is 1 h — *…leave is counted against the evening or overnight shift…*
 - [ ] Partial leave on an evening or overnight shift keeps that shift's allowance; only a full-shift leave removes it — *…partial leave on an overnight shift keeps the allowance*
-- [ ] Open E2203's payslip for 2026-08: the 小夜 and 大夜 rows list the shift dates, and late minutes follow each shift's start time — **manual**
-- [ ] The payroll CSV has 小夜班次, 大夜班次 and 夜班津貼 columns — **manual**
+- [ ] Open E2203's payslip for 2026-08: the 小夜 row lists the shift dates, and late minutes follow each shift's start time — **manual**
+- [ ] The payroll CSV has 小夜班次, 夜班津貼 and 發薪方式 columns, and no 大夜班次 column while there is no overnight shift — *Cash pay… › payroll CSV has a pay-method column…*
+- [ ] Cash pay: E2107 and E2206 (no salary account) show 現金發放 in the register; the 現金發放 tile totals their net pay; 現金發薪簽收清冊 lists them with signature columns and exports as `現金發薪簽收清冊_<月份>.csv` — *Cash pay… › payroll run lists cash-paid staff…*
+- [ ] HR can switch an employee to 現金發放 under 薪資帳戶 in the personnel file, and they then appear on the cash list — *…HR can switch an employee to cash…*
+- [ ] The employee's 薪資袋 says 匯入薪資帳戶 (masked account) or 現金發放：發薪日至人資領取並簽收 — *…the employee's payslip says how they are paid*
 - [ ] A warning shows when the labor insured salary is below the bracket for regular pay including the allowance — **manual**
 - [ ] 薪資計算機 shows the formula for every line — **manual**
 - [ ] 版本與覆核: save version → submit → approve (locks the month) or return; unlock to recalculate — **manual**
@@ -220,8 +226,10 @@ This flow is **manual** end to end; its individual steps are covered by the test
 
 - [ ] **Open question:** should center directors see other facilities? (the assumption toggle)
 - [ ] **Open question:** must payroll calculation and review be done by different people?
-- [ ] **Open question:** should employees see which colleagues are out (同事今天請假或公出嗎？)? The prototype shows names but never the leave type.
-- [ ] **Open question:** 預先加班單 is recorded but does not pay; should an approved pre-approval pre-fill the 加班單?
+- [x] **Decided:** employees see only the names of colleagues who are out (同事今天請假或公出嗎？).
+- [x] **Decided:** 預先加班單 is approval only and does not pay; overtime is paid from the 加班單.
+- [x] **Decided:** there is no overnight shift at present (`NIGHT_SHIFT = false`).
+- [x] **Decided:** staff without a bank account can be paid in cash and sign a receipt list.
 - [ ] No persistence, login, notifications or audit trail: prototype only.
 
 ---

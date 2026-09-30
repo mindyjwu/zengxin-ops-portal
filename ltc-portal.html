@@ -493,12 +493,15 @@ const EV_TYPE = {
 /* 工時制度假設：日班 08:00–17:00，午休 12:00–13:00，每日 8 小時；請假最小單位 0.5 小時 */
 const WORK_DAY_H = 8, LEAVE_UNIT_H = 0.5, OT_MONTH_CAP_H = 46;
 const SHIFT = {start:'08:00', lunchS:'12:00', lunchE:'13:00', end:'17:00'};
-/* 班別：白班含 1 小時午休；小夜、大夜為連續 8 小時（休息時間由單位輪替安排） */
+/* 班別：白班含 1 小時午休；小夜（大夜）為連續 8 小時（休息時間由單位輪替安排） */
 const SHIFT_TYPES = {
   day:  {zh:'白班', en:'Day',     start:'08:00', end:'17:00', lunch:true,  cls:''},
   eve:  {zh:'小夜', en:'Evening', start:'16:00', end:'00:00', lunch:false, cls:'info'},
   night:{zh:'大夜', en:'Night',   start:'00:00', end:'08:00', lunch:false, cls:'acc'}
 };
+/* 目前沒有大夜班，排班不會出現大夜。日後開設大夜班時改為 true；請假、計薪與計算機都已支援 */
+let NIGHT_SHIFT = false;
+const shiftList = () => NIGHT_SHIFT ? both('白班／小夜／大夜','day / evening / overnight') : both('白班／小夜','day / evening');
 const ROTATING_TITLES = ['rn','ca'];   // 24 小時照護需輪班的職務
 /* 分鐘差（跨午夜取最近的一側），正數 = 晚於基準 */
 const minDiff = (t, ref) => { let d=toMin(t)-toMin(ref); if(d>720) d-=1440; if(d<-720) d+=1440; return d; };
@@ -703,7 +706,8 @@ function shiftOf(empId, date){
   const o=(state.roster||{})[empId+'|'+date]; if(o) return o;
   if(OT_REQ.some(x=>x.emp===empId&&x.date===date)) return 'day';
   const r=seed(empId+'|'+date+'|shift');
-  return r<0.18 ? 'night' : r<0.45 ? 'eve' : 'day';
+  if(r<0.18) return NIGHT_SHIFT ? 'night' : 'day';
+  return r<0.45 ? 'eve' : 'day';
 }
 /* 假單時數在載入時尚無班別資料，這裡依班別重算 */
 LEAVE.forEach(l=>{ l.hours=leaveHours(l.from,l.fromT,l.to,l.toT,l.emp); });
@@ -1496,6 +1500,11 @@ const addYears = (d,n) => { const x=new Date(d); x.setFullYear(x.getFullYear()+n
 const daysUntil = d => Math.round((new Date(d)-TODAY)/86400000);
 const mask = (s, keep=4) => s ? '•'.repeat(Math.max(0,s.length-keep))+s.slice(-keep) : '—';
 
+/* 發薪方式：銀行轉帳或現金（未開立薪資帳戶的同仁）。示範資料：兩位部分工時照服員領現金 */
+const PAY_METHOD = {bank:{zh:'銀行轉帳',en:'Bank transfer',cls:''}, cash:{zh:'現金發放',en:'Cash',cls:'warn'}};
+const CASH_PAY = ['E2107','E2206'];
+const payMethodOf = id => empRecord(id).basic.payMethod==='cash' ? 'cash' : 'bank';
+const payChip = m => `<span class="chip ${PAY_METHOD[m].cls}">${esc(both(PAY_METHOD[m].zh,PAY_METHOD[m].en))}</span>`;
 function empRecord(id){
   state.empRecords = state.empRecords || {};
   if(state.empRecords[id]) return state.empRecords[id];
@@ -1525,7 +1534,7 @@ function empRecord(id){
     {name:'警察刑事紀錄證明.pdf', cat:'record', date:p.hired},
     {name:'新進員工體檢報告.pdf', cat:'health', date:p.hired}
   ].concat(lic.map(l=>({name:l.name+'.pdf', cat:'license', date:l.issued})));
-  return state.empRecords[id] = {
+  state.empRecords[id] = {
     basic:{ name:SURN[Math.floor(r('s')*SURN.length)]+GIVEN[Math.floor(r('g')*GIVEN.length)], idNo:'J2'+String(20000000+Math.floor(r('id')*79999999)),
       birth:(1968+Math.floor(r('b')*32))+'-'+String(1+Math.floor(r('bm')*12)).padStart(2,'0')+'-'+String(1+Math.floor(r('bd')*28)).padStart(2,'0'),
       mobile:p.mobile, phone:'03-5'+String(100000+Math.floor(r('ph')*899999)), email:id.toLowerCase()+'@zengxin-daycare.example',
@@ -1533,9 +1542,11 @@ function empRecord(id){
       emerName:SURN[Math.floor(r('es')*SURN.length)]+GIVEN[Math.floor(r('eg')*GIVEN.length)], emerRel:['配偶','父親','母親','子女','手足'][n%5],
       emerPhone:'09'+String(10000000+Math.floor(r('ep')*89999999)),
       bank:['台灣銀行','第一銀行','合作金庫','玉山銀行','國泰世華'][n%5], branch:['竹北分行','竹東分行','新竹分行'][n%3],
-      acct:String(100000000000+Math.floor(r('ac')*899999999999)) },
+      acct:String(100000000000+Math.floor(r('ac')*899999999999)), payMethod:'bank' },
     hist, ins, dep, pension:6, selfPension:n%3===0?6:0, lic, contracts, renewals, perf, docs
   };
+  if(CASH_PAY.includes(id)) Object.assign(state.empRecords[id].basic, {payMethod:'cash', bank:'', branch:'', acct:''});
+  return state.empRecords[id];
 }
 function recFlags(id){
   const rec=empRecord(id);
@@ -1576,6 +1587,7 @@ function secBasic(p, rec){
       </div>
       ${fin?`<div class="eyebrow">${esc(both('薪資帳戶','Salary account'))}</div>
       <div class="row">
+        <div><label>${esc(both('發薪方式','Pay method'))}</label><select name="payMethod">${Object.entries(PAY_METHOD).map(([k,v])=>`<option value="${k}" ${(b.payMethod||'bank')===k?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}</select></div>
         <div><label>${esc(both('銀行','Bank'))}</label><input name="bank" value="${esc(b.bank)}"></div>
         <div><label>${esc(both('分行','Branch'))}</label><input name="branch" value="${esc(b.branch)}"></div>
         <div><label>${esc(both('帳號','Account no.'))}</label><input name="acct" value="${esc(b.acct)}" inputmode="numeric" pattern="[0-9]{10,16}"></div>
@@ -1603,8 +1615,10 @@ function secBasic(p, rec){
     </dl>
     <div class="eyebrow">${esc(both('薪資帳戶','Salary account'))}</div>
     ${fin?`<dl class="kv">
-      ${kvRow('銀行','Bank', esc(b.bank+' '+b.branch))}
-      ${kvRow('帳號','Account no.', `<span class="mono">${esc(b.acct)}</span>`)}
+      ${kvRow('發薪方式','Pay method', payChip(b.payMethod==='cash'?'cash':'bank'))}
+      ${b.payMethod==='cash'
+        ? kvRow('領款','Collection', esc(both('發薪日至人資領取現金並簽收','Collects cash from HR on payday and signs for it')))
+        : kvRow('銀行','Bank', esc(b.bank+' '+b.branch))+kvRow('帳號','Account no.', `<span class="mono">${esc(b.acct)}</span>`)}
     </dl>`:`<div>${lockTxt('薪資帳戶僅人資可見','Salary account is HR only')}</div>`}`;
 }
 
@@ -1841,7 +1855,7 @@ const MY_TABS = [
   {id:'log',     zh:'工作日誌',   en:'Work log'}
 ];
 const HALF_SLOTS = (()=>{ const o=[]; for(let m=toMin(SHIFT.start); m<=toMin(SHIFT.end); m+=30) o.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')); return o; })();
-/* 輪班人員（小夜 16:00–24:00、大夜 00:00–08:00）可選 00:00–24:00 */
+/* 輪班人員（小夜 16:00–24:00；開設大夜時 00:00–08:00）可選 00:00–24:00 */
 const FULL_SLOTS = (()=>{ const o=[]; for(let m=0; m<=1440; m+=30) o.push(String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0')); return o; })();
 const rotates = p => ROTATING_TITLES.includes(p.title) && p.unit!=='HQ';
 const slotOpts = (sel, slots=HALF_SLOTS) => slots.map(t=>`<option ${t===sel?'selected':''}>${t}</option>`).join('');
@@ -1916,7 +1930,7 @@ function viewMyHours(){
     ${body}
     ${myRequests()}
     <div class="note">${esc(both(
-      '工時制度假設：日班 08:00–17:00、午休 12:00–13:00，1 天 = 8 小時；請假最小單位 '+LEAVE_UNIT_H+' 小時（可請半天 4 小時或以小時計）。輪班制（小夜、大夜）與 104 系統串接方式為待確認事項。',
+      '工時制度假設：日班 08:00–17:00、午休 12:00–13:00，1 天 = 8 小時；請假最小單位 '+LEAVE_UNIT_H+' 小時（可請半天 4 小時或以小時計）。輪班制（'+shiftList()+'）與 104 系統串接方式為待確認事項。',
       'Assumptions: day shift 08:00–17:00 with a 12:00–13:00 lunch, 1 day = 8 hours; minimum leave unit '+LEAVE_UNIT_H+' h (half day = 4 h, or by the hour). Rotating shifts and the 104 integration method are still to be confirmed.'))}</div>
   </div>`;
 }
@@ -2444,16 +2458,16 @@ function deskPeers(){
     cells+=`<button data-pday="${ds}" class="${peerAbsences(ds).length?'has':''}${ds===today?' today':''}" aria-pressed="${ds===sel}">${n}</button>`;
   }
   const list=peerAbsences(sel), mine=list.filter(x=>person(x.emp).dept===u.dept), other=list.filter(x=>person(x.emp).dept!==u.dept);
-  const box=(zh,en,arr)=>`<div class="peerbox"><b>${esc(both(zh,en))}</b>${arr.length?arr.map(x=>{ const p=person(x.emp); return `<div>
-      ${esc(empName(p.id))} <span class="muted">${esc(L(TITLES[p.title]))}</span> · ${esc(x.kind==='trip'?both('公出','Off-site'):both('請假','On leave'))}
-      ${x.open?`<span class="chip warn">${esc(both('審核中','Pending'))}</span>`:''}</div>`; }).join('')
+  /* 只顯示姓名：不顯示職稱、請假或公出、假別、審核狀態 */
+  const names=arr=>[...new Set(arr.map(x=>x.emp))];
+  const box=(zh,en,arr)=>`<div class="peerbox"><b>${esc(both(zh,en))}</b>${arr.length?names(arr).map(id=>`<div>${esc(empName(id))}</div>`).join('')
     :`<div class="muted">${esc(both('無請假公出','Nobody out'))}</div>`}</div>`;
   return `<section class="card"><div class="card-h"><h2>${esc(both('同事今天請假或公出嗎？','Who is out?'))}</h2><span class="en mono">${sel}</span></div>
     <div class="card-b" style="display:grid;gap:12px">
       <div class="minical">${cells}</div>
       <div class="peers">${box('部門同事','My department',mine)}${box('其他部門','Other departments',other)}</div>
     </div>
-    <div class="legend">${esc(both('只顯示同據點同事是否請假或公出，不顯示假別。','Shows only whether colleagues at your site are out — never the leave type.'))}</div></section>`;
+    <div class="legend">${esc(both('只顯示同據點不在班同事的姓名，不顯示請假或公出、假別與原因。','Shows only the names of colleagues at your site who are out — never whether it is leave or off-site, the leave type or the reason.'))}</div></section>`;
 }
 function deskSignCard(){
   const list=deskToSign();
@@ -2789,7 +2803,7 @@ function dqSlip(){
       ls.map(l=>`<tr><td>${esc(state.lang==='zh'?l.zh:l.en)}</td><td class="muted mono" style="font-size:11.5px;white-space:normal">${esc(l.formula)}</td>
         <td class="num">${g==='earn'?'':'−'}${money(l.amt)}</td></tr>`).join(''); };
   return `${monthBar('slipMonth', months, mon, `<span class="chip ok">${esc(both('已發放 '+payDay(mon),'Paid '+payDay(mon)))}</span>
-      <span class="chip">${esc(u.type==='part'?both('時薪制','Hourly'):both('月薪制','Monthly'))}</span>`)}
+      <span class="chip">${esc(u.type==='part'?both('時薪制','Hourly'):both('月薪制','Monthly'))}</span>${payChip(payMethodOf(u.id))}`)}
     <div class="tiles">
       <div class="tile"><span class="k">${esc(both('應發金額','Gross pay'))}</span><span class="v" style="font-size:18px">${money(r.gross)}</span></div>
       <div class="tile"><span class="k">${esc(both('代扣合計','Deductions'))}</span><span class="v" style="font-size:18px">−${money(r.stat+r.adjNeg)}</span></div>
@@ -2801,7 +2815,9 @@ function dqSlip(){
         <tbody>${grp('earn')}${grp('att')}
           <tr><td><b>${esc(both('應發金額','Gross pay'))}</b></td><td></td><td class="num"><b>${money(r.gross)}</b></td></tr>
           ${grp('stat')}${grp('other')}
-          <tr><td><b>${esc(both('實發金額','Net pay'))}</b></td><td class="muted" style="font-size:11.5px">${esc(both('匯入薪資帳戶','Paid to your salary account'))}</td><td class="num"><b style="font-size:15px">${money(r.net)}</b></td></tr>
+          <tr><td><b>${esc(both('實發金額','Net pay'))}</b></td><td class="muted" style="font-size:11.5px">${esc(payMethodOf(u.id)==='cash'
+            ? both('現金發放：發薪日至人資領取並簽收','Cash: collect from HR on payday and sign for it')
+            : both('匯入薪資帳戶 '+mask(empRecord(u.id).basic.acct,4),'Paid to your salary account '+mask(empRecord(u.id).basic.acct,4)))}</td><td class="num"><b style="font-size:15px">${money(r.net)}</b></td></tr>
         </tbody></table></div>
       <div class="legend">${esc(both('薪資袋僅本人與人資可見。公司負擔的勞健保與勞退請見「保險費」。如有疑問請洽人資。',
         'Only you and HR can see your payslip. Employer-paid insurance and pension are under Insurance. Ask HR if anything looks wrong.'))}</div></section>`;
@@ -2865,7 +2881,7 @@ function dqRec(){
           ${kvRow('據點','Site',esc(L(unit(u.unit))))}
           ${kvRow('到職日','Hire date',`<span class="mono">${u.hired}</span> <span class="muted">${esc(both(y+' 年 '+mo+' 個月',y+' y '+mo+' m'))}</span>`)}
           ${kvRow('僱用類別','Employment type',esc(u.type==='part'?both('部分工時','Part-time'):both('全職','Full-time')))}
-          ${kvRow('班制','Schedule',esc(rotates(u)?both('輪班（白班／小夜／大夜）','Rotating (day / evening / night)'):both('固定白班','Day shift')))}
+          ${kvRow('班制','Schedule',esc(rotates(u)?both('輪班','Rotating')+'（'+shiftList()+'）':both('固定白班','Day shift')))}
           ${kvRow('直屬主管','Supervisor',mgr?esc(empName(mgr.id))+` <span class="muted">${esc(L(TITLES[mgr.title]))}</span>`:'—')}
         </dl>
         <div class="eyebrow">${esc(both('保險與薪資帳戶','Insurance & salary account'))}</div>
@@ -2873,7 +2889,9 @@ function dqRec(){
           ${kvRow('勞保投保薪資','Labor insured',ins?money(ins.labor):'—')}
           ${kvRow('健保投保金額','Health insured',ins?money(ins.health)+' · '+esc(both('眷屬 '+rec.dep+' 口',rec.dep+' dependant(s)')):'—')}
           ${kvRow('勞退自提','Pension (you)',rec.selfPension?rec.selfPension+'%':'—')}
-          ${kvRow('薪資帳戶','Salary account',esc(b.bank+' '+b.branch)+` <span class="mono">${mask(b.acct,4)}</span>`)}
+          ${kvRow('發薪方式','Pay method',payChip(payMethodOf(u.id)))}
+          ${payMethodOf(u.id)==='cash' ? kvRow('領款','Collection',esc(both('發薪日至人資領取並簽收','Collect from HR on payday and sign')))
+            : kvRow('薪資帳戶','Salary account',esc(b.bank+' '+b.branch)+` <span class="mono">${mask(b.acct,4)}</span>`)}
         </dl>
       </div>
     </div></section>
@@ -3761,10 +3779,10 @@ function generateFinancialReport(month){
   if(!can('salary')) return '';
   const units=activeUnitIds();
   const list=STAFF.filter(s=>units.includes(s.unit)).sort((a,b)=>a.id.localeCompare(b.id));
-  const rows=[['員工編號','姓名','據點','部門','計薪方式','應發金額','實發金額','雇主勞保','雇主健保','雇主勞退','人事成本合計']];
+  const rows=[['員工編號','姓名','據點','部門','計薪方式','應發金額','實發金額','雇主勞保','雇主健保','雇主勞退','人事成本合計','發薪方式']];
   list.forEach(e=>{
     const r=calcPay(e.id, month);
-    rows.push([e.id, empName(e.id), unit(e.unit).zh, DEPTS[e.dept].zh, e.type==='part'?'時薪':'月薪', r.gross, r.net, r.er.labor, r.er.health, r.er.pension, r.gross+r.er.total]);
+    rows.push([e.id, empName(e.id), unit(e.unit).zh, DEPTS[e.dept].zh, e.type==='part'?'時薪':'月薪', r.gross, r.net, r.er.labor, r.er.health, r.er.pension, r.gross+r.er.total, PAY_METHOD[payMethodOf(e.id)].zh]);
   });
   return toCSV(rows);
 }
@@ -4098,12 +4116,23 @@ const monthState = run => {
   return {zh:'試算中',en:'Draft',cls:'warn'};
 };
 function payCSV(res, month){
-  const rows=[['員工編號','姓名','職稱','據點','計薪方式','本薪/正常工時薪資','小夜班次','大夜班次','夜班津貼','加班費','給薪假(時薪制)','差勤扣款','全勤獎金','人工調整淨額','應發金額',
-    '勞保自付','健保自付','勞退自提','所得稅','其他扣款','實發金額','雇主勞保','雇主健保','雇主勞退','警示']];
+  const night=NIGHT_SHIFT;   // 沒有大夜班時不輸出「大夜班次」欄
+  const head=['員工編號','姓名','職稱','據點','計薪方式','本薪/正常工時薪資','小夜班次',...(night?['大夜班次']:[]),'夜班津貼','加班費','給薪假(時薪制)','差勤扣款','全勤獎金','人工調整淨額','應發金額',
+    '勞保自付','健保自付','勞退自提','所得稅','其他扣款','實發金額','發薪方式','雇主勞保','雇主健保','雇主勞退','警示'];
+  const rows=[head];
   STAFF.forEach(s=>{ const r=res[s.id]; if(!r) return;
-    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, s.type==='part'?'時薪':'月薪', r.base, r.eveN, r.nightN, r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
-      r.labor, r.health, r.pension, r.tax, r.adjNeg, r.net, r.er.labor, r.er.health, r.er.pension, r.warn.map(w=>w.zh).join('; ')]); });
-  const t=payTotals(res); rows.push(['合計','','','','','','','','','','','','','',t.gross,'','','','','',t.net,'','','','']);
+    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, s.type==='part'?'時薪':'月薪', r.base, r.eveN, ...(night?[r.nightN]:[]), r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
+      r.labor, r.health, r.pension, r.tax, r.adjNeg, r.net, PAY_METHOD[payMethodOf(s.id)].zh, r.er.labor, r.er.health, r.er.pension, r.warn.map(w=>w.zh).join('; ')]); });
+  const t=payTotals(res), tot=head.map(()=>'');
+  tot[0]='合計'; tot[head.indexOf('應發金額')]=t.gross; tot[head.indexOf('實發金額')]=t.net;
+  rows.push(tot);
+  return toCSV(rows);
+}
+/* 現金發薪簽收清冊：未開立薪資帳戶、以現金領薪的同仁，發放時由本人簽收 */
+function cashCSV(res, month, ids){
+  const rows=[['員工編號','姓名','職稱','據點','薪資月份','實發金額','發放日','領款人簽名','發放人簽名','備註']];
+  ids.forEach(id=>{ const s=person(id); rows.push([id, empName(id), TITLES[s.title].zh, unit(s.unit).zh, month, res[id].net, '', '', '', '']); });
+  rows.push(['合計','','','','',ids.reduce((a,id)=>a+res[id].net,0),'','','','']);
   return toCSV(rows);
 }
 
@@ -4118,6 +4147,7 @@ function viewPayRun(){
   const t=payTotals(Object.fromEntries(list.map(s=>[s.id,res[s.id]])));
   const last=run.versions.slice(-1)[0], all=payTotals(res);
   const drift = last && (last.totals.net!==all.net || last.totals.gross!==all.gross);
+  const cash=list.filter(s=>payMethodOf(s.id)==='cash'), cashSum=cash.reduce((a,s)=>a+res[s.id].net,0);
   const pendAll=[...LEAVE,...OT_REQ,...PUNCH_FIX].filter(x=>(x.status==='pending'||x.status==='countersign')&&(x.from||x.date).slice(0,7)===month).length;
   return `
   <div class="grid">
@@ -4137,6 +4167,8 @@ function viewPayRun(){
       <div class="tile"><span class="k">${esc(both('實發合計','Net pay'))}</span><span class="v" style="font-size:18px">${money(t.net)}</span></div>
       <div class="tile"><span class="k">${esc(both('雇主負擔（勞健保＋勞退）','Employer cost'))}</span><span class="v" style="font-size:18px">${money(t.er)}</span></div>
       <div class="tile"><span class="k">${esc(both('需檢查','Need checking'))}</span><span class="v">${t.warn}</span><span class="d">${esc(both('人有警示','with warnings'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('現金發放','Paid in cash'))}</span><span class="v" style="font-size:18px">${money(cashSum)}</span>
+        <span class="d">${esc(both(cash.length+' 人，其餘 '+(t.n-cash.length)+' 人轉帳',cash.length+' staff; '+(t.n-cash.length)+' by bank transfer'))}</span></div>
     </div>
     <section class="card">
       <div class="card-h"><h2>${esc(both('薪資試算表','Payroll register'))} <span class="mono muted" style="font-size:12px">${month}</span></h2>
@@ -4144,7 +4176,7 @@ function viewPayRun(){
       <div class="tablewrap"><table>
         <thead><tr><th>${bi('員工','Employee')}</th><th>${bi('計薪','Basis')}</th><th>${bi('本薪','Base')}</th><th>${bi('夜班津貼','Shift allow.')}</th><th>${bi('加班費','Overtime')}</th>
           <th>${bi('差勤扣款','Attendance')}</th><th>${bi('全勤','Bonus')}</th><th>${bi('調整','Adjust')}</th><th>${bi('應發','Gross')}</th>
-          <th>${bi('代扣','Withheld')}</th><th>${bi('實發','Net')}</th><th>${bi('警示','Flags')}</th></tr></thead>
+          <th>${bi('代扣','Withheld')}</th><th>${bi('實發','Net')}</th><th>${bi('發薪方式','Pay method')}</th><th>${bi('警示','Flags')}</th></tr></thead>
         <tbody>${list.map(s=>{ const r=res[s.id]; return `<tr class="clickable" data-payemp="${s.id}">
           <td>${esc(empName(s.id))} <span class="muted mono" style="font-size:11px">${s.id}</span><div class="muted" style="font-size:11px">${esc(TITLES[s.title].zh)} · ${esc(unit(s.unit).zh)}</div></td>
           <td><span class="chip ${s.type==='part'?'warn':''}">${esc(s.type==='part'?both('時薪','Hourly'):both('月薪','Monthly'))}</span></td>
@@ -4152,11 +4184,26 @@ function viewPayRun(){
           <td class="num">${r.att?'−'+money(r.att):'—'}</td><td class="num">${r.bonus?money(r.bonus):'—'}</td>
           <td class="num">${r.adjNet?(r.adjNet>0?'+':'−')+money(Math.abs(r.adjNet)):'—'}</td>
           <td class="num"><b>${money(r.gross)}</b></td><td class="num">−${money(r.stat+r.adjNeg)}</td><td class="num"><b>${money(r.net)}</b></td>
+          <td>${payChip(payMethodOf(s.id))}</td>
           <td>${r.warn.map(w=>`<span class="chip ${w.cls}" title="${esc(w.zh)}">${esc(w.zh.length>10?w.zh.slice(0,10)+'…':w.zh)}</span>`).join(' ')||`<span class="chip ok">${esc(both('正常','OK'))}</span>`}</td>
         </tr>`;}).join('')}</tbody>
       </table></div>
       <div class="legend">${esc(both('只計入已核准（人資複核完成）的請假、加班、補打卡；打卡超過 17:00 的時間不算加班，須有核准的加班單。',
         'Only fully approved leave, overtime and punch corrections count. Time after 17:00 is not overtime without an approved request.'))}</div>
+    </section>
+    <section class="card" id="cashList">
+      <div class="card-h"><h2>${esc(both('現金發薪簽收清冊','Cash pay receipt list'))} <span class="mono muted" style="font-size:12px">${month}</span></h2>
+        <span class="en">${esc(both('未開立薪資帳戶的同仁，發薪日以現金領取並本人簽收','Staff without a salary account collect cash on payday and sign for it'))}</span>
+        <div class="spacer"></div>
+        ${cash.length?`<button class="btn ghost mini" data-cashcsv>${esc(both('匯出簽收清冊 CSV','Export receipt list CSV'))}</button>`:''}</div>
+      ${cash.length?`<div class="tablewrap"><table>
+        <thead><tr><th>${bi('員工','Employee')}</th><th>${bi('據點','Site')}</th><th>${bi('實發金額','Net pay')}</th><th>${bi('領款人簽名','Signature')}</th><th>${bi('發放日','Date paid')}</th></tr></thead>
+        <tbody>${cash.map(s=>`<tr><td>${esc(empName(s.id))} <span class="muted mono" style="font-size:11px">${s.id}</span></td><td>${esc(unit(s.unit).zh)}</td>
+          <td class="num"><b>${money(res[s.id].net)}</b></td><td style="min-width:140px;border-bottom:1px solid var(--line-strong)"></td><td></td></tr>`).join('')}
+          <tr><td><b>${esc(both('合計','Total'))}</b></td><td></td><td class="num"><b>${money(cashSum)}</b></td><td></td><td></td></tr></tbody></table></div>`
+      :`<div class="empty">${esc(both('目前資料範圍內沒有現金領薪的同仁','No cash-paid staff in the current data scope'))}</div>`}
+      <div class="legend">${esc(both('依勞基法第 22、23 條，工資須以法定通用貨幣全額直接給付，並提供計算明細；現金發放請本人簽收，簽收清冊與工資清冊一併保存 5 年。發薪方式在員工資料的「薪資帳戶」設定。',
+        'Under Labor Standards Act §22–23, wages are paid in full in legal tender directly to the worker with an itemised statement; cash must be signed for, and the receipt list kept with the payroll register for 5 years. Set the pay method under Salary account in the employee record.'))}</div>
     </section>
   </div>`;
 }
@@ -4166,6 +4213,9 @@ BINDERS['pay:run']=function(){
   document.querySelectorAll('[data-payemp]').forEach(r=>r.onclick=()=>openPayslip(r.dataset.payemp, month));
   const sv=document.querySelector('[data-savever]'); if(sv&&!sv.disabled) sv.onclick=()=>saveVersion(month);
   document.querySelector('[data-paycsv]').onclick=()=>downloadCSV(payCSV(allPay(month),month), `薪資試算_${month}.csv`);
+  const cc=document.querySelector('[data-cashcsv]');
+  if(cc) cc.onclick=()=>{ const ids=STAFF.filter(s=>activeUnitIds().includes(s.unit)&&payMethodOf(s.id)==='cash').map(s=>s.id);
+    downloadCSV(cashCSV(allPay(month),month,ids), `現金發薪簽收清冊_${month}.csv`); };
 };
 function saveVersion(month){
   const run=payrun(month), res=allPay(month), v=run.versions.length+1;
@@ -4202,7 +4252,7 @@ function openPayslip(empId, month){
       <div class="drawer-h">
         <span class="avatar" style="width:40px;height:40px;font-size:15px">${esc(empName(empId).slice(0,1))}</span>
         <div><h2 style="font-size:16px">${esc(empName(empId))} <span class="muted mono" style="font-size:12px">${empId} · ${month}</span></h2>
-          <div class="muted" style="font-size:12px">${esc(TITLES[p.title].zh)} · ${esc(unit(p.unit).zh)} · ${esc(p.type==='part'?both('時薪制 '+inp.hourly+' 元','Hourly '+inp.hourly):both('月薪制','Monthly'))}</div></div>
+          <div class="muted" style="font-size:12px">${esc(TITLES[p.title].zh)} · ${esc(unit(p.unit).zh)} · ${esc(p.type==='part'?both('時薪制 '+inp.hourly+' 元','Hourly '+inp.hourly):both('月薪制','Monthly'))} · ${payChip(payMethodOf(empId))}</div></div>
         <button class="x" data-close aria-label="${esc(both('關閉','Close'))}">✕</button>
       </div>
       <div class="drawer-b">
@@ -4315,7 +4365,8 @@ function viewPayCalc(){
         <div class="eyebrow">${esc(both('工時與加班','Hours & overtime'))}</div>
         <div class="row">${CALC_FIELDS.slice(0,7).map(f=>num(...f)).join('')}</div>
         <div class="eyebrow">${esc(both('夜班津貼','Shift allowance'))}</div>
-        <div class="row">${NIGHT_FIELDS.map(f=>num(...f)).join('')}
+        <div class="row">${NIGHT_FIELDS.map(f=>NIGHT_SHIFT||!f[0].startsWith('night') ? num(...f)
+            : `<input type="hidden" name="${f[0]}" value="${f[0]==='night'?0:c.nightRate}">`).join('')}
           <div><label>${esc(both('計入加班費基數','Include in OT base'))}</label><select name="nightInBase"><option value="true" ${c.nightInBase?'selected':''}>${esc(both('是','Yes'))}</option><option value="false" ${!c.nightInBase?'selected':''}>${esc(both('否','No'))}</option></select></div>
         </div>
         <div class="eyebrow">${esc(both('請假與出勤異常','Leave & exceptions'))}</div>
@@ -4349,8 +4400,8 @@ function payRulesNote(){
       ${[
         ['時薪基準 = 月薪 ÷ 30 ÷ 8（= ÷ 240）；時薪制人員以約定時薪計，不得低於基本工資 '+PAY_CFG.minHourly+' 元。','Hourly base = monthly ÷ 240; hourly staff use their agreed rate (minimum '+PAY_CFG.minHourly+').'],
         ['平日加班：前 2 小時 × 4/3、第 3–4 小時 × 5/3（勞基法 §24）；休息日：前 2 小時 × 4/3、第 3–8 小時 × 5/3、第 9–12 小時 × 8/3。','Weekday OT: first 2h × 4/3, hours 3–4 × 5/3 (LSA §24). Rest day: 4/3, 5/3, 8/3.'],
-        ['夜班津貼：小夜（16:00–24:00）每班 '+PAY_CFG.eveRate+' 元、大夜（00:00–08:00）每班 '+PAY_CFG.nightRate+' 元（示意，依公司規定）；當日請假滿班不發。津貼屬經常性給與，計入應發、所得與投保薪資，並計入加班費時薪基準。',
-          'Shift allowance: evening '+PAY_CFG.eveRate+' / overnight '+PAY_CFG.nightRate+' per shift (illustrative); none for shifts taken as leave. It is regular pay: counted in gross, taxable income, the insured-salary bracket and the overtime base.'],
+        ['夜班津貼：小夜（16:00–24:00）每班 '+PAY_CFG.eveRate+' 元'+(NIGHT_SHIFT?'、大夜（00:00–08:00）每班 '+PAY_CFG.nightRate+' 元':'（目前沒有大夜班）')+'（示意，依公司規定）；當日請假滿班不發。津貼屬經常性給與，計入應發、所得與投保薪資，並計入加班費時薪基準。',
+          'Shift allowance: evening '+PAY_CFG.eveRate+(NIGHT_SHIFT?' / overnight '+PAY_CFG.nightRate:' (no overnight shift at present)')+' per shift (illustrative); none for shifts taken as leave. It is regular pay: counted in gross, taxable income, the insured-salary bracket and the overtime base.'],
         ['國定假日／例假出勤：工資加倍發給（月薪已含當日工資，故加發 1 倍）；選擇換補休者不計加班費。','Holiday work is paid double (monthly pay already includes the day, so one extra day is added). Overtime taken as comp time is not paid.'],
         ['請假：特休、婚假、喪假、公假、補休給薪；病假、生理假半薪；事假、家庭照顧假不給薪。','Leave: annual, marriage, bereavement, official and comp are paid; sick and menstrual are half pay; personal and family care are unpaid.'],
         ['遲到僅按實際未出勤時間比例扣薪，不得額外罰款。全勤獎金不因生理假、家庭照顧假、婚喪假、公假、特休而扣除。','Lateness is deducted only for time actually missed. Menstrual, family care, marriage, bereavement, official and annual leave cannot cost the attendance bonus.'],
