@@ -216,6 +216,21 @@ This flow is **manual** end to end; its individual steps are covered by the test
 
 ---
 
+### Phase 9: v2.2 — 30 Sept meeting items
+
+| # | Role | Steps | Expected |
+|---|------|-------|----------|
+| 9.1 | hr | HR › 員工資料 | 狀態 column beside the name; every demo employee shows 在職; 計薪方式 shows 月薪制 (21) and 時薪制 (2) |
+| 9.2 | hr | Open any employee › 任職與薪資歷程 › 變更狀態 › 留職停薪 | Status chip changes; a 留職停薪 row is added to the history; list filter 留職停薪 returns that person |
+| 9.3 | hr | Set 離職, then 在職 again | Seniority-from date restarts at the demo date; a rehire row is added |
+| 9.4 | hr | Add a 調職 change | Seniority-from date and employee number are unchanged |
+| 9.5 | hr | 基本與金融資料 › 編輯 | Emergency contact 1 is required; contact 2 is optional; 領薪方式 = 現金 hides bank details |
+| 9.6 | admin | Open the same record | Pay method and bank details stay hidden (HR only) |
+| 9.7 | hr | Set 計薪方式 = 拆帳制, open 薪資計算 | Row shows 拆帳制, amounts are 0 with a warning that it is excluded from auto-calculation |
+| 9.8 | hr | 報表匯出 › all four reports | Each header contains 員工編號 and 姓名 |
+| 9.9 | admin | 系統設定 | 員工編號規則（提案，尚未核定）card is shown |
+| 9.10 | any | 權限與範圍 › 待決議題 | 9/30 table with 7 items and the 10/7 meeting date |
+
 ## Known Gaps & Open Questions
 
 - [ ] **Open question:** should center directors see other facilities? (the assumption toggle)

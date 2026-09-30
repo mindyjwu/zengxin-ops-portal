@@ -1,5 +1,5 @@
-# 誠馨日照 營運入口 — MVP 原型導覽 (v2.1)
-# Zengxin Day Care — Operations Portal MVP Walkthrough (v2.1)
+# 誠馨日照 營運入口 — MVP 原型導覽 (v2.2)
+# Zengxin Day Care — Operations Portal MVP Walkthrough (v2.2)
 
 > **原型 v2.1** — 2026年9月30日交付版本  
 > 這是一個「討論用原型」，不是可上線的系統。目的是把三個必須由貴單位決定的問題，變成看得見、點得到的畫面；同時展示完整的組織架構與角色設計。  
@@ -140,3 +140,23 @@ Deliberately out of scope here; needed before the next stage:
 - 個資保護與稽核紀錄要求 Personal-data protection and audit-log requirements
 - 與現有打卡、班表、薪資系統的介接 Integration with existing time-clock, rostering and payroll systems
 - 其餘 5 個模組的優先順序 Priority order for the remaining 5 modules
+
+
+---
+
+## v2.2 新增（9/30 會議）/ v2.2: changes from the 30 Sept meeting
+
+| 項目 Item | 做法 What it does | 在哪裡看 Where |
+|---|---|---|
+| 僱用狀態 Employment status | 在職／留職停薪／離職；員工清單可依狀態篩選；變更會寫入任職歷程。Active / Unpaid leave / Left, filterable, logged in history. | 人事系統 → 員工資料；員工抽屜 → 任職與薪資歷程 |
+| 年資起算日 Seniority start | 跨單位轉調不重置、員編不變；離職後回任才重新起算；特休天數依此計算。Not reset on transfer; restarts on rehire; drives annual-leave days. | 員工抽屜 → 任職與薪資歷程 |
+| 計薪方式 Pay basis | 月薪制、時薪制可試算；拆帳制只標示、不自動計算（規則待確認）。Revenue share is flagged and excluded until rules are defined. | 員工清單、薪資計算 |
+| 緊急聯絡人 Emergency contacts | 2 位：第 1 位必填、第 2 位選填。Two contacts, first required. | 員工抽屜 → 基本與金融資料 |
+| 現金領薪 Cash pay | 領薪方式可選現金，銀行資料可留空（僅人資可見）。Bank details optional for cash pay (HR only). | 員工抽屜 → 基本與金融資料 |
+| 報表 Reports | 四份報表都同時有員工編號與姓名（同名同姓以員編區分）；人事報表新增狀態、年資起算日、計薪方式、緊急聯絡人 2、領薪方式。All four exports carry employee number and name. | 報表匯出 |
+| 員編規則提案 Employee-number proposal | A/B/C 字母前綴提案（僅示意，未核定）。Letter-prefix proposal, illustrative only. | 系統設定 |
+| 待確認事項 Open items | 7 項，下次會議 10/7 11:30。Seven items for the 7 Oct meeting. | 權限與範圍 → 待決議題 |
+
+**走查建議 / Suggested walk-through (5 min):** HR 身分 → 員工資料，將某人改為「留職停薪」並用狀態篩選 → 打開抽屜看年資起算日 → 改為「離職」再「在職」，看年資重新起算 → 報表匯出 → 人事資料報表。
+
+**仍未處理 Not done yet:** 各職位的個別員工角色（待各主管提供權限清單）、拆帳制計算規則、104／人保系統串接、後端與登入。

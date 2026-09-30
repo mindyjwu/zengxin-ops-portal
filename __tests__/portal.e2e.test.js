@@ -704,9 +704,9 @@ test.describe('Personnel file drawer', () => {
 /* ================================================================ */
 test.describe('CSV exports', () => {
   const FILES = {
-    attendance: ['出勤統計報表', '員工編號,職稱,據點'],
+    attendance: ['出勤統計報表', '員工編號,姓名,職稱'],
     personnel: ['人事資料報表', '員工編號,姓名,職稱'],
-    leave: ['差勤申請報表', '單號,類型,員工編號'],
+    leave: ['差勤申請報表', '單號,類型,員工編號,姓名'],
     financial: ['財務報表', '員工編號,姓名,據點,部門,計薪方式,應發金額']
   };
   async function download(page, type) {
@@ -783,5 +783,178 @@ test.describe('CSV exports', () => {
     await go(page, 'rpt');
     const { lines } = await download(page, 'leave');
     expect(lines.find(l => l.startsWith('L241,'))).toContain('待人資複核');
+  });
+});
+
+
+/* ================================================================ */
+/* v2.2 — items from the 30 Sept meeting                            */
+test.describe('v2.2 meeting updates', () => {
+  async function openRecord(page, role, id) {
+    await openPortal(page);
+    await setRole(page, role);
+    await go(page, 'hr', 'emp');
+    await page.click(`tr[data-emp="${id}"]`);
+    await expect(drawer(page)).toBeVisible();
+  }
+  const body = page => page.locator('aside.drawer .drawer-b');
+
+  test('employee numbers are unique and every employee starts Active', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => ({
+      ids: STAFF.map(s => s.id),
+      statuses: [...new Set(STAFF.map(s => statusOf(s.id)))],
+      bases: [...new Set(STAFF.map(s => payBasisOf(s.id)))]
+    }));
+    expect(new Set(r.ids).size).toBe(r.ids.length);
+    expect(r.statuses).toEqual(['active']);
+    expect(r.bases.sort()).toEqual(['hourly', 'monthly']);
+  });
+
+  test('employee list shows pay basis and status, and filters by status', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'emp');
+    const total = await empRows(page).count();
+    await expect(page.locator('#view [data-status="active"]')).toHaveCount(total);
+    await expect(page.locator('#view [data-paybasis="hourly"]')).toHaveCount(2);   // E2107, E2206
+    await page.evaluate(() => { empRecord('E2103').status = 'loa'; empRecord('E2104').status = 'exited'; render(); });
+    await page.selectOption('#empStatus', 'loa');
+    await expect(empRows(page)).toHaveCount(1);
+    await expect(empRows(page).first()).toContainText('E2103');
+    await page.selectOption('#empStatus', 'exited');
+    await expect(empRows(page)).toHaveCount(1);
+    await page.selectOption('#empStatus', 'ALL');
+    await expect(empRows(page)).toHaveCount(total);
+  });
+
+  test('HR records a status change and it lands in the employment history', async ({ page }) => {
+    await openRecord(page, 'hr', 'E2103');
+    await page.click('[data-sec="hist"]');
+    await page.locator('details.addbox summary').first().click();
+    await page.selectOption('form[data-add="emp"] select[name="status"]', 'loa');
+    await page.click('form[data-add="emp"] button[type="submit"]');
+    await expect(body(page)).toContainText('留職停薪');
+    const r = await page.evaluate(() => ({ s: empRecord('E2103').status, last: empRecord('E2103').hist.slice(-1)[0].kind }));
+    expect(r).toEqual({ s: 'loa', last: 'leave' });
+  });
+
+  test('transfer keeps seniority; rehire after leaving restarts it', async ({ page }) => {
+    await openRecord(page, 'hr', 'E2103');
+    await page.click('[data-sec="hist"]');
+    await page.locator('details.addbox summary').nth(1).click();
+    await page.selectOption('form[data-add="hist"] select[name="kind"]', 'transfer');
+    await page.click('form[data-add="hist"] button[type="submit"]');
+    const afterTransfer = await page.evaluate(() => ({ from: seniorityFrom('E2103'), hired: person('E2103').hired, id: 'E2103' }));
+    expect(afterTransfer.from).toBe(afterTransfer.hired);
+
+    // leave, then come back
+    await page.locator('details.addbox summary').first().click();
+    await page.selectOption('form[data-add="emp"] select[name="status"]', 'exited');
+    await page.click('form[data-add="emp"] button[type="submit"]');
+    expect(await page.evaluate(() => empRecord('E2103').status)).toBe('exited');
+    await page.locator('details.addbox summary').first().click();
+    await page.selectOption('form[data-add="emp"] select[name="status"]', 'active');
+    await page.click('form[data-add="emp"] button[type="submit"]');
+    const rehired = await page.evaluate(() => ({ s: empRecord('E2103').status, from: seniorityFrom('E2103'), hired: person('E2103').hired }));
+    expect(rehired.s).toBe('active');
+    expect(rehired.from).toBe('2026-09-08');          // the fixed demo date, not the original hire date
+    expect(rehired.from).not.toBe(rehired.hired);
+  });
+
+  test('annual leave days follow the seniority start date', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => {
+      const before = leaveBalance('E2103').find(b => b.k === 'annual').quotaH;
+      empRecord('E2103').seniorityFrom = '2026-06-01';          // 3 months of service → no annual leave yet
+      const after = leaveBalance('E2103').find(b => b.k === 'annual').quotaH;
+      return { before, after };
+    });
+    expect(r.before).toBeGreaterThan(0);
+    expect(r.after).toBe(0);
+  });
+
+  test('second emergency contact is optional; first is required', async ({ page }) => {
+    await openRecord(page, 'hr', 'E2103');
+    await page.click('[data-sec="basic"]');
+    await expect(body(page)).toContainText('緊急聯絡人 1');
+    await expect(body(page)).toContainText('緊急聯絡人 2');
+    await page.click('[data-edit="basic"]');
+    await expect(page.locator('input[name="emerName"]')).toHaveAttribute('required', '');
+    await expect(page.locator('input[name="emerPhone"]')).toHaveAttribute('required', '');
+    await expect(page.locator('input[name="emer2Name"]')).not.toHaveAttribute('required', '');
+  });
+
+  test('cash pay hides bank details; admin cannot see the pay method', async ({ page }) => {
+    await openRecord(page, 'hr', 'E2103');
+    await page.click('[data-sec="basic"]');
+    await page.click('[data-edit="basic"]');
+    await page.selectOption('select[name="payMethod"]', 'cash');
+    await page.click('form[data-save="basic"] button[type="submit"]');
+    await expect(body(page)).toContainText('現金領取');
+    await expect(body(page)).not.toContainText('帳號');
+    await page.click('button.x');
+    await setRole(page, 'admin');
+    await page.click('tr[data-emp="E2103"]');
+    await page.click('[data-sec="basic"]');
+    await expect(body(page)).toContainText('薪資帳戶僅人資可見');
+    await expect(body(page)).not.toContainText('現金領取');
+  });
+
+  test('revenue-share staff are excluded from auto payroll with a visible warning', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => {
+      const monthly = calcPay('E2203', '2026-08').gross;
+      empRecord('E2203').payBasis = 'split';
+      const res = calcPay('E2203', '2026-08');
+      return { monthly, gross: res.gross, net: res.net, split: res.split, warn: res.warn.map(w => w.zh), csv: payCSV(allPay('2026-08'), '2026-08').split('\n').find(l => l.startsWith('E2203,')) };
+    });
+    expect(r.monthly).toBeGreaterThan(0);
+    expect(r.gross).toBe(0);
+    expect(r.net).toBe(0);
+    expect(r.split).toBe(true);
+    expect(r.warn[0]).toContain('拆帳制');
+    expect(r.csv).toContain(',拆帳,');
+  });
+
+  test('every report carries both the employee number and the Chinese name', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'hr');
+    const r = await page.evaluate(() => {
+      const head = csv => csv.split('\n')[0].split(',');
+      return {
+        att: head(generateAttendanceReport('2026-09')), per: head(generatePersonnelReport('2026-09')),
+        lv: head(generateLeaveReport('2026-09')), fin: head(generateFinancialReport('2026-09')),
+        name: empName('E2103'), attRow: generateAttendanceReport('2026-09').split('\n').find(l => l.startsWith('E2103,'))
+      };
+    });
+    for (const h of [r.att, r.per, r.lv, r.fin]) {
+      expect(h).toContain('員工編號');
+      expect(h).toContain('姓名');
+    }
+    expect(r.attRow.split(',')[1]).toBe(r.name);
+  });
+
+  test('personnel report exports status, seniority start and pay basis', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'hr');
+    await go(page, 'rpt');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-export="personnel"]')]);
+    const lines = fs.readFileSync(await dl.path(), 'utf8').replace(/^﻿/, '').split('\n');
+    const head = lines[0].split(',');
+    for (const h of ['年資起算日', '僱用狀態', '計薪方式', '緊急聯絡人1', '緊急聯絡人2', '領薪方式']) expect(head).toContain(h);
+    const statusCol = head.indexOf('僱用狀態');
+    expect(new Set(lines.slice(1).map(l => l.split(',')[statusCol]))).toEqual(new Set(['在職']));
+  });
+
+  test('employee-number proposal and the 9/30 open items are on screen', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'set');
+    await expect(page.locator('#idRule')).toContainText('CSHR');
+    await expect(page.locator('#idRule')).toContainText('尚未核定');
+    await go(page, 'perm', 'open');
+    await expect(page.locator('#meeting0930')).toContainText('10/7');
+    await expect(page.locator('#meeting0930 tbody tr')).toHaveCount(7);
+    await expect(page.locator('#meeting0930')).toContainText('拆帳');
   });
 });

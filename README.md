@@ -1,5 +1,5 @@
-# 誠馨日照營運入口 v2.1
-# Zengxin Day Care Operations Portal v2.1
+# 誠馨日照營運入口 v2.2
+# Zengxin Day Care Operations Portal v2.2
 
 **互動式原型** — 討論用系統，用於確定關鍵決策（中心主任跨據點權限、管理員薪資可見性、請假簽核流程）。
 
@@ -16,12 +16,14 @@ No authentication, no database, no backend required.
 ## 內容 / Contents
 
 - **ltc-portal.html** — 完整互動原型 / Full interactive prototype
-  - 4 個完整角色（系管、人資、中心主任、一般員工）
-  - 4 working roles (System Admin, HR Manager, Center Director, Employee)
-  - 一般員工使用「私人秘書」自助頁（仿 104）：出勤月曆、打卡、表單申請與追蹤、薪資袋、保險費、所得稅、課程
-  - Employees get a 104-style self-service "My Desk": attendance calendar, clock in/out, forms and tracking, payslips, insurance, tax, courses
-  - 公告、人事、權限模組
-  - Announcements, HR, Permissions modules
+  - 4 個可操作角色：系統管理員、人資部經理、中心主任、一般員工
+  - 4 working roles: System Admin, HR Manager, Center Director, Employee
+  - 一般員工使用「私人秘書」自助頁（仿 104）：出勤月曆、打卡／補卡、請假、加班（半小時為單位）、表單申請與追蹤、薪資袋、保險費、所得稅、課程
+  - Employees get a 104-style self-service "My Desk": attendance calendar, clock in/out and corrections, leave, overtime (30-minute units), forms and tracking, payslips, insurance, tax, courses
+  - 公告、人事、文件管理、服務管理、財務與採購、薪資計算、報表匯出（CSV）、系統設定、權限模組
+  - Announcements, HR, Document Control, Service Management, Finance & Procurement, Payroll, Reports Export (CSV), Settings, Permissions
+  - **v2.2（9/30 會議）**：僱用狀態（在職／留職停薪／離職）與篩選、年資起算日（轉調不重置、回任重新起算）、計薪方式（月薪／時薪／拆帳，拆帳暫不自動計算）、緊急聯絡人 2 位（1 必填 1 選填）、現金領薪選項、所有報表同時輸出員編與姓名、員編規則提案、9/30 待確認事項
+  - **v2.2 (30 Sept meeting)**: employment status (Active / Unpaid leave / Left) with filter, seniority start date (kept on transfer, restarted on rehire), pay basis (monthly / hourly / revenue share — revenue share is excluded from auto-calculation for now), two emergency contacts (1 required, 1 optional), cash-pay option, employee number + name in every report, an employee-number rule proposal, and the open items from the meeting
   - 三個待決議題（可透過 ASSUMPTION 開關比較）
   - Three open questions with live toggle to compare scenarios
 
@@ -45,11 +47,20 @@ No authentication, no database, no backend required.
 
 ## 當前範圍 / Current Scope
 
-- **設施**: 新竹竹北、竹東 (2 locations)
-- **員工**: 19 位示範員工 (demo staff)
-- **角色**: 3 個完全功能、6 個計畫中 (3 built, 6 planned)
+- **設施**: 新竹竹北日照中心、竹東日照中心、新竹營運中心（共 3 個據點）
+- **Facilities**: Zhubei and Zhudong day care centers plus the Hsinchu operations center (3 sites)
+- **員工**: 23 位示範員工 (demo staff)
+- **角色**: 4 個可操作、6 個計畫中 (4 working, 6 planned)
 - **沒有**: 登入、資料庫、真實資料、持久化
 - **No**: authentication, database, real data, persistence
+
+## 測試 / Tests
+
+```
+npm ci
+npm run test:unit   # jest
+npm run test:e2e    # playwright (set PW_CHROMIUM_PATH if Chromium is not the expected build)
+```
 
 ---
 

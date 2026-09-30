@@ -612,7 +612,7 @@ function leaveBalance(empId){
   const mine=LEAVE.filter(l=>l.emp===empId && l.from.startsWith(yr));
   const compEarned=OT_REQ.filter(o=>o.emp===empId&&o.comp==='comp'&&o.status==='approved').reduce((a,o)=>a+o.hours,0);
   return Object.entries(LEAVE_TYPES).map(([k,t])=>{
-    const quotaH = k==='annual' ? annualDays(p.hired,TODAY)*WORK_DAY_H : k==='comp' ? compEarned : (t.quota==null?null:t.quota*WORK_DAY_H);
+    const quotaH = k==='annual' ? annualDays(seniorityFrom(empId),TODAY)*WORK_DAY_H : k==='comp' ? compEarned : (t.quota==null?null:t.quota*WORK_DAY_H);
     const used = mine.filter(l=>l.type===k&&l.status==='approved').reduce((a,l)=>a+l.hours,0);
     const pend = mine.filter(l=>l.type===k&&(l.status==='pending'||l.status==='countersign')).reduce((a,l)=>a+l.hours,0);
     return {k, t, quotaH, used, pend, left: quotaH==null?null:Math.max(0,quotaH-used-pend)};
@@ -814,7 +814,7 @@ function renderShell(){
       <div class="brand">
         <b>誠馨日照</b>
         <span>Zengxin Day Care</span>
-        <span>${state.lang==='zh'?'營運入口 · Ops Portal':'Ops Portal · 營運入口'} · v2.1</span>
+        <span>${state.lang==='zh'?'營運入口 · Ops Portal':'Ops Portal · 營運入口'} · v2.2</span>
       </div>
       <div class="rail-group">${both('本次原型','In this prototype')}</div>
       ${MODULES.filter(modVisible).map(m=>`<button class="navitem" data-mod="${m.id}" aria-current="${m.id===state.module}">
@@ -952,7 +952,7 @@ function viewArchScope(){
   return `
   <div class="content-solo">
     <div class="pagehead">
-      <h1>${esc(both('原型 v2.1 範圍與進展','Prototype v2.1 Scope & Status'))}</h1>
+      <h1>${esc(both('原型 v2.2 範圍與進展','Prototype v2.2 Scope & Status'))}</h1>
       <span class="sub">${esc(both('9/30 會議展示版本','Delivery: 30 Sept Meeting'))}</span>
     </div>
 
@@ -1394,9 +1394,10 @@ function viewEmployees(){
   const units=activeUnitIds();
   const q=state.q.trim().toLowerCase();
   const list=STAFF.filter(s=>units.includes(s.unit)).filter(s=>!q ||
-    (s.id+s.zh+s.en+L(TITLES[s.title])+L(DEPTS[s.dept])).toLowerCase().includes(q));
+    (s.id+s.zh+s.en+L(TITLES[s.title])+L(DEPTS[s.dept])).toLowerCase().includes(q))
+    .filter(s=>!state.empStatus || state.empStatus==='ALL' || statusOf(s.id)===state.empStatus);
   const hidden=STAFF.length-STAFF.filter(s=>units.includes(s.unit)).length;
-  const tenure = list.length ? (list.reduce((a,s)=>a+(TODAY-new Date(s.hired))/31557600000,0)/list.length).toFixed(1) : '0';
+  const tenure = list.length ? (list.reduce((a,s)=>a+(TODAY-new Date(seniorityFrom(s.id)))/31557600000,0)/list.length).toFixed(1) : '0';
   const part=list.filter(s=>s.type==='part').length;
   const licSoon=list.reduce((a,s)=>a+recFlags(s.id).soon.length,0);
   return `
@@ -1417,25 +1418,31 @@ function viewEmployees(){
       <div class="card-h">
         <h2>${esc(both('員工資料','Employee records'))}</h2>
         <div class="spacer"></div>
+        <select id="empStatus" aria-label="${esc(both('僱用狀態','Employment status'))}">
+          <option value="ALL">${esc(both('全部狀態','All statuses'))}</option>
+          ${Object.entries(EMP_STATUS).map(([k,v])=>`<option value="${k}" ${state.empStatus===k?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}
+        </select>
         <input type="search" id="empQ" placeholder="${esc(both('搜尋員工編號或姓名','Search employee no. or name'))}" value="${esc(state.q)}" style="min-width:220px">
         <button class="btn mini" ${can('editEmp')?'':'disabled'} data-newemp>${esc(both('新增員工','Add employee'))}</button>
       </div>
       <div class="tablewrap">
       <table>
         <thead><tr>
-          <th>${bi('員工編號','Employee no.')}</th><th>${bi('姓名','Name')}</th><th>${bi('職稱','Title')}</th>
+          <th>${bi('員工編號','Employee no.')}</th><th>${bi('姓名','Name')}</th><th>${bi('狀態','Status')}</th><th>${bi('職稱','Title')}</th>
           <th>${bi('部門','Department')}</th><th>${bi('服務據點','Facility')}</th><th>${bi('到職日','Hire date')}</th>
-          <th>${bi('僱用別','Employment')}</th><th>${bi('月薪','Monthly pay')}</th>
+          <th>${bi('僱用別','Employment')}</th><th>${bi('計薪方式','Pay basis')}</th><th>${bi('月薪','Monthly pay')}</th>
         </tr></thead>
         <tbody>
         ${list.map(s=>`<tr class="clickable" data-emp="${s.id}">
           <td class="mono">${s.id}</td>
           <td>${esc(nameOf(s))}<span class="muted" style="font-size:11px"> ${esc(state.lang==='zh'?s.en:s.zh)}</span></td>
+          <td><span class="chip ${EMP_STATUS[statusOf(s.id)].cls}" data-status="${statusOf(s.id)}">${esc(both(EMP_STATUS[statusOf(s.id)].zh,EMP_STATUS[statusOf(s.id)].en))}</span></td>
           <td>${esc(both(TITLES[s.title].zh,TITLES[s.title].en))}</td>
           <td>${esc(both(DEPTS[s.dept].zh,DEPTS[s.dept].en))}</td>
           <td>${esc(both(unit(s.unit).zh,unit(s.unit).en))}</td>
           <td class="mono">${s.hired}</td>
           <td><span class="chip ${s.type==='part'?'warn':''}">${esc(s.type==='part'?both('部分工時','Part-time'):both('全職','Full-time'))}</span></td>
+          <td><span class="chip ${payBasisOf(s.id)==='split'?'acc':''}" data-paybasis="${payBasisOf(s.id)}">${esc(both(PAY_BASIS[payBasisOf(s.id)].zh,PAY_BASIS[payBasisOf(s.id)].en))}</span></td>
           <td>${can('salary')?`<span class="mono">${money(s.salary)}</span>`
               :`<span class="lock">${lockIcon()}${esc(both('僅人資可見','HR only'))}</span>`}</td>
         </tr>`).join('')}
@@ -1450,6 +1457,8 @@ function viewEmployees(){
   </div>`;
 }
 BINDERS['hr:emp']=function(){
+  const st=document.getElementById('empStatus');
+  if(st) st.onchange=e=>{ state.empStatus=e.target.value; render(); };
   const i=document.getElementById('empQ');
   if(i) i.oninput=e=>{ state.q=e.target.value; const p=e.target.selectionStart; render();
     const j=document.getElementById('empQ'); if(j){ j.focus(); j.setSelectionRange(p,p);} };
@@ -1496,6 +1505,31 @@ const addYears = (d,n) => { const x=new Date(d); x.setFullYear(x.getFullYear()+n
 const daysUntil = d => Math.round((new Date(d)-TODAY)/86400000);
 const mask = (s, keep=4) => s ? '•'.repeat(Math.max(0,s.length-keep))+s.slice(-keep) : '—';
 
+/* ---------- v2.2（9/30 會議）：僱用狀態、計薪方式、年資起算日、員編規則提案 ---------- */
+const EMP_STATUS = {
+  active:{zh:'在職',en:'Active',cls:'ok'},
+  loa:{zh:'留職停薪',en:'Unpaid leave',cls:'warn'},
+  exited:{zh:'離職',en:'Left',cls:''}
+};
+const PAY_BASIS = {
+  monthly:{zh:'月薪制',en:'Monthly'},
+  hourly:{zh:'時薪制',en:'Hourly'},
+  split:{zh:'拆帳制',en:'Revenue share'}
+};
+const statusOf = id => empRecord(id).status;
+const payBasisOf = id => empRecord(id).payBasis;
+/* 年資起算日：跨單位轉調不重置（員編不變）；離職後回任才重新起算 */
+const seniorityFrom = id => empRecord(id).seniorityFrom || person(id).hired;
+/* 員編規則「提案」——字母對應哪家公司尚待確認，僅示意 */
+const ID_PROPOSAL = {
+  serial: 5,
+  rows: [
+    {legacy:'CSHR', letter:'A'},
+    {legacy:'OXHR', letter:'B'},
+    {legacy:'（待補）', letter:'C'}
+  ]
+};
+
 function empRecord(id){
   state.empRecords = state.empRecords || {};
   if(state.empRecords[id]) return state.empRecords[id];
@@ -1533,7 +1567,12 @@ function empRecord(id){
       emerName:SURN[Math.floor(r('es')*SURN.length)]+GIVEN[Math.floor(r('eg')*GIVEN.length)], emerRel:['配偶','父親','母親','子女','手足'][n%5],
       emerPhone:'09'+String(10000000+Math.floor(r('ep')*89999999)),
       bank:['台灣銀行','第一銀行','合作金庫','玉山銀行','國泰世華'][n%5], branch:['竹北分行','竹東分行','新竹分行'][n%3],
-      acct:String(100000000000+Math.floor(r('ac')*899999999999)) },
+      acct:String(100000000000+Math.floor(r('ac')*899999999999)),
+      emer2Name: n%2===0 ? SURN[Math.floor(r('e2s')*SURN.length)]+GIVEN[Math.floor(r('e2g')*GIVEN.length)] : '',
+      emer2Rel:  n%2===0 ? ['配偶','父親','母親','子女','手足'][(n+2)%5] : '',
+      emer2Phone:n%2===0 ? '09'+String(10000000+Math.floor(r('e2p')*89999999)) : '',
+      payMethod:'transfer' },
+    status:'active', payBasis:(p.type==='part'?'hourly':'monthly'), seniorityFrom:p.hired,
     hist, ins, dep, pension:6, selfPension:n%3===0?6:0, lic, contracts, renewals, perf, docs
   };
 }
@@ -1570,11 +1609,22 @@ function secBasic(p, rec){
       </div>
       <div><label>${esc(both('通訊地址','Address'))}</label><input name="address" value="${esc(b.address)}"></div>
       <div class="row">
-        <div><label>${esc(both('緊急聯絡人','Emergency contact'))}</label><input name="emerName" value="${esc(b.emerName)}"></div>
-        <div><label>${esc(both('關係','Relationship'))}</label><input name="emerRel" value="${esc(b.emerRel)}"></div>
-        <div><label>${esc(both('緊急聯絡電話','Emergency phone'))}</label><input name="emerPhone" value="${esc(b.emerPhone)}"></div>
+        <div><label>${esc(both('緊急聯絡人 1（必填）','Emergency contact 1 (required)'))}</label><input name="emerName" value="${esc(b.emerName)}" required></div>
+        <div><label>${esc(both('關係','Relationship'))}</label><input name="emerRel" value="${esc(b.emerRel)}" required></div>
+        <div><label>${esc(both('緊急聯絡電話','Emergency phone'))}</label><input name="emerPhone" value="${esc(b.emerPhone)}" required></div>
+      </div>
+      <div class="row">
+        <div><label>${esc(both('緊急聯絡人 2（選填）','Emergency contact 2 (optional)'))}</label><input name="emer2Name" value="${esc(b.emer2Name)}"></div>
+        <div><label>${esc(both('關係','Relationship'))}</label><input name="emer2Rel" value="${esc(b.emer2Rel)}"></div>
+        <div><label>${esc(both('緊急聯絡電話','Emergency phone'))}</label><input name="emer2Phone" value="${esc(b.emer2Phone)}"></div>
       </div>
       ${fin?`<div class="eyebrow">${esc(both('薪資帳戶','Salary account'))}</div>
+      <div class="row">
+        <div><label>${esc(both('領薪方式','Pay method'))}</label><select name="payMethod">
+          <option value="transfer" ${b.payMethod!=='cash'?'selected':''}>${esc(both('銀行轉帳','Bank transfer'))}</option>
+          <option value="cash" ${b.payMethod==='cash'?'selected':''}>${esc(both('現金領取','Cash'))}</option></select></div>
+      </div>
+      <div class="muted" style="font-size:12px">${esc(both('選擇現金領取時，銀行資料可留空。','Bank details may be left blank for cash pay.'))}</div>
       <div class="row">
         <div><label>${esc(both('銀行','Bank'))}</label><input name="bank" value="${esc(b.bank)}"></div>
         <div><label>${esc(both('分行','Branch'))}</label><input name="branch" value="${esc(b.branch)}"></div>
@@ -1599,19 +1649,37 @@ function secBasic(p, rec){
       ${kvRow('Email','Email', `<span class="mono">${esc(b.email)}</span>`)}
       ${kvRow('分機','Extension', `<span class="mono">${p.ext}</span>`)}
       ${kvRow('通訊地址','Address', contact?esc(b.address):lockTxt('受限','Restricted'))}
-      ${kvRow('緊急聯絡人','Emergency contact', contact?esc(b.emerName+'（'+b.emerRel+'）')+` <span class="mono">${esc(b.emerPhone)}</span>`:lockTxt('受限','Restricted'))}
+      ${kvRow('緊急聯絡人 1','Emergency contact 1', contact?esc(b.emerName+'（'+b.emerRel+'）')+` <span class="mono">${esc(b.emerPhone)}</span>`:lockTxt('受限','Restricted'))}
+      ${kvRow('緊急聯絡人 2','Emergency contact 2', contact?(b.emer2Name?esc(b.emer2Name+'（'+b.emer2Rel+'）')+` <span class="mono">${esc(b.emer2Phone)}</span>`:`<span class="muted">${esc(both('未填（選填）','Not provided (optional)'))}</span>`):lockTxt('受限','Restricted'))}
     </dl>
     <div class="eyebrow">${esc(both('薪資帳戶','Salary account'))}</div>
     ${fin?`<dl class="kv">
-      ${kvRow('銀行','Bank', esc(b.bank+' '+b.branch))}
-      ${kvRow('帳號','Account no.', `<span class="mono">${esc(b.acct)}</span>`)}
+      ${kvRow('領薪方式','Pay method', esc(b.payMethod==='cash'?both('現金領取','Cash'):both('銀行轉帳','Bank transfer')))}
+      ${b.payMethod==='cash'?'':kvRow('銀行','Bank', esc(b.bank+' '+b.branch))+kvRow('帳號','Account no.', `<span class="mono">${esc(b.acct)}</span>`)}
     </dl>`:`<div>${lockTxt('薪資帳戶僅人資可見','Salary account is HR only')}</div>`}`;
 }
 
 function secHist(p, rec){
   const fin=can('salary'), rows=rec.hist.slice().sort((a,b)=>b.date.localeCompare(a.date));
-  return `
-    <div class="eyebrow">${esc(both('任職與薪資異動','Employment & pay changes'))}</div>
+  const edit=can('editEmp'), st=EMP_STATUS[rec.status], pb=PAY_BASIS[rec.payBasis];
+  const yrs=((TODAY-new Date(rec.seniorityFrom))/31557600000).toFixed(1);
+  const statusCard = `
+    <div class="eyebrow">${esc(both('僱用狀態與年資','Status & seniority'))}</div>
+    <dl class="kv" data-statuscard>
+      ${kvRow('僱用狀態','Status', `<span class="chip ${st.cls}">${esc(both(st.zh,st.en))}</span>`)}
+      ${kvRow('年資起算日','Seniority from', `<span class="mono">${rec.seniorityFrom}</span> <span class="muted">（${yrs} ${esc(both('年','yrs'))}）</span>`)}
+      ${kvRow('計薪方式','Pay basis', fin?esc(both(pb.zh,pb.en)):lockTxt('僅人資可見','HR only'))}
+    </dl>
+    <div class="muted" style="font-size:12px;margin:4px 0 10px">${esc(both(
+      '跨單位轉調不變更員工編號，年資不歸零；離職後重新回任才重新起算。留職停薪期間的年資、保險與薪資處理尚待確認。',
+      'Transfers between units keep the employee number and do not reset seniority; it restarts only after leaving and being rehired. How unpaid-leave periods count toward seniority, insurance and pay is still to be confirmed.'))}</div>
+    ${edit?addBox('emp', both('變更狀態／年資／計薪方式','Change status / seniority / pay basis'), `<div class="row">
+      <div><label>${esc(both('僱用狀態','Status'))}</label><select name="status">${Object.entries(EMP_STATUS).map(([k,v])=>`<option value="${k}" ${k===rec.status?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}</select></div>
+      ${fld('年資起算日','Seniority from','seniorityFrom','date','value="'+rec.seniorityFrom+'"')}
+      ${fin?`<div><label>${esc(both('計薪方式','Pay basis'))}</label><select name="payBasis">${Object.entries(PAY_BASIS).map(([k,v])=>`<option value="${k}" ${k===rec.payBasis?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}</select></div>`:''}
+    </div>`):''}`;
+  return statusCard + `
+    <div class="eyebrow" style="margin-top:14px">${esc(both('任職與薪資異動','Employment & pay changes'))}</div>
     <div class="tablewrap"><table>
       <thead><tr><th>${bi('生效日','Effective')}</th><th>${bi('異動','Change')}</th><th>${bi('職稱','Title')}</th><th>${bi('據點','Facility')}</th><th>${bi('職等','Band')}</th><th>${bi('月薪','Pay')}</th><th>${bi('說明','Note')}</th></tr></thead>
       <tbody>${rows.map(h=>`<tr><td class="mono">${h.date}</td><td>${esc(both(HIST_KIND[h.kind].zh,HIST_KIND[h.kind].en))}</td>
@@ -1732,6 +1800,19 @@ function saveRec(id, kind, fd){
   const addDoc=(name,cat)=>{ if(name) rec.docs.push({name, cat, date:ymd(TODAY)}); };
   if(kind==='basic'){ Object.keys(rec.basic).forEach(k=>{ if(fd.has(k)) rec.basic[k]=f(k); }); }
   if(kind==='hist') rec.hist.push({date:f('date'), kind:f('kind'), title:f('title'), unit:f('unit'), band:f('band'), salary:+f('salary')||0, note:f('note')});
+  if(kind==='emp'){
+    const p=person(id), prev=rec.status, next=f('status')||prev, evt=(k,note)=>rec.hist.push({date:ymd(TODAY), kind:k, title:p.title, unit:p.unit, band:p.band, salary:p.salary, note});
+    if(fd.has('payBasis') && PAY_BASIS[f('payBasis')]) rec.payBasis=f('payBasis');
+    let sf=f('seniorityFrom')||rec.seniorityFrom;
+    if(next!==prev){
+      if(next==='loa') evt('leave','留職停薪');
+      else if(next==='exited') evt('exit','離職');
+      else if(prev==='exited'){ evt('hire','離職後回任，年資重新起算'); if(sf===rec.seniorityFrom) sf=ymd(TODAY); }
+      else if(prev==='loa') evt('hire','留職停薪復職');
+      rec.status=next;
+    }
+    rec.seniorityFrom=sf;
+  }
   if(kind==='ins'){ rec.ins.push({date:f('date'), kind:f('kind'), labor:+f('labor'), health:+f('health'), note:f('note')}); rec.dep=+f('dep')||0; addDoc(file(),'ins'); rec.ins.sort((a,b)=>a.date.localeCompare(b.date)); }
   if(kind==='lic') rec.lic.push({name:f('name'), no:f('no'), issued:f('issued'), exp:f('exp'), ce:+f('ceNeed')?{need:+f('ceNeed'),have:+f('ceHave')||0}:null});
   if(kind==='contract'){ if(f('kind')==='續約') rec.renewals.push({date:f('start'), note:f('note')||'續約'+(f('end')?'至 '+f('end'):'')});
@@ -2789,7 +2870,7 @@ function dqSlip(){
       ls.map(l=>`<tr><td>${esc(state.lang==='zh'?l.zh:l.en)}</td><td class="muted mono" style="font-size:11.5px;white-space:normal">${esc(l.formula)}</td>
         <td class="num">${g==='earn'?'':'−'}${money(l.amt)}</td></tr>`).join(''); };
   return `${monthBar('slipMonth', months, mon, `<span class="chip ok">${esc(both('已發放 '+payDay(mon),'Paid '+payDay(mon)))}</span>
-      <span class="chip">${esc(u.type==='part'?both('時薪制','Hourly'):both('月薪制','Monthly'))}</span>`)}
+      <span class="chip">${esc(both(PAY_BASIS[payBasisOf(u.id)].zh,PAY_BASIS[payBasisOf(u.id)].en))}</span>`)}
     <div class="tiles">
       <div class="tile"><span class="k">${esc(both('應發金額','Gross pay'))}</span><span class="v" style="font-size:18px">${money(r.gross)}</span></div>
       <div class="tile"><span class="k">${esc(both('代扣合計','Deductions'))}</span><span class="v" style="font-size:18px">−${money(r.stat+r.adjNeg)}</span></div>
@@ -2807,7 +2888,7 @@ function dqSlip(){
         'Only you and HR can see your payslip. Employer-paid insurance and pension are under Insurance. Ask HR if anything looks wrong.'))}</div></section>`;
 }
 function dqIns(){
-  const u=me(), rows=paidMonths().map(m=>{ const i=payInputs(u.id,m); return {m, i, r:payMath(i)}; });
+  const u=me(), rows=paidMonths().map(m=>{ const i=payInputs(u.id,m); return {m, i, r:payBasisOf(u.id)==='split'?splitStub():payMath(i)}; });
   return `<section class="card"><div class="card-h"><h2>${esc(both('保險費','Insurance'))}</h2>
       <span class="en">${esc(both('個人負擔與公司負擔','Your share and the company’s share'))}</span></div>
     <div class="tablewrap"><table>
@@ -3707,7 +3788,7 @@ function generatePersonnelReport(month){
   const units=activeUnitIds();
   const list=STAFF.filter(s=>units.includes(s.unit)).sort((a,b)=>a.id.localeCompare(b.id));
   const myLog=state.myHoursLog||{entries:[]};
-  const rows=[['員工編號','姓名','職稱','部門','據點','到職日','職等','薪資','Email','手機','緊急聯絡人','薪轉帳戶',
+  const rows=[['員工編號','姓名','職稱','部門','據點','到職日','年資起算日','僱用狀態','計薪方式','職等','薪資','Email','手機','緊急聯絡人1','緊急聯絡人2','領薪方式','薪轉帳戶',
     '勞保投保薪資','健保投保金額','勞退自提%','契約類型','證照（到期日）','最近考核','工作日誌時數','工作類型統計','特休剩餘(時)','補休剩餘(時)']];
   list.forEach(e=>{
     const entries=myLog.entries.filter(x=>x.empId===e.id&&x.date.startsWith(month));
@@ -3718,9 +3799,12 @@ function generatePersonnelReport(month){
     const bal=leaveBalance(e.id), left=k=>fmtH(bal.find(b=>b.k===k).left);
     const rec=empRecord(e.id), b=rec.basic, ins=rec.ins.filter(x=>x.kind!=='quit').slice(-1)[0], pf=rec.perf.slice(-1)[0];
     const fin=can('salary'), contact=can('mobile');
-    rows.push([e.id, b.name, TITLES[e.title].zh, DEPTS[e.dept].zh, unit(e.unit).zh, e.hired,
+    rows.push([e.id, b.name, TITLES[e.title].zh, DEPTS[e.dept].zh, unit(e.unit).zh, e.hired, rec.seniorityFrom, EMP_STATUS[rec.status].zh,
+      fin?PAY_BASIS[rec.payBasis].zh:'受限',
       fin?e.band:'受限', fin?e.salary:'受限', b.email, contact?b.mobile:'受限', contact?`${b.emerName}(${b.emerRel}) ${b.emerPhone}`:'受限',
-      fin?`${b.bank}${b.branch} ${b.acct}`:'受限', fin&&ins?ins.labor:'受限', fin&&ins?ins.health:'受限', rec.selfPension,
+      contact?(b.emer2Name?`${b.emer2Name}(${b.emer2Rel}) ${b.emer2Phone}`:'無'):'受限',
+      fin?(b.payMethod==='cash'?'現金':'銀行轉帳'):'受限',
+      fin?(b.payMethod==='cash'?'現金領取':`${b.bank}${b.branch} ${b.acct}`):'受限', fin&&ins?ins.labor:'受限', fin&&ins?ins.health:'受限', rec.selfPension,
       rec.contracts.slice(-1)[0].kind, rec.lic.map(l=>`${l.name}(${l.exp||'永久'})`).join('; ')||'無',
       pf?`${pf.period} ${PERF_GRADE[pf.grade].zh}(${pf.score})`:'無',
       fmtH(totalHours), typeStr, left('annual'), left('comp')]);
@@ -3731,13 +3815,13 @@ function generateAttendanceReport(month){
   const units=activeUnitIds();
   const list=STAFF.filter(s=>units.includes(s.unit)).sort((a,b)=>a.id.localeCompare(b.id));
   const [y,m]=month.split('-').map(Number);
-  const rows=[['員工編號','職稱','據點','部門','出勤率%','正常','遲到','請假(天)','未打卡','請假時數','加班時數(核准)','補打卡次數','工作日誌時數']];
+  const rows=[['員工編號','姓名','職稱','據點','部門','出勤率%','正常','遲到','請假(天)','未打卡','請假時數','加班時數(核准)','補打卡次數','工作日誌時數']];
   list.forEach(e=>{
     const sum=attSummary(e.id,y,m);
     const logged=(state.myHoursLog||{entries:[]}).entries.filter(x=>x.empId===e.id&&x.date.startsWith(month));
     const loggedHours=logged.reduce((s,x)=>s+(parseFloat(x.hours)||0),0);
     const fixes=PUNCH_FIX.filter(f=>f.emp===e.id&&f.status==='approved'&&f.date.startsWith(month)).length;
-    rows.push([e.id, TITLES[e.title].zh, unit(e.unit).zh, DEPTS[e.dept].zh, sum.rate, sum.present, sum.late, sum.leave, sum.miss,
+    rows.push([e.id, empName(e.id), TITLES[e.title].zh, unit(e.unit).zh, DEPTS[e.dept].zh, sum.rate, sum.present, sum.late, sum.leave, sum.miss,
       fmtH(monthLeaveH(e.id,month)), fmtH(monthOTH(e.id,month)), fixes, fmtH(loggedHours)]);
   });
   return toCSV(rows);
@@ -3745,15 +3829,15 @@ function generateAttendanceReport(month){
 function generateLeaveReport(month){
   const units=activeUnitIds();
   const inScope=x=>units.includes(person(x.emp).unit);
-  const rows=[['單號','類型','員工編號','職稱','項目','開始','結束','時數','折合天數','狀態','申請日','備註']];
+  const rows=[['單號','類型','員工編號','姓名','職稱','項目','開始','結束','時數','折合天數','狀態','申請日','備註']];
   LEAVE.filter(l=>inScope(l)&&l.from.startsWith(month)).sort((a,b)=>a.from.localeCompare(b.from)).forEach(l=>{
-    rows.push([l.id,'請假',l.emp,person(l.emp).zh,LEAVE_TYPES[l.type].zh,`${l.from} ${l.fromT}`,`${l.to} ${l.toT}`,fmtH(l.hours),hToDays(l.hours),LEAVE_STATUS[l.status].zh,l.filed,l.note?l.note.zh:'']);
+    rows.push([l.id,'請假',l.emp,empName(l.emp),person(l.emp).zh,LEAVE_TYPES[l.type].zh,`${l.from} ${l.fromT}`,`${l.to} ${l.toT}`,fmtH(l.hours),hToDays(l.hours),LEAVE_STATUS[l.status].zh,l.filed,l.note?l.note.zh:'']);
   });
   OT_REQ.filter(o=>inScope(o)&&o.date.startsWith(month)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(o=>{
-    rows.push([o.id,'加班',o.emp,person(o.emp).zh,OT_COMP[o.comp].zh,`${o.date} ${o.start}`,`${o.date} ${o.end}`,fmtH(o.hours),'',LEAVE_STATUS[o.status].zh,o.filed,o.note?o.note.zh:'']);
+    rows.push([o.id,'加班',o.emp,empName(o.emp),person(o.emp).zh,OT_COMP[o.comp].zh,`${o.date} ${o.start}`,`${o.date} ${o.end}`,fmtH(o.hours),'',LEAVE_STATUS[o.status].zh,o.filed,o.note?o.note.zh:'']);
   });
   PUNCH_FIX.filter(f=>inScope(f)&&f.date.startsWith(month)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(f=>{
-    rows.push([f.id,'補打卡',f.emp,person(f.emp).zh,PUNCH_KIND[f.kind].zh,`${f.date} ${f.time}`,'','','',LEAVE_STATUS[f.status].zh,f.filed,f.note?f.note.zh:'']);
+    rows.push([f.id,'補打卡',f.emp,empName(f.emp),person(f.emp).zh,PUNCH_KIND[f.kind].zh,`${f.date} ${f.time}`,'','','',LEAVE_STATUS[f.status].zh,f.filed,f.note?f.note.zh:'']);
   });
   return toCSV(rows);
 }
@@ -3764,7 +3848,7 @@ function generateFinancialReport(month){
   const rows=[['員工編號','姓名','據點','部門','計薪方式','應發金額','實發金額','雇主勞保','雇主健保','雇主勞退','人事成本合計']];
   list.forEach(e=>{
     const r=calcPay(e.id, month);
-    rows.push([e.id, empName(e.id), unit(e.unit).zh, DEPTS[e.dept].zh, e.type==='part'?'時薪':'月薪', r.gross, r.net, r.er.labor, r.er.health, r.er.pension, r.gross+r.er.total]);
+    rows.push([e.id, empName(e.id), unit(e.unit).zh, DEPTS[e.dept].zh, PAY_BASIS[payBasisOf(e.id)].zh.replace('制',''), r.gross, r.net, r.er.labor, r.er.health, r.er.pension, r.gross+r.er.total]);
   });
   return toCSV(rows);
 }
@@ -3894,6 +3978,23 @@ function viewSettings(){
             <label for="notif3" style="cursor:pointer;font-size:12px">${esc(both('日報摘要信件','Daily digest email'))}</label>
           </div>
         </div>
+        <div style="border-bottom:1px solid var(--line);padding-bottom:12px" id="idRule">
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('員工編號規則（提案，尚未核定）','Employee number rule (proposal — not yet approved)'))}</div>
+          <div style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(both(
+            '現行各公司前綴不同，建議集團統一改用英文字母前綴。下表字母與對應公司只是示意，待人資與老闆確認。',
+            'Companies currently use different prefixes. Proposal: one letter prefix per company across the group. Letters and company mapping below are illustrative until HR and the owner confirm.'))}</div>
+          <div class="tablewrap"><table>
+            <thead><tr><th>${bi('現行前綴','Current prefix')}</th><th>${bi('對應公司','Company')}</th><th>${bi('建議前綴','Proposed')}</th><th>${bi('範例編號','Example')}</th></tr></thead>
+            <tbody>${ID_PROPOSAL.rows.map((r,i)=>`<tr><td class="mono">${esc(r.legacy)}</td><td><span class="chip warn">${esc(both('待確認','To confirm'))}</span></td>
+              <td class="mono">${r.letter}</td><td class="mono">${r.letter}${String(i+1).padStart(ID_PROPOSAL.serial,'0')}</td></tr>`).join('')}</tbody>
+          </table></div>
+          <ul style="margin:8px 0 0 18px;font-size:12px;color:var(--ink-2);display:grid;gap:3px">
+            <li>${esc(both('員工編號是唯一識別碼：轉調單位、轉調公司都不變更。','The employee number is the unique identifier: it never changes on transfer between units or companies.'))}</li>
+            <li>${esc(both('同名同姓以員編區分；所有報表同時輸出員編與中文姓名。','Staff with the same name are told apart by number; every report carries both the number and the Chinese name.'))}</li>
+            <li>${esc(both('保留其餘字母，未來收購公司時可直接新增前綴。','Remaining letters stay free so a newly acquired company can be given its own prefix.'))}</li>
+            <li>${esc(both('是否仍含部門代碼、流水號位數，待討論。','Whether a department code stays in the number, and the serial length, are open.'))}</li>
+          </ul>
+        </div>
         <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
           <div style="font-weight:500;margin-bottom:8px">${esc(both('資訊安全','Security'))}</div>
           <div style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(both(
@@ -3908,8 +4009,8 @@ function viewSettings(){
         <div style="padding-bottom:12px">
           <div style="font-weight:500;margin-bottom:8px">${esc(both('系統版本與更新','System version & updates'))}</div>
           <div style="font-size:12px;color:var(--ink-3)">
-            <div>${esc(both('版本：v2.1 · 原型展示版','Version: v2.1 · Prototype demo'))}</div>
-            <div style="margin-top:4px">${esc(both('最後更新：2026 年 9 月 22 日','Last updated: 22 Sept 2026'))}</div>
+            <div>${esc(both('版本：v2.2 · 原型展示版','Version: v2.2 · Prototype demo'))}</div>
+            <div style="margin-top:4px">${esc(both('最後更新：2026 年 9 月 30 日','Last updated: 30 Sept 2026'))}</div>
             <div style="margin-top:4px">${esc(both('下次計畫更新：2026 年 11 月（Phase 2 功能）','Next update: Nov 2026 (Phase 2 features)'))}</div>
           </div>
         </div>
@@ -3995,7 +4096,7 @@ function splitOT(o){
 /* 從已核准差勤紀錄帶入計算參數 */
 function payInputs(empId, month){
   const p=person(empId), rec=empRecord(empId), [y,m]=month.split('-').map(Number);
-  const mS=month+'-01', mE=monthEnd(month), part=p.type==='part';
+  const mS=month+'-01', mE=monthEnd(month), part=rec.payBasis==='hourly';
   const inp={empId, month, part, monthly:part?0:p.salary, hourly:part?(HOURLY_WAGE[empId]||PAY_CFG.minHourly):0,
     regH:0, wd1:0, wd2:0, rd1:0, rd2:0, rd3:0, hol:0, compH:0, leave:{}, lateMin:0, lateDays:0, missing:0,
     eve:0, night:0, eveRate:PAY_CFG.eveRate, nightRate:PAY_CFG.nightRate, nightInBase:PAY_CFG.nightInOTBase, shiftDates:{eve:[],night:[]},
@@ -4084,7 +4185,11 @@ function payMath(inp){
   return {H, Hot, eveN, nightN, lines, base, night, ot, att, paidLeave, bonus, adjPos, adjNeg, adjNet:adjPos-adjNeg, gross, labor, health, pension, tax, stat, net,
     er:{labor:erL, health:erH, pension:erP, total:erL+erH+erP}, warn};
 }
-const calcPay = (empId, month) => payMath(payInputs(empId, month));
+/* 拆帳制：分帳規則尚待確認（見「待決議題」），先不納入自動試算，避免算出錯誤金額 */
+const splitStub = () => ({H:0, Hot:0, eveN:0, nightN:0, lines:[], base:0, night:0, ot:0, att:0, paidLeave:0, bonus:0, adjPos:0, adjNeg:0, adjNet:0,
+  gross:0, labor:0, health:0, pension:0, tax:0, stat:0, net:0, er:{labor:0, health:0, pension:0, total:0}, split:true,
+  warn:[{zh:'拆帳制：分帳規則待確認，未納入自動試算，請人工核算', en:'Revenue-share basis: split rules not yet defined — excluded from auto-calc, calculate manually', cls:'warn'}]});
+const calcPay = (empId, month) => payBasisOf(empId)==='split' ? splitStub() : payMath(payInputs(empId, month));
 function payTotals(res){
   const v=Object.values(res);
   return {n:v.length, gross:v.reduce((a,r)=>a+r.gross,0), net:v.reduce((a,r)=>a+r.net,0), er:v.reduce((a,r)=>a+r.er.total,0), warn:v.filter(r=>r.warn.length).length};
@@ -4101,7 +4206,7 @@ function payCSV(res, month){
   const rows=[['員工編號','姓名','職稱','據點','計薪方式','本薪/正常工時薪資','小夜班次','大夜班次','夜班津貼','加班費','給薪假(時薪制)','差勤扣款','全勤獎金','人工調整淨額','應發金額',
     '勞保自付','健保自付','勞退自提','所得稅','其他扣款','實發金額','雇主勞保','雇主健保','雇主勞退','警示']];
   STAFF.forEach(s=>{ const r=res[s.id]; if(!r) return;
-    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, s.type==='part'?'時薪':'月薪', r.base, r.eveN, r.nightN, r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
+    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, PAY_BASIS[payBasisOf(s.id)].zh.replace('制',''), r.base, r.eveN, r.nightN, r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
       r.labor, r.health, r.pension, r.tax, r.adjNeg, r.net, r.er.labor, r.er.health, r.er.pension, r.warn.map(w=>w.zh).join('; ')]); });
   const t=payTotals(res); rows.push(['合計','','','','','','','','','','','','','',t.gross,'','','','','',t.net,'','','','']);
   return toCSV(rows);
@@ -4147,7 +4252,7 @@ function viewPayRun(){
           <th>${bi('代扣','Withheld')}</th><th>${bi('實發','Net')}</th><th>${bi('警示','Flags')}</th></tr></thead>
         <tbody>${list.map(s=>{ const r=res[s.id]; return `<tr class="clickable" data-payemp="${s.id}">
           <td>${esc(empName(s.id))} <span class="muted mono" style="font-size:11px">${s.id}</span><div class="muted" style="font-size:11px">${esc(TITLES[s.title].zh)} · ${esc(unit(s.unit).zh)}</div></td>
-          <td><span class="chip ${s.type==='part'?'warn':''}">${esc(s.type==='part'?both('時薪','Hourly'):both('月薪','Monthly'))}</span></td>
+          <td><span class="chip ${payBasisOf(s.id)==='hourly'?'warn':(payBasisOf(s.id)==='split'?'acc':'')}">${esc(both(PAY_BASIS[payBasisOf(s.id)].zh.replace('制',''),PAY_BASIS[payBasisOf(s.id)].en))}</span></td>
           <td class="num">${money(r.base+r.paidLeave)}</td><td class="num">${r.night?money(r.night):'—'}</td><td class="num">${r.ot?money(r.ot):'—'}</td>
           <td class="num">${r.att?'−'+money(r.att):'—'}</td><td class="num">${r.bonus?money(r.bonus):'—'}</td>
           <td class="num">${r.adjNet?(r.adjNet>0?'+':'−')+money(Math.abs(r.adjNet)):'—'}</td>
@@ -4192,7 +4297,7 @@ function payLinesHTML(r){
     </tbody></table></div>`;
 }
 function openPayslip(empId, month){
-  const p=person(empId), run=payrun(month), inp=payInputs(empId,month), r=payMath(inp), adj=run.adj[empId]||[];
+  const p=person(empId), run=payrun(month), inp=payInputs(empId,month), r=payBasisOf(empId)==='split'?splitStub():payMath(inp), adj=run.adj[empId]||[];
   const otRows=OT_REQ.filter(o=>o.emp===empId&&o.status==='approved'&&o.date.startsWith(month));
   const lvRows=LEAVE.filter(l=>l.emp===empId&&l.status==='approved'&&l.from<=monthEnd(month)&&l.to>=month+'-01');
   const dt={wd:{zh:'平日',en:'Weekday'},rest:{zh:'休息日',en:'Rest day'},hol:{zh:'國定假日／例假',en:'Holiday'}};
@@ -4202,7 +4307,7 @@ function openPayslip(empId, month){
       <div class="drawer-h">
         <span class="avatar" style="width:40px;height:40px;font-size:15px">${esc(empName(empId).slice(0,1))}</span>
         <div><h2 style="font-size:16px">${esc(empName(empId))} <span class="muted mono" style="font-size:12px">${empId} · ${month}</span></h2>
-          <div class="muted" style="font-size:12px">${esc(TITLES[p.title].zh)} · ${esc(unit(p.unit).zh)} · ${esc(p.type==='part'?both('時薪制 '+inp.hourly+' 元','Hourly '+inp.hourly):both('月薪制','Monthly'))}</div></div>
+          <div class="muted" style="font-size:12px">${esc(TITLES[p.title].zh)} · ${esc(unit(p.unit).zh)} · ${esc(payBasisOf(p.id)==='hourly'?both('時薪制 '+inp.hourly+' 元','Hourly '+inp.hourly):both(PAY_BASIS[payBasisOf(p.id)].zh,PAY_BASIS[payBasisOf(p.id)].en))}</div></div>
         <button class="x" data-close aria-label="${esc(both('關閉','Close'))}">✕</button>
       </div>
       <div class="drawer-b">
@@ -4604,6 +4709,37 @@ const QUESTIONS=[
   askZh:'請確認假別是否分流：病假／事假由中心主任決行，特休與長天數假別才需人資複核？',
   askEn:'Confirm whether this should differ by leave type: sick and personal leave decided by the director, with HR countersigning only annual and long absences?'}
 ];
+const MEETING_0930=[
+ {zh:'員工編號前綴統一', en:'Unify employee-number prefixes',
+  doZh:'系統設定 → 員工編號規則：列出提案（A/B/C 字母前綴，僅示意）。', doEn:'Settings → Employee number rule shows the proposal (A/B/C prefixes, illustrative only).',
+  askZh:'各字母對應哪家公司？是否保留部門代碼？流水號幾碼？現有 CSHR、OXHR 編號如何轉換？', askEn:'Which letter maps to which company? Keep a department code? Serial length? How are existing CSHR / OXHR numbers converted?',
+  ownZh:'人資、老闆', ownEn:'HR, owner'},
+ {zh:'年資保留與回任', en:'Seniority carry-over and rehire',
+  doZh:'新增「年資起算日」：轉調不重置、員編不變；離職後回任才重新起算；特休天數依年資起算日計算。', doEn:'New “seniority from” date: transfers do not reset it; it restarts only on rehire after leaving. Annual leave days use it.',
+  askZh:'轉調前後若屬不同公司是否仍承認年資？留職停薪期間是否計入年資？退休金年資如何承接？', askEn:'Is seniority still recognized when the transfer crosses companies? Does unpaid leave count? How is pension service carried over?',
+  ownZh:'人資', ownEn:'HR'},
+ {zh:'在職狀態三種', en:'Three employment statuses',
+  doZh:'員工資料新增狀態：在職、留職停薪、離職，可篩選；狀態變更會寫入任職歷程。', doEn:'Employee records carry Active / Unpaid leave / Left, filterable; changes are logged in the employment history.',
+  askZh:'留停與離職時帳號何時停用？留停期間勞健保、出勤與薪資如何處理？', askEn:'When are accounts disabled for unpaid leave and for leaving? How are insurance, attendance and pay handled during unpaid leave?',
+  ownZh:'人資、資訊管理員', ownEn:'HR, IT administrator'},
+ {zh:'計薪方式：月薪／時薪／拆帳', en:'Pay basis: monthly / hourly / revenue share',
+  doZh:'月薪制、時薪制已可試算；拆帳制只標示、不自動計算，避免算出錯誤金額。', doEn:'Monthly and hourly are calculated; revenue share is flagged and excluded from auto-calculation so no wrong figure is produced.',
+  askZh:'拆帳制適用哪些職位？分帳基數與比例？是否有保底薪資？各職位的標準請提供。', askEn:'Which positions use revenue share? What base and ratio? Is there a guaranteed minimum? Please provide the standard for each position.',
+  ownZh:'人資、各主管', ownEn:'HR, department heads'},
+ {zh:'員工個別角色（護理師、社工、督導等）', en:'Per-job employee roles (nurse, social worker, supervisor…)',
+  doZh:'目前只有一個「一般員工」自助頁（個人打卡、請假、特休餘額）；尚未依職位拆分。', doEn:'There is one generic employee self-service page (own punches, leave, balance); not yet split by job.',
+  askZh:'請各職位提供可查看的功能與資料範圍清單，並提供組織架構圖以設定對應權限。', askEn:'Please list the functions and data each job may see, plus the org chart, so permissions can be mapped to positions.',
+  ownZh:'各部門主管', ownEn:'Department heads'},
+ {zh:'104 與人保系統能否串接', en:'Can 104 and the case-management system integrate',
+  doZh:'尚未串接。已有打卡、補卡、請假、加班（半小時為單位）與 CSV／Excel 匯出。', doEn:'Not integrated. Punches, corrections, leave and overtime (30-minute units) and CSV export exist.',
+  askZh:'請提供 104 與人保系統的畫面截圖；確認兩者是否提供 API（MCP 較新但有資安風險）。', askEn:'Please share screenshots of 104 and the case-management system, and confirm whether either offers an API (MCP is newer but carries security risk).',
+  ownZh:'人資、專案 PM', ownEn:'HR, project PM'},
+ {zh:'資料存放', en:'Where the data lives',
+  doZh:'原型不含後端。建議短期使用雲端，規模擴大後再評估自有硬體，並維持雙備份。', doEn:'The prototype has no backend. Suggested: cloud in the short term, own hardware later, with two backups.',
+  askZh:'雲端服務與資料所在地由誰決定？雙備份放哪裡？', askEn:'Who decides the cloud provider and data location? Where do the two backups live?',
+  ownZh:'老闆、資訊管理員', ownEn:'Owner, IT administrator'}
+];
+
 function viewOpen(){
   return `
   <div class="grid">
@@ -4629,6 +4765,17 @@ function viewOpen(){
             <div class="muted" style="font-size:12px">${esc(state.lang==='zh'?q.askEn:q.askZh)}</div></div>
         </div>
       </section>`).join('')}
+    <section class="card" id="meeting0930">
+      <div class="card-h"><h2>${esc(both('9/30 會議新增待確認事項','Open items from the 30 Sept meeting'))}</h2>
+        <div class="spacer"></div><span class="chip warn">${esc(both('下次會議 10/7 11:30','Next meeting 7 Oct 11:30'))}</span></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('事項','Item')}</th><th>${bi('原型目前的處理','How the prototype handles it')}</th><th>${bi('需要確認','What we need')}</th><th>${bi('負責','Owner')}</th></tr></thead>
+        <tbody>${MEETING_0930.map(m=>`<tr><td style="white-space:normal"><b>${esc(state.lang==='zh'?m.zh:m.en)}</b></td>
+          <td style="white-space:normal">${esc(state.lang==='zh'?m.doZh:m.doEn)}</td>
+          <td style="white-space:normal">${esc(state.lang==='zh'?m.askZh:m.askEn)}</td>
+          <td style="white-space:normal">${esc(state.lang==='zh'?m.ownZh:m.ownEn)}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </section>
     <section class="card">
       <div class="card-h"><h2>${esc(both('本原型建置範圍','Scope of this prototype'))}</h2></div>
       <div class="tablewrap"><table>
