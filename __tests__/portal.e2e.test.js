@@ -42,7 +42,7 @@ test.describe('Shell & role switching', () => {
 
   test('role selector offers only the built roles', async ({ page }) => {
     const values = await page.locator('#roleSel option').evaluateAll(os => os.map(o => o.value));
-    expect(values).toEqual(['admin', 'hr', 'manager', 'employee']);
+    expect(values).toEqual(['admin', 'hr', 'manager', 'owner', 'employee']);
   });
 
   test('switching role updates the persona chip', async ({ page }) => {
@@ -132,8 +132,8 @@ test.describe('Settings & permission matrix', () => {
 
   test('admin sees the full matrix with editable permission cells', async ({ page }) => {
     await go(page, 'perm', 'matrix');
-    await expect(page.locator('.permtable thead th')).toHaveCount(5);
-    await expect(page.locator('[data-perm]')).toHaveCount(36);
+    await expect(page.locator('.permtable thead th')).toHaveCount(6);
+    await expect(page.locator('[data-perm]')).toHaveCount(45);
     await expect(page.locator('[data-perm="admin|perms"]')).toBeDisabled();
     await expect(page.locator('[data-perm="admin|mgmt"]')).toBeDisabled();
     await expect(page.locator('[data-perm="employee|mgmt"]')).not.toBeChecked();
@@ -951,10 +951,42 @@ test.describe('v2.2 meeting updates', () => {
     await openPortal(page);
     await go(page, 'set');
     await expect(page.locator('#idRule')).toContainText('CSHR');
-    await expect(page.locator('#idRule')).toContainText('尚未核定');
+    await expect(page.locator('#idRule')).toContainText('A00001');
+    await expect(page.locator('#idRule')).toContainText('終身不變');
     await go(page, 'perm', 'open');
     await expect(page.locator('#meeting0930')).toContainText('10/7');
     await expect(page.locator('#meeting0930 tbody tr')).toHaveCount(7);
     await expect(page.locator('#meeting0930')).toContainText('拆帳');
+  });
+
+  test('roles are admin, center director, manager, owner (+ employee); owner sees pay and cannot edit permissions', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => ({
+      names: Object.values(ROLES).map(x => x.zh),
+      planned: Object.values(ROLES).filter(x => !x.built).length,
+      owner: ROLES.owner.perms
+    }));
+    expect(r.names).toEqual(['系統管理員', '經理', '中心主任', '老闆', '一般員工']);
+    expect(r.planned).toBe(0);
+    expect(r.owner.salary).toBe(true);
+    expect(r.owner.perms).toBe(false);
+    await setRole(page, 'owner');
+    await expect(page.locator('.pagehead .chip.acc')).toContainText('老闆');
+    await go(page, 'hr', 'emp');
+    await expect(empRows(page)).toHaveCount(23);
+    await expect(page.locator('#view tbody .lock')).toHaveCount(0);      // pay visible
+    await go(page, 'pay');
+    await expect(page.locator('#view')).toBeVisible();
+  });
+
+  test('unpaid leave counts toward seniority and transfers never change the employee number', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => {
+      const before = seniorityFrom('E2103');
+      const rec = empRecord('E2103');
+      rec.status = 'loa';
+      return { before, during: seniorityFrom('E2103') };
+    });
+    expect(r.during).toBe(r.before);
   });
 });

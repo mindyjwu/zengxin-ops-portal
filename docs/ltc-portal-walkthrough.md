@@ -149,12 +149,12 @@ Deliberately out of scope here; needed before the next stage:
 | 項目 Item | 做法 What it does | 在哪裡看 Where |
 |---|---|---|
 | 僱用狀態 Employment status | 在職／留職停薪／離職；員工清單可依狀態篩選；變更會寫入任職歷程。Active / Unpaid leave / Left, filterable, logged in history. | 人事系統 → 員工資料；員工抽屜 → 任職與薪資歷程 |
-| 年資起算日 Seniority start | 跨單位轉調不重置、員編不變；離職後回任才重新起算；特休天數依此計算。Not reset on transfer; restarts on rehire; drives annual-leave days. | 員工抽屜 → 任職與薪資歷程 |
+| 年資起算日 Seniority start | 跨單位轉調不重置（含跨公司）、留職停薪計入、員編不變；離職後回任才重新起算；特休天數依此計算。Not reset on transfer (even across companies); unpaid leave counts; restarts on rehire; drives annual-leave days. | 員工抽屜 → 任職與薪資歷程 |
 | 計薪方式 Pay basis | 月薪制、時薪制可試算；拆帳制只標示、不自動計算（規則待確認）。Revenue share is flagged and excluded until rules are defined. | 員工清單、薪資計算 |
 | 緊急聯絡人 Emergency contacts | 2 位：第 1 位必填、第 2 位選填。Two contacts, first required. | 員工抽屜 → 基本與金融資料 |
 | 現金領薪 Cash pay | 領薪方式可選現金，銀行資料可留空（僅人資可見）。Bank details optional for cash pay (HR only). | 員工抽屜 → 基本與金融資料 |
 | 報表 Reports | 四份報表都同時有員工編號與姓名（同名同姓以員編區分）；人事報表新增狀態、年資起算日、計薪方式、緊急聯絡人 2、領薪方式。All four exports carry employee number and name. | 報表匯出 |
-| 員編規則提案 Employee-number proposal | A/B/C 字母前綴提案（僅示意，未核定）。Letter-prefix proposal, illustrative only. | 系統設定 |
+| 員編規則提案 Employee-number proposal | 發號公司字母 1 碼 + 流水號 5 碼（如 A00001），轉調不變、收購公司啟用新字母；字母對應公司待確認。Issuing-company letter + 5-digit serial; permanent; new letter per acquisition; company mapping to confirm. | 系統設定 |
 | 待確認事項 Open items | 7 項，下次會議 10/7 11:30。Seven items for the 7 Oct meeting. | 權限與範圍 → 待決議題 |
 
 **走查建議 / Suggested walk-through (5 min):** HR 身分 → 員工資料，將某人改為「留職停薪」並用狀態篩選 → 打開抽屜看年資起算日 → 改為「離職」再「在職」，看年資重新起算 → 報表匯出 → 人事資料報表。

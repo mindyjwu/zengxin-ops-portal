@@ -228,7 +228,8 @@ This flow is **manual** end to end; its individual steps are covered by the test
 | 9.6 | admin | Open the same record | Pay method and bank details stay hidden (HR only) |
 | 9.7 | hr | Set 計薪方式 = 拆帳制, open 薪資計算 | Row shows 拆帳制, amounts are 0 with a warning that it is excluded from auto-calculation |
 | 9.8 | hr | 報表匯出 › all four reports | Each header contains 員工編號 and 姓名 |
-| 9.9 | admin | 系統設定 | 員工編號規則（提案，尚未核定）card is shown |
+| 9.9 | admin | 系統設定 | 員工編號規則 card shows letter + 5-digit serial, permanent-number rules |
+| 9.11 | owner | Switch to 老闆 | Sees all 23 staff with pay visible; cannot edit permissions; roles list = 系統管理員、經理、中心主任、老闆、一般員工 |
 | 9.10 | any | 權限與範圍 › 待決議題 | 9/30 table with 7 items and the 10/7 meeting date |
 
 ## Known Gaps & Open Questions

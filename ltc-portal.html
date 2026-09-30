@@ -354,7 +354,7 @@ const companyOffices = companyId => (COMPANIES.find(c=>c.id===companyId)?.office
 
 /* ---------- job titles ---------- */
 const TITLES = {
-  ceo:{zh:'執行長',en:'Chief Executive'},         coo:{zh:'營運長',en:'Chief Operating Officer'},
+  ceo:{zh:'老闆',en:'Owner'},         coo:{zh:'營運長',en:'Chief Operating Officer'},
   hrd:{zh:'人資部經理',en:'HR Manager'},           fin:{zh:'財務部經理',en:'Finance Manager'},
   it:{zh:'資訊管理專員',en:'IT Administrator'},     hrs:{zh:'人資專員',en:'HR Specialist'},
   dir:{zh:'中心主任',en:'Center Director'},          hn:{zh:'護理長',en:'Head Nurse'},
@@ -374,7 +374,7 @@ const DEPTS = {
 /* ---------- employees (demo personnel for Hsinchu operations) ---------- */
 /* [id, title, unit, titleKey, deptKey, hireDate, ext, band, salary, type, managerId] */
 const RAW = [
- ['E1001','執行長','HQ','ceo','exec','2018-01-15','101','M5',185000,'full',null],
+ ['E1001','老闆','HQ','ceo','exec','2018-01-15','101','M5',185000,'full',null],
  ['E1002','營運長','HQ','coo','exec','2017-03-20','102','M4',152000,'full','E1001'],
  ['E1003','人資部經理','HQ','hrd','hr','2019-06-10','120','M3',108000,'full','E1002'],
  ['E1004','財務部經理','HQ','fin','fin','2020-02-14','130','M3',112000,'full','E1002'],
@@ -622,30 +622,29 @@ const nextId = (prefix, arr) => prefix+(Math.max(0,...arr.map(x=>+x.id.replace(/
 </script>
 <script>
 /* ---------- roles & permissions ---------- */
-/* v2.0: 10 roles per specification; 4 fully working in this prototype (3 management + 1 employee) */
+/* v2.2: roles = 系統管理員、中心主任、經理、老闆 + 一般員工（9/30 會議後精簡） */
 const ROLES = {
   /* --- Built (working in this prototype) --- */
   admin:{ id:'admin', zh:'系統管理員', en:'System Admin', persona:'E1005', allOffices:true, built:true,
     perms:{ salary:false, editEmp:true, mobile:true, approve:false, finalize:false,
             annGroup:true, annOffice:true, perms:true, exportAll:true, mgmt:true } },
-  hr:{ id:'hr', zh:'人資部經理', en:'HR Manager', persona:'E1003', allOffices:true, built:true,
+  hr:{ id:'hr', zh:'經理', en:'Manager', persona:'E1003', allOffices:true, built:true,
     perms:{ salary:true, editEmp:true, mobile:true, approve:true, finalize:true,
             annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
-  manager:{ id:'manager', zh:'中心主任／單位主管', en:'Center Director', persona:'E2101', allOffices:false, built:true,
+  manager:{ id:'manager', zh:'中心主任', en:'Center Director', persona:'E2101', allOffices:false, built:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false,
             annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
+  /* 老闆：管理三個據點、主要出資者；可看全部資料（含薪資）、最終核准；不維護帳號權限 */
+  owner:{ id:'owner', zh:'老闆', en:'Owner', persona:'E1001', allOffices:true, built:true,
+    perms:{ salary:true, editEmp:false, mobile:true, approve:true, finalize:true,
+            annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
+
   /* 一般員工：只用「私人秘書」自助頁面（對應 104 私人秘書），資料範圍僅限本人 */
   employee:{ id:'employee', zh:'一般員工', en:'Employee', persona:'E2104', allOffices:false, selfOnly:true, built:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false,
             annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } },
 
   /* --- Planned for Phase 2–3 (stubs only) --- */
-  coo:{ id:'coo', zh:'營運長', en:'COO', built:false, phase:'Phase 1+' },
-  finance:{ id:'finance', zh:'財務部經理', en:'Finance Manager', built:false, phase:'Phase 2' },
-  nurse:{ id:'nurse', zh:'護理部主管', en:'Nursing Director', built:false, phase:'Phase 2' },
-  care:{ id:'care', zh:'照護部主管', en:'Care Services Manager', built:false, phase:'Phase 2' },
-  social:{ id:'social', zh:'社工室主任', en:'Social Work Supervisor', built:false, phase:'Phase 3' },
-  company:{ id:'company', zh:'公司經理', en:'Company Manager', built:false, phase:'Phase 2' }
 };
 
 /* ---------- state ---------- */
@@ -1051,8 +1050,7 @@ function viewArchScope(){
 
 function viewArchRoles(){
   const builtRoles = Object.values(ROLES).filter(r=>r.built);
-  const plannedRoles = Object.values(ROLES).filter(r=>!r.built);
-  return `
+    return `
   <div class="content-solo">
     <div class="pagehead">
       <h1>${esc(both('角色與權限說明','Roles & Permissions Guide'))}</h1>
@@ -1061,8 +1059,8 @@ function viewArchRoles(){
     <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
       <b>${esc(both('v2.0 角色矩陣','v2.0 Role Matrix'))}</b><br>
       ${esc(both(
-        '規劃 10 個角色以支援多層級組織。本原型展示其中 4 個完整實現（3 個管理職 + 一般員工）；其餘為計畫示意。',
-        'The v2.0 specification defines 10 roles to support the multi-level organization. This prototype implements 4 in full (3 management roles + employee); others are planned for Phase 2–3.'))}
+        '角色精簡為 系統管理員、中心主任、經理、老闆，另有一般員工自助頁。各職位（護理師、社工、督導等）的個別角色待各主管提供權限清單後再加入。',
+        'Roles are kept to System Admin, Center Director, Manager and Owner, plus the employee self-service page. Per-job roles (nurse, social worker, supervisor…) will be added once department heads supply their permission lists.'))}
     </div>
 
     <section class="card">
@@ -1076,35 +1074,10 @@ function viewArchRoles(){
               <td style="padding:8px;font-weight:500">${esc(L(r))}</td>
               <td style="padding:8px;font-size:13px;color:var(--ink-2)">
                 ${r.id==='admin' ? esc(both('系統配置、全集團公告、員工資料編輯、所有據點存取','Configuration, group announcements, employee data management, all facilities access.')) :
-                  r.id==='hr' ? esc(both('薪資/請假核定、人資審核、教育訓練記錄、全集團報表','Salary approvals, leave finalization, training records, group reports.')) :
+                  r.id==='hr' ? esc(both('人事與薪資維護、請假複核、教育訓練記錄、全集團報表','Personnel and pay maintenance, leave countersign, training records, group reports.')) :
                   r.id==='manager' ? esc(both('本中心公告、請假核准（初層）、員工出勤查詢、本中心組織圖','Facility announcements, leave initial approval, attendance viewing, own facility org chart.')) :
+                  r.id==='owner' ? esc(both('管理三個據點、主要出資者：全部資料（含薪資）唯讀檢視、最終核准、全集團報表','Oversees all three sites as principal funder: read access to everything including pay, final approval, group reports.')) :
                   r.id==='employee' ? esc(both('私人秘書：出勤月曆、打卡、請假／加班／公出等表單、薪資袋、保險費、所得稅、課程；資料僅限本人','My Desk: attendance calendar, clock in/out, leave / overtime / off-site forms, payslips, insurance, tax and courses — own data only.')) :
-                  ''}
-              </td>
-            </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="card-h"><h2>${esc(both('→ 計畫角色','→ Planned Roles'))}</h2></div>
-      <div class="card-b">
-        <table class="permtable" style="width:100%">
-          <thead><tr><th style="width:160px">${esc(both('角色','Role'))}</th><th style="width:80px">${esc(both('階段','Phase'))}</th><th>${esc(both('說明','Scope'))}</th></tr></thead>
-          <tbody>
-            ${plannedRoles.map(r=>`
-            <tr style="border-bottom:1px solid var(--line);padding:8px 0">
-              <td style="padding:8px;font-weight:500;color:var(--ink-3)">${esc(L(r))}</td>
-              <td style="padding:8px;font-size:12px"><span class="chip">${esc(r.phase)}</span></td>
-              <td style="padding:8px;font-size:13px;color:var(--ink-3)">
-                ${r.id==='coo' ? esc(both('營運數據、多公司統整、績效指標','Ops metrics, multi-company rollup, KPIs.')) :
-                  r.id==='finance' ? esc(both('薪資、採購、帳務、月結','Payroll, procurement, accounting, month-end close.')) :
-                  r.id==='nurse' ? esc(both('護理管理、感控、照護計畫覆核','Nursing management, infection control, care plan review.')) :
-                  r.id==='care' ? esc(both('照顧服務管理、評估表、滿意度追蹤','Care services mgmt, assessments, satisfaction tracking.')) :
-                  r.id==='social' ? esc(both('個案管理、家屬溝通、資源轉介','Case management, family communication, resource referrals.')) :
-                  r.id==='company' ? esc(both('公司層級營運、跨據點協調','Company-level operations, cross-facility coordination.')) :
                   ''}
               </td>
             </tr>
@@ -1118,11 +1091,11 @@ function viewArchRoles(){
       <div class="card-h"><h2>${esc(both('查看其他角色','Try Other Roles'))}</h2></div>
       <div class="card-b">
         <p style="margin:0 0 12px 0;color:var(--ink-2);font-size:13px">
-          ${esc(both('選擇左側 [以此身份登入 / Switch role] 下拉選單，試試其他已實現的角色。計畫角色目前無法使用。',
-                     'Use the "Switch role" selector in the left sidebar to test the 3 implemented roles. Planned roles are not selectable yet.'))}
+          ${esc(both('用上方「身分」下拉選單，或按下列按鈕切換角色。',
+                     'Use the Role selector at the top, or the buttons below, to switch roles.'))}
         </p>
         <div class="seg">
-          ${['admin','hr','manager'].map(rid=>`
+          ${['admin','hr','manager','owner'].map(rid=>`
           <button onclick="state.role='${rid}'; render()" style="padding:8px 14px;cursor:pointer">
             ${esc(L(ROLES[rid]))}
           </button>
@@ -1520,13 +1493,15 @@ const statusOf = id => empRecord(id).status;
 const payBasisOf = id => empRecord(id).payBasis;
 /* 年資起算日：跨單位轉調不重置（員編不變）；離職後回任才重新起算 */
 const seniorityFrom = id => empRecord(id).seniorityFrom || person(id).hired;
-/* 員編規則「提案」——字母對應哪家公司尚待確認，僅示意 */
+/* 員編規則（設計定案，字母對應公司待確認）：
+   [發號公司字母 1 碼][流水號 5 碼]，例如 A00001。字母＝首次發號的公司，之後不因轉調而改；據點、部門另存欄位，不放進編號。 */
 const ID_PROPOSAL = {
   serial: 5,
   rows: [
-    {legacy:'CSHR', letter:'A'},
-    {legacy:'OXHR', letter:'B'},
-    {legacy:'（待補）', letter:'C'}
+    {legacy:'CSHR', letter:'A', note:{zh:'現行公司（待確認對應）',en:'Current company (mapping to confirm)'}},
+    {legacy:'OXHR', letter:'B', note:{zh:'現行公司（待確認對應）',en:'Current company (mapping to confirm)'}},
+    {legacy:'（待補）', letter:'C', note:{zh:'現行公司（待確認對應）',en:'Current company (mapping to confirm)'}},
+    {legacy:'—', letter:'D–Z', note:{zh:'預留給日後收購的公司，依序啟用',en:'Reserved for future acquisitions, issued in order'}}
   ]
 };
 
@@ -1671,8 +1646,8 @@ function secHist(p, rec){
       ${kvRow('計薪方式','Pay basis', fin?esc(both(pb.zh,pb.en)):lockTxt('僅人資可見','HR only'))}
     </dl>
     <div class="muted" style="font-size:12px;margin:4px 0 10px">${esc(both(
-      '跨單位轉調不變更員工編號，年資不歸零；離職後重新回任才重新起算。留職停薪期間的年資、保險與薪資處理尚待確認。',
-      'Transfers between units keep the employee number and do not reset seniority; it restarts only after leaving and being rehired. How unpaid-leave periods count toward seniority, insurance and pay is still to be confirmed.'))}</div>
+'跨據點、跨公司轉調都不變更員工編號，年資不歸零；留職停薪期間計入年資；離職後重新回任才重新起算。',
+      'Transfers between sites or companies keep the employee number and do not reset seniority; unpaid leave counts toward seniority; it restarts only after leaving and being rehired.'))}</div>
     ${edit?addBox('emp', both('變更狀態／年資／計薪方式','Change status / seniority / pay basis'), `<div class="row">
       <div><label>${esc(both('僱用狀態','Status'))}</label><select name="status">${Object.entries(EMP_STATUS).map(([k,v])=>`<option value="${k}" ${k===rec.status?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}</select></div>
       ${fld('年資起算日','Seniority from','seniorityFrom','date','value="'+rec.seniorityFrom+'"')}
@@ -3477,8 +3452,8 @@ function viewDocSysInfo(){
           <div style="font-weight:600">${esc(both('角色與權限','Roles & Permissions'))}</div>
           <div style="font-size:13px;color:var(--ink-2);margin-top:6px">
             ${esc(both(
-              '10 個角色規劃，目前 4 個完整實現：系統管理員、人資部經理、中心主任、一般員工。其餘於 Phase 2–3 追加。',
-              '10 roles planned; 4 fully implemented: System Admin, HR Manager, Center Director, Employee. Others in Phase 2–3.'))}</div>
+              '角色：系統管理員、中心主任、經理、老闆，加上一般員工自助頁。各職位個別角色待權限清單。',
+              'Roles: System Admin, Center Director, Manager, Owner, plus the employee self-service page. Per-job roles await permission lists.'))}</div>
           <div style="font-size:12px;color:var(--ink-3);margin-top:6px">${esc(both(
             '每個角色可讀取的資料範圍（據點）與可用功能（薪資、簽核、公告等）由權限矩陣定義。',
             'Each role has defined data scope (facilities) and capabilities (pay access, approvals, announcements).'))}
@@ -3979,20 +3954,23 @@ function viewSettings(){
           </div>
         </div>
         <div style="border-bottom:1px solid var(--line);padding-bottom:12px" id="idRule">
-          <div style="font-weight:500;margin-bottom:8px">${esc(both('員工編號規則（提案，尚未核定）','Employee number rule (proposal — not yet approved)'))}</div>
+          <div style="font-weight:500;margin-bottom:8px">${esc(both('員工編號規則（設計定案，字母對應待確認）','Employee number rule (design set; letter-to-company mapping to confirm)'))}</div>
           <div style="font-size:12px;color:var(--ink-3);margin-bottom:8px">${esc(both(
-            '現行各公司前綴不同，建議集團統一改用英文字母前綴。下表字母與對應公司只是示意，待人資與老闆確認。',
-            'Companies currently use different prefixes. Proposal: one letter prefix per company across the group. Letters and company mapping below are illustrative until HR and the owner confirm.'))}</div>
+            '格式：發號公司字母 1 碼 + 流水號 5 碼，例如 A00001。三個據點共用同一套編號系統。',
+            'Format: one letter for the issuing company + a 5-digit serial, e.g. A00001. All three sites share one numbering system.'))}</div>
           <div class="tablewrap"><table>
-            <thead><tr><th>${bi('現行前綴','Current prefix')}</th><th>${bi('對應公司','Company')}</th><th>${bi('建議前綴','Proposed')}</th><th>${bi('範例編號','Example')}</th></tr></thead>
-            <tbody>${ID_PROPOSAL.rows.map((r,i)=>`<tr><td class="mono">${esc(r.legacy)}</td><td><span class="chip warn">${esc(both('待確認','To confirm'))}</span></td>
-              <td class="mono">${r.letter}</td><td class="mono">${r.letter}${String(i+1).padStart(ID_PROPOSAL.serial,'0')}</td></tr>`).join('')}</tbody>
+            <thead><tr><th>${bi('現行前綴','Current prefix')}</th><th>${bi('新字母','New letter')}</th><th>${bi('範例編號','Example')}</th><th>${bi('說明','Note')}</th></tr></thead>
+            <tbody>${ID_PROPOSAL.rows.map((r,i)=>`<tr><td class="mono">${esc(r.legacy)}</td><td class="mono">${r.letter}</td>
+              <td class="mono">${r.letter.length===1?r.letter+String(i+1).padStart(ID_PROPOSAL.serial,'0'):'D00001'}</td><td style="white-space:normal">${esc(L(r.note))}</td></tr>`).join('')}</tbody>
           </table></div>
           <ul style="margin:8px 0 0 18px;font-size:12px;color:var(--ink-2);display:grid;gap:3px">
-            <li>${esc(both('員工編號是唯一識別碼：轉調單位、轉調公司都不變更。','The employee number is the unique identifier: it never changes on transfer between units or companies.'))}</li>
-            <li>${esc(both('同名同姓以員編區分；所有報表同時輸出員編與中文姓名。','Staff with the same name are told apart by number; every report carries both the number and the Chinese name.'))}</li>
-            <li>${esc(both('保留其餘字母，未來收購公司時可直接新增前綴。','Remaining letters stay free so a newly acquired company can be given its own prefix.'))}</li>
-            <li>${esc(both('是否仍含部門代碼、流水號位數，待討論。','Whether a department code stays in the number, and the serial length, are open.'))}</li>
+            <li>${esc(both('編號一發就終身不變：轉調據點、轉調公司、離職後回任，都沿用同一個編號。','A number is permanent: transfers between sites or companies, and rehire after leaving, all keep the same number.'))}</li>
+            <li>${esc(both('字母只代表「當初由哪家公司發號」，不代表現在在哪上班；所屬據點、部門、權限另存欄位，轉調時只改欄位。','The letter records which company first issued the number, not where the person works now; site, department and permissions are separate fields that change on transfer.'))}</li>
+            <li>${esc(both('不放部門或據點代碼，因為它們會隨轉調改變。','No department or site code in the number, because those change on transfer.'))}</li>
+            <li>${esc(both('收購公司：啟用下一個字母，原公司編號存入「舊員編」欄位並可搜尋。','Acquisitions: issue the next letter; the old company number is kept in a searchable “legacy number” field.'))}</li>
+            <li>${esc(both('5 碼流水號每個字母可發 99,999 個，流水號不重複使用；遠超 2,000 人規模。','Five digits allow 99,999 numbers per letter and numbers are never reused — far above the 2,000-employee target.'))}</li>
+            <li>${esc(both('報表一律同時輸出員編與中文姓名；同名同姓以員編區分。','Every report carries the number and the Chinese name; same-name staff are told apart by number.'))}</li>
+            <li>${esc(both('示範資料的 E 開頭編號是舊格式，正式上線前統一換成此規則。','The E-prefixed demo numbers are the old format and will be converted to this rule before go-live.'))}</li>
           </ul>
         </div>
         <div style="border-bottom:1px solid var(--line);padding-bottom:12px">
@@ -4582,14 +4560,14 @@ BINDERS['pay:ver']=function(){
 /* key = ROLES[*].perms entry the row reflects; rows without a key describe data scope */
 const CAPS=[
  {zh:'查看所有據點資料', en:'Read data across every site',
-  admin:'yes', hr:'yes', manager:'assume', employee:'no'},
+  admin:'yes', hr:'yes', manager:'assume', owner:'yes', employee:'no'},
  {key:'mgmt',     zh:'使用管理後台（人事、權限、文件、服務、財務、報表）', en:'Use the back office (HR, permissions, documents, services, finance, reports)'},
- {zh:'私人秘書：本人出勤、表單、薪資袋', en:'My Desk: own attendance, forms and payslips', admin:'self', hr:'self', manager:'self', employee:'self'},
- {zh:'查看員工人事資料', en:'View employee records', admin:'yes', hr:'yes', manager:'own', employee:'self'},
+ {zh:'私人秘書：本人出勤、表單、薪資袋', en:'My Desk: own attendance, forms and payslips', admin:'self', hr:'self', manager:'self', owner:'self', employee:'self'},
+ {zh:'查看員工人事資料', en:'View employee records', admin:'yes', hr:'yes', manager:'own', owner:'yes', employee:'self'},
  {key:'salary',   zh:'查看薪資與職等', en:'View pay and pay band'},
  {key:'mobile',   zh:'查看同仁手機號碼', en:'View colleague mobile numbers'},
  {key:'editEmp',  zh:'新增／修改員工資料', en:'Create / edit employee records'},
- {zh:'查看出勤明細', en:'View attendance detail', admin:'yes', hr:'yes', manager:'own', employee:'self'},
+ {zh:'查看出勤明細', en:'View attendance detail', admin:'yes', hr:'yes', manager:'own', owner:'yes', employee:'self'},
  {key:'approve',  zh:'簽核部屬請假', en:'Approve subordinate leave'},
  {key:'finalize', zh:'人資複核（假單生效）', en:'HR countersign (makes leave effective)'},
  {key:'annGroup', zh:'發布全集團公告', en:'Publish group-wide announcements'},
@@ -4597,7 +4575,7 @@ const CAPS=[
  {key:'perms',    zh:'管理角色與權限、系統設定', en:'Manage roles, permissions and settings'},
  {key:'salary', derived:true, zh:'薪資計算與覆核', en:'Run and review payroll', note:{zh:'與「查看薪資」同一權限',en:'Same permission as "View pay"'}}
 ];
-const BUILT_ROLES = ['admin','hr','manager','employee'];
+const BUILT_ROLES = ['admin','hr','manager','owner','employee'];
 const PERM_DEFAULTS = Object.fromEntries(BUILT_ROLES.map(k=>[k,{...ROLES[k].perms}]));
 function capMark(c, k){
   if(!c.key) return c[k];
@@ -4710,29 +4688,29 @@ const QUESTIONS=[
   askEn:'Confirm whether this should differ by leave type: sick and personal leave decided by the director, with HR countersigning only annual and long absences?'}
 ];
 const MEETING_0930=[
- {zh:'員工編號前綴統一', en:'Unify employee-number prefixes',
-  doZh:'系統設定 → 員工編號規則：列出提案（A/B/C 字母前綴，僅示意）。', doEn:'Settings → Employee number rule shows the proposal (A/B/C prefixes, illustrative only).',
-  askZh:'各字母對應哪家公司？是否保留部門代碼？流水號幾碼？現有 CSHR、OXHR 編號如何轉換？', askEn:'Which letter maps to which company? Keep a department code? Serial length? How are existing CSHR / OXHR numbers converted?',
+ {zh:'員工編號規則', en:'Employee number rule',
+  doZh:'已設計：發號公司字母 1 碼 + 流水號 5 碼，不含據點／部門碼，轉調不變；收購公司啟用新字母（系統設定）。', doEn:'Designed: issuing-company letter + 5-digit serial, no site or department code, unchanged on transfer; acquisitions get a new letter (Settings).',
+  askZh:'請確認 A／B／C 各對應哪家公司，以及現有 CSHR、OXHR 編號的轉換時程。', askEn:'Confirm which company gets A / B / C, and the schedule for converting existing CSHR / OXHR numbers.',
   ownZh:'人資、老闆', ownEn:'HR, owner'},
- {zh:'年資保留與回任', en:'Seniority carry-over and rehire',
-  doZh:'新增「年資起算日」：轉調不重置、員編不變；離職後回任才重新起算；特休天數依年資起算日計算。', doEn:'New “seniority from” date: transfers do not reset it; it restarts only on rehire after leaving. Annual leave days use it.',
-  askZh:'轉調前後若屬不同公司是否仍承認年資？留職停薪期間是否計入年資？退休金年資如何承接？', askEn:'Is seniority still recognized when the transfer crosses companies? Does unpaid leave count? How is pension service carried over?',
-  ownZh:'人資', ownEn:'HR'},
+ {zh:'年資（已確認）', en:'Seniority (confirmed)',
+  doZh:'跨據點、跨公司轉調保留年資；留職停薪期間計入年資；離職後回任才重新起算。特休天數依年資起算日計算。', doEn:'Transfers between sites or companies keep seniority; unpaid leave counts; it restarts only on rehire after leaving. Annual leave uses the seniority start date.',
+  askZh:'無。', askEn:'None.',
+  ownZh:'—', ownEn:'—'},
  {zh:'在職狀態三種', en:'Three employment statuses',
   doZh:'員工資料新增狀態：在職、留職停薪、離職，可篩選；狀態變更會寫入任職歷程。', doEn:'Employee records carry Active / Unpaid leave / Left, filterable; changes are logged in the employment history.',
   askZh:'留停與離職時帳號何時停用？留停期間勞健保、出勤與薪資如何處理？', askEn:'When are accounts disabled for unpaid leave and for leaving? How are insurance, attendance and pay handled during unpaid leave?',
   ownZh:'人資、資訊管理員', ownEn:'HR, IT administrator'},
- {zh:'計薪方式：月薪／時薪／拆帳', en:'Pay basis: monthly / hourly / revenue share',
+ {zh:'拆帳制（留待下次會議）', en:'Revenue share (next meeting)',
   doZh:'月薪制、時薪制已可試算；拆帳制只標示、不自動計算，避免算出錯誤金額。', doEn:'Monthly and hourly are calculated; revenue share is flagged and excluded from auto-calculation so no wrong figure is produced.',
-  askZh:'拆帳制適用哪些職位？分帳基數與比例？是否有保底薪資？各職位的標準請提供。', askEn:'Which positions use revenue share? What base and ratio? Is there a guaranteed minimum? Please provide the standard for each position.',
-  ownZh:'人資、各主管', ownEn:'HR, department heads'},
- {zh:'員工個別角色（護理師、社工、督導等）', en:'Per-job employee roles (nurse, social worker, supervisor…)',
-  doZh:'目前只有一個「一般員工」自助頁（個人打卡、請假、特休餘額）；尚未依職位拆分。', doEn:'There is one generic employee self-service page (own punches, leave, balance); not yet split by job.',
-  askZh:'請各職位提供可查看的功能與資料範圍清單，並提供組織架構圖以設定對應權限。', askEn:'Please list the functions and data each job may see, plus the org chart, so permissions can be mapped to positions.',
-  ownZh:'各部門主管', ownEn:'Department heads'},
- {zh:'104 與人保系統能否串接', en:'Can 104 and the case-management system integrate',
+  askZh:'拆帳制適用哪些職位？分帳基數與比例？是否有保底薪資？', askEn:'Which positions use revenue share? What base and ratio? Is there a guaranteed minimum?',
+  ownZh:'人資、各主管（10/7）', ownEn:'HR, department heads (7 Oct)'},
+ {zh:'角色', en:'Roles',
+  doZh:'角色定為：系統管理員、中心主任、經理、老闆，另有一般員工自助頁。老闆可看全部資料（含薪資）並最終核准。', doEn:'Roles: System Admin, Center Director, Manager, Owner, plus employee self-service. The owner sees everything including pay and gives final approval.',
+  askZh:'「經理」是否就是現有人資部經理的權限？老闆是否需要直接核准採購／付款？各職位（護理師、社工、督導）可見功能請各主管提供。', askEn:'Is “Manager” the current HR-manager permission set? Should the owner approve procurement and payments directly? Department heads to list what each job may see.',
+  ownZh:'老闆、各部門主管', ownEn:'Owner, department heads'},
+ {zh:'104 與仁寶系統能否串接', en:'Can 104 and Renbo integrate',
   doZh:'尚未串接。已有打卡、補卡、請假、加班（半小時為單位）與 CSV／Excel 匯出。', doEn:'Not integrated. Punches, corrections, leave and overtime (30-minute units) and CSV export exist.',
-  askZh:'請提供 104 與人保系統的畫面截圖；確認兩者是否提供 API（MCP 較新但有資安風險）。', askEn:'Please share screenshots of 104 and the case-management system, and confirm whether either offers an API (MCP is newer but carries security risk).',
+  askZh:'請提供 104 帳單（人數、模組、月費）與兩系統的畫面截圖；確認兩者是否提供 API（MCP 較新但有資安風險）。', askEn:'Please share the 104 invoice (headcount, modules, monthly fee) and screenshots of both systems; confirm whether either offers an API (MCP is newer but carries security risk).',
   ownZh:'人資、專案 PM', ownEn:'HR, project PM'},
  {zh:'資料存放', en:'Where the data lives',
   doZh:'原型不含後端。建議短期使用雲端，規模擴大後再評估自有硬體，並維持雙備份。', doEn:'The prototype has no backend. Suggested: cloud in the short term, own hardware later, with two backups.',
