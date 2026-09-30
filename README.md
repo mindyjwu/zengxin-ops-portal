@@ -16,8 +16,10 @@ No authentication, no database, no backend required.
 ## 內容 / Contents
 
 - **ltc-portal.html** — 完整互動原型 / Full interactive prototype
-  - 3 個完整角色（系管、人資、院長）
-  - 3 working roles (System Admin, HR Manager, Facility Director)
+  - 4 個完整角色（系管、人資、院長、一般員工）
+  - 4 working roles (System Admin, HR Manager, Facility Director, Employee)
+  - 一般員工使用「私人秘書」自助頁（仿 104）：出勤月曆、打卡、表單申請與追蹤、薪資袋、保險費、所得稅、課程
+  - Employees get a 104-style self-service "My Desk": attendance calendar, clock in/out, forms and tracking, payslips, insurance, tax, courses
   - 公告、人事、權限模組
   - Announcements, HR, Permissions modules
   - 三個待決議題（可透過 ASSUMPTION 開關比較）
