@@ -3,7 +3,7 @@
  *
  * The page is a single-file prototype with in-memory data and a fixed demo
  * date of 2026-09-08. Built roles: admin (E1005, HQ), hr (E1003, HQ),
- * manager (E2101, director of O1 竹北照護院) and employee (E2104, care
+ * manager (E2101, director of O1 竹北日照中心) and employee (E2104, care
  * attendant at O1, self-service 私人秘書 only).
  */
 
@@ -50,7 +50,7 @@ test.describe('Shell & role switching', () => {
     await setRole(page, 'hr');
     await expect(chip).toContainText('人資部經理');
     await setRole(page, 'manager');
-    await expect(chip).toContainText('院長');
+    await expect(chip).toContainText('中心主任');
   });
 
   test('HR module exposes its four tabs', async ({ page }) => {
@@ -79,7 +79,7 @@ test.describe('Data scope', () => {
     await expect(empRows(page)).toHaveCount(8);
     const ids = await empRows(page).evaluateAll(rs => rs.map(r => r.dataset.emp));
     expect(ids.every(id => id.startsWith('E21'))).toBe(true);
-    await expect(page.locator('#view tbody')).not.toContainText('竹東照護院');
+    await expect(page.locator('#view tbody')).not.toContainText('竹東日照中心');
     await expect(page.locator('#offSel')).toBeDisabled();
     await expect(page.locator('#view .note.q')).toContainText('隱藏了 15 位');
   });
@@ -102,8 +102,8 @@ test.describe('Data scope', () => {
   test('manager attendance and leave views are limited to O1', async ({ page }) => {
     await setRole(page, 'manager');
     await go(page, 'hr', 'att');
-    await expect(page.locator('#view')).toContainText('竹北照護院');
-    await expect(page.locator('#view')).not.toContainText('竹東照護院');
+    await expect(page.locator('#view')).toContainText('竹北日照中心');
+    await expect(page.locator('#view')).not.toContainText('竹東日照中心');
 
     await page.click('[data-tab="leave"]');
     await expect(requestRow(page, 'L241')).toHaveCount(1);   // E2103, O1

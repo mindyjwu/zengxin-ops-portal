@@ -28,8 +28,8 @@ fixed at **2026-09-08**.
 | Unit | ID | Staff |
 |------|----|-------|
 | 新竹營運中心 (HQ) | HQ | 6 (E1001–E1006) |
-| 竹北照護院 | O1 | 8 (E2101–E2108) |
-| 竹東照護院 | O2 | 9 (E2201–E2209) |
+| 竹北日照中心 | O1 | 8 (E2101–E2108) |
+| 竹東日照中心 | O2 | 9 (E2201–E2209) |
 | **Total** | | **23** |
 
 ---
@@ -38,7 +38,7 @@ fixed at **2026-09-08**.
 
 Switch roles with the **身分 / Role** selector (`#roleSel`) at the top of every page.
 
-| | 系統管理員 System Admin (`admin`) | 人資部經理 HR Manager (`hr`) | 院長 Facility Director (`manager`) | 一般員工 Employee (`employee`) |
+| | 系統管理員 System Admin (`admin`) | 人資部經理 HR Manager (`hr`) | 中心主任 Center Director (`manager`) | 一般員工 Employee (`employee`) |
 |---|---|---|---|---|
 | Persona | E1005, HQ | E1003, HQ | E2101, director of O1 | E2104, care attendant at O1 |
 | Data scope | All facilities | All facilities | O1 only (all if the assumption toggle is ON) | Own records only; announcements and directory for O1 |
@@ -58,7 +58,7 @@ Switch roles with the **身分 / Role** selector (`#roleSel`) at the top of ever
 | Payroll (financial) CSV export | ❌ | ✅ | ❌ | ❌ |
 | Other CSV exports | ✅ (all facilities) | ✅ (all facilities) | ✅ (O1 only) | ❌ |
 
-The **假設 / Assumption: 主管可跨院查看** button (`#assumeBtn`) is a discussion
+The **假設 / Assumption: 主管可跨據點查看** button (`#assumeBtn`) is a discussion
 toggle: when it is ON, the manager reads all facilities. It is hidden for the
 employee role, whose scope never widens. In every role, nobody can approve their
 own request.
@@ -89,12 +89,12 @@ defined as Phase 2–3 stubs and don't appear in the role selector.
 - [ ] admin and hr see all 23 employees — *Data scope › admin and hr see all 23 employees*
 - [ ] manager sees only the 8 O1 staff; the office filter is disabled; a note says 15 records are hidden — *…manager sees only O1 staff…*
 - [ ] With the assumption toggle ON, manager sees all 23 and the filter is enabled — *…assumption toggle opens the manager…*
-- [ ] admin filtering to 竹東照護院 shows 9 employees — *…office filter narrows admin…*
+- [ ] admin filtering to 竹東日照中心 shows 9 employees — *…office filter narrows admin…*
 - [ ] manager's 出勤管理 and 請假審核 show only O1 — *…manager attendance and leave views are limited to O1*
 
 #### Test 1.3: Announcements, org chart, directory (公告欄)
 - [ ] Board: admin sees all 9 posts; manager sees 8 (group-wide plus O1) — **manual**
-- [ ] Board: admin and hr get **發布公告** (group post); manager gets **發布本院公告** (facility post) — **manual**
+- [ ] Board: admin and hr get **發布公告** (group post); manager gets **發布本中心公告** (facility post) — **manual**
 - [ ] Org chart: every role sees the full structure; for manager, other facilities collapse to "N 位同仁（不在範圍內）" — **manual**
 - [ ] Directory: manager sees 8 / 23, with mobile numbers locked (僅人資／管理員) — **manual**
 
@@ -218,7 +218,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 
 ## Known Gaps & Open Questions
 
-- [ ] **Open question:** should facility directors see other facilities? (the assumption toggle)
+- [ ] **Open question:** should center directors see other facilities? (the assumption toggle)
 - [ ] **Open question:** must payroll calculation and review be done by different people?
 - [ ] **Open question:** should employees see which colleagues are out (同事今天請假或公出嗎？)? The prototype shows names but never the leave type.
 - [ ] **Open question:** 預先加班單 is recorded but does not pay; should an approved pre-approval pre-fill the 加班單?

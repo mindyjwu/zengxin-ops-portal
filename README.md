@@ -1,7 +1,7 @@
-# 誠馨日照營運入口 v2.0
-# Zengxin Day Care Operations Portal v2.0
+# 誠馨日照營運入口 v2.1
+# Zengxin Day Care Operations Portal v2.1
 
-**互動式原型** — 討論用系統，用於確定關鍵決策（院長跨院權限、管理員薪資可見性、請假簽核流程）。
+**互動式原型** — 討論用系統，用於確定關鍵決策（中心主任跨據點權限、管理員薪資可見性、請假簽核流程）。
 
 **Discussion prototype** — visualize three architectural decisions before full development.
 
@@ -16,8 +16,8 @@ No authentication, no database, no backend required.
 ## 內容 / Contents
 
 - **ltc-portal.html** — 完整互動原型 / Full interactive prototype
-  - 4 個完整角色（系管、人資、院長、一般員工）
-  - 4 working roles (System Admin, HR Manager, Facility Director, Employee)
+  - 4 個完整角色（系管、人資、中心主任、一般員工）
+  - 4 working roles (System Admin, HR Manager, Center Director, Employee)
   - 一般員工使用「私人秘書」自助頁（仿 104）：出勤月曆、打卡、表單申請與追蹤、薪資袋、保險費、所得稅、課程
   - Employees get a 104-style self-service "My Desk": attendance calendar, clock in/out, forms and tracking, payslips, insurance, tax, courses
   - 公告、人事、權限模組
@@ -33,7 +33,7 @@ No authentication, no database, no backend required.
 
 | 問題 | 預設 | 影響 |
 |-----|------|------|
-| **Q1** 院長可跨院查看？ | 否（單院） | 隱私 vs. 靈活排班 |
+| **Q1** 中心主任可跨據點查看？ | 否（單一中心） | 隱私 vs. 靈活排班 |
 | **Q2** 管理員看薪資？ | 否（隱藏） | 流程控制 vs. 技術隔離 |
 | **Q3** 請假需複核？ | 是（兩層） | 控管 vs. 速度 |
 
@@ -54,4 +54,4 @@ No authentication, no database, no backend required.
 ---
 
 Made with User + AI tools.  
-v2.0 · Sept 2026
+v2.1 · Sept 2026
