@@ -335,13 +335,13 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
    All data below is FICTIONAL and generated in-memory. No auth, no database.
    ========================================================================= */
 
-/* ---------- offices (2 care homes in Hsinchu + operations HQ) ---------- */
+/* ---------- offices (2 day care centers in Hsinchu + operations HQ) ---------- */
 /* v2.0 prototype: currently Hsinchu only. Future phases: Taichung (Phase 2), Changhua (Phase 3) */
 const OFFICES = [
-  {id:'O1', zh:'竹北照護院',  en:'Hsinchu Zhuibei',  code:'HC-01', city:{zh:'新竹縣竹北市',en:'Hsinchu Zhuibei'},  beds:64},
-  {id:'O2', zh:'竹東照護院',  en:'Hsinchu Zhudong',  code:'HC-02', city:{zh:'新竹縣竹東鎮',en:'Hsinchu Zhudong'},  beds:56}
+  {id:'O1', zh:'竹北日照中心', en:'Zhubei Day Care Center',  code:'HC-01', city:{zh:'新竹縣竹北市',en:'Zhubei, Hsinchu'},  capacity:60},
+  {id:'O2', zh:'竹東日照中心', en:'Zhudong Day Care Center', code:'HC-02', city:{zh:'新竹縣竹東鎮',en:'Zhudong, Hsinchu'}, capacity:45}
 ];
-const HQ = {id:'HQ', zh:'新竹營運中心', en:'Hsinchu Operations Center', code:'HQ', city:{zh:'新竹縣',en:'Hsinchu'}, beds:0};
+const HQ = {id:'HQ', zh:'新竹營運中心', en:'Hsinchu Operations Center', code:'HQ', city:{zh:'新竹縣',en:'Hsinchu'}, capacity:0};   // capacity = 核定收托人數
 const ALL_UNITS = [HQ].concat(OFFICES);
 const unit = id => ALL_UNITS.find(o=>o.id===id) || HQ;
 
@@ -357,7 +357,7 @@ const TITLES = {
   ceo:{zh:'執行長',en:'Chief Executive'},         coo:{zh:'營運長',en:'Chief Operating Officer'},
   hrd:{zh:'人資部經理',en:'HR Manager'},           fin:{zh:'財務部經理',en:'Finance Manager'},
   it:{zh:'資訊管理專員',en:'IT Administrator'},     hrs:{zh:'人資專員',en:'HR Specialist'},
-  dir:{zh:'院長',en:'Facility Director'},          hn:{zh:'護理長',en:'Head Nurse'},
+  dir:{zh:'中心主任',en:'Center Director'},          hn:{zh:'護理長',en:'Head Nurse'},
   rn:{zh:'護理師',en:'Registered Nurse'},          ca:{zh:'照顧服務員',en:'Care Attendant'},
   sw:{zh:'社工師',en:'Social Worker'},             ot:{zh:'職能治療師',en:'Occupational Therapist'},
   adm:{zh:'行政專員',en:'Administrative Officer'},  die:{zh:'營養師',en:'Dietitian'},
@@ -381,7 +381,7 @@ const RAW = [
  ['E1005','資訊管理員','HQ','it','isd','2021-08-01','140','P3',78000,'full','E1002'],
  ['E1006','人資專員','HQ','hrs','hr','2022-05-18','121','P2',54000,'full','E1003'],
 
- ['E2101','院長','O1','dir','exec','2017-09-11','201','M3',125000,'full','E1002'],
+ ['E2101','中心主任','O1','dir','exec','2017-09-11','201','M3',125000,'full','E1002'],
  ['E2102','護理長','O1','hn','nur','2018-11-05','202','P3',76000,'full','E2101'],
  ['E2103','護理師','O1','rn','nur','2020-01-23','203','P2',58000,'full','E2102'],
  ['E2104','照服員','O1','ca','care','2021-04-16','204','G2',38000,'full','E2102'],
@@ -390,7 +390,7 @@ const RAW = [
  ['E2107','照服員','O1','ca','care','2023-03-14','207','G2',37500,'part','E2102'],
  ['E2108','護理師','O1','rn','nur','2023-07-21','208','P2',57000,'full','E2102'],
 
- ['E2201','院長','O2','dir','exec','2016-05-27','301','M3',125000,'full','E1002'],
+ ['E2201','中心主任','O2','dir','exec','2016-05-27','301','M3',125000,'full','E1002'],
  ['E2202','護理長','O2','hn','nur','2018-02-08','302','P3',76500,'full','E2201'],
  ['E2203','護理師','O2','rn','nur','2019-09-13','303','P2',58500,'full','E2202'],
  ['E2204','照服員','O2','ca','care','2020-07-01','304','G2',38500,'full','E2202'],
@@ -416,47 +416,47 @@ const ymd = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+
 const ANN_CAT = {
   policy:{zh:'政策公告',en:'Policy',cls:'info'}, hr:{zh:'人事',en:'HR',cls:'acc'},
   training:{zh:'教育訓練',en:'Training',cls:'ok'}, safety:{zh:'感控與安全',en:'Safety',cls:'crit'},
-  facility:{zh:'院務',en:'Facility',cls:'warn'}
+  facility:{zh:'中心事務',en:'Center',cls:'warn'}
 };
 const ANNOUNCEMENTS = [
  {id:'A09', date:'2026-09-07', cat:'safety', scope:'ALL', pin:true, author:'E1002',
   zh:'115年度秋季流感疫苗接種作業啟動',
   en:'2026 Autumn Influenza Vaccination Programme Begins',
-  bodyZh:'各院區自 9 月 15 日起依序辦理住民及工作人員流感疫苗接種。請各院護理長於 9 月 12 日前完成接種意願造冊，並回傳至總部護理督導信箱。\n\n接種當日請安排一名護理師全程留觀 30 分鐘，並確實記錄不良反應通報表。',
-  bodyEn:'Influenza vaccination for residents and staff starts 15 Sept at all facilities. Head nurses must submit consent rosters to the group nursing supervisor by 12 Sept.\n\nOn vaccination day, assign one nurse to observe recipients for 30 minutes and complete the adverse-reaction reporting form.'},
+  bodyZh:'各據點自 9 月 15 日起依序辦理長輩及工作人員流感疫苗接種。請各中心護理長於 9 月 12 日前完成接種意願造冊，並回傳至總部護理督導信箱。\n\n接種當日請安排一名護理師全程留觀 30 分鐘，並確實記錄不良反應通報表。',
+  bodyEn:'Influenza vaccination for older adults in our care and staff starts 15 Sept at all sites. Head nurses must submit consent rosters to the group nursing supervisor by 12 Sept.\n\nOn vaccination day, assign one nurse to observe recipients for 30 minutes and complete the adverse-reaction reporting form.'},
  {id:'A08', date:'2026-09-04', cat:'policy', scope:'ALL', pin:true, author:'E1001',
   zh:'長照機構評鑑準備啟動說明',
   en:'Facility Accreditation Preparation Kick-off',
-  bodyZh:'新竹衛生部門將於 115 年第四季辦理長照機構評鑑。營運中心已成立準備小組，第一次會議訂於 9 月 22 日下午 2 時舉行，各院請派院長及護理長出席。\n\n文件準備清單將另行於「文件管理」模組發布（本原型尚未建置）。',
-  bodyEn:'Local health authorities will conduct facility accreditation in Q4 2026. A preparation team has been formed; the first meeting is 22 Sept, 14:00. Each facility should send its director and head nurse.\n\nThe document checklist will be published in the Document Control module (not built in this prototype).'},
+  bodyZh:'新竹衛生部門將於 115 年第四季辦理長照機構評鑑。營運中心已成立準備小組，第一次會議訂於 9 月 22 日下午 2 時舉行，各中心請派中心主任及護理長出席。\n\n文件準備清單將另行於「文件管理」模組發布（本原型尚未建置）。',
+  bodyEn:'Local health authorities will conduct facility accreditation in Q4 2026. A preparation team has been formed; the first meeting is 22 Sept, 14:00. Each center should send its director and head nurse.\n\nThe document checklist will be published in the Document Control module (not built in this prototype).'},
  {id:'A07', date:'2026-09-02', cat:'hr', scope:'ALL', pin:false, author:'E1003',
   zh:'115年度特休假結算與請假系統轉換',
   en:'2026 Annual Leave Reconciliation & Leave System Migration',
-  bodyZh:'自 10 月 1 日起，紙本請假單停止使用，一律改由本系統線上申請。9 月 30 日前未使用之特休假時數將依勞基法規定結算。\n\n各院主管請於 9 月 25 日前完成部屬待審請假單簽核。',
-  bodyEn:'From 1 Oct, paper leave forms are discontinued; all leave must be filed in this system. Unused annual leave as of 30 Sept will be reconciled per the Labor Standards Act.\n\nFacility directors must clear all pending leave approvals for their staff by 25 Sept.'},
+  bodyZh:'自 10 月 1 日起，紙本請假單停止使用，一律改由本系統線上申請。9 月 30 日前未使用之特休假時數將依勞基法規定結算。\n\n各中心主管請於 9 月 25 日前完成部屬待審請假單簽核。',
+  bodyEn:'From 1 Oct, paper leave forms are discontinued; all leave must be filed in this system. Unused annual leave as of 30 Sept will be reconciled per the Labor Standards Act.\n\nCenter directors must clear all pending leave approvals for their staff by 25 Sept.'},
  {id:'A06', date:'2026-08-28', cat:'training', scope:'ALL', pin:false, author:'E1003',
   zh:'照顧服務員繼續教育時數提醒（第三季）',
   en:'Care Attendant Continuing Education Hours — Q3 Reminder',
-  bodyZh:'依規定照顧服務員每年須完成 20 小時繼續教育。系統統計截至 8 月底，本院區仍有同仁時數不足，名單已由主管級發送。\n\n9 月 18 日將於竹北院辦理實體補課場次，竹東院同仁可跨院報名。',
-  bodyEn:'Care attendants must complete 20 hours of continuing education per year. As of end-August, some staff are short of hours; lists have been sent to directors.\n\nA make-up session runs 18 Sept at Zhuibei and is open to all facilities.'},
+  bodyZh:'依規定照顧服務員每年須完成 20 小時繼續教育。系統統計截至 8 月底，本據點仍有同仁時數不足，名單已由主管級發送。\n\n9 月 18 日將於竹北中心辦理實體補課場次，竹東中心同仁也可報名。',
+  bodyEn:'Care attendants must complete 20 hours of continuing education per year. As of end-August, some staff are short of hours; lists have been sent to directors.\n\nA make-up session runs 18 Sept at Zhubei and is open to staff from both centers.'},
  {id:'A05', date:'2026-09-05', cat:'facility', scope:'O1', pin:false, author:'E2101',
-  zh:'竹北院二樓浴室整修施工通知（9/14–9/25）',
-  en:'Zhuibei 2F Bathroom Renovation Notice (14–25 Sept)',
-  bodyZh:'二樓公共浴室自 9 月 14 日起整修，期間住民沐浴改於三樓浴室，請照服員依調整後之沐浴時段表執行。\n\n施工時間為每日 09:00–16:00，如有噪音影響住民作息請即時回報行政。',
-  bodyEn:'The 2F shared bathroom will be renovated from 14 Sept. Residents will bathe on 3F during this period; care attendants should follow the revised bathing schedule.\n\nWork runs 09:00–16:00 daily. Report any disturbance to residents to the administration office.'},
+  zh:'竹北中心二樓浴室整修施工通知（9/14–9/25）',
+  en:'Zhubei 2F Bathroom Renovation Notice (14–25 Sept)',
+  bodyZh:'二樓公共浴室自 9 月 14 日起整修，期間長輩沐浴服務改於三樓浴室，請照服員依調整後之沐浴時段表執行。\n\n施工時間為每日 09:00–16:00，如有噪音影響長輩午休請即時回報行政。',
+  bodyEn:'The 2F shared bathroom will be renovated from 14 Sept. Bathing assistance for older adults moves to 3F during this period; care attendants should follow the revised bathing schedule.\n\nWork runs 09:00–16:00 daily. Report any noise that disturbs the afternoon rest to the administration office.'},
  {id:'A04', date:'2026-09-03', cat:'facility', scope:'O2', pin:false, author:'E2201',
-  zh:'竹東院新住民入住前置作業分工',
-  en:'Zhudong — Pre-admission Workflow for New Residents',
-  bodyZh:'本月新增住民，入住前評估請於入住前 3 個工作天完成，社工與護理各自完成評估表後上傳共用資料夾。',
-  bodyEn:'New residents arrive this month. Pre-admission assessments must be completed three working days before admission; social work and nursing each upload their assessment forms to the shared folder.'},
+  zh:'竹東中心新個案收案前置作業分工',
+  en:'Zhudong — Intake Workflow for New Clients',
+  bodyZh:'本月新增個案，收案評估請於首次到中心前 3 個工作天完成，社工與護理各自完成評估表後上傳共用資料夾。',
+  bodyEn:'New clients start this month. Intake assessments must be completed three working days before their first day at the center; social work and nursing each upload their assessment forms to the shared folder.'},
  {id:'A03', date:'2026-08-31', cat:'safety', scope:'O1', pin:false, author:'E2101',
-  zh:'竹北院消防演練檢討與改善事項',
-  en:'Zhuibei — Fire Drill Review and Corrective Actions',
-  bodyZh:'8 月 26 日消防演練檢討：夜間人力疏散動線需再演練一次，訂於 9 月 11 日夜班時段辦理，請夜班同仁全員參加。',
-  bodyEn:'Review of the 26 Aug fire drill: the night-shift evacuation route needs one more run-through, scheduled for 11 Sept during the night shift. All night-shift staff must attend.'},
+  zh:'竹北中心消防演練檢討與改善事項',
+  en:'Zhubei — Fire Drill Review and Corrective Actions',
+  bodyZh:'8 月 26 日消防演練檢討：長輩午休時段的疏散動線需再演練一次，訂於 9 月 11 日下午 1 時辦理，請當班同仁全員參加。',
+  bodyEn:'Review of the 26 Aug fire drill: the evacuation route during the afternoon rest needs one more run-through, scheduled for 11 Sept at 13:00. All staff on duty must attend.'},
  {id:'A02', date:'2026-08-26', cat:'hr', scope:'O1', pin:false, author:'E2101',
-  zh:'竹北院九月班表公布',
-  en:'Zhuibei — September Shift Roster Published',
+  zh:'竹北中心九月班表公布',
+  en:'Zhubei — September Shift Roster Published',
   bodyZh:'九月班表已公布於護理站，換班需經護理長同意並登錄於本系統出勤模組。',
   bodyEn:'The September roster is posted at the nursing station. Shift swaps require head-nurse approval and must be logged in the attendance module.'},
  {id:'A01', date:'2026-08-20', cat:'training', scope:'ALL', pin:false, author:'E1006',
@@ -470,10 +470,10 @@ const ANNOUNCEMENTS = [
 const EVENTS = [
  {d:'2026-09-01', type:'hr',    scope:'ALL', zh:'新進人員職前訓練', en:'New-hire orientation'},
  {d:'2026-09-03', type:'train', scope:'O2',  zh:'失智照護實務工作坊', en:'Dementia care workshop'},
- {d:'2026-09-05', type:'event', scope:'O1',  zh:'住民中秋手作活動', en:'Resident Mid-Autumn craft activity'},
+ {d:'2026-09-05', type:'event', scope:'O1',  zh:'長輩中秋手作活動', en:'Mid-Autumn craft activity for older adults'},
  {d:'2026-09-08', type:'hr',    scope:'ALL', zh:'月度營運會議', en:'Monthly operations meeting'},
  {d:'2026-09-09', type:'train', scope:'O1',  zh:'感染管制在職教育', en:'Infection control in-service'},
- {d:'2026-09-11', type:'audit', scope:'O1',  zh:'夜間消防疏散演練', en:'Night-shift evacuation drill'},
+ {d:'2026-09-11', type:'audit', scope:'O1',  zh:'午休時段消防疏散演練', en:'Afternoon-rest evacuation drill'},
  {d:'2026-09-14', type:'audit', scope:'O1',  zh:'二樓浴室整修進場', en:'2F bathroom renovation starts'},
  {d:'2026-09-15', type:'hr',    scope:'ALL', zh:'流感疫苗接種開始', en:'Influenza vaccination begins'},
  {d:'2026-09-16', type:'train', scope:'O2',  zh:'跌倒預防個案研討', en:'Fall-prevention case review'},
@@ -486,7 +486,7 @@ const EVENTS = [
 ];
 const EV_TYPE = {
   train:{zh:'教育訓練',en:'Training'}, audit:{zh:'查核與演練',en:'Audit & drill'},
-  hr:{zh:'人事行政',en:'HR & admin'},  event:{zh:'住民活動',en:'Resident activity'}
+  hr:{zh:'人事行政',en:'HR & admin'},  event:{zh:'長輩活動',en:'Activities for older adults'}
 };
 
 /* ---------- leave requests ---------- */
@@ -573,12 +573,12 @@ let LEAVE = [
 ];
 /* 加班申請 */
 let OT_REQ = [
- {id:'OT31', emp:'E2104', date:'2026-09-04', start:'17:00', end:'20:00', hours:3, comp:'pay',  filed:'2026-09-04', status:'pending',  note:{zh:'住民夜間送醫陪同',en:'Accompanied resident to ER'}},
+ {id:'OT31', emp:'E2104', date:'2026-09-04', start:'17:00', end:'20:00', hours:3, comp:'pay',  filed:'2026-09-04', status:'pending',  note:{zh:'長輩送醫陪同，延後下班',en:'Escorted an older adult to hospital; left late'}},
  {id:'OT32', emp:'E2203', date:'2026-09-05', start:'08:00', end:'12:00', hours:4, comp:'comp', filed:'2026-09-03', status:'pending',  note:{zh:'週六評鑑資料整理',en:'Saturday accreditation prep'}},
  {id:'OT21', emp:'E2208', date:'2026-08-29', start:'17:00', end:'19:00', hours:2, comp:'comp', filed:'2026-08-29', status:'approved', note:{zh:'家屬座談',en:'Family meeting'}},
  {id:'OT22', emp:'E1005', date:'2026-08-20', start:'17:00', end:'21:00', hours:4, comp:'comp', filed:'2026-08-20', status:'approved', note:{zh:'系統維護',en:'System maintenance'}},
  {id:'OT23', emp:'E2104', date:'2026-08-15', start:'08:00', end:'12:00', hours:4, comp:'pay',  filed:'2026-08-14', status:'approved', note:{zh:'週六人力支援',en:'Saturday cover shift'}},
- {id:'OT24', emp:'E2203', date:'2026-08-12', start:'17:00', end:'20:30', hours:3.5, comp:'pay', filed:'2026-08-12', status:'approved', note:{zh:'住民病況觀察',en:'Resident observation'}},
+ {id:'OT24', emp:'E2203', date:'2026-08-12', start:'17:00', end:'20:30', hours:3.5, comp:'pay', filed:'2026-08-12', status:'approved', note:{zh:'長輩病況觀察，等候家屬接回',en:'Observed an unwell older adult until family pick-up'}},
  {id:'OT25', emp:'E2102', date:'2026-08-26', start:'17:00', end:'19:00', hours:2, comp:'pay',  filed:'2026-08-26', status:'approved', note:{zh:'評鑑資料整理',en:'Accreditation prep'}},
  {id:'OT26', emp:'E2201', date:'2026-08-29', start:'09:00', end:'19:00', hours:10, comp:'pay', filed:'2026-08-28', status:'approved', note:{zh:'週六家屬座談與消防演練',en:'Saturday family council and fire drill'}}
 ];
@@ -631,7 +631,7 @@ const ROLES = {
   hr:{ id:'hr', zh:'人資部經理', en:'HR Manager', persona:'E1003', allOffices:true, built:true,
     perms:{ salary:true, editEmp:true, mobile:true, approve:true, finalize:true,
             annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
-  manager:{ id:'manager', zh:'院長／單位主管', en:'Facility Director', persona:'E2101', allOffices:false, built:true,
+  manager:{ id:'manager', zh:'中心主任／單位主管', en:'Center Director', persona:'E2101', allOffices:false, built:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false,
             annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
   /* 一般員工：只用「私人秘書」自助頁面（對應 104 私人秘書），資料範圍僅限本人 */
@@ -847,7 +847,7 @@ function renderShell(){
         </div>
         ${role().selfOnly?'':`<button class="assume" id="assumeBtn" aria-pressed="${state.crossOffice}" title="${both('切換此假設以進行討論','Toggle this assumption for discussion')}">
           <span class="switch"></span>
-          <span><small>${both('假設','Assumption')}</small> <b>${both('主管可跨院查看','Managers see all facilities')}</b></span>
+          <span><small>${both('假設','Assumption')}</small> <b>${both('主管可跨據點查看','Managers see all facilities')}</b></span>
         </button>`}
         <div class="spacer"></div>
         <div class="seg" role="group" aria-label="Language">
@@ -891,8 +891,8 @@ function renderShell(){
   if(ab) ab.onclick = ()=>{
     state.crossOffice=!state.crossOffice; state.office='ALL'; render();
     toast(state.crossOffice
-      ? both('假設已開啟：主管可查看全部 7 個據點','Assumption ON: managers can see all 7 facilities')
-      : both('假設已關閉：主管僅限本院資料','Assumption OFF: managers are limited to their own facility'));
+      ? both('假設已開啟：主管可查看所有據點','Assumption ON: managers can see every site')
+      : both('假設已關閉：主管僅限本中心資料','Assumption OFF: managers are limited to their own facility'));
   };
 }
 
@@ -904,15 +904,15 @@ function scopeBanner(){
         'Employee: attendance, leave, pay and personnel data are limited to yourself; announcements and the directory to '+unit(me().unit).en+'.'))}
     </div></div>`;
   const scopeTxt = r.allOffices
-    ? both('此身分可跨 7 個據點查看','This role reads across all 7 facilities')
-    : (open ? both('假設開啟中：主管目前可跨 7 個據點查看','Assumption ON: this manager currently reads all 7 facilities')
+    ? both('此身分可跨所有據點查看','This role reads across every site')
+    : (open ? both('假設開啟中：主管目前可跨所有據點查看','Assumption ON: this manager currently reads every site')
             : both('預設：主管僅能查看所屬據點（'+unit(me().unit).zh+'）','Default: this manager reads only '+unit(me().unit).en));
   return `<div class="scopebar ${open&&!r.allOffices?'is-open':''}">
     <div>
       <b>${both('資料範圍','Data scope')}</b> — ${esc(scopeTxt)}
       <span class="q">${esc(both(
-        '待決議題：主管應看到全集團 7 院的人事與出勤資料，還是僅限自己院區？請用上方「假設」開關比較兩種情境。',
-        'Open question: should facility directors see HR and attendance data for all 7 facilities, or only their own? Use the Assumption switch above to compare both.'))}</span>
+        '待決議題：中心主任應看到所有據點的人事與出勤資料，還是僅限自己的中心？請用上方「假設」開關比較兩種情境。',
+        'Open question: should center directors see HR and attendance data for every site, or only their own center? Use the Assumption switch above to compare both.'))}</span>
     </div>
   </div>`;
 }
@@ -984,7 +984,7 @@ function viewArchScope(){
           <div style="border-left:3px solid var(--ok);padding-left:12px">
             <div style="font-weight:600">${esc(both('權限與範圍 / Roles','Roles & Permissions'))}</div>
             <div style="font-size:13px;color:var(--ink-2)">
-              ${esc(both('✓ 4 個完整角色示意（系管、人資、院長、一般員工）、權限矩陣、跨院區假設開關、員工「私人秘書」自助頁',
+              ${esc(both('✓ 4 個完整角色示意（系管、人資、中心主任、一般員工）、權限矩陣、跨據點假設開關、員工「私人秘書」自助頁',
                          '✓ 4 full roles demonstrated (admin, HR, director, employee), permission matrix, cross-facility toggle, employee self-service "My Desk".'))}
             </div>
           </div>
@@ -1075,9 +1075,9 @@ function viewArchRoles(){
             <tr style="border-bottom:1px solid var(--line);padding:8px 0">
               <td style="padding:8px;font-weight:500">${esc(L(r))}</td>
               <td style="padding:8px;font-size:13px;color:var(--ink-2)">
-                ${r.id==='admin' ? esc(both('系統配置、全集團公告、員工資料編輯、所有院區存取','Configuration, group announcements, employee data management, all facilities access.')) :
+                ${r.id==='admin' ? esc(both('系統配置、全集團公告、員工資料編輯、所有據點存取','Configuration, group announcements, employee data management, all facilities access.')) :
                   r.id==='hr' ? esc(both('薪資/請假核定、人資審核、教育訓練記錄、全集團報表','Salary approvals, leave finalization, training records, group reports.')) :
-                  r.id==='manager' ? esc(both('本院公告、請假核准（初層）、員工出勤查詢、本院組織圖','Facility announcements, leave initial approval, attendance viewing, own facility org chart.')) :
+                  r.id==='manager' ? esc(both('本中心公告、請假核准（初層）、員工出勤查詢、本中心組織圖','Facility announcements, leave initial approval, attendance viewing, own facility org chart.')) :
                   r.id==='employee' ? esc(both('私人秘書：出勤月曆、打卡、請假／加班／公出等表單、薪資袋、保險費、所得稅、課程；資料僅限本人','My Desk: attendance calendar, clock in/out, leave / overtime / off-site forms, payslips, insurance, tax and courses — own data only.')) :
                   ''}
               </td>
@@ -1104,7 +1104,7 @@ function viewArchRoles(){
                   r.id==='nurse' ? esc(both('護理管理、感控、照護計畫覆核','Nursing management, infection control, care plan review.')) :
                   r.id==='care' ? esc(both('照顧服務管理、評估表、滿意度追蹤','Care services mgmt, assessments, satisfaction tracking.')) :
                   r.id==='social' ? esc(both('個案管理、家屬溝通、資源轉介','Case management, family communication, resource referrals.')) :
-                  r.id==='company' ? esc(both('公司層級營運、跨院區協調','Company-level operations, cross-facility coordination.')) :
+                  r.id==='company' ? esc(both('公司層級營運、跨據點協調','Company-level operations, cross-facility coordination.')) :
                   ''}
               </td>
             </tr>
@@ -1160,7 +1160,7 @@ function viewBoard(){
         ${can('annGroup')
           ? `<button class="btn mini" data-new="group">${esc(both('發布公告','New post'))}</button>`
           : can('annOffice')
-            ? `<button class="btn mini" data-new="office">${esc(both('發布本院公告','New facility post'))}</button>`
+            ? `<button class="btn mini" data-new="office">${esc(both('發布本中心公告','New facility post'))}</button>`
             : ''}
       </div>
       ${list.map(a=>`
@@ -1176,7 +1176,7 @@ function viewBoard(){
           </span>
         </button>`).join('')}
       ${hidden>0 && !role().allOffices ? `<div class="note" style="margin:12px;border-left-color:var(--warn)">
-          ${esc(both(hidden+' 則其他院區公告未顯示 — 依目前資料範圍過濾。',
+          ${esc(both(hidden+' 則其他據點公告未顯示 — 依目前資料範圍過濾。',
                      hidden+' announcements from other facilities are hidden by the current data scope.'))}
         </div>`:''}
     </section>
@@ -1208,7 +1208,7 @@ BINDERS['ann:board']=function(){
   document.querySelectorAll('[data-ann]').forEach(b=>b.onclick=()=>{ state.annId=b.dataset.ann; render(); });
   document.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>{
     const g=b.dataset.new==='group';
-    toast(both(g?'原型示意：此身分可發布全集團公告':'原型示意：此身分僅能發布本院（'+unit(me().unit).zh+'）公告',
+    toast(both(g?'原型示意：此身分可發布全集團公告':'原型示意：此身分僅能發布本中心（'+unit(me().unit).zh+'）公告',
                g?'Prototype: this role can post group-wide announcements':'Prototype: this role can post only for '+unit(me().unit).en));
   });
 };
@@ -1302,7 +1302,7 @@ function viewOrg(){
   <section class="card">
     <div class="card-h">
       <h2>${esc(both('集團組織圖','Group org chart'))}</h2>
-      <span class="en">${STAFF.length} ${esc(both('人 · 7 據點 + 總部','people · 7 facilities + HQ'))}</span>
+      <span class="en">${STAFF.length} ${esc(both('人 · '+OFFICES.length+' 個日照中心 + 總部','people · '+OFFICES.length+' day care centers + HQ'))}</span>
       <div class="spacer"></div>
       <span class="chip ${scopeLocked()?'warn':'acc'}">${esc(scopeLocked()
         ? both('灰階節點超出您的資料範圍','Dimmed nodes are outside your data scope')
@@ -1357,7 +1357,7 @@ function viewDirectory(){
       <input type="search" id="dirQ" placeholder="${esc(both('搜尋姓名、職稱、分機','Search name, title, extension'))}" value="${esc(state.dirQ)}" style="min-width:230px">
     </div>
     ${hidden>0?`<div class="note ${scopeLocked()?'q':''}" style="margin:12px 14px 0">${esc(both(
-        hidden+' 位其他院區同仁未顯示（資料範圍：'+(scopeLocked()?unit(me().unit).zh:'已篩選')+'）。若主管需跨院聯絡，通訊錄是否應全集團開放？',
+        hidden+' 位其他據點同仁未顯示（資料範圍：'+(scopeLocked()?unit(me().unit).zh:'已篩選')+'）。若主管需跨據點聯絡，通訊錄是否應全集團開放？',
         hidden+' colleagues at other facilities are hidden by the current data scope. If directors need to contact peers across facilities, should the directory be group-wide?'))}</div>`:''}
     <div class="dirgrid">
       ${list.map(p=>`
@@ -1405,14 +1405,14 @@ function viewEmployees(){
       <div class="tile"><span class="k">${esc(both('範圍內人數','Headcount in scope'))}</span><span class="v">${list.length}</span>
         <span class="d">${esc(both('全集團 '+STAFF.length+' 人','of '+STAFF.length+' group-wide'))}</span></div>
       <div class="tile"><span class="k">${esc(both('據點數','Facilities in scope'))}</span><span class="v">${units.filter(u=>u!=='HQ').length}</span>
-        <span class="d">${esc(both('全集團 7 據點','of 7 facilities'))}</span></div>
+        <span class="d">${esc(both('全集團 '+ALL_UNITS.length+' 個據點','of '+ALL_UNITS.length+' sites'))}</span></div>
       <div class="tile"><span class="k">${esc(both('平均年資','Average tenure'))}</span><span class="v">${tenure}</span><span class="d">${esc(both('年','years'))}</span></div>
       <div class="tile"><span class="k">${esc(both('部分工時','Part-time'))}</span><span class="v">${part}</span><span class="d">${esc(both('人','people'))}</span></div>
       <div class="tile"><span class="k">${esc(both('證照 90 天內到期','Licenses expiring ≤90d'))}</span><span class="v">${licSoon}</span><span class="d">${esc(both('張，點選員工查看','licenses — open a record'))}</span></div>
     </div>
     ${hidden>0?`<div class="note ${scopeLocked()?'q':''}">${esc(both(
-      '目前資料範圍隱藏了 '+hidden+' 位同仁的人事資料。'+(scopeLocked()?'這正是待決議題：院長是否需要看到其他院區的人事資料（例如支援調度、跨院徵才）？':''),
-      hidden+' employee records are hidden by the current data scope.'+(scopeLocked()?' This is the open question: do facility directors need records from other facilities (e.g. staff loans, cross-facility hiring)?':'')))}</div>`:''}
+      '目前資料範圍隱藏了 '+hidden+' 位同仁的人事資料。'+(scopeLocked()?'這正是待決議題：中心主任是否需要看到其他據點的人事資料（例如支援調度、跨據點徵才）？':''),
+      hidden+' employee records are hidden by the current data scope.'+(scopeLocked()?' This is the open question: do center directors need records from other facilities (e.g. staff loans, cross-facility hiring)?':'')))}</div>`:''}
     <section class="card">
       <div class="card-h">
         <h2>${esc(both('員工資料','Employee records'))}</h2>
@@ -2098,7 +2098,7 @@ function myWorkLog(){
         <div><button type="submit" class="btn">${esc(both('登錄','Log'))}</button></div>
       </div>
       <div><label>${esc(both('工作內容（選填）','Details (optional)'))}</label>
-        <textarea name="notes" placeholder="${esc(both('例如：照護住民、新住民入住、感染控制會議','e.g. resident care, new admission, infection-control meeting'))}"></textarea></div>
+        <textarea name="notes" placeholder="${esc(both('例如：長輩照顧、新個案收案、感染控制會議','e.g. care for older adults, new-client intake, infection-control meeting'))}"></textarea></div>
     </form>
     ${log.length?`<div class="tablewrap"><table>
       <thead><tr><th>${bi('日期','Date')}</th><th>${bi('時數','Hours')}</th><th>${bi('類別','Type')}</th><th>${bi('內容','Details')}</th><th></th></tr></thead>
@@ -3029,7 +3029,7 @@ function viewAttendance(){
           <td class="num">${r.late}</td><td class="num">${r.miss}</td></tr>`).join('')}
         </tbody></table></div>
       ${scopeLocked()?`<div class="note q" style="margin:12px 14px">${esc(both(
-        '目前僅顯示 '+unit(me().unit).zh+' 的出勤。跨院比較（例如人力調度、加班控管）是否應開放給院長？請切換上方假設開關。',
+        '目前僅顯示 '+unit(me().unit).zh+' 的出勤。跨據點比較（例如人力調度、加班控管）是否應開放給中心主任？請切換上方假設開關。',
         'Only '+unit(me().unit).en+' is shown. Should cross-facility comparison (staff loans, overtime control) be available to directors? Use the Assumption switch above.'))}</div>`:''}
     </section>
     <section class="card">
@@ -3113,7 +3113,7 @@ function viewLeave(){
       <div class="tile"><span class="k">${esc(both('範圍內加班總時數','Overtime hours in scope'))}</span><span class="v">${fmtH(ots.filter(o=>o.status!=='rejected').reduce((a,o)=>a+o.hours,0))}</span><span class="d">${esc(both('小時','hours'))}</span></div>
     </div>
     <div class="note q">${esc(both(
-      '待決議題（流程）：院長核准後，是否仍需人資複核才生效？本原型預設「需要」— 院長核准 → 待人資複核 → 生效。',
+      '待決議題（流程）：中心主任核准後，是否仍需人資複核才生效？本原型預設「需要」— 中心主任核准 → 待人資複核 → 生效。',
       'Open question (workflow): after a director approves, must HR countersign before the leave takes effect? The prototype assumes YES — director approves → HR countersigns → effective.'))}</div>
     <section class="card">
       <div class="card-h"><h2>${esc(both('請假申請','Leave requests'))}</h2>
@@ -3226,7 +3226,7 @@ function viewDocCompliance(){
             <td>${esc(both('機構基本資料與執照','Facility registration & license'))}</td>
             <td>${esc(both('行政部','Administration'))}</td>
             <td><span class="chip acc">${esc(both('備齊','Complete'))}</span></td>
-            <td class="muted">${esc(both('2 院區營利登記、長照執照','Both facilities, business registration'))}</td>
+            <td class="muted">${esc(both('2 個日照中心的長照機構設立許可','Long-term care licences for both day care centers'))}</td>
           </tr>
           <tr>
             <td>${esc(both('人事檔案與職業安全','Staff files & occupational safety'))}</td>
@@ -3334,7 +3334,7 @@ function viewDocMeeting(){
             <td class="mono">2026-09-22</td>
             <td>${esc(both('評鑑準備小組第一次會議','Accreditation Prep Meeting #1'))}</td>
             <td>${esc(both('執行長','CEO'))}</td>
-            <td>${esc(both('各院院長、護理長','Facility directors & head nurses'))}</td>
+            <td>${esc(both('各中心主任、護理長','Center directors & head nurses'))}</td>
             <td style="white-space:normal;max-width:220px">${esc(both(
               '文件清單說明、評鑑時程、各部門分工',
               'Document checklist, timeline, departmental tasks'))}</td>
@@ -3343,7 +3343,7 @@ function viewDocMeeting(){
             <td class="mono">2026-09-08</td>
             <td>${esc(both('月度營運會議','Monthly Operations Meeting'))}</td>
             <td>${esc(both('營運長','COO'))}</td>
-            <td>${esc(both('中心與院區主管','HQ & facility management'))}</td>
+            <td>${esc(both('總部與各中心主管','HQ & center management'))}</td>
             <td style="white-space:normal;max-width:220px">${esc(both(
               '9 月營運概況、Q4 預算、評鑑準備進度',
               'Sept operations, Q4 budget, accreditation progress'))}</td>
@@ -3373,8 +3373,8 @@ function viewDocSysInfo(){
           <div style="font-weight:600">${esc(both('組織架構','Organization'))}</div>
           <div style="font-size:13px;color:var(--ink-2);margin-top:6px">
             ${esc(both(
-              '新竹區：竹北照護院（64 床）、竹東照護院（56 床）、營運中心',
-              'Hsinchu region: Zhuibei facility (64 beds), Zhudong facility (56 beds), Operations Center'))}</div>
+              '新竹區：竹北日照中心（核定收托 60 人）、竹東日照中心（核定收托 45 人）、營運中心',
+              'Hsinchu region: Zhubei Day Care Center (licensed for 60 clients), Zhudong Day Care Center (45 clients), Operations Center'))}</div>
           <div style="font-size:12px;color:var(--ink-3);margin-top:6px">${esc(both(
             '共 19 位員工，跨護理、照護、社工、復健等部門。',
             '19 staff across nursing, care services, social work, rehabilitation.'))}
@@ -3396,8 +3396,8 @@ function viewDocSysInfo(){
           <div style="font-weight:600">${esc(both('角色與權限','Roles & Permissions'))}</div>
           <div style="font-size:13px;color:var(--ink-2);margin-top:6px">
             ${esc(both(
-              '10 個角色規劃，目前 4 個完整實現：系統管理員、人資部經理、院長、一般員工。其餘於 Phase 2–3 追加。',
-              '10 roles planned; 4 fully implemented: System Admin, HR Manager, Facility Director, Employee. Others in Phase 2–3.'))}</div>
+              '10 個角色規劃，目前 4 個完整實現：系統管理員、人資部經理、中心主任、一般員工。其餘於 Phase 2–3 追加。',
+              '10 roles planned; 4 fully implemented: System Admin, HR Manager, Center Director, Employee. Others in Phase 2–3.'))}</div>
           <div style="font-size:12px;color:var(--ink-3);margin-top:6px">${esc(both(
             '每個角色可讀取的資料範圍（據點）與可用功能（薪資、簽核、公告等）由權限矩陣定義。',
             'Each role has defined data scope (facilities) and capabilities (pay access, approvals, announcements).'))}
@@ -3423,18 +3423,18 @@ function viewSvcCase(){
     <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
       <b>${esc(both('個案管理','Case Management'))}</b><br>
       ${esc(both(
-        '住民個案主檔、評估表、照護計畫。目前範圍內共 '+staffCount+' 位工作人員。',
-        'Resident case files, assessments, and care plans. '+staffCount+' staff in scope.'))}</div>
+        '個案主檔、評估表、照顧計畫。目前範圍內共 '+staffCount+' 位工作人員。',
+        'Client case files, assessments, and care plans. '+staffCount+' staff in scope.'))}</div>
     </section>
     <section class="card">
       <div class="card-h">
         <h2>${esc(both('個案主檔','Case files'))}</h2>
         <div class="spacer"></div>
-        <button class="btn mini">${esc(both('新增住民','Add resident'))}</button>
+        <button class="btn mini">${esc(both('新增個案','Add client'))}</button>
       </div>
       <div class="tablewrap"><table>
         <thead><tr>
-          <th>${bi('個案編號','Case no.')}</th><th>${bi('入住院區','Facility')}</th>
+          <th>${bi('個案編號','Case no.')}</th><th>${bi('服務據點','Center')}</th>
           <th>${bi('照護等級','Care level')}</th><th>${bi('負責社工','Assigned worker')}</th>
           <th>${bi('主照顧者','Primary caregiver')}</th><th>${bi('最近評估','Last assessment')}</th>
         </tr></thead>
@@ -3445,7 +3445,7 @@ function viewSvcCase(){
         </tbody>
       </table></div>
       <div class="note q" style="margin:12px 14px">${esc(both(
-        '個案主檔功能包括：基本資料、入住協議與簽約、照護評估表、照護計畫、定期複核。完整系統中與醫療、照護、社工三大部門整合。',
+        '個案主檔功能包括：基本資料、收案評估與服務契約、照顧評估表、照顧計畫、定期複核。完整系統中與醫療、照護、社工三大部門整合。',
         'Case file features: demographics, admission agreements, care assessments, care plans, periodic reviews. Full system integrates nursing, care services, social work.'))}</div>
     </section>
   </div>`;
@@ -3457,8 +3457,8 @@ function viewSvcContract(){
     <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
       <b>${esc(both('契約管理','Contract Management'))}</b><br>
       ${esc(both(
-        '住民服務契約、特約廠商合約、服務等級協議書 (SLA)。',
-        'Resident service contracts, vendor agreements, and service level agreements.'))}</div>
+        '個案服務契約、特約廠商合約、服務等級協議書 (SLA)。',
+        'Client service contracts, vendor agreements, and service level agreements.'))}</div>
     </section>
     <section class="card">
       <div class="card-h">
@@ -3466,14 +3466,14 @@ function viewSvcContract(){
         <span class="en">${esc(both('分類檢視','By type'))}</span>
         <div class="spacer"></div>
         <div class="seg">
-          <button aria-pressed="true">${esc(both('住民契約','Resident'))}</button>
+          <button aria-pressed="true">${esc(both('個案契約','Client'))}</button>
           <button>${esc(both('廠商合約','Vendor'))}</button>
           <button>${esc(both('SLA','SLA'))}</button>
         </div>
       </div>
       <div style="padding:14px;display:grid;gap:12px">
         <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('住民服務契約','Resident Service Contracts'))}</div>
+          <div style="font-weight:500">${esc(both('個案服務契約','Client Service Contracts'))}</div>
           <div style="font-size:12px;color:var(--ink-3)">
             ${esc(both('包含服務項目、費用、權利義務、終止條款等。','Service items, fees, rights & obligations, termination clauses.'))}
           </div>
@@ -3500,8 +3500,8 @@ function viewSvcAssess(){
     <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
       <b>${esc(both('服務評估','Service Assessments'))}</b><br>
       ${esc(both(
-        '住民滿意度調查、服務品質評估、定期複核表。',
-        'Resident satisfaction surveys, service quality assessments, and periodic review forms.'))}</div>
+        '長輩與家屬滿意度調查、服務品質評估、定期複核表。',
+        'Client and family satisfaction surveys, service quality assessments, and periodic review forms.'))}</div>
     </section>
     <section class="card">
       <div class="card-h">
@@ -3509,7 +3509,7 @@ function viewSvcAssess(){
       </div>
       <div style="padding:14px;display:grid;gap:12px">
         <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
-          <div style="font-weight:500">${esc(both('入住滿意度調查','Admission Satisfaction'))}
+          <div style="font-weight:500">${esc(both('收案滿意度調查','Intake Satisfaction'))}
             <span class="chip mini" style="margin-left:8px">${esc(both('每月','Monthly'))}</span></div>
           <div style="font-size:12px;color:var(--ink-3)">
             ${esc(both('照護品質、環境、飲食、醫療協助等 5 大面向 5 點量表評分。','5-point scale on care quality, environment, meals, medical assistance.'))}</div>
@@ -3525,7 +3525,7 @@ function viewSvcAssess(){
           <div style="font-weight:500">${esc(both('家屬滿意度問卷','Family Satisfaction'))}
             <span class="chip mini" style="margin-left:8px">${esc(both('每季','Quarterly'))}</span></div>
           <div style="font-size:12px;color:var(--ink-3)">
-            ${esc(both('家屬對住民照護、員工服務態度、溝通透明度之評價。','Family ratings on resident care, staff attitude, communication.'))}
+            ${esc(both('家屬對長輩照顧、員工服務態度、溝通透明度之評價。','Family ratings on care, staff attitude, communication.'))}
           </div>
         </div>
       </div>
@@ -3549,7 +3549,7 @@ function viewFinProcurement(){
     <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
       <b>${esc(both('採購申請','Procurement Requests'))}</b><br>
       ${esc(both(
-        '設備、醫療耗材、日常物資採購申請。依院區分別提交。',
+        '設備、醫療耗材、日常物資採購申請。依據點分別提交。',
         'Equipment, medical supplies, daily consumables. Submitted by facility.'))}</div>
     </section>
     <section class="card">
@@ -3560,7 +3560,7 @@ function viewFinProcurement(){
       </div>
       <div class="tablewrap"><table>
         <thead><tr>
-          <th>${bi('申請單號','Request no.')}</th><th>${bi('申請院區','Facility')}</th>
+          <th>${bi('申請單號','Request no.')}</th><th>${bi('申請據點','Facility')}</th>
           <th>${bi('申請人','Requester')}</th><th>${bi('申請日期','Date')}</th>
           <th>${bi('金額','Amount')}</th><th>${bi('品項','Items')}</th>
           <th>${bi('審核狀態','Status')}</th>
@@ -3637,7 +3637,7 @@ function viewFinReport(){
     <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
       <b>${esc(both('月結報告','Month-End Close'))}</b><br>
       ${esc(both(
-        '每月財務總結、採購統計、零用金結算。各院區分別編製。',
+        '每月財務總結、採購統計、零用金結算。各據點分別編製。',
         'Monthly financial summary, procurement statistics, petty cash reconciliation by facility.'))}</div>
     </section>
     <section class="card">
@@ -3646,11 +3646,11 @@ function viewFinReport(){
         <div class="spacer"></div>
         <span class="ulabel">${esc(both('月份','Month'))}</span>
         <select style="font-size:13px"><option>2026-09</option><option>2026-08</option><option>2026-07</option></select>
-        <span class="ulabel" style="margin-left:16px">${esc(both('院區','Facility'))}</span>
+        <span class="ulabel" style="margin-left:16px">${esc(both('據點','Facility'))}</span>
         <select style="font-size:13px">
           <option>${esc(both('全部','All'))}</option>
-          <option>${esc(both('竹北照護院','Zhuibei'))}</option>
-          <option>${esc(both('竹東照護院','Zhudong'))}</option>
+          <option>${esc(both('竹北日照中心','Zhubei'))}</option>
+          <option>${esc(both('竹東日照中心','Zhudong'))}</option>
         </select>
       </div>
       <div style="padding:14px;display:grid;gap:12px">
@@ -3659,8 +3659,8 @@ function viewFinReport(){
           <table style="width:100%;font-size:12px">
             <tr style="border-bottom:1px solid var(--line-strong)">
               <td style="padding:6px 0">${esc(both('項目','Item'))}</td>
-              <td style="text-align:right;padding:6px 0">${esc(both('竹北院','Zhuibei'))}</td>
-              <td style="text-align:right;padding:6px 0">${esc(both('竹東院','Zhudong'))}</td>
+              <td style="text-align:right;padding:6px 0">${esc(both('竹北中心','Zhubei'))}</td>
+              <td style="text-align:right;padding:6px 0">${esc(both('竹東中心','Zhudong'))}</td>
               <td style="text-align:right;padding:6px 0">${esc(both('合計','Total'))}</td>
             </tr>
             <tr style="border-bottom:1px solid var(--line)">
@@ -4476,7 +4476,7 @@ BINDERS['pay:ver']=function(){
 /* =============================== 權限對照表 Permission matrix =============================== */
 /* key = ROLES[*].perms entry the row reflects; rows without a key describe data scope */
 const CAPS=[
- {zh:'查看全部 7 個據點資料', en:'Read data across all 7 facilities',
+ {zh:'查看所有據點資料', en:'Read data across every site',
   admin:'yes', hr:'yes', manager:'assume', employee:'no'},
  {key:'mgmt',     zh:'使用管理後台（人事、權限、文件、服務、財務、報表）', en:'Use the back office (HR, permissions, documents, services, finance, reports)'},
  {zh:'私人秘書：本人出勤、表單、薪資袋', en:'My Desk: own attendance, forms and payslips', admin:'self', hr:'self', manager:'self', employee:'self'},
@@ -4488,7 +4488,7 @@ const CAPS=[
  {key:'approve',  zh:'簽核部屬請假', en:'Approve subordinate leave'},
  {key:'finalize', zh:'人資複核（假單生效）', en:'HR countersign (makes leave effective)'},
  {key:'annGroup', zh:'發布全集團公告', en:'Publish group-wide announcements'},
- {key:'annOffice',zh:'發布本院公告', en:'Publish facility announcements'},
+ {key:'annOffice',zh:'發布本中心公告', en:'Publish facility announcements'},
  {key:'perms',    zh:'管理角色與權限、系統設定', en:'Manage roles, permissions and settings'},
  {key:'salary', derived:true, zh:'薪資計算與覆核', en:'Run and review payroll', note:{zh:'與「查看薪資」同一權限',en:'Same permission as "View pay"'}}
 ];
@@ -4500,7 +4500,7 @@ function capMark(c, k){
 }
 const CAPMARK={
   yes:{zh:'可',en:'Yes',cls:'yes'}, no:{zh:'不可',en:'No',cls:'no'},
-  own:{zh:'限本院',en:'Own facility',cls:'partial'}, assume:{zh:'預設不可（可調整）',en:'No by default (toggle)',cls:'partial'},
+  own:{zh:'限本中心',en:'Own facility',cls:'partial'}, assume:{zh:'預設不可（可調整）',en:'No by default (toggle)',cls:'partial'},
   self:{zh:'僅本人',en:'Self only',cls:'partial'}
 };
 function viewMatrix(){
@@ -4534,7 +4534,7 @@ function viewMatrix(){
           ${cols.map(k=>cell(c,k)).join('')}
         </tr>`).join('')}</tbody></table></div>
       <div class="legend">${esc(both(
-        '「限本院」= 僅限使用者所屬據點；「僅本人」= 只看得到自己的資料；「預設不可（可調整）」= 由上方假設開關控制。資料範圍列由身分決定，不在此調整。',
+        '「限本中心」= 僅限使用者所屬據點；「僅本人」= 只看得到自己的資料；「預設不可（可調整）」= 由上方假設開關控制。資料範圍列由身分決定，不在此調整。',
         '"Own facility" = limited to the user’s own site; "Self only" = the user’s own data; "No by default (toggle)" = controlled by the Assumption switch. Data-scope rows follow the role and are not edited here.'))}</div>
     </section>
     ${admin&&log.length?`<section class="card">
@@ -4579,36 +4579,36 @@ BINDERS['perm:matrix']=function(){
 
 /* =============================== 待決議題 Open questions =============================== */
 const QUESTIONS=[
- {n:1, zh:'院長／單位主管應該看到全集團 7 院的資料，還是僅限自己院區？',
-  en:'Should facility directors see data for all 7 facilities, or only their own?',
-  assumeZh:'原型預設：僅限本院。院長只看得到自己院區的員工、出勤與請假；公告只看得到全集團公告與本院公告。',
+ {n:1, zh:'中心主任／單位主管應該看到所有據點的資料，還是僅限自己的中心？',
+  en:'Should center directors see data for every site, or only their own center?',
+  assumeZh:'原型預設：僅限本中心。中心主任只看得到自己據點的員工、出勤與請假；公告只看得到全集團公告與本中心公告。',
   assumeEn:'Prototype default: own facility only. A director sees only their own staff, attendance and leave; announcements are group-wide plus their own facility.',
-  flipZh:'若改為可跨院：人力調度與跨院支援會容易許多，但薪資以外的個資（分機、到職日、出勤異常）也會全數互通，且日後每新增一個據點都會擴大暴露面。',
+  flipZh:'若改為可跨據點：人力調度與跨據點支援會容易許多，但薪資以外的個資（分機、到職日、出勤異常）也會全數互通，且日後每新增一個據點都會擴大暴露面。',
   flipEn:'If opened up: staff loans and cross-facility cover get much easier, but personal data beyond pay (extensions, hire dates, attendance exceptions) becomes mutually visible, and every new facility widens that exposure.',
   askZh:'請在畫面上方切換「假設」開關，比較兩種情境後決定。若答案是「部分開放」，需要進一步定義：哪些欄位、哪些情境（例如支援排班期間限時開放）。',
   askEn:'Use the Assumption switch above to compare both, then decide. If the answer is "partly", we must define which fields and which situations (e.g. time-limited access during a staffing cover period).'},
  {n:2, zh:'系統管理員應不應該看到薪資資料？',
   en:'Should the system administrator be able to see pay data?',
-  assumeZh:'原型預設：不應該。管理員可管理帳號與權限、可跨院查看人事與出勤，但薪資與職等欄位隱藏，僅人資可見。',
+  assumeZh:'原型預設：不應該。管理員可管理帳號與權限、可跨據點查看人事與出勤，但薪資與職等欄位隱藏，僅人資可見。',
   assumeEn:'Prototype default: no. The administrator manages accounts and permissions and reads HR and attendance across facilities, but pay and pay band are hidden — HR only.',
-  flipZh:'實務上系統管理員通常握有資料庫層級存取權，「畫面隱藏」只是流程控制而非技術阻擋。若貴院要求技術層級隔離，需在架構階段就決定。',
+  flipZh:'實務上系統管理員通常握有資料庫層級存取權，「畫面隱藏」只是流程控制而非技術阻擋。若貴單位要求技術層級隔離，需在架構階段就決定。',
   flipEn:'In practice an administrator usually holds database-level access, so hiding a field in the UI is a process control, not a technical barrier. If you need technical separation, that is an architecture-stage decision.',
   askZh:'請確認：畫面層級的隱藏是否足夠？或需要稽核紀錄（誰在何時查看了薪資）？',
   askEn:'Confirm: is UI-level hiding sufficient, or do you also need an audit trail of who viewed pay data and when?'},
- {n:3, zh:'院長核准請假後，是否仍需人資複核才生效？',
+ {n:3, zh:'中心主任核准請假後，是否仍需人資複核才生效？',
   en:'After a director approves leave, must HR countersign before it takes effect?',
   assumeZh:'原型預設：需要。流程為 待主管簽核 → 待人資複核 → 生效，可在「請假審核」分頁實際操作。',
   assumeEn:'Prototype default: yes. The flow is Awaiting director → Awaiting HR countersign → Effective; you can run it in the Leave approvals tab.',
-  flipZh:'若取消複核，院長簽核即生效，流程快但特休餘額與勞基法時數控管必須由系統自動把關。',
+  flipZh:'若取消複核，中心主任簽核即生效，流程快但特休餘額與勞基法時數控管必須由系統自動把關。',
   flipEn:'Without countersigning, a director’s approval is final — faster, but the system must then enforce leave balances and Labor Standards Act limits automatically.',
-  askZh:'請確認假別是否分流：病假／事假由院長決行，特休與長天數假別才需人資複核？',
+  askZh:'請確認假別是否分流：病假／事假由中心主任決行，特休與長天數假別才需人資複核？',
   askEn:'Confirm whether this should differ by leave type: sick and personal leave decided by the director, with HR countersigning only annual and long absences?'}
 ];
 function viewOpen(){
   return `
   <div class="grid">
     <div class="note q">${esc(both(
-      '本原型的目的不是展示完成品，而是把三個必須由貴院決定的問題變成看得見、點得到的畫面。',
+      '本原型的目的不是展示完成品，而是把三個必須由貴單位決定的問題變成看得見、點得到的畫面。',
       'This prototype exists to turn three decisions your team must make into something visible and clickable — not to show a finished product.'))}</div>
     ${QUESTIONS.map(q=>`
       <section class="card">
@@ -4624,7 +4624,7 @@ function viewOpen(){
           <div><div class="eyebrow">${esc(both('若改成另一種做法','If the decision goes the other way'))}</div>
             <div>${esc(state.lang==='zh'?q.flipZh:q.flipEn)}</div>
             <div class="muted" style="font-size:12px">${esc(state.lang==='zh'?q.flipEn:q.flipZh)}</div></div>
-          <div class="note q"><div class="eyebrow">${esc(both('需要貴院回答','What we need from you'))}</div>
+          <div class="note q"><div class="eyebrow">${esc(both('需要貴單位回答','What we need from you'))}</div>
             <div>${esc(state.lang==='zh'?q.askZh:q.askEn)}</div>
             <div class="muted" style="font-size:12px">${esc(state.lang==='zh'?q.askEn:q.askZh)}</div></div>
         </div>
@@ -4644,8 +4644,8 @@ function viewOpen(){
             <td style="white-space:normal">${esc(both('沒有真實驗證，身分以上方下拉選單切換。','No real authentication — role is switched from the dropdown above.'))}</td></tr>
           <tr><td>${bi('資料儲存','Data storage')}</td><td><span class="chip warn">${esc(both('模擬','Mocked'))}</span></td>
             <td style="white-space:normal">${esc(both('全部資料存在瀏覽器記憶體，重新整理即還原；無資料庫、無後端。','All data lives in browser memory and resets on reload — no database, no backend.'))}</td></tr>
-          <tr><td>${bi('人員與院區','People & facilities')}</td><td><span class="chip warn">${esc(both('虛構','Fictional'))}</span></td>
-            <td style="white-space:normal">${esc(both('47 位同仁、7 個院區與總部皆為虛構，不含任何真實個資。','47 staff, 7 facilities and an HQ — all fictional, containing no real personal data.'))}</td></tr>
+          <tr><td>${bi('人員與據點','People & facilities')}</td><td><span class="chip warn">${esc(both('虛構','Fictional'))}</span></td>
+            <td style="white-space:normal">${esc(both('23 位同仁、2 個日照中心與總部皆為虛構，不含任何真實個資。','23 staff, 2 day care centers and an HQ — all fictional, containing no real personal data.'))}</td></tr>
         </tbody></table></div>
     </section>
   </div>`;
