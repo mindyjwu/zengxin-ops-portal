@@ -1,6 +1,8 @@
 # 誠馨日照營運入口 v2.1
 # Zengxin Day Care Operations Portal v2.1
 
+> **Canonical repo.** This is the single active repo for the project. Project map: [`docs/INDEX.md`](docs/INDEX.md) · context for Claude: [`CLAUDE.md`](CLAUDE.md).
+
 **互動式原型**：用來討論與示範的系統，不是正式上線版本。內容依據以下資料建置：
 
 - 9/20 入口網站建置第一次需求討論會議紀錄
