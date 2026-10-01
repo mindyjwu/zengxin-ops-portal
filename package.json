@@ -1,7 +1,7 @@
 {
   "name": "zengxin-ops-portal",
   "version": "1.0.0",
-  "description": "**互動式原型** — 討論用系統，用於確定關鍵決策（院長跨院權限、管理員薪資可見性、請假簽核流程）。",
+  "description": "誠馨日照營運入口互動原型（誠馨、誠芯、牛津三家公司共用行政平台）",
   "main": "index.js",
   "directories": {
     "doc": "docs"

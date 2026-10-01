@@ -12,7 +12,7 @@ filenames come through.
 ## Test Objectives
 Verify that the four built roles correctly restrict or allow:
 - Sensitive employee data (pay, bank account, national ID, contact details, insurance)
-- Cross-facility data visibility (data scope)
+- Cross-company data visibility (data scope: 誠馨、誠芯、牛津 and 共用行政)
 - Leave, overtime and missed-punch approvals
 - Payroll and CSV exports
 - Employee self-service (私人秘書): own attendance, forms, payslips and nothing else
@@ -22,15 +22,25 @@ Verify that the four built roles correctly restrict or allow:
 ## Test Data
 
 The prototype has no login and no database. All data is fictional and lives in
-browser memory, so **reloading the page resets everything**. The demo date is
-fixed at **2026-09-08**.
+browser memory, so **reloading the page resets everything**. Staff names are
+generated demo data.
+
+The demo date defaults to **2026-09-29**. Add `?demoDate=YYYY-MM-DD` to change
+it; the automated tests open the page with `?demoDate=2026-09-08`, so the
+request IDs and dates below refer to that date.
+
+The content is based only on the 9/20 meeting minutes, the 15-page requirements
+deck, the v2.0 spec and decisions the owner gave directly. All three companies
+are in greater Hsinchu and work the same way. 彰化 and 台中 are listed only as
+a future expansion idea.
 
 | Unit | ID | Staff |
 |------|----|-------|
-| 新竹營運中心 (HQ) | HQ | 6 (E1001–E1006) |
-| 竹北日照中心 | O1 | 8 (E2101–E2108) |
-| 竹東日照中心 | O2 | 9 (E2201–E2209) |
-| **Total** | | **23** |
+| 共用行政 (shared admin) | HQ | 6 (E1001–E1006) |
+| 誠馨 | O1 | 10 (E2101–E2110) |
+| 誠芯 | O2 | 9 (E2201–E2209) |
+| 牛津 | O3 | 3 (E2301–E2303) |
+| **Total** | | **28** |
 
 ---
 
@@ -38,12 +48,12 @@ fixed at **2026-09-08**.
 
 Switch roles with the **身分 / Role** selector (`#roleSel`) at the top of every page.
 
-| | 系統管理員 System Admin (`admin`) | 人資部經理 HR Manager (`hr`) | 中心主任 Center Director (`manager`) | 一般員工 Employee (`employee`) |
+| | 系統管理員 System Admin (`admin`) | 人資 HR (`hr`) | 管理者（日照主管）Manager (`manager`) | 一般員工 Employee (`employee`) |
 |---|---|---|---|---|
-| Persona | E1005, HQ | E1003, HQ | E2101, director of O1 | E2104, care attendant at O1 |
-| Data scope | All facilities | All facilities | O1 only (all if the assumption toggle is ON) | Own records only; announcements and directory for O1 |
+| Persona | E1005, 共用行政 | E1003, 共用行政 | E2101, 日照主管 at 誠馨 | E2104, 照服員 at 誠馨 |
+| Data scope | All companies | All companies | 誠馨 only (all if the assumption toggle is ON) | Own records only; announcements and directory for 誠馨 |
 | 私人秘書 My Desk (own calendar, forms, payslips) | ✅ | ✅ | ✅ | ✅ (lands here) |
-| Back office (人事、權限、文件、服務、財務、報表) | ✅ | ✅ | ✅ | Hidden |
+| Back office (人事、權限、文件、線上申請、業務資料整合、報表) | ✅ | ✅ | ✅ | Hidden |
 | See pay, band, bank account | ❌ | ✅ | ❌ | Own payslip only |
 | Full national ID | ❌ (masked, last 3 shown) | ✅ | ❌ (masked) | Own, masked |
 | Contact details (mobile, address, emergency) | ✅ | ✅ | ❌ | Own only |
@@ -51,20 +61,21 @@ Switch roles with the **身分 / Role** selector (`#roleSel`) at the top of ever
 | Add performance appraisal | ✅ | ✅ | ✅ | ❌ |
 | Approve leave / overtime / punch fixes / other forms | ❌ | ✅ | ✅ | ❌ |
 | HR countersign (final approval) | ❌ | ✅ | ❌ | ❌ |
-| Post announcements | Group-wide | Group-wide | Own facility only | ❌ |
+| Post announcements | All companies | All companies | Own company only | ❌ |
 | Payroll module | Hidden | ✅ | Hidden | Hidden |
 | Settings (系統設定) | ✅ | Hidden | Hidden | Hidden |
 | Permission matrix (權限與範圍) | Full matrix, editable | Own column, read-only | Own column, read-only | Hidden |
 | Payroll (financial) CSV export | ❌ | ✅ | ❌ | ❌ |
-| Other CSV exports | ✅ (all facilities) | ✅ (all facilities) | ✅ (O1 only) | ❌ |
+| Other CSV exports | ✅ (all companies) | ✅ (all companies) | ✅ (誠馨 only) | ❌ |
 
-The **假設 / Assumption: 主管可跨據點查看** button (`#assumeBtn`) is a discussion
-toggle: when it is ON, the manager reads all facilities. It is hidden for the
+The **假設 / Assumption: 管理者可跨公司查看** button (`#assumeBtn`) is a discussion
+toggle: when it is ON, the manager reads all three companies. The page header
+shows a **目前公司** chip naming the company in view. It is hidden for the
 employee role, whose scope never widens. In every role, nobody can approve their
 own request.
 
-Six more roles (COO, Finance, Nursing, Care, Social Work, Company Manager) are
-defined as Phase 2–3 stubs and don't appear in the role selector.
+The deck's role matrix (p.6) also lists 老闆, 教育訓練專員 and 會計. They are
+shown on 原型說明 › 角色與權限 but not built, and don't appear in the role selector.
 
 ---
 
@@ -86,17 +97,18 @@ defined as Phase 2–3 stubs and don't appear in the role selector.
 - [ ] Granting manager 查看薪資 makes pay and Payroll appear for manager; 還原預設 removes them again — *…a change made by admin takes effect…*
 
 #### Test 1.2: Data scope (HR › 員工資料)
-- [ ] admin and hr see all 23 employees — *Data scope › admin and hr see all 23 employees*
-- [ ] manager sees only the 8 O1 staff; the office filter is disabled; a note says 15 records are hidden — *…manager sees only O1 staff…*
-- [ ] With the assumption toggle ON, manager sees all 23 and the filter is enabled — *…assumption toggle opens the manager…*
-- [ ] admin filtering to 竹東日照中心 shows 9 employees — *…office filter narrows admin…*
-- [ ] manager's 出勤管理 and 請假審核 show only O1 — *…manager attendance and leave views are limited to O1*
+- [ ] admin and hr see all 28 employees — *Data scope › admin and hr see all 28 employees*
+- [ ] manager sees only the 10 誠馨 staff; the company filter is disabled; a note says 18 records are hidden — *…manager sees only O1 staff…*
+- [ ] With the assumption toggle ON, manager sees all 28 and the filter is enabled — *…assumption toggle opens the manager…*
+- [ ] admin filtering to 誠芯 shows 9 employees — *…office filter narrows admin…*
+- [ ] manager's 出勤管理 and 請假審核 show only 誠馨 — *…manager attendance and leave views are limited to O1*
 
 #### Test 1.3: Announcements, org chart, directory (公告欄)
-- [ ] Board: admin sees all 9 posts; manager sees 8 (group-wide plus O1) — **manual**
-- [ ] Board: admin and hr get **發布公告** (group post); manager gets **發布本中心公告** (facility post) — **manual**
-- [ ] Org chart: every role sees the full structure; for manager, other facilities collapse to "N 位同仁（不在範圍內）" — **manual**
-- [ ] Directory: manager sees 8 / 23, with mobile numbers locked (僅人資／管理員) — **manual**
+- [ ] Board: the posts come from the meeting minutes and the spec (A01–A08); admin sees all of them; manager sees the all-company posts plus 誠馨's — **manual**
+- [ ] Board: admin and hr get **發布公告** (all companies); manager gets **發布本公司公告** (own company) — **manual**
+- [ ] Calendar: only the 9/20 meeting, the 9/27 and 9/30 due items, the 9/30 meeting, the 10/15 Renbao / MOHW due date and the 10/31 MVP target — **manual**
+- [ ] Org chart: columns for 共用行政 and each company, grouped by department; for manager, other companies show their supervisors dimmed plus a count of the rest — **manual**
+- [ ] Directory: manager sees 10 / 28, with mobile numbers locked (僅人資／管理員) — **manual**
 
 #### Test 1.4: Employee role & 私人秘書 (My Desk)
 Modelled on the 104 企業大師「私人秘書」employee page: 首頁 / 表單 / 查詢 / 課程.
@@ -105,12 +117,12 @@ Modelled on the 104 企業大師「私人秘書」employee page: 首頁 / 表單
 - [ ] 未簽核表單 reads 太好了！您目前沒有待處理事項 for an employee; 追蹤表單 lists their open forms (L242, OT31) — *…nothing to sign and tracks their own open forms*
 - [ ] 抽單 on a pending leave marks it 已抽單 — *…withdrawing a pending leave closes it*
 - [ ] Clicking a day and 請假單 opens the leave form for that date — *…clicking a calendar day prefills the leave form…*
-- [ ] 公出差旅單: employee files → director approves (from 私人秘書 › 表單簽核) → HR countersigns → 已核准 — *…off-site form goes through director approval and HR countersign*
-- [ ] 銷假單 on approved leave L236: director → HR → L236 shows 已銷假 — *…cancelling approved leave marks it cancelled…*
-- [ ] 文件證明申請單 goes straight to HR (待人資複核); the director never sees it — *…certificate requests skip the director…*
+- [ ] 公出差旅單: employee files → manager approves (from 私人秘書 › 表單簽核) → HR countersigns → 已核准 — *…off-site form goes through director approval and HR countersign*
+- [ ] 銷假單 on approved leave L236: manager → HR → L236 shows 已銷假 — *…cancelling approved leave marks it cancelled…*
+- [ ] 文件證明申請單 goes straight to HR (待人資複核); the manager never sees it — *…certificate requests skip the director…*
 - [ ] 查詢 › 薪資袋 lists only paid months (06–08), matches the payroll figure, and shows no employer-cost lines — *…payslip shows the employee's own paid months…*
-- [ ] 部屬資料 (部屬出勤資料, 部屬工作日誌) appears only for approvers; the O1 director sees 7 reports — *…only approvers get the 部屬資料 look-ups*
-- [ ] 同事今天請假或公出嗎？ shows only the names of colleagues at the same site who are out — no title, leave or off-site, leave type or approval status — *…who-is-out shows only colleagues' names*
+- [ ] 部屬資料 (部屬出勤資料, 部屬工作日誌) appears only for approvers; the 誠馨 manager sees 6 day care reports — *…only approvers get the 部屬資料 look-ups*
+- [ ] 同事今天請假或公出嗎？ shows only the names of colleagues at the same company who are out — no title, leave or off-site, leave type or approval status — *…who-is-out shows only colleagues' names*
 - [ ] 批次忘刷 files one 忘刷申請單 per ticked day — *…batch missed punches files one correction per ticked day*
 - [ ] 預先加班單, 勞健保證明申請單, 表單通知, 保險費, 所得稅, 人事資料, 年度假勤, 公司規章下載 and 課程 render and submit without errors — **manual**
 - [ ] At 390px width the calendar fits the screen with no sideways scrolling — **manual**
@@ -129,7 +141,7 @@ The drawer has six sections: 概要, 基本與金融資料, 任職與薪資歷�
 - [ ] **hr:** full national ID, pay, bank account, pay history and insurance grades are shown — *…hr sees full ID, pay…*
 - [ ] **admin:** national ID masked (•••, last 3 shown), contact details shown, bank account locked, pay-history bands shown as •••, insurance premiums locked — *…admin gets contact details but masked ID…*
 - [ ] **manager:** mobile and address restricted (受限); bank account locked — *…manager cannot see contact details or pay*
-- [ ] **manager, out of scope:** opening an O2 person from the org chart shows the position only, a 不在您目前的資料範圍內 note, and no section buttons — *…manager opening an out-of-scope person…*
+- [ ] **manager, out of scope:** opening a 誠芯 person from the org chart shows the position only, a 不在您目前的資料範圍內 note, and no section buttons — *…manager opening an out-of-scope person…*
 - [ ] **admin / hr:** 編輯 on 基本與金融資料 saves changes for this browser session — **manual**
 - [ ] **manager:** no 編輯 button; 新增考核 is available under 績效與文件 — **manual**
 
@@ -153,14 +165,14 @@ Shifts: 白班 (day) 08:00–17:00 with a 12:00–13:00 lunch; 小夜 (evening) 
 with no lunch deduction. There is no 大夜 (overnight) shift at present: `NIGHT_SHIFT = false` in
 `ltc-portal.html` keeps it off the roster, and setting it to `true` brings back 00:00–08:00 with its
 leave and allowance rules. Only nurses and care attendants
-at O1 and O2 rotate; HQ staff and every other title always work day shifts. 1 day = 8 h; minimum
+outside 共用行政 rotate; HQ staff and every other title always work day shifts. 1 day = 8 h; minimum
 leave unit 0.5 h.
 
 - [ ] Clock in at 08:00 and out at 17:30 → today's row shows 白班 and 8.5 h — *My Hours › clock in and out…*
 - [ ] Clocking in and out in the same minute shows no hours (—), not 24 h — *…clocking in and out in the same minute counts 0 h…*
 - [ ] Punch records show a 班別 column. None of the management roles works rotating shifts, so My Hours shows 白班 for them; the employee role (E2104) rotates and its 私人秘書 calendar shows evening shifts — **manual**
 - [ ] Leave: the 上午 4h and 下午 4h quick picks each compute 4 h; submitting creates a pending request — *…half-day leave computes 4 h…*
-- [ ] Rotating staff (nurses and care attendants at O1 and O2) get start and end times from 00:00 to 24:00, the start date's shift, and 整班 / 前半班 / 後半班 quick picks that fill in that day's shift: on a day shift, 整班 = 08:00–17:00; on an evening day, 後半班 = 20:00–24:00 (4 h). 2026-08-27, formerly an overnight shift, is now a day shift. The test points admin's persona at E2203 — *…rotating staff can request leave for evening shifts; there is no overnight shift*
+- [ ] Rotating staff (nurses and care attendants outside 共用行政) get start and end times from 00:00 to 24:00, the start date's shift, and 整班 / 前半班 / 後半班 quick picks that fill in that day's shift: on a day shift, 整班 = 08:00–17:00; on an evening day, 後半班 = 20:00–24:00 (4 h). 2026-08-27, formerly an overnight shift, is now a day shift. The test points admin's persona at E2203 — *…rotating staff can request leave for evening shifts; there is no overnight shift*
 - [ ] Overtime: 17:00–19:00 = 2 h, 17:00–20:30 = 3.5 h, 22:00–02:00 = 4 h (crosses midnight) — *…overtime hours compute…*
 - [ ] Balance (admin, E1005): annual leave 120 h entitlement, 4 h used, 116 h left; comp time 4 h; a pending 4 h request leaves 112 h — *…balance tab reflects entitlement…*
 - [ ] Overtime over the 46 h monthly cap is refused — **manual**
@@ -222,9 +234,28 @@ This flow is **manual** end to end; its individual steps are covered by the test
 
 ---
 
+### Phase 9: Grounded content, walkthroughs and user guide
+
+- [ ] Opening the page without `demoDate` shows 2026-09-29; 9/25 中秋節 and 9/28 孔子誕辰紀念日 are days off with no punches — *Grounded content › without a demoDate the demo date is 2026-09-29…*
+- [ ] The company filter lists 誠馨, 誠芯 and 牛津; the 目前公司 chip follows the filter and shows 誠馨 for the manager — *…three companies in greater Hsinchu…*
+- [ ] No module or tab, in any role, shows removed unsourced content (竹北／竹東日照中心, 康禾, 營運長, 執行長, 評鑑準備, 流感疫苗, 仁仁, 院長, 住民) — *…no page shows the removed, unsourced content*
+- [ ] 文件管理 › 會議紀錄 shows the 9/20 minutes; 系統設定 links to https://pro.104.com.tw/ and lists 仁寶 i 照護; choosing 拆帳制 in the calculator shows the rules-pending note — *…meeting minutes, existing-system links and the revenue-share pay system*
+- [ ] Mid-year review: as manager, 私人秘書 › 查詢 › 部屬績效考核 shows 期中考核 0 / 6; 填寫期中考核 for E2103 opens 績效與文件 with the add form; saving 期中考核（上半年） makes it 1 / 6 and marks E2103 已完成 — *…a manager fills in a mid-year review…*
+- [ ] `?tour=leave` switches to the employee role and highlights the leave form; 下一步 walks every step and the last one closes the card — *…a walkthrough switches role and page…*
+- [ ] Every step of all 8 walkthroughs (clock, leave, slip, approve, perf, ann, pay, admin) highlights exactly one element — *…every walkthrough step finds what it points at*
+- [ ] guide.html links only to walkthroughs that exist — *…the user guide links only to walkthroughs that exist*
+- [ ] guide.html reads well in light and dark mode and at 390px width — **manual**
+
+---
+
 ## Known Gaps & Open Questions
 
-- [ ] **Open question:** should center directors see other facilities? (the assumption toggle)
+- [ ] **Open question (Q1):** should managers see other companies? (the assumption toggle)
+- [ ] **Open:** the decisions listed on deck p.15 (權限與範圍 › 待決議題)
+- [ ] **Open:** the 拆帳制 (revenue-share) pay rules; the calculator shows a note and does not calculate
+- [ ] **Open:** links for 仁寶 i 照護, 衛福部長照系統 and 誠馨雲端（NAS） (shown as URL pending in 系統設定)
+- [ ] **Open:** permissions for 老闆, 教育訓練專員 and 會計
+- [ ] **Not included yet:** the 9/30 meeting minutes have not been provided
 - [ ] **Open question:** must payroll calculation and review be done by different people?
 - [x] **Decided:** employees see only the names of colleagues who are out (同事今天請假或公出嗎？).
 - [x] **Decided:** 預先加班單 is approval only and does not pay; overtime is paid from the 加班單.

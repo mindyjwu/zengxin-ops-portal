@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>誠馨日照營運入口使用指南</title>
+<meta name="description" content="誠馨日照營運入口（原型 v2.1）的展示流程與操作說明：打卡與工時、請假、簽核、績效與期中考核、公告、薪資與權限。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* 與入口網站相同的色彩與字體 */
+:root{
+  --ground:#F5F7F6; --surface:#FFFFFF; --surface-2:#EEF2F0; --rail:#12211D;
+  --line:#DCE3E0; --line-strong:#C3CFCB;
+  --ink:#16211E; --ink-2:#43534E; --ink-3:#6B7C77;
+  --accent:#1F6F5C; --accent-ink:#FFFFFF; --accent-soft:#DCEAE4;
+  --warn:#9A6410; --warn-soft:#FBEFD8; --warn-line:#E4C489; --info:#2F5F7D; --info-soft:#E1ECF3;
+  --sans:"IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:"IBM Plex Mono","Noto Sans TC",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1513; --surface:#151E1B; --surface-2:#1B2724; --rail:#0A100E;
+    --line:#28352F; --line-strong:#3A4A44; --ink:#E7EEEA; --ink-2:#B3C2BC; --ink-3:#869892;
+    --accent:#57B99B; --accent-ink:#08201A; --accent-soft:#1C332C;
+    --warn:#E0B061; --warn-soft:#33280F; --warn-line:#5C481D; --info:#8FBCD8; --info-soft:#14252F;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1513; --surface:#151E1B; --surface-2:#1B2724; --rail:#0A100E;
+  --line:#28352F; --line-strong:#3A4A44; --ink:#E7EEEA; --ink-2:#B3C2BC; --ink-3:#869892;
+  --accent:#57B99B; --accent-ink:#08201A; --accent-soft:#1C332C;
+  --warn:#E0B061; --warn-soft:#33280F; --warn-line:#5C481D; --info:#8FBCD8; --info-soft:#14252F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.75;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+h1,h2,h3{margin:0;line-height:1.35;text-wrap:balance;font-weight:600}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+header{background:var(--rail);color:#E7EEEA;padding:28px 16px 30px}
+header .in{max-width:1080px;margin:0 auto;display:grid;gap:8px}
+header .eyebrow{font-size:12px;letter-spacing:.12em;color:#8AA09A}
+header h1{font-size:28px;color:#fff}
+header p{margin:0;color:#CFDCD7;max-width:62ch}
+header .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.btn{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--accent-ink);border-radius:6px;padding:7px 14px;font-size:14px;text-decoration:none;font-weight:500;border:1px solid transparent}
+.btn.ghost{background:transparent;color:#E7EEEA;border-color:#3A4A44}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 16px 80px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:32px;align-items:start}
+nav.toc{position:sticky;top:16px;font-size:13.5px;display:grid;gap:2px}
+nav.toc b{font-size:11px;letter-spacing:.1em;color:var(--ink-3);font-weight:500;margin:10px 0 4px}
+nav.toc a{color:var(--ink-2);text-decoration:none;padding:3px 8px;border-radius:4px}
+nav.toc a:hover{background:var(--surface-2);color:var(--ink)}
+main{display:grid;gap:36px;min-width:0}
+section{display:grid;gap:14px;scroll-margin-top:16px}
+section > h2{font-size:21px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-size:16px;margin-top:6px}
+p{margin:0;max-width:68ch}
+.note{background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--line-strong);border-radius:6px;padding:10px 14px;font-size:14px}
+.note.warn{background:var(--warn-soft);border-left-color:var(--warn)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:500;font-size:12px;color:var(--ink-3);padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface)}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+ol.steps{margin:0;padding-left:22px;display:grid;gap:6px;max-width:72ch}
+ol.steps li::marker{color:var(--accent);font-weight:600}
+ul{margin:0;padding-left:20px;max-width:72ch}
+.ui{display:inline-block;font-size:13px;padding:0 6px;border-radius:4px;background:var(--surface);border:1px solid var(--line-strong);color:var(--ink);white-space:nowrap;line-height:1.6}
+.path{font-size:13px;color:var(--ink-2);background:var(--accent-soft);border-radius:4px;padding:1px 7px;white-space:nowrap}
+.task{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:grid;gap:10px}
+.task .top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.task .role{font-size:12px;color:var(--warn);font-weight:600;letter-spacing:.04em}
+.try{font-size:13.5px;font-weight:500}
+.chip{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line-strong);color:var(--ink-2);white-space:nowrap}
+.chip.ok{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.chip.todo{background:var(--warn-soft);border-color:transparent;color:var(--warn)}
+footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:var(--ink-3)}
+@media (max-width:860px){
+  .wrap{grid-template-columns:1fr;gap:20px}
+  nav.toc{position:static;display:flex;flex-wrap:wrap;gap:4px}
+  nav.toc b{width:100%;margin:4px 0 0}
+  nav.toc a{border:1px solid var(--line);background:var(--surface)}
+  header h1{font-size:23px}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="in">
+    <span class="eyebrow">誠馨日照 · 營運入口原型 v2.1</span>
+    <h1>使用指南與展示流程</h1>
+    <p>說明怎麼在網站上打卡與記錄工時、請假、簽核、查看部屬績效與填寫期中考核、閱讀與發布公告，以及會議展示時的建議順序。</p>
+    <div class="acts">
+      <a class="btn" href="ltc-portal.html">開啟營運入口</a>
+      <a class="btn ghost" href="ltc-portal.html?tour=leave">直接試一次「請假」導覽</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="toc" aria-label="目錄">
+    <b>開始</b>
+    <a href="#basics">開始之前</a>
+    <a href="#demo">15 分鐘展示流程</a>
+    <b>員工</b>
+    <a href="#clock">打卡與記錄工時</a>
+    <a href="#leave">請假、加班、公出</a>
+    <a href="#slip">薪資袋與扣繳</a>
+    <b>主管</b>
+    <a href="#approve">簽核申請</a>
+    <a href="#perf">部屬績效與期中考核</a>
+    <b>全員</b>
+    <a href="#ann">公告、行事曆、組織圖</a>
+    <b>人資與管理</b>
+    <a href="#pay">薪資試算與現金發放</a>
+    <a href="#admin">權限與系統設定</a>
+    <a href="#reports">報表匯出</a>
+    <b>參考</b>
+    <a href="#roles">身分與權限</a>
+    <a href="#sources">資料來源與待確認</a>
+    <a href="#faq">常見問題</a>
+  </nav>
+
+  <main>
+    <section id="basics">
+      <h2>開始之前</h2>
+      <div class="note warn">這是會議討論用的原型。人員、姓名、出勤與薪資數字都是示範資料；資料只存在你的瀏覽器，重新整理就會還原。展示日期固定為 <span class="mono">2026-09-29</span>。</div>
+      <h3>畫面上方的四個控制</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>控制</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td><span class="ui">身分</span></td><td>切換你要扮演的角色。原型沒有真實登入，用這裡代替「一人一帳號」登入。</td></tr>
+          <tr><td><span class="ui">公司</span></td><td>選擇要看的公司：誠馨、誠芯、牛津，或「全部公司」總覽。頁首的 <span class="ui">目前公司</span> 標籤隨時顯示你正在看哪一家。管理者只能看所屬公司，一般員工只看本人。</td></tr>
+          <tr><td><span class="ui">假設：管理者可跨公司查看</span></td><td>待決議題開關。打開後，管理者可以看三家公司的資料，方便會議比較兩種做法。</td></tr>
+          <tr><td><span class="ui">導覽</span> · <span class="ui">使用指南</span></td><td>「導覽」會帶你一步一步操作（自動切換身分和頁面，並用黃框標出要點的地方）；「使用指南」打開本頁。</td></tr>
+        </tbody>
+      </table></div>
+      <h3>四個可以切換的身分</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>身分</th><th>示範人員</th><th>看得到的模組</th></tr></thead>
+        <tbody>
+          <tr><td>系統管理員</td><td>共用行政 · E1005</td><td>三家公司的人事、權限、文件、線上申請、報表、系統設定；看不到薪資</td></tr>
+          <tr><td>人資</td><td>共用行政 · E1003</td><td>三家公司的人事與薪資計算、簽核與人資複核、報表；沒有系統設定</td></tr>
+          <tr><td>管理者（日照主管）</td><td>誠馨 · 日照主管 · E2101</td><td>所屬公司（誠馨）的人事、出勤、簽核、部屬績效；看不到薪資</td></tr>
+          <tr><td>一般員工</td><td>誠馨 · 照服員 · E2104</td><td>只有原型說明、私人秘書、公告欄；資料僅限本人</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="demo">
+      <h2>15 分鐘展示流程</h2>
+      <p>會議上建議依這個順序展示。每一段都可以按上方 <span class="ui">導覽</span> 選對應情境，網站會自己切換畫面。</p>
+      <ol class="steps">
+        <li><b>先講依據（2 分鐘）</b>：<span class="path">原型說明 › 範圍與進展</span>，逐條說明 9/20 會議決議在原型中的位置，以及還沒完成的項目。</li>
+        <li><b>員工打卡與工時（2 分鐘）</b>：身分選 <span class="ui">一般員工</span>，介紹出勤月曆、打卡、點日期看明細。導覽：「員工：上下班打卡與記錄工時」。</li>
+        <li><b>請半天假（2 分鐘）</b>：在請假單用「上午／下午」或「前半班／後半班」送出 4 小時假，再到表單追蹤看狀態。導覽：「員工：請假」。</li>
+        <li><b>主管簽核（2 分鐘）</b>：身分換 <span class="ui">管理者（日照主管）</span>，在未簽核表單核准剛才那張假。導覽：「主管：簽核部屬的請假與表單」。</li>
+        <li><b>部屬績效與期中考核（2 分鐘）</b>：在部屬績效考核頁替一位部屬填寫期中考核。導覽：「主管：查看部屬績效與填寫期中考核」。</li>
+        <li><b>薪資與現金發放（2 分鐘）</b>：身分換 <span class="ui">人資</span>，展示薪資試算、計算明細與現金發薪簽收清冊。導覽：「人資：薪資試算與現金發放」。</li>
+        <li><b>公告與權限（2 分鐘）</b>：發布一則公告；身分換 <span class="ui">系統管理員</span> 看權限對照表與既有系統連結。</li>
+        <li><b>收尾（1 分鐘）</b>：<span class="path">權限與範圍 › 待決議題</span>，請與會者逐項確認。</li>
+      </ol>
+    </section>
+
+    <section id="clock">
+      <h2>打卡與記錄工時</h2>
+      <div class="task">
+        <div class="top"><span class="role">一般員工</span><h3>上下班打卡</h3></div>
+        <ol class="steps">
+          <li>身分選 <span class="ui">一般員工</span>，會直接進入 <span class="path">私人秘書 › 首頁</span>。</li>
+          <li>上班時按右側打卡卡片的 <span class="ui">上班打卡</span>，下班時按 <span class="ui">下班打卡</span>。</li>
+          <li>出勤月曆每天會顯示 <span class="chip ok">正常</span>、遲到、未打下班卡、請假、例假日或休息日，以及上下班時間。當天只打了上班卡會顯示「未比對」。</li>
+          <li>點月曆上任一天，可以看當天班別、上下班時間、工時，並直接開 <span class="ui">請假單</span>、<span class="ui">加班單</span> 或 <span class="ui">公出差旅單</span>。</li>
+        </ol>
+        <p class="try"><a href="ltc-portal.html?tour=clock">在網站上跟著做 →</a></p>
+      </div>
+      <div class="task">
+        <div class="top"><span class="role">一般員工</span><h3>忘記打卡</h3></div>
+        <ol class="steps">
+          <li>點月曆上漏打卡的那天，按 <span class="ui">忘刷申請單</span>；或到 <span class="path">表單 › 忘刷申請單</span>。</li>
+          <li>一個月漏了好幾天：同一頁下方的 <span class="ui">批次忘刷</span> 會列出所有漏打的日子，勾選、填時間後一次送出。</li>
+        </ol>
+      </div>
+      <div class="task">
+        <div class="top"><span class="role">一般員工</span><h3>查看工時、記錄工作內容</h3></div>
+        <ol class="steps">
+          <li><span class="path">查詢 › 出勤紀錄</span>：選月份，看出勤工時、請假、加班、異常天數與每日明細。</li>
+          <li><span class="path">查詢 › 個人工作日誌</span>：填日期、時數、工作類別與內容，記錄工時用在哪些工作。</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="leave">
+      <h2>請假、加班、公出</h2>
+      <div class="task">
+        <div class="top"><span class="role">一般員工</span><h3>請假（全天、半天或以小時計）</h3></div>
+        <ol class="steps">
+          <li>到 <span class="path">私人秘書 › 表單 › 請假單</span>（首頁右側「常用表單」也有）。</li>
+          <li>選假別，選單會顯示每種假別剩下幾小時。</li>
+          <li>用 <span class="ui">快速選擇</span> 選整天或半天（各 4 小時）：白班人員是「全天／上午／下午」，輪班人員是「整班／前半班／後半班」。也可以自己選起訖時間，最小單位 0.5 小時。</li>
+          <li>填事由後按 <span class="ui">送出請假</span>。流程：主管核准 → 人資複核 → 生效。</li>
+          <li>在 <span class="path">表單 › 表單追蹤</span> 看狀態；還在審核中的可按 <span class="ui">抽單</span> 撤回。已核准的假要取消，請送 <span class="ui">銷假單</span>。</li>
+          <li>各假別額度與剩餘時數：<span class="path">查詢 › 年度假勤</span>。</li>
+        </ol>
+        <p class="try"><a href="ltc-portal.html?tour=leave">在網站上跟著做 →</a></p>
+      </div>
+      <div class="task">
+        <div class="top"><span class="role">一般員工</span><h3>加班、公出與證明文件</h3></div>
+        <ul>
+          <li><b>預先加班單</b>：加班前先取得主管同意，只是核准，不會計薪。</li>
+          <li><b>加班單</b>：實際加班後送出；薪資只依核准的加班單計算。每月加班上限 46 小時。</li>
+          <li><b>公出差旅單</b>：填地點、事由與交通方式；核准後，公出時段不會被列為出勤異常。</li>
+          <li><b>文件證明申請單</b>、<b>勞健保證明申請單</b>：直接交人資辦理，不經主管。</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="slip">
+      <h2>薪資袋與扣繳</h2>
+      <div class="task">
+        <div class="top"><span class="role">一般員工</span><h3>查看本人薪資資料</h3></div>
+        <ol class="steps">
+          <li><span class="path">私人秘書 › 查詢 › 薪資袋</span>：選已發放的月份，看應發、代扣、實發與每一項的算式。發薪方式（轉帳或現金）也在這裡。</li>
+          <li><span class="path">查詢 › 保險費</span>：勞保、健保、勞退的個人與公司負擔。</li>
+          <li><span class="path">查詢 › 所得稅</span>：每月應稅所得與扣繳稅額。</li>
+        </ol>
+        <p>薪資袋只有本人與人資看得到。</p>
+        <p class="try"><a href="ltc-portal.html?tour=slip">在網站上跟著做 →</a></p>
+      </div>
+    </section>
+
+    <section id="approve">
+      <h2>簽核申請</h2>
+      <div class="task">
+        <div class="top"><span class="role">管理者（日照主管）</span><h3>核准或駁回部屬的申請</h3></div>
+        <ol class="steps">
+          <li>身分選 <span class="ui">管理者（日照主管）</span>。<span class="path">私人秘書 › 首頁</span> 的「未簽核表單」列出等你簽核的單。</li>
+          <li>到 <span class="path">表單 › 表單簽核</span>，逐筆按 <span class="ui">核准</span> 或 <span class="ui">駁回</span>。核准後轉人資複核。</li>
+          <li>想看所屬公司全部的申請：<span class="path">人事系統 › 請假審核</span>，包含請假、加班、補打卡與其他表單。</li>
+          <li>人資在同一頁按 <span class="ui">人資複核</span>，申請才生效。任何人都不能簽核自己的申請。</li>
+        </ol>
+        <p class="try"><a href="ltc-portal.html?tour=approve">在網站上跟著做 →</a></p>
+      </div>
+    </section>
+
+    <section id="perf">
+      <h2>部屬績效與期中考核</h2>
+      <div class="task">
+        <div class="top"><span class="role">管理者（日照主管）</span><h3>查看部屬績效、填寫期中考核</h3></div>
+        <ol class="steps">
+          <li>到 <span class="path">私人秘書 › 查詢 › 部屬績效考核</span>：上方顯示今年期中考核完成幾人；表格列出每位部屬上次年度考核的等第與分數，以及期中考核「已完成／未完成」。</li>
+          <li>按 <span class="ui">填寫期中考核</span>，會開啟該員工的「績效與文件」。</li>
+          <li>展開 <span class="ui">新增考核</span>，考核類型選「2026 期中考核（上半年）」，填分數、等第、評語，可附考核表，按 <span class="ui">儲存</span>。</li>
+          <li>關閉後回到部屬績效考核頁，狀態會變成「已完成」。</li>
+          <li>另一個入口：<span class="path">人事系統 › 員工資料</span> 點選員工 → 「績效與文件」。</li>
+        </ol>
+        <p>績效屬敏感資料：主管只看得到所屬公司的部屬；一般人員不能看其他員工的績效。考核分數為示範資料。</p>
+        <p class="try"><a href="ltc-portal.html?tour=perf">在網站上跟著做 →</a></p>
+      </div>
+    </section>
+
+    <section id="ann">
+      <h2>公告、行事曆、組織圖</h2>
+      <div class="task">
+        <div class="top"><span class="role">全部身分</span><h3>閱讀與發布公告</h3></div>
+        <ol class="steps">
+          <li><span class="path">公告欄 › 公告</span>：左側是列表，置頂公告在最上面，點一則看內容。目前的公告內容取自 9/20 會議紀錄。</li>
+          <li>人資與系統管理員按 <span class="ui">發布公告</span> 發給全公司；日照主管按 <span class="ui">發布本公司公告</span> 只發給所屬公司；一般員工只能閱讀。</li>
+          <li><span class="path">公告欄 › 公司行事曆</span>：會議與待辦截止日（例如 9/30 第二次需求會議、10/31 第一期 MVP 目標）。</li>
+          <li><span class="path">公告欄 › 組織圖</span>、<span class="path">內部通訊錄</span>：依三家公司與部門查同仁；超出你資料範圍的部分會變灰或隱藏。</li>
+        </ol>
+        <p class="try"><a href="ltc-portal.html?tour=ann">在網站上跟著做 →</a></p>
+      </div>
+    </section>
+
+    <section id="pay">
+      <h2>薪資試算與現金發放</h2>
+      <div class="task">
+        <div class="top"><span class="role">人資</span><h3>每月薪資</h3></div>
+        <ol class="steps">
+          <li><span class="path">薪資計算 › 薪資試算</span>：選月份；只計入已核准（人資複核完成）的請假、加班與補打卡。</li>
+          <li>點任一員工看計算明細；需要人工調整時填項目、金額與原因，會記入覆核紀錄。</li>
+          <li>往下是 <span class="ui">現金發薪簽收清冊</span>：沒有銀行帳戶的同仁領現金，按 <span class="ui">匯出簽收清冊 CSV</span> 印出簽名。</li>
+          <li><span class="path">薪資計算 › 版本與覆核</span>：儲存版本、送覆核、核准鎖定或退回。</li>
+          <li><span class="path">薪資計算 › 薪資計算機</span>：手動試算月薪或時薪。拆帳制可選，但規則待人事確認，所以不計算。</li>
+        </ol>
+        <p class="try"><a href="ltc-portal.html?tour=pay">在網站上跟著做 →</a></p>
+      </div>
+      <div class="task">
+        <div class="top"><span class="role">人資</span><h3>把某位同仁改成領現金</h3></div>
+        <ol class="steps">
+          <li><span class="path">人事系統 › 員工資料</span> 點選員工 → 「基本與金融資料」→ <span class="ui">編輯</span>。</li>
+          <li>「發薪方式」選「現金發放」，按 <span class="ui">儲存</span>。這位同仁會出現在現金發薪簽收清冊，薪資袋也會寫「至人資領取並簽收」。</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="admin">
+      <h2>權限與系統設定</h2>
+      <div class="task">
+        <div class="top"><span class="role">系統管理員</span><h3>調整權限、查看既有系統連結</h3></div>
+        <ol class="steps">
+          <li><span class="path">權限與範圍 › 權限對照表</span>：勾選或取消各身分的權限，立即生效（只在本次瀏覽）；<span class="ui">還原預設</span> 可以復原。系統管理員不能移除自己的管理權限。</li>
+          <li><span class="path">系統設定</span>：既有系統連結（104 企業大師、仁寶 i 照護、衛福部長照系統、誠馨雲端）與帳號原則。過渡期間先以連結導向現有系統；除 104 外的網址待 IT 提供。</li>
+        </ol>
+        <p class="try"><a href="ltc-portal.html?tour=admin">在網站上跟著做 →</a></p>
+      </div>
+    </section>
+
+    <section id="reports">
+      <h2>報表匯出</h2>
+      <p><span class="path">報表匯出</span>：選月份後下載人事資料、出勤統計、差勤申請與財務報表 CSV（含 UTF-8 BOM，可用 Excel 開啟）。匯出內容依身分的資料範圍篩選；財務報表只有人資能匯出。</p>
+    </section>
+
+    <section id="roles">
+      <h2>身分與權限</h2>
+      <p>下表為需求簡報第 6 頁「角色權限初步矩陣」（會議起始版本，實際權限仍需依公司與職掌逐項確認），右欄是原型中對應的身分。</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>角色</th><th>資料範圍</th><th>人事資料</th><th>差勤與申請</th><th>薪資／管理功能</th><th>原型</th></tr></thead>
+        <tbody>
+          <tr><td>老闆</td><td>三家公司彙總及授權明細</td><td>檢視</td><td>檢視</td><td>管理報表檢視</td><td><span class="chip todo">待建置</span></td></tr>
+          <tr><td>管理者</td><td>授權公司與部門</td><td>檢視／部分編輯</td><td>審核與異常確認</td><td>依授權檢視</td><td><span class="chip ok">管理者（日照主管）</span></td></tr>
+          <tr><td>人資</td><td>三家公司行政資料</td><td>新增、修改與管理</td><td>管理與月底確認</td><td>薪資計算、級距與投保</td><td><span class="chip ok">人資</span></td></tr>
+          <tr><td>教育訓練專員</td><td>三家公司訓練資料</td><td>必要欄位檢視</td><td>提出申請</td><td>證照與訓練管理</td><td><span class="chip todo">待建置</span></td></tr>
+          <tr><td>會計</td><td>三家公司核准資料</td><td>必要欄位檢視</td><td>提出／承辦申請</td><td>核准後款項與報表</td><td><span class="chip todo">待建置</span></td></tr>
+          <tr><td>各業務職位</td><td>本人及職務授權資料</td><td>檢視本人資料</td><td>打卡、請假、加班與申請</td><td>無薪資計算功能</td><td><span class="chip ok">一般員工</span></td></tr>
+        </tbody>
+      </table></div>
+      <p>系統管理員依 v2.0 規格負責帳號管理、權限設定、稽核日誌與系統監控。一般人員只能看本人資料，不能看其他員工的薪資帳戶、投保或績效。</p>
+    </section>
+
+    <section id="sources">
+      <h2>資料來源與待確認</h2>
+      <p>網站內容只依據以下資料：</p>
+      <ul>
+        <li>9/20 入口網站建置第一次需求討論會議紀錄（V1.0）</li>
+        <li>需求簡報「公司共用入口網站：系統需求與分期規劃」</li>
+        <li>9/21 v2.0 開發規格</li>
+        <li>專案負責人的確認：三家公司為誠馨、誠芯、牛津，皆在大新竹地區；品牌名稱為誠馨日照；沒有大夜班；員工只看得到請假同事的姓名；預先加班單只核准不計薪；可用現金發薪；展示日期 9/29</li>
+        <li>104 企業大師的員工與主管畫面截圖（私人秘書的版面）</li>
+      </ul>
+      <h3>尚未確認或尚未建置</h3>
+      <ul>
+        <li>老闆、教育訓練專員、會計三個身分：等權限矩陣逐項確認後建置。</li>
+        <li>拆帳制的計薪規則、資料來源、例外調整與核准流程。</li>
+        <li>線上申請（採購、零用金、維修、人事異動、意見反映）：各表單的公司別、金額門檻、審核層級等規則。</li>
+        <li>104 採取代、串接或過渡並行；手機打卡是否使用定位或裝置限制。</li>
+        <li>共用行政採單一帳號切換公司，或每家公司獨立帳號。</li>
+        <li>仁寶系統 API 或 Excel 匯入、衛福部 HTML 個案資料、異常事件通報（列在「業務資料整合」，尚未開發）。</li>
+        <li>第二次會議（9/30）的會議紀錄尚未提供。</li>
+      </ul>
+    </section>
+
+    <section id="faq">
+      <h2>常見問題</h2>
+      <h3>重新整理後，我送出的假單不見了？</h3>
+      <p>原型沒有資料庫，資料只存在瀏覽器記憶體，重新整理就會還原成示範資料。</p>
+      <h3>畫面上的姓名和數字是真的嗎？</h3>
+      <p>不是。人員、姓名、出勤、薪資、證照與考核分數都是示範資料，只用來展示流程與權限。</p>
+      <h3>為什麼日期是 2026-09-29？</h3>
+      <p>這是指定的展示日期，讓月曆、假單與薪資月份有一致的情境。</p>
+      <h3>手機可以用嗎？</h3>
+      <p>可以用手機瀏覽器開啟，版面會自動調整。手機打卡是否要定位或裝置限制，仍是待確認事項。</p>
+    </section>
+  </main>
+</div>
+<footer>誠馨日照營運入口 · 原型 v2.1 · 本指南與網站內容僅依據上列資料來源，示範資料不代表真實人員。</footer>
+</body>
+</html>

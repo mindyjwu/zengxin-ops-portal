@@ -8,7 +8,8 @@ should be pointed at `docs/INDEX.md` (and the repo) so every surface shares the 
 - **Goal (owner's stated):** a fully running production product that can serve 300+ employees — not a demo.
 - **Today (v2.1):** a single-file static prototype (`ltc-portal.html`) with mock data. No backend, no auth,
   no database, no persistence. Jest unit + Playwright e2e tests exist (`npm test`).
-- Roadmap (from README): Phase 1 prototype & decisions → Phase 2 payroll/reports/expansion → Phase 3 case management.
+- Roadmap (v2.0 spec): short term admin core (MVP target end of Oct 2026) → mid term business data integration → long term risk and quality management.
+- **Sources only:** content must come from the 9/20 meeting minutes, the requirements deck, the v2.0 spec or the owner's direct statements. Anything else is marked 待確認. No real personal names. Scope: 誠馨、誠芯、牛津 (greater Hsinchu) + 共用行政.
 
 ## Canonical repo rule
 - **This is the only active repo for this project.** `ltc-ops-portal` was an older predecessor (Sept 7–16) and is

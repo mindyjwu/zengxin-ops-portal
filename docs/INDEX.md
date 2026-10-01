@@ -9,6 +9,7 @@ One folder, one source of truth. Point any Claude surface (chat, Cowork, Code) a
 | `/docs/DECISIONS.md` | Decision log + open questions (dated, one line each) |
 | `/docs/links.md` | Every useful link: Drive docs, vendor pages, subsidy programs, meeting invites |
 | `/docs/deliverables/` | Exported Word/PDF files (cost analysis, meeting prep, estimation prompts) — name as `YYYY-MM-DD_topic_lang.docx` |
+| `/guide.html` | User guide (Traditional Chinese) with walkthrough links |
 | `/docs/ltc-portal-walkthrough.md` | 15-minute stakeholder walkthrough |
 | `/TEST_PLAN.md` | Test plan |
 
