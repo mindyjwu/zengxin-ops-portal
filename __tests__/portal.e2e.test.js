@@ -293,13 +293,13 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
     await expect(page.locator('#view tbody tr')).toHaveCount(7);   // direct and indirect reports at O1
   });
 
-  test('who-is-out names colleagues but never their leave type', async ({ page }) => {
+  test('who-is-out shows only colleagues’ names', async ({ page }) => {
     await setRole(page, 'employee');
     await page.click('[data-pday="2026-09-18"]');                  // E2107 family-care leave (L243)
     const name = await page.evaluate(() => empName('E2107'));
     const box = page.locator('.peerbox', { hasText: '部門同事' });
     await expect(box).toContainText(name);
-    await expect(box).not.toContainText('家庭照顧假');
+    for (const hidden of ['家庭照顧假', '照服員', '審核中', '請假 ·', '公出']) await expect(box).not.toContainText(hidden);
   });
 
   test('batch missed punches files one correction per ticked day', async ({ page }) => {
@@ -453,7 +453,7 @@ test.describe('My Hours', () => {
     await expect(row).toContainText('待主管簽核');
   });
 
-  test('rotating staff can request leave for evening and overnight shifts', async ({ page }) => {
+  test('rotating staff can request leave for evening shifts; there is no overnight shift', async ({ page }) => {
     await openPortal(page);
     // No built role works rotating shifts, so point admin's persona at nurse E2203 (O2).
     await page.evaluate(() => { ROLES.admin.persona = 'E2203'; render(); });
@@ -464,15 +464,15 @@ test.describe('My Hours', () => {
     expect(slots[0]).toBe('00:00');
     expect(slots[slots.length - 1]).toBe('24:00');
 
-    // 2026-08-27 is an overnight shift (00:00–08:00)
+    // 2026-08-27 would have been an overnight shift; with no overnight shift it is a day shift
     await f.locator('[name=from]').fill('2026-08-27');
-    await expect(page.locator('#leaveShift')).toContainText('大夜');
+    await expect(page.locator('#leaveShift')).toContainText('白班');
     await page.click('[data-quick="full"]');
-    await expect(f.locator('[name=fromT]')).toHaveValue('00:00');
-    await expect(f.locator('[name=toT]')).toHaveValue('08:00');
+    await expect(f.locator('[name=fromT]')).toHaveValue('08:00');
+    await expect(f.locator('[name=toT]')).toHaveValue('17:00');
     await expect(calc).toContainText('8 小時');
     await page.click('[data-quick="am"]');
-    await expect(f.locator('[name=toT]')).toHaveValue('04:00');
+    await expect(f.locator('[name=toT]')).toHaveValue('12:00');
     await expect(calc).toContainText('4 小時');
 
     // 2026-08-21 is an evening shift (16:00–24:00)
@@ -541,16 +541,25 @@ test.describe('My Hours', () => {
 test.describe('Payroll night-shift allowance', () => {
   test.beforeEach(async ({ page }) => { await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'run'); });
 
-  test('rotating nurse is paid per evening / overnight shift and OT base includes it', async ({ page }) => {
-    // E2203 in 2026-08: 5 evening + 1 overnight shifts, 3.5 h approved weekday overtime
+  test('rotating nurse is paid per evening shift and OT base includes it', async ({ page }) => {
+    // E2203 in 2026-08: 5 evening shifts (no overnight shift), 3.5 h approved weekday overtime
     await page.click('[data-payemp="E2203"]');
     const d = drawer(page);
     await expect(d.locator('tr', { hasText: '小夜班津貼' })).toContainText('5 班 × 200');
     await expect(d.locator('tr', { hasText: '小夜班津貼' })).toContainText('NT$1,000');
-    await expect(d.locator('tr', { hasText: '大夜班津貼' })).toContainText('NT$400');
-    // (58,500 + 1,400) ÷ 240 = 249.58 → 2 h × 4/3 = 666
-    await expect(d.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('249.58');
-    await expect(d.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$666');
+    await expect(d.locator('tr', { hasText: '大夜班津貼' })).toHaveCount(0);
+    // (58,500 + 1,000) ÷ 240 = 247.92 → 2 h × 4/3 = 661
+    await expect(d.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('247.92');
+    await expect(d.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$661');
+  });
+
+  test('no overnight shifts are rostered while the center has none', async ({ page }) => {
+    const nights = await page.evaluate(() => STAFF.reduce((a, s) => a + ['2026-06', '2026-07', '2026-08', '2026-09']
+      .reduce((b, m) => b + attendance(s.id, +m.slice(0, 4), +m.slice(5)).filter(x => x.shift === 'night').length, 0), 0));
+    expect(nights).toBe(0);
+    await go(page, 'pay', 'calc');
+    await expect(page.locator('#calcForm [name=night]')).toHaveAttribute('type', 'hidden');
+    await expect(page.locator('#calcForm')).not.toContainText('大夜班次');
   });
 
   test('day-shift staff get no allowance', async ({ page }) => {
@@ -567,12 +576,12 @@ test.describe('Payroll night-shift allowance', () => {
     const f = page.locator('#calcForm');
     await f.locator('[name=monthly]').fill('48000');
     await f.locator('[name=wd1]').fill('2');
-    await f.locator('[name=night]').fill('4');
-    await f.locator('[name=night]').dispatchEvent('input');
+    await f.locator('[name=eve]').fill('4');
+    await f.locator('[name=eve]').dispatchEvent('input');
     const out = page.locator('#calcOut');
-    await expect(out.locator('tr', { hasText: '大夜班津貼' })).toContainText('NT$1,600');
-    // (48,000 + 1,600) ÷ 240 = 206.67 → 2 h × 4/3 = 551
-    await expect(out.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$551');
+    await expect(out.locator('tr', { hasText: '小夜班津貼' })).toContainText('NT$800');
+    // (48,000 + 800) ÷ 240 = 203.33 → 2 h × 4/3 = 542
+    await expect(out.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$542');
     await page.selectOption('#calcForm [name=nightInBase]', 'false');
     // 48,000 ÷ 240 = 200 → 2 h × 4/3 = 533
     await expect(out.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$533');
@@ -586,15 +595,16 @@ test.describe('Payroll night-shift allowance', () => {
     await f.locator('[name=hourly]').fill('200');
     await f.locator('[name=regH]').fill('160');
     await f.locator('[name=wd1]').fill('2');
-    await f.locator('[name=night]').fill('4');
-    await f.locator('[name=night]').dispatchEvent('input');
+    await f.locator('[name=eve]').fill('4');
+    await f.locator('[name=eve]').dispatchEvent('input');
     const out = page.locator('#calcOut');
-    await expect(out.locator('tr', { hasText: '大夜班津貼' })).toContainText('NT$1,600');
-    // (160 h × 200 + 1,600) ÷ 160 h = 210 → 2 h × 4/3 = 560
-    await expect(out.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$560');
+    await expect(out.locator('tr', { hasText: '小夜班津貼' })).toContainText('NT$800');
+    // (160 h × 200 + 800) ÷ 160 h = 205 → 2 h × 4/3 = 547
+    await expect(out.locator('tr', { hasText: '平日加班（前 2 小時）' })).toContainText('NT$547');
   });
 
   test('leave is counted against the evening or overnight shift worked that day', async ({ page }) => {
+    await page.evaluate(() => { NIGHT_SHIFT = true; });   // overnight support stays ready for when one opens
     const r = await page.evaluate(() => ({
       // E2203 works overnight (00:00–08:00) on 2026-08-27 and evening (16:00–24:00) on 2026-08-21
       nightShift: leaveHours('2026-08-27', '00:00', '2026-08-27', '08:00', 'E2203'),
@@ -606,6 +616,7 @@ test.describe('Payroll night-shift allowance', () => {
   });
 
   test('partial leave on an overnight shift keeps the allowance', async ({ page }) => {
+    await page.evaluate(() => { NIGHT_SHIFT = true; });
     const r = await page.evaluate(() => {
       // 4 h off at the end of E2203's 2026-08-27 overnight shift
       LEAVE.push(mkLeave('L900', 'E2203', 'personal', '2026-08-27', '04:00', '2026-08-27', '08:00', '2026-08-26', 'approved', { zh: '', en: '' }));
@@ -619,6 +630,59 @@ test.describe('Payroll night-shift allowance', () => {
     expect(r.lvH).toBe(4);
     expect(r.nights).toContain(27);
     expect(r.e2206Nights).toContain(21);
+  });
+});
+
+/* ================================================================ */
+test.describe('Cash pay for staff without a bank account', () => {
+  test.beforeEach(async ({ page }) => { await openPortal(page); await setRole(page, 'hr'); });
+
+  test('payroll run lists cash-paid staff with a receipt list to export', async ({ page }) => {
+    await go(page, 'pay', 'run');
+    await expect(page.locator('tr[data-payemp="E2107"]')).toContainText('現金發放');
+    await expect(page.locator('tr[data-payemp="E2103"]')).toContainText('銀行轉帳');
+    const nets = await page.evaluate(() => ['E2107', 'E2206'].map(id => calcPay(id, '2026-08').net));
+    const total = 'NT$' + (nets[0] + nets[1]).toLocaleString('en-US');
+    await expect(page.locator('.tile', { hasText: '現金發放' })).toContainText(total);
+    const list = page.locator('#cashList');
+    await expect(list.locator('tbody tr')).toHaveCount(3);          // 2 staff + total
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-cashcsv]')]);
+    expect(dl.suggestedFilename()).toBe('現金發薪簽收清冊_2026-08.csv');
+    const lines = fs.readFileSync(await dl.path(), 'utf8').replace(/^﻿/, '').trim().split('\n');
+    expect(lines[0]).toContain('領款人簽名');
+    expect(lines.length).toBe(4);
+  });
+
+  test('payroll CSV has a pay-method column and no overnight column', async ({ page }) => {
+    await go(page, 'pay', 'run');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-paycsv]')]);
+    const lines = fs.readFileSync(await dl.path(), 'utf8').replace(/^﻿/, '').trim().split('\n');
+    const head = lines[0].split(','), i = head.indexOf('發薪方式');
+    expect(i).toBeGreaterThan(-1);
+    expect(head).not.toContain('大夜班次');
+    expect(lines.find(l => l.startsWith('E2107,')).split(',')[i]).toBe('現金發放');
+  });
+
+  test('HR can switch an employee to cash in the personnel file', async ({ page }) => {
+    await go(page, 'hr', 'emp');
+    await page.click('tr[data-emp="E2104"]');
+    await page.click('[data-sec="basic"]');
+    await page.click('[data-edit="basic"]');
+    await page.selectOption('form[data-save="basic"] select[name="payMethod"]', 'cash');
+    await page.click('form[data-save="basic"] button[type="submit"]');
+    await expect(page.locator('aside.drawer .drawer-b')).toContainText('現金發放');
+    await page.click('aside.drawer button.x');
+    await go(page, 'pay', 'run');
+    await expect(page.locator('#cashList')).toContainText('E2104');
+  });
+
+  test('the employee’s payslip says how they are paid', async ({ page }) => {
+    await setRole(page, 'employee');
+    await page.click('[data-tab="query"]');
+    await page.click('[data-dq="slip"]');
+    await expect(page.locator('#view')).toContainText('匯入薪資帳戶');
+    await page.evaluate(() => { empRecord('E2104').basic.payMethod = 'cash'; render(); });
+    await expect(page.locator('#view')).toContainText('現金發放：發薪日至人資領取並簽收');
   });
 });
 
