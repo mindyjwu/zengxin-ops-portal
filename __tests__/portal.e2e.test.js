@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 
-const PORTAL = 'file://' + path.resolve(__dirname, '../ltc-portal.html');
+const PORTAL = 'file://' + path.resolve(__dirname, '../ltc-portal.html') + '?demoDate=2026-09-08';
 
 /* ---------- helpers ---------- */
 async function openPortal(page) {
@@ -48,9 +48,9 @@ test.describe('Shell & role switching', () => {
   test('switching role updates the persona chip', async ({ page }) => {
     const chip = page.locator('.pagehead .chip.acc');
     await setRole(page, 'hr');
-    await expect(chip).toContainText('人資部經理');
+    await expect(chip).toContainText('人資');
     await setRole(page, 'manager');
-    await expect(chip).toContainText('中心主任');
+    await expect(chip).toContainText('日照主管');
   });
 
   test('HR module exposes its four tabs', async ({ page }) => {
@@ -66,22 +66,22 @@ test.describe('Shell & role switching', () => {
 test.describe('Data scope', () => {
   test.beforeEach(async ({ page }) => { await openPortal(page); });
 
-  test('admin and hr see all 23 employees', async ({ page }) => {
+  test('admin and hr see all 28 employees', async ({ page }) => {
     await go(page, 'hr', 'emp');
-    await expect(empRows(page)).toHaveCount(23);
+    await expect(empRows(page)).toHaveCount(28);
     await setRole(page, 'hr');
-    await expect(empRows(page)).toHaveCount(23);
+    await expect(empRows(page)).toHaveCount(28);
   });
 
   test('manager sees only O1 staff and the office filter is locked', async ({ page }) => {
     await setRole(page, 'manager');
     await go(page, 'hr', 'emp');
-    await expect(empRows(page)).toHaveCount(8);
+    await expect(empRows(page)).toHaveCount(10);   // 誠馨: day care, home care and community center staff
     const ids = await empRows(page).evaluateAll(rs => rs.map(r => r.dataset.emp));
     expect(ids.every(id => id.startsWith('E21'))).toBe(true);
-    await expect(page.locator('#view tbody')).not.toContainText('竹東日照中心');
+    await expect(page.locator('#view tbody')).not.toContainText('誠芯');
     await expect(page.locator('#offSel')).toBeDisabled();
-    await expect(page.locator('#view .note.q')).toContainText('隱藏了 15 位');
+    await expect(page.locator('#view .note.q')).toContainText('隱藏了 18 位');
   });
 
   test('assumption toggle opens the manager to every facility', async ({ page }) => {
@@ -89,7 +89,7 @@ test.describe('Data scope', () => {
     await go(page, 'hr', 'emp');
     await page.click('#assumeBtn');
     await expect(page.locator('#assumeBtn')).toHaveAttribute('aria-pressed', 'true');
-    await expect(empRows(page)).toHaveCount(23);
+    await expect(empRows(page)).toHaveCount(28);
     await expect(page.locator('#offSel')).toBeEnabled();
   });
 
@@ -102,8 +102,8 @@ test.describe('Data scope', () => {
   test('manager attendance and leave views are limited to O1', async ({ page }) => {
     await setRole(page, 'manager');
     await go(page, 'hr', 'att');
-    await expect(page.locator('#view')).toContainText('竹北日照中心');
-    await expect(page.locator('#view')).not.toContainText('竹東日照中心');
+    await expect(page.locator('#view')).toContainText('誠馨');
+    await expect(page.locator('#view')).not.toContainText('誠芯');
 
     await page.click('[data-tab="leave"]');
     await expect(requestRow(page, 'L241')).toHaveCount(1);   // E2103, O1
@@ -290,7 +290,7 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
     await setRole(page, 'manager');
     await page.click('[data-tab="query"]');
     await page.click('[data-dq="subatt"]');
-    await expect(page.locator('#view tbody tr')).toHaveCount(7);   // direct and indirect reports at O1
+    await expect(page.locator('#view tbody tr')).toHaveCount(6);   // day care staff reporting to the 誠馨 supervisor
   });
 
   test('who-is-out shows only colleagues’ names', async ({ page }) => {
@@ -634,6 +634,121 @@ test.describe('Payroll night-shift allowance', () => {
 });
 
 /* ================================================================ */
+test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => {
+  const BARE = 'file://' + path.resolve(__dirname, '../ltc-portal.html');
+
+  test('without a demoDate the demo date is 2026-09-29 and holidays are days off', async ({ page }) => {
+    await page.goto(BARE);
+    await expect(page.locator('.rail-foot')).toContainText('2026-09-29');
+    await setRole(page, 'employee');
+    const d25 = page.locator('[data-dday="2026-09-25"]');
+    await expect(d25).toContainText('中秋節');
+    await expect(d25.locator('.dtime')).toHaveCount(0);
+    await expect(page.locator('[data-dday="2026-09-28"]')).toContainText('孔子誕辰紀念日');
+  });
+
+  test('three companies in greater Hsinchu, with the current company labelled', async ({ page }) => {
+    await openPortal(page);
+    const opts = await page.locator('#offSel option').evaluateAll(os => os.map(o => o.textContent));
+    for (const c of ['誠馨', '誠芯', '牛津']) expect(opts.some(o => o.includes(c))).toBe(true);
+    await expect(page.locator('.pagehead .chip.warn')).toContainText('全部公司');
+    await page.selectOption('#offSel', 'O3');
+    await expect(page.locator('.pagehead .chip.warn')).toContainText('牛津');
+    await setRole(page, 'manager');
+    await expect(page.locator('.pagehead .chip.warn')).toContainText('誠馨');
+  });
+
+  test('no page shows the removed, unsourced content', async ({ page }) => {
+    await openPortal(page);
+    const banned = ['竹北日照中心', '竹東日照中心', '康禾', '營運長', '執行長', '評鑑準備', '流感疫苗', '仁仁', '7 個', '院長', '住民'];
+    for (const role of ['admin', 'hr', 'manager', 'employee']) {
+      await setRole(page, role);
+      const mods = await page.locator('[data-mod]').evaluateAll(n => n.map(x => x.dataset.mod));
+      for (const m of mods) {
+        await page.click(`[data-mod="${m}"]`);
+        const tabs = await page.locator('[data-tab]').evaluateAll(n => n.map(x => x.dataset.tab));
+        for (const tab of tabs.length ? tabs : [null]) {
+          if (tab) await page.click(`[data-tab="${tab}"]`);
+          const text = await page.locator('#app').innerText();
+          for (const w of banned) expect(text, `${role} ${m}:${tab} shows ${w}`).not.toContain(w);
+        }
+      }
+    }
+  });
+
+  test('meeting minutes, existing-system links and the revenue-share pay system', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'doc', 'meeting');
+    await expect(page.locator('#view')).toContainText('入口網站建置第一次需求討論會議');
+    await expect(page.locator('#view')).toContainText('拆帳制');
+    await go(page, 'set');
+    await expect(page.locator('#view a[href="https://pro.104.com.tw/"]')).toHaveCount(1);
+    await expect(page.locator('#view')).toContainText('仁寶 i 照護');
+    await setRole(page, 'hr');
+    await go(page, 'pay', 'calc');
+    await page.selectOption('#calcForm [name=part]', 'split');
+    await expect(page.locator('#calcOut')).toContainText('拆帳制的計薪規則');
+  });
+
+  test('a manager fills in a mid-year review from the team reviews page', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'manager');
+    await page.click('[data-mod="desk"]');
+    await page.click('[data-tab="query"]');
+    await page.click('[data-dq="subperf"]');
+    const tile = page.locator('.tile', { hasText: '期中考核' });
+    await expect(tile).toContainText('0 / 6');
+    await page.locator('[data-perfemp="E2103"]').click();
+    const form = page.locator('form[data-add="perf"]');
+    await expect(form).toBeVisible();
+    await form.locator('select[name="period"]').selectOption({ index: 0 });
+    await form.locator('input[name="score"]').fill('88');
+    await form.locator('button[type="submit"]').click();
+    await expect(page.locator('aside.drawer .drawer-b')).toContainText('期中考核（上半年）');
+    await page.click('aside.drawer button.x');
+    await expect(tile).toContainText('1 / 6');
+    await expect(page.locator('#view tr', { hasText: 'E2103' })).toContainText('已完成');
+  });
+
+  test('a walkthrough switches role and page and highlights each step', async ({ page }) => {
+    await page.goto(PORTAL + '&tour=leave');
+    await expect(page.locator('.coach')).toContainText('員工：請假');
+    await expect(page.locator('#roleSel')).toHaveValue('employee');
+    await expect(page.locator('#leaveForm.tour-hl')).toHaveCount(1);
+    const n = await page.evaluate(() => TOURS.find(t => t.id === 'leave').steps.length);
+    for (let i = 1; i < n; i++) {
+      await page.click('[data-tourstep="1"]');
+      await expect(page.locator('.tour-hl')).toHaveCount(1);
+    }
+    await page.click('[data-tourstep="1"]');
+    await expect(page.locator('.coach')).toHaveCount(0);
+  });
+
+  test('every walkthrough step finds what it points at', async ({ page }) => {
+    await openPortal(page);
+    const tours = await page.evaluate(() => TOURS.map(t => ({ id: t.id, n: t.steps.length })));
+    for (const t of tours) {
+      await page.click('#tourBtn');
+      await page.click(`[data-tourgo="${t.id}"]`);
+      for (let i = 0; i < t.n; i++) {
+        await expect(page.locator('.tour-hl'), `${t.id} step ${i + 1}`).toHaveCount(1);
+        await page.click('[data-tourstep="1"]');
+      }
+    }
+  });
+
+  test('the user guide links only to walkthroughs that exist', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    await expect(page.locator('h1')).toContainText('使用指南');
+    const ids = await page.locator('a[href*="tour="]').evaluateAll(as => as.map(a => new URL(a.href).searchParams.get('tour')));
+    expect(ids.length).toBeGreaterThan(5);
+    await page.goto(PORTAL);
+    const known = await page.evaluate(() => TOURS.map(t => t.id));
+    for (const id of ids) expect(known).toContain(id);
+  });
+});
+
+/* ================================================================ */
 test.describe('Cash pay for staff without a bank account', () => {
   test.beforeEach(async ({ page }) => { await openPortal(page); await setRole(page, 'hr'); });
 
@@ -758,7 +873,7 @@ test.describe('Personnel file drawer', () => {
     await openPortal(page);
     await setRole(page, 'manager');
     await go(page, 'ann', 'org');
-    await page.click('[data-node="E2201"]');              // O2 director
+    await page.click('[data-node="E2201"]');              // 誠芯 day care supervisor (out of scope)
     await expect(drawer(page)).toBeVisible();
     await expect(body(page)).toContainText('不在您目前的資料範圍內');
     await expect(page.locator('[data-sec]')).toHaveCount(0);
@@ -768,10 +883,10 @@ test.describe('Personnel file drawer', () => {
 /* ================================================================ */
 test.describe('CSV exports', () => {
   const FILES = {
-    attendance: ['出勤統計報表', '員工編號,職稱,據點'],
+    attendance: ['出勤統計報表', '員工編號,職稱,公司'],
     personnel: ['人事資料報表', '員工編號,姓名,職稱'],
     leave: ['差勤申請報表', '單號,類型,員工編號'],
-    financial: ['財務報表', '員工編號,姓名,據點,部門,計薪方式,應發金額']
+    financial: ['財務報表', '員工編號,姓名,公司,部門,計薪方式,應發金額']
   };
   async function download(page, type) {
     const [dl] = await Promise.all([
@@ -836,7 +951,7 @@ test.describe('CSV exports', () => {
     await go(page, 'rpt');
     const { lines } = await download(page, 'attendance');
     const ids = col(lines, '員工編號');
-    expect(ids).toHaveLength(8);
+    expect(ids).toHaveLength(10);
     expect(ids.every(id => id.startsWith('E21'))).toBe(true);
   });
 

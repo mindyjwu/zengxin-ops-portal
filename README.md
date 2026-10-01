@@ -1,57 +1,76 @@
 # 誠馨日照營運入口 v2.1
 # Zengxin Day Care Operations Portal v2.1
 
-**互動式原型** — 討論用系統，用於確定關鍵決策（中心主任跨據點權限、管理員薪資可見性、請假簽核流程）。
+**互動式原型**：用來討論與示範的系統，不是正式上線版本。內容依據以下資料建置：
 
-**Discussion prototype** — visualize three architectural decisions before full development.
+- 9/20 入口網站建置第一次需求討論會議紀錄
+- 入口網站需求簡報（15 頁）
+- v2.0 開發規格
+- 使用者在對話中直接提供的決定（例如：沒有夜班、員工只看得到同事姓名、預先加班單只做核准不計薪、可選現金發放）
+
+人員姓名、出勤與薪資數字都是示範資料，不是真實資料。沒有出現在上述資料中的內容，在網站上會標示為「待確認」或「示範」。
 
 ## 使用方式 / Getting Started
 
-1. 用瀏覽器開啟 `ltc-portal.html`
-2. Open `ltc-portal.html` in any browser
-3. 無需登入、無需資料庫、無需後端
+- 線上版：https://mindyjwu.github.io/zengxin-ops-portal/ltc-portal.html
+- 使用指南：https://mindyjwu.github.io/zengxin-ops-portal/guide.html
+- 本機：用瀏覽器開啟 `ltc-portal.html`，不需登入、資料庫或後端。重新整理後資料會還原。
 
-No authentication, no database, no backend required.
+網址參數：
+
+| 參數 | 用途 |
+|---|---|
+| `?tour=<id>` | 開啟後自動進入互動導覽。可用的 id：`clock` `leave` `slip` `approve` `perf` `ann` `pay` `admin` |
+| `?demoDate=YYYY-MM-DD` | 改變示範日期（預設 2026-09-29） |
 
 ## 內容 / Contents
 
-- **ltc-portal.html** — 完整互動原型 / Full interactive prototype
-  - 4 個完整角色（系管、人資、中心主任、一般員工）
-  - 4 working roles (System Admin, HR Manager, Center Director, Employee)
+- **ltc-portal.html**：完整互動原型（單一檔案）
+  - 4 個可操作角色：系統管理員、人資、管理者（日照主管）、一般員工
+  - 需求簡報第 6 頁的其他角色（老闆、教育訓練專員、會計）列在「角色與權限」頁，尚未建置
+  - 3 家公司：誠馨、誠芯、牛津，都在新竹縣市，功能相同；另有共用行政
   - 一般員工使用「私人秘書」自助頁（仿 104）：出勤月曆、打卡、表單申請與追蹤、薪資袋、保險費、所得稅、課程
-  - Employees get a 104-style self-service "My Desk": attendance calendar, clock in/out, forms and tracking, payslips, insurance, tax, courses
-  - 公告、人事、權限模組
-  - Announcements, HR, Permissions modules
-  - 三個待決議題（可透過 ASSUMPTION 開關比較）
-  - Three open questions with live toggle to compare scenarios
+  - 管理者可簽核部屬表單，查看部屬績效並填寫期中考核
+  - 人資可試算薪資，並選擇銀行轉帳或現金發放
+  - 頁面上方「導覽」按鈕可啟動 8 段互動導覽
+- **guide.html**：使用指南（繁體中文）。含 15 分鐘示範腳本，以及每個情境的操作步驟與導覽連結
+- **index.html**：入口首頁
+- **demo.html**：系統概況簡介頁
+- **docs/ltc-portal-walkthrough.md**：會議示範用的走查說明
+- **TEST_PLAN.md**：測試計畫
 
-- **docs/ltc-portal-walkthrough.md** — 15 分鐘導覽指南
-  - 如何進行 9/30 會議示範
-  - Meeting walkthrough guide (15 min)
+## 目前範圍 / Current Scope
 
-## 決策架構 / Decision Framework
+- **公司**：誠馨、誠芯、牛津（新竹縣市）＋共用行政
+- **未來擴展構想**：彰化、台中（尚未規劃，僅列為構想）
+- **示範員工**：28 位（姓名為產生資料）
+- **示範日期**：2026-09-29
+- **沒有**：真實登入、資料庫、真實資料、資料保存
 
-| 問題 | 預設 | 影響 |
-|-----|------|------|
-| **Q1** 中心主任可跨據點查看？ | 否（單一中心） | 隱私 vs. 靈活排班 |
-| **Q2** 管理員看薪資？ | 否（隱藏） | 流程控制 vs. 技術隔離 |
-| **Q3** 請假需複核？ | 是（兩層） | 控管 vs. 速度 |
+## 開發階段 / Roadmap（依 v2.0 規格）
 
-## 開發階段 / Roadmap
+| 階段 | 時程 | 內容 |
+|---|---|---|
+| 短期：行政核心功能 | 第一期 MVP 目標 2026 年 10 月底 | 人事資料、差勤、薪資計算、人事管理、線上申請 |
+| 中期：業務資料整合 | 2026 年 11 月起 | 仁寶資料、Excel 匯入、衛福部 HTML 個案資料、營運報表 |
+| 長期：風險與品質管理 | 2027 年 Q1 | 異常事件通報、處理追蹤、改善措施、結案與統計 |
 
-- **Phase 1** (Sept): 原型決策 / Prototype & decisions
-- **Phase 2** (Nov–Dec): 薪資、報表、擴展到台中 / Payroll, reports, expand to Taichung
-- **Phase 3** (2027 Q1): 個案管理、擴展到彰化 / Case management, expand to Changhua
+## 尚待確認 / Open items
 
-## 當前範圍 / Current Scope
+- 管理者可否跨公司查看（原型可用上方「假設」開關比較兩種情況）
+- 需求簡報第 15 頁列出的待決事項（帳號切換方式、手機支援、104 取代或串接、權限矩陣等）
+- 拆帳制的計算規則
+- 仁寶 i 照護、衛福部長照系統、誠馨雲端（NAS）的連結網址
+- 老闆、教育訓練專員、會計三個角色的權限
 
-- **設施**: 新竹竹北、竹東 (2 locations)
-- **員工**: 19 位示範員工 (demo staff)
-- **角色**: 3 個完全功能、6 個計畫中 (3 built, 6 planned)
-- **沒有**: 登入、資料庫、真實資料、持久化
-- **No**: authentication, database, real data, persistence
+## 測試 / Tests
+
+```bash
+npm install
+npm run test:unit                                   # Jest 單元測試
+PW_CHROMIUM_PATH=/path/to/chrome npx playwright test # Playwright 端對端測試
+```
 
 ---
 
-Made with User + AI tools.  
-v2.1 · Sept 2026
+v2.1 · 2026 年 9 月
