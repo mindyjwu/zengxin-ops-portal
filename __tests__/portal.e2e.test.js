@@ -660,7 +660,9 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
 
   test('no page shows the removed, unsourced content', async ({ page }) => {
     await openPortal(page);
-    const banned = ['竹北日照中心', '竹東日照中心', '康禾', '營運長', '執行長', '評鑑準備', '流感疫苗', '仁仁', '7 個', '院長', '住民'];
+    const banned = ['竹北日照中心', '竹東日照中心', '康禾', '營運長', '執行長', '評鑑準備', '流感疫苗', '仁仁', '7 個', '住民'];
+    // 「院長」只出現在 9/30 會議紀錄的原文引用（會議紀錄頁與角色頁），其他頁面不應出現
+    const mayQuote = (m, tab) => (m === 'doc' && tab === 'meeting') || (m === 'arch' && tab === 'roles');
     for (const role of ['admin', 'hr', 'manager', 'employee']) {
       await setRole(page, role);
       const mods = await page.locator('[data-mod]').evaluateAll(n => n.map(x => x.dataset.mod));
@@ -671,6 +673,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
           if (tab) await page.click(`[data-tab="${tab}"]`);
           const text = await page.locator('#app').innerText();
           for (const w of banned) expect(text, `${role} ${m}:${tab} shows ${w}`).not.toContain(w);
+          if (!mayQuote(m, tab)) expect(text, `${role} ${m}:${tab} shows 院長`).not.toContain('院長');
         }
       }
     }
@@ -745,6 +748,156 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await page.goto(PORTAL);
     const known = await page.evaluate(() => TOURS.map(t => t.id));
     for (const id of ids) expect(known).toContain(id);
+  });
+});
+
+/* ================================================================ */
+test.describe('Updates from the 9/30 meeting', () => {
+  test.beforeEach(async ({ page }) => { await openPortal(page); });
+
+  test('the minutes page holds the 9/30 notes, the next meeting and the follow-ups', async ({ page }) => {
+    await go(page, 'doc', 'meeting');
+    const v = page.locator('#view');
+    await expect(v).toContainText('9/30 會議');
+    await expect(v).toContainText('在職狀態三種：在職、留職停薪、離職');
+    await expect(v).toContainText('可支撐未來 2,000 名員工');
+    await expect(v).toContainText('10/7（三）11:30');
+    await expect(v).toContainText('仁寶');            // 9/20 name
+    await expect(v).toContainText('人保');            // 9/30 name, flagged as to-confirm
+    await expect(v).toContainText('名稱待確認');
+    await expect(v).toContainText('入口網站建置第一次需求討論會議');
+    const ev = await page.evaluate(() => EVENTS.some(e => e.d === '2026-10-07'));
+    expect(ev).toBe(true);
+  });
+
+  test('decisions page lists the 9/30 decisions with where they are', async ({ page }) => {
+    await go(page, 'arch', 'scope');
+    const rows = page.locator('#view tbody tr', { hasText: '員工編號前綴' });
+    await expect(rows.first()).toContainText('9/30');
+    await expect(page.locator('#view')).toContainText('員工個別');
+    await expect(page.locator('#view')).toContainText('報表匯出支援 CSV 或 Excel');
+  });
+
+  test('104 comparison tab compares item by item and flags job types', async ({ page }) => {
+    await go(page, 'doc', 'cmp104');
+    const v = page.locator('#view');
+    await expect(v).toContainText('排班模組');
+    await expect(v).toContainText('104 未啟用');
+    await expect(v).toContainText('自訂表單');
+    await expect(v).toContainText('總務');              // a 104 job type the prototype does not have
+    await expect(v).toContainText('系統管理員、日照主管、司機');
+    const counts = await page.locator('#view .tiles .v').allInnerTexts();
+    expect(counts.map(Number).reduce((a, b) => a + b, 0)).toBeGreaterThan(30);
+  });
+
+  test('employment status: three kinds, shown in the table and counted', async ({ page }) => {
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'emp');
+    await expect(page.locator('tr[data-emp="E2209"]')).toContainText('留職停薪');
+    await expect(page.locator('tr[data-emp="E2303"]')).toContainText('離職');
+    await expect(page.locator('tr[data-emp="E2104"]')).toContainText('在職');
+    await expect(page.locator('#view .tile', { hasText: '在職' }).first()).toContainText('留職停薪 1 · 離職 1');
+  });
+
+  test('unpaid leave and resignation drop out of payroll from the effective month', async ({ page }) => {
+    await setRole(page, 'hr');
+    await go(page, 'pay', 'run');
+    await page.selectOption('#payMonth', '2026-07');
+    await expect(page.locator('tr[data-payemp="E2209"]')).toHaveCount(1);
+    await page.selectOption('#payMonth', '2026-08');
+    await expect(page.locator('tr[data-payemp="E2209"]')).toHaveCount(0);
+    await expect(page.locator('tr[data-payemp="E2303"]')).toHaveCount(1);
+    await expect(page.locator('#view .note', { hasText: '不列入試算' })).toContainText('留職停薪');
+    await page.selectOption('#payMonth', '2026-09');
+    await expect(page.locator('tr[data-payemp="E2303"]')).toHaveCount(0);
+  });
+
+  test('HR changes a status and the person leaves the roster', async ({ page }) => {
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'emp');
+    await page.click('tr[data-emp="E2108"]');
+    await expect(drawer(page)).toBeVisible();
+    await page.click('aside.drawer details.addbox summary >> nth=0');
+    const form = page.locator('aside.drawer form[data-add="status"]');
+    await form.locator('select[name="status"]').selectOption('left');
+    await form.locator('input[name="date"]').fill('2026-08-01');
+    await form.locator('button[type="submit"]').click();
+    await expect(page.locator('aside.drawer .drawer-b')).toContainText('離職');
+    await page.click('aside.drawer [data-sec="hist"]');
+    await expect(page.locator('aside.drawer .drawer-b')).toContainText('2026-08-01');
+    await page.click('aside.drawer button.x');
+    await expect(page.locator('tr[data-emp="E2108"]')).toContainText('離職');
+    await go(page, 'pay', 'run');
+    await page.selectOption('#payMonth', '2026-08');
+    await expect(page.locator('tr[data-payemp="E2108"]')).toHaveCount(0);
+  });
+
+  test('personnel file: two emergency contacts, license upload and training records', async ({ page }) => {
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'emp');
+    await page.click('tr[data-emp="E2102"]');
+    await page.click('aside.drawer [data-sec="basic"]');
+    await expect(page.locator('aside.drawer .drawer-b')).toContainText('第二位緊急聯絡人');
+    await page.click('aside.drawer [data-sec="qual"]');
+    await expect(page.locator('aside.drawer .drawer-b')).toContainText('教育訓練記錄');
+    await expect(page.locator('aside.drawer form[data-add="lic"] input[type="file"]')).toHaveCount(1);
+    await expect(page.locator('aside.drawer form[data-add="train"]')).toHaveCount(1);
+    await page.click('aside.drawer button.x');
+    await page.click('tr[data-emp="E2103"]');                     // odd number: no second contact
+    await page.click('aside.drawer [data-sec="basic"]');
+    await expect(page.locator('aside.drawer .drawer-b')).not.toContainText('第二位緊急聯絡人');
+  });
+
+  test('the first emergency contact is required when editing', async ({ page }) => {
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'emp');
+    await page.click('tr[data-emp="E2103"]');
+    await page.click('aside.drawer [data-sec="basic"]');
+    await page.click('aside.drawer [data-edit="basic"]');
+    await expect(page.locator('input[name="emerName"]')).toHaveAttribute('required', '');
+    await expect(page.locator('input[name="emer2Name"]')).not.toHaveAttribute('required', '');
+  });
+
+  test('every report lists both the employee number and the Chinese name', async ({ page }) => {
+    await setRole(page, 'hr');
+    await go(page, 'rpt');
+    for (const type of ['attendance', 'personnel', 'leave', 'financial']) {
+      const [dl] = await Promise.all([page.waitForEvent('download'), page.click(`[data-export="${type}"]`)]);
+      const head = fs.readFileSync(await dl.path(), 'utf8').replace(/^﻿/, '').split('\n')[0].split(',');
+      expect(head, type).toContain('員工編號');
+      expect(head, type).toContain('姓名');
+    }
+  });
+
+  test('reports can be downloaded as a real Excel (.xlsx) file', async ({ page }) => {
+    await setRole(page, 'hr');
+    await go(page, 'rpt');
+    await page.selectOption('#reportFmt', 'xlsx');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-export="attendance"]')]);
+    expect(dl.suggestedFilename()).toBe('出勤統計報表_2026-09.xlsx');
+    const buf = fs.readFileSync(await dl.path());
+    expect(buf.subarray(0, 2).toString()).toBe('PK');                 // zip container
+    const text = buf.toString('utf8');
+    for (const part of ['[Content_Types].xml', 'xl/workbook.xml', 'xl/worksheets/sheet1.xml', '員工編號', 'E2101']) expect(text).toContain(part);
+    // the zip is well formed: end-of-central-directory record counts 5 entries
+    const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 5, 6]));
+    expect(eocd).toBeGreaterThan(0);
+    expect(buf.readUInt16LE(eocd + 10)).toBe(5);
+    // employee numbers stay text and counts stay numbers
+    const sheet = text.slice(text.indexOf('<sheetData>'));
+    expect(sheet).toMatch(/<c r="A2" t="inlineStr"><is><t[^>]*>E1001<\/t>/);
+    expect(sheet).toMatch(/<c r="F2"><v>100<\/v><\/c>/);
+  });
+
+  test('the HR walkthrough finds its targets', async ({ page }) => {
+    await page.goto(PORTAL + '&tour=hr');
+    await expect(page.locator('.coach')).toContainText('在職狀態');
+    await expect(page.locator('#roleSel')).toHaveValue('hr');
+    for (let i = 0; i < 2; i++) {
+      await expect(page.locator('.tour-hl')).toHaveCount(1);
+      await page.click('[data-tourstep="1"]');
+    }
+    await expect(page.locator('#reportFmt.tour-hl')).toHaveCount(1);
   });
 });
 
@@ -883,7 +1036,7 @@ test.describe('Personnel file drawer', () => {
 /* ================================================================ */
 test.describe('CSV exports', () => {
   const FILES = {
-    attendance: ['出勤統計報表', '員工編號,職稱,公司'],
+    attendance: ['出勤統計報表', '員工編號,姓名,職稱'],
     personnel: ['人事資料報表', '員工編號,姓名,職稱'],
     leave: ['差勤申請報表', '單號,類型,員工編號'],
     financial: ['財務報表', '員工編號,姓名,公司,部門,計薪方式,應發金額']

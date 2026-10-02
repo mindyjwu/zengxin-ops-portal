@@ -103,11 +103,12 @@ select[disabled]{background:var(--surface-2);color:var(--ink-3);cursor:not-allow
 
 /* ---------- primitives ---------- */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
-.card-h{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.card-h{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
 .card-h h2{font-size:14px}
 .card-h .en{font-size:11px;color:var(--ink-3);font-family:var(--mono)}
 .card-b{padding:14px}
-.grid{display:grid;gap:14px}
+.grid{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.grid.calc2{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);align-items:start}
 .tiles{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(158px,1fr))}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:11px 13px;display:flex;flex-direction:column;gap:2px}
 .tile .k{font-size:11px;color:var(--ink-3)}
@@ -333,7 +334,8 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
   .rail-group,.rail-foot{display:none}
   .navitem{width:auto}
   .navitem .en{display:none}
-  .split{grid-template-columns:1fr}
+  .split,.grid.calc2{grid-template-columns:minmax(0,1fr)}
+  .chip{white-space:normal;max-width:100%}
   .content{padding:16px 14px 60px}
   .utility{padding:10px 14px}
 }
@@ -422,6 +424,19 @@ const STAFF = RAW.map(r=>({
   mobile:'09'+r[0].slice(1,3)+'-'+r[0].slice(3)+'8-'+r[0].slice(2)+'1'
 }));
 const person = id => STAFF.find(s=>s.id===id);
+/* 在職狀態（9/30 會議：在職、留職停薪、離職）。示範資料：兩位同仁帶有狀態，其餘皆在職 */
+const EMP_STATUS = {active:{zh:'在職',en:'Active',cls:'ok'}, loa:{zh:'留職停薪',en:'Unpaid leave of absence',cls:'warn'}, left:{zh:'離職',en:'Resigned',cls:''}};
+const STATUS_DEMO = {E2209:{status:'loa', since:'2026-08-01'}, E2303:{status:'left', since:'2026-09-15'}};
+STAFF.forEach(s=>{ const d=STATUS_DEMO[s.id]; s.status=d?d.status:'active'; s.statusSince=d?d.since:''; });
+/* 當月是否仍在名冊（計薪與出勤統計用）：留職停薪、離職自生效月起不列入；規則待人資確認 */
+const onRoster = (s, month) => s.status==='active' || !s.statusSince || month < s.statusSince.slice(0,7);
+const empStatusChip = s => `<span class="chip ${EMP_STATUS[s.status].cls}">${EMP_STATUS[s.status].zh}</span>`;
+/* 年資：自到職日起算；離職者算到離職日。跨公司轉調員工編號不變、年資不歸零（9/30 會議）；離職後回任才重新計算 */
+function tenureOf(s){
+  const end = s.status==='left' && s.statusSince ? new Date(s.statusSince) : TODAY, h=new Date(s.hired);
+  let m=(end.getFullYear()-h.getFullYear())*12+end.getMonth()-h.getMonth(); if(end.getDate()<h.getDate()) m--;
+  m=Math.max(0,m); return {y:Math.floor(m/12), m:m%12};
+}
 </script>
 <script>
 /* ---------- 展示日期 ----------
@@ -439,6 +454,16 @@ const ANN_CAT = {
   facility:{zh:'會議與專案',en:'Meetings & project',cls:'warn'}
 };
 const ANNOUNCEMENTS = [
+ {id:'A10', date:'2026-09-30', cat:'facility', scope:'ALL', pin:false, author:'E1002',
+  zh:'下次會議：10/7（三）11:30，會前請完成的事項',
+  en:'Next meeting: Wed 7 Oct, 11:30 — what to prepare',
+  bodyZh:'1. 團隊實際操作最新 Portal 後，以 PM 角度回饋各角色需要哪些功能與按鈕。\n2. 整理各角色權限清單：員工、護理師、社工、督導等各職位可查看的功能與資料範圍。\n3. 截圖整理 104 與人保系統頁面，供評估 Portal 能否直接取代 104 差勤功能，並確認兩系統是否提供 API 串接。\n4. 提供組織架構圖（Work Chart），供依職位設定對應權限與員工編號前綴規則。',
+  bodyEn:'1. After trying the latest portal, give PM-style feedback on the functions and buttons each role needs.\n2. List each role’s permissions: what employees, nurses, social workers, supervisors etc. can see and which data.\n3. Screenshots of the 104 and Renbao pages, to judge whether the portal can replace 104 attendance and whether either system offers an API.\n4. The org chart (work chart), to set permissions by position and the employee-number prefix rules.'},
+ {id:'A09', date:'2026-09-30', cat:'policy', scope:'ALL', pin:true, author:'E1002',
+  zh:'9/30 會議結論：員工個別角色、員工編號、在職狀態與報表',
+  en:'30 Sept meeting: employee role, employee numbers, statuses and reports',
+  bodyZh:'1. 三個據點員工統一使用同一個 centralized 系統。\n2. 新增「員工個別」角色：只能看自己的打卡記錄、請假申請與審核狀態、特休餘額；管理層與員工看到的是完全不同的系統介面。\n3. 同名同姓以員工編號為主要識別碼，報表必須同時有員工編號與中文姓名。\n4. 在職狀態分三種：在職、留職停薪、離職。\n5. 員工編號前綴：現行各公司不同，建議統一改為 A/B/C 等英文字母前綴，並保留日後收購公司的彈性（待討論）。\n6. 報表匯出支援 CSV 或 Excel；工時記錄以半小時為單位。\n完整紀錄見「文件管理 › 會議紀錄」。',
+  bodyEn:'1. Staff at all three sites use one centralized system.\n2. A new individual-employee role sees only their own punch records, leave requests and approval status, and leave balance; management and employees see completely different interfaces.\n3. Employee number is the primary identifier for people with the same name; reports must show both employee number and Chinese name.\n4. Three employment statuses: active, unpaid leave of absence, resigned.\n5. Employee-number prefixes differ per company today; the proposal is A/B/C-style letter prefixes, leaving room for acquisitions (to be discussed).\n6. Reports export as CSV or Excel; time records use half-hour units.\nFull notes: Documents › Meeting minutes.'},
  {id:'A08', date:'2026-09-27', cat:'hr', scope:'ALL', pin:false, author:'E1003',
   zh:'待提供資料：員工資料表頭、共用行政帳號方案、104 資料匯出',
   en:'Data due: employee fields, shared-admin account plan, 104 export',
@@ -487,6 +512,7 @@ const EVENTS = [
  {d:'2026-09-27', type:'audit', scope:'ALL', zh:'截止：員工資料表頭、共用帳號方案、104 資料匯出', en:'Due: employee fields, shared-account plan, 104 export'},
  {d:'2026-09-30', type:'hr',    scope:'ALL', zh:'第二次需求會議 11:30', en:'Requirements meeting #2, 11:30'},
  {d:'2026-09-30', type:'audit', scope:'ALL', zh:'截止：NAS 硬體清單與容量確認', en:'Due: NAS hardware and capacity list'},
+ {d:'2026-10-07', type:'hr',    scope:'ALL', zh:'下次會議 11:30', en:'Next meeting, 11:30'},
  {d:'2026-10-15', type:'audit', scope:'ALL', zh:'截止：仁寶系統 API、衛福部介接要求確認', en:'Due: Renbao API and MOHW interface requirements'},
  {d:'2026-10-31', type:'train', scope:'ALL', zh:'第一期 MVP 目標上線', en:'Phase 1 MVP target'}
 ];
@@ -789,6 +815,7 @@ const MODULES = [
     {id:'meeting',zh:'會議紀錄',   en:'Meeting minutes'},
     {id:'guide',  zh:'使用指南',   en:'User guide'},
     {id:'comp',   zh:'法規與資安', en:'Regulations & security'},
+    {id:'cmp104', zh:'104 功能對照', en:'104 comparison'},
     {id:'sysinfo',zh:'系統說明',   en:'System info'}
   ]},
   {id:'fin', zh:'線上申請', en:'Online requests', built:true, perm:'mgmt', tabs:[
@@ -796,7 +823,7 @@ const MODULES = [
     {id:'petty',  zh:'待定義規則',     en:'Rules to define'}
   ]},
   {id:'svc', zh:'業務資料整合', en:'Business data (planned)', built:true, perm:'mgmt', tabs:[
-    {id:'case',  zh:'仁寶系統',        en:'Renbao system'},
+    {id:'case',  zh:'個案管理系統',      en:'Case-management system'},
     {id:'contract',zh:'個案資料與契約', en:'Case data & contracts'},
     {id:'assess',zh:'異常事件通報',     en:'Incident reporting'}
   ]},
@@ -951,7 +978,7 @@ function render(){
     'ann:board':viewBoard, 'ann:cal':viewCalendar, 'ann:org':viewOrg, 'ann:dir':viewDirectory,
     'hr:emp':viewEmployees, 'hr:mylog':viewMyHours, 'hr:att':viewAttendance, 'hr:leave':viewLeave,
     'perm:matrix':viewMatrix, 'perm:open':viewOpen,
-    'doc:comp':viewDocCompliance, 'doc:guide':viewDocGuides, 'doc:meeting':viewDocMeeting, 'doc:sysinfo':viewDocSysInfo,
+    'doc:comp':viewDocCompliance, 'doc:guide':viewDocGuides, 'doc:meeting':viewDocMeeting, 'doc:sysinfo':viewDocSysInfo, 'doc:cmp104':viewDocCmp104,
     'svc:case':viewSvcCase, 'svc:contract':viewSvcContract, 'svc:assess':viewSvcAssess,
     'fin:proc':viewFinProcurement, 'fin:petty':viewFinPettyCash,
     'pay:run':viewPayRun, 'pay:calc':viewPayCalc, 'pay:ver':viewPayVer,
@@ -967,33 +994,68 @@ const BINDERS={};
 /* =============================== 原型說明 Prototype Info =============================== */
 /* 會議決議（9/20 入口網站建置第一次會議紀錄）與原型對應 */
 const MEETING_DECISIONS = [
-  {zh:'帳號一人一組，以員工編號識別，帳號密碼由員工自行設定', en:'One account per person, identified by employee number; employees set their own login',
+  {src:'9/20', zh:'帳號一人一組，以員工編號識別，帳號密碼由員工自行設定', en:'One account per person, identified by employee number; employees set their own login',
    whereZh:'原型沒有真實登入，以上方「身分」切換示意；員工編號以 E 開頭編號示意', whereEn:'No real login in the prototype; the Role selector stands in. Employee numbers are shown as E-codes', st:'demo'},
-  {zh:'管理者與共用行政人員可依授權切換公司，或查看全公司總覽', en:'Managers and shared admin staff can switch company or see an all-company overview',
+  {src:'9/20', zh:'管理者與共用行政人員可依授權切換公司，或查看全公司總覽', en:'Managers and shared admin staff can switch company or see an all-company overview',
    whereZh:'上方「公司」選單；畫面上方標示目前公司', whereEn:'Company selector at the top; the current company is labelled on every page', st:'built'},
-  {zh:'差勤：補打卡、請假、加班、出差、出勤異常檢核、各假別可用天數', en:'Attendance: missed punch, leave, overtime, business trips, exception checks, leave balances',
+  {src:'9/20', zh:'差勤：補打卡、請假、加班、出差、出勤異常檢核、各假別可用天數', en:'Attendance: missed punch, leave, overtime, business trips, exception checks, leave balances',
    whereZh:'私人秘書（員工）、人事系統 › 我的工時／請假審核', whereEn:'My Desk (employees); HR › My Hours / Leave approvals', st:'built'},
-  {zh:'評估入口網站能否完全取代 104 打卡（104 月費 1,500 元為比較基準）', en:'Assess whether the portal can fully replace 104 (NT$1,500/month baseline)',
-   whereZh:'待 IT 評估；目前 104 以連結方式保留', whereEn:'IT assessment pending; 104 stays available as a link', st:'todo'},
-  {zh:'一般員工僅能檢視資料，員工資料由人事新增、修改及維護', en:'Employees can only view their data; HR adds, edits and maintains it',
+  {src:'9/20', zh:'評估入口網站能否完全取代 104 打卡（104 月費 1,500 元為比較基準）', en:'Assess whether the portal can fully replace 104 (NT$1,500/month baseline)',
+   whereZh:'文件管理 › 104 功能對照（依 104 截圖逐項比對）；評估結論待 IT', whereEn:'Documents › 104 comparison (item by item, from the 104 screenshots); the assessment itself is pending', st:'part'},
+  {src:'9/20', zh:'一般員工僅能檢視資料，員工資料由人事新增、修改及維護', en:'Employees can only view their data; HR adds, edits and maintains it',
    whereZh:'一般員工只能檢視本人資料；編輯權限僅人資與系統管理員', whereEn:'Employees see only their own record; only HR and the system admin can edit', st:'built'},
-  {zh:'核薪依制度分別設計：月薪制、時薪制、拆帳制', en:'Pay calculated per system: monthly, hourly, revenue-share',
+  {src:'9/20', zh:'核薪依制度分別設計：月薪制、時薪制、拆帳制', en:'Pay calculated per system: monthly, hourly, revenue-share',
    whereZh:'薪資計算：月薪、時薪已可試算；拆帳制規則待人事確認，計算機中可選但不計算', whereEn:'Payroll: monthly and hourly work; revenue-share is selectable but not calculated until HR confirms the rules', st:'part'},
-  {zh:'整併前先確認個資、資安與法規；過渡期間以連結導向既有系統', en:'Confirm privacy, security and regulations before integrating; link out meanwhile',
-   whereZh:'系統設定 › 既有系統連結；文件管理 › 法規與資安', whereEn:'Settings › Existing systems; Documents › Regulations & security', st:'part'}
+  {src:'9/20', zh:'整併前先確認個資、資安與法規；過渡期間以連結導向既有系統', en:'Confirm privacy, security and regulations before integrating; link out meanwhile',
+   whereZh:'系統設定 › 既有系統連結；文件管理 › 法規與資安', whereEn:'Settings › Existing systems; Documents › Regulations & security', st:'part'},
+  {src:'9/30', zh:'三個據點員工統一使用同一個 centralized 系統', en:'Staff at all three sites use one centralized system',
+   whereZh:'三家公司同一個入口，上方「公司」選單切換', whereEn:'One portal for all three companies; switch with the Company selector', st:'built'},
+  {src:'9/30', zh:'新增「員工個別」角色：只看自己的打卡記錄、請假申請與審核狀態、特休餘額；管理層與員工是完全不同的介面', en:'Individual-employee role: own punch records, leave requests and status, leave balance; a completely different interface from management',
+   whereZh:'切換成「一般員工」直接進入「私人秘書」，導覽列與管理層不同', whereEn:'The Employee role opens My Desk, with its own navigation', st:'built'},
+  {src:'9/30', zh:'護理師等職位的個別角色尚未建立，待新增', en:'Roles for nurses and other positions are not yet defined',
+   whereZh:'原型說明 › 角色與權限；各職位可查看的功能與資料範圍待團隊提供（10/7 前）', whereEn:'Prototype info › Roles; each position’s functions and data scope are due from the team before 7 Oct', st:'todo'},
+  {src:'9/30', zh:'同名同姓：以員工編號為主要識別碼，報表同時產出員工編號與中文姓名', en:'Same names: employee number is the primary identifier; reports show both number and Chinese name',
+   whereZh:'報表匯出的四份報表都有員工編號與姓名欄', whereEn:'All four exported reports have employee-number and name columns', st:'built'},
+  {src:'9/30', zh:'員工編號前綴：現行各公司不同（如 CSHR、OXHR），建議統一為 A/B/C 等英文字母前綴，並保留收購公司的彈性', en:'Employee-number prefixes differ per company (e.g. CSHR, OXHR); proposal: unify as A/B/C-style letters, with room for acquisitions',
+   whereZh:'待討論，從 proposal 開始；示範編號為 E 開頭，不是現行格式也不是提案格式（系統設定 › 帳號原則）', whereEn:'To be discussed, starting from a proposal; demo numbers start with E and are neither the current nor the proposed format', st:'todo'},
+  {src:'9/30', zh:'在職狀態三種：在職、留職停薪、離職', en:'Three employment statuses: active, unpaid leave, resigned',
+   whereZh:'人事系統 › 員工資料的「在職狀態」；人資可在員工資料中變更；留職停薪與離職自生效月起不列入計薪與出勤統計', whereEn:'HR › Employee records › Status; HR can change it; unpaid leave and resignation drop out of payroll and attendance from the effective month', st:'built'},
+  {src:'9/30', zh:'年資保留：跨單位轉調員工編號不變，年資不歸零；離職後重新回任才重新計算', en:'Tenure carries over: a transfer keeps the employee number and tenure; rehire after leaving restarts it',
+   whereZh:'員工資料與私人秘書顯示年資（自到職日起算）；回任重新計算的規則尚未做', whereEn:'Tenure is shown from the hire date; the rehire restart rule is not built', st:'part'},
+  {src:'9/30', zh:'薪資：月薪、時薪、拆帳制，各職位標準不同；先匯出 104 資料，看過格式後再建立計算邏輯', en:'Pay: monthly, hourly, revenue-share, standards differ by position; export 104 data first, then build the logic',
+   whereZh:'薪資計算機；拆帳制規則待提供；104 資料匯出待辦', whereEn:'Pay calculator; revenue-share rules pending; the 104 export is still to do', st:'part'},
+  {src:'9/30', zh:'員工資料欄位：緊急聯絡人（一位必填、一位選填）、勞健保加保日期、退休金自提、銀行帳號（含現金領取）、職務歷程、教育訓練記錄、證照上傳', en:'Employee fields: emergency contacts (one required, one optional), insurance enrolment date, voluntary pension, bank account (incl. cash), job history, training records, license upload',
+   whereZh:'人事系統 › 員工資料的各分頁（基本資料、任職與薪資異動、勞健保、資格與契約）', whereEn:'HR › Employee records tabs (personal, history, insurance, qualifications)', st:'built'},
+  {src:'9/30', zh:'工時記錄（打卡、補卡、請假、加班）以半小時為單位', en:'Time records (punch, missed punch, leave, overtime) use half-hour units',
+   whereZh:'我的工時：請假與加班以 0.5 小時為單位', whereEn:'My Hours: leave and overtime in 0.5-hour units', st:'built'},
+  {src:'9/30', zh:'報表匯出支援 CSV 或 Excel', en:'Reports export as CSV or Excel',
+   whereZh:'報表匯出：可選 CSV 或 Excel（.xlsx）', whereEn:'Reports export: choose CSV or Excel (.xlsx)', st:'built'},
+  {src:'9/30', zh:'104 月費 NT$1,500；完全取代的開發成本可能超過；老闆表示費用非主要考量，重點是能支撐未來 2,000 名員工的長期系統', en:'104 costs NT$1,500/month; replacing it fully may cost more; the owner says cost is not the main concern — the goal is a long-term system for 2,000 future employees',
+   whereZh:'文件管理 › 104 功能對照', whereEn:'Documents › 104 comparison', st:'part'},
+  {src:'9/30', zh:'人保系統（個案管理）：服務員可在個案家打卡並記錄服務項目；確認 104 與人保是否提供 API 或 MCP 串接', en:'Case-management system: staff clock in at the client’s home and record services; confirm whether 104 and the case system offer API or MCP',
+   whereZh:'業務資料整合 › 個案管理系統（規劃中，未開發）', whereEn:'Business data › Case-management system (planned, not built)', st:'todo'},
+  {src:'9/30', zh:'資料儲存：短期使用雲端服務；規模擴大後再投資自有硬體，並維持雙備份', en:'Storage: cloud for now; own hardware once the company grows, with double backup',
+   whereZh:'文件管理 › 法規與資安', whereEn:'Documents › Regulations & security', st:'todo'}
 ];
 const DECISION_ST = {built:{zh:'已建置',en:'Built',cls:'ok'}, part:{zh:'部分完成',en:'Partly done',cls:'info'}, demo:{zh:'示意',en:'Illustrated',cls:'warn'}, todo:{zh:'待辦',en:'To do',cls:''}};
 /* 後續追蹤事項（會議紀錄第三節）；負責人以職務表示，不列個人姓名 */
 const FOLLOW_UPS = [
-  {zh:'評估入口網站能否完全取代 104 差勤系統，並比較功能、成本及限制', ownerZh:'IT／專案負責人', whenZh:'下次會議前', st:'待辦'},
-  {zh:'提供員工資料及相關文件，作為欄位規劃參考', ownerZh:'老闆', whenZh:'下次會議前', st:'待辦'},
-  {zh:'彙整現有員工表單、欄位及資料來源', ownerZh:'人事', whenZh:'下次會議前', st:'待辦'},
-  {zh:'依彙整內容規劃員工資料建檔欄位與資料結構', ownerZh:'IT／專案負責人', whenZh:'收到資料後', st:'待辦'},
-  {zh:'邀請人事與會，說明員工資料及差勤管理需求', ownerZh:'人事', whenZh:'下次會議', st:'待辦'},
-  {zh:'整理月薪、時薪及拆帳制的核薪規則與所需資料', ownerZh:'會議指定負責人', whenZh:'待確認', st:'待確認'},
-  {zh:'盤點既有系統整併涉及的個資、資安及法規要求', ownerZh:'會議指定負責人', whenZh:'待確認', st:'待確認'},
-  {zh:'規劃入口網站連結至既有系統的暫行作法', ownerZh:'IT／專案負責人', whenZh:'待確認', st:'待確認'}
+  {src:'9/30', zh:'傳送最新 Portal 網址至群組，讓團隊實際操作後，以 PM 角度回饋各角色需要哪些功能與按鈕', ownerZh:'專案負責人（傳送）／團隊（回饋）', whenZh:'10/7 會議前', st:'待辦'},
+  {src:'9/30', zh:'整理各角色權限清單：員工、護理師、社工、督導等各職位可查看的功能與資料範圍', ownerZh:'團隊（提供給專案負責人）', whenZh:'10/7 會議前', st:'待辦'},
+  {src:'9/30', zh:'截圖整理 104 與人保系統頁面，供評估 Portal 能否取代 104 差勤功能，並確認兩系統是否提供 API 串接', ownerZh:'團隊（提供給專案負責人）', whenZh:'10/7 會議前', st:'104 截圖已提供；人保待提供'},
+  {src:'9/30', zh:'提供組織架構圖（Work Chart），供依職位設定對應權限與員工編號前綴規則', ownerZh:'團隊（提供給專案負責人）', whenZh:'10/7 會議前', st:'待辦'},
+  {src:'9/30', zh:'先匯出 104 的資料，看過格式後建立薪資計算邏輯', ownerZh:'會議指定負責人（匯出）／專案負責人（建立計算邏輯）', whenZh:'待確認', st:'待確認'},
+  {src:'9/30', zh:'討論員工編號前綴統一為 A/B/C 等英文字母前綴，並保留未來收購公司的彈性（從 proposal 開始）', ownerZh:'專案負責人', whenZh:'10/7 會議', st:'待確認'},
+  {src:'9/20', zh:'評估入口網站能否完全取代 104 差勤系統，並比較功能、成本及限制', ownerZh:'IT／專案負責人', whenZh:'下次會議前', st:'待辦'},
+  {src:'9/20', zh:'提供員工資料及相關文件，作為欄位規劃參考', ownerZh:'老闆', whenZh:'下次會議前', st:'待辦'},
+  {src:'9/20', zh:'彙整現有員工表單、欄位及資料來源', ownerZh:'人事', whenZh:'下次會議前', st:'待辦'},
+  {src:'9/20', zh:'依彙整內容規劃員工資料建檔欄位與資料結構', ownerZh:'IT／專案負責人', whenZh:'收到資料後', st:'待辦'},
+  {src:'9/20', zh:'邀請人事與會，說明員工資料及差勤管理需求', ownerZh:'人事', whenZh:'下次會議', st:'待辦'},
+  {src:'9/20', zh:'整理月薪、時薪及拆帳制的核薪規則與所需資料', ownerZh:'會議指定負責人', whenZh:'待確認', st:'待確認'},
+  {src:'9/20', zh:'盤點既有系統整併涉及的個資、資安及法規要求', ownerZh:'會議指定負責人', whenZh:'待確認', st:'待確認'},
+  {src:'9/20', zh:'規劃入口網站連結至既有系統的暫行作法', ownerZh:'IT／專案負責人', whenZh:'待確認', st:'待確認'}
 ];
+const FOLLOW_UP_NOTE = '9/20 項目的完成情況，9/30 會議紀錄沒有說明，所以維持原本的狀態。';
 /* 分期規劃：需求簡報第 7 頁；時程取自 v2.0 規格 */
 const PHASES = [
   {zh:'短期：行政核心功能', whenZh:'第一期 MVP 目標 2026 年 10 月底', itemsZh:'人事資料、差勤、薪資計算、人事管理、線上申請', cls:'ok'},
@@ -1004,24 +1066,25 @@ function viewArchScope(){
   return `
   <div class="grid">
     <div class="note">${esc(both(
-      '本原型依 9/20 入口網站建置第一次會議紀錄、需求簡報與 v2.0 開發規格建置。人員、姓名、出勤與薪資數字皆為示範資料，不是真實資料。',
-      'This prototype follows the 20 Sept requirements meeting minutes, the requirements deck and the v2.0 spec. People, names, attendance and pay figures are demo data, not real records.'))}
+      '本原型依 9/20、9/30 會議紀錄、需求簡報、v2.0 開發規格，以及提供的 104 截圖建置。人員、姓名、出勤與薪資數字皆為示範資料，不是真實資料。',
+      'This prototype follows the 20 and 30 Sept meeting minutes, the requirements deck, the v2.0 spec and the 104 screenshots provided. People, names, attendance and pay figures are demo data, not real records.'))}
       <a href="guide.html" style="margin-left:6px">${esc(both('使用指南','User guide'))} →</a></div>
     <section class="card">
-      <div class="card-h"><h2>${esc(both('9/20 會議決議與原型對應','20 Sept decisions and where they are in the prototype'))}</h2></div>
+      <div class="card-h"><h2>${esc(both('會議決議與原型對應','Decisions and where they are in the prototype'))}</h2><span class="en">${esc(both('9/20、9/30 會議紀錄','Minutes of 20 and 30 Sept'))}</span></div>
       <div class="tablewrap"><table>
-        <thead><tr><th>${bi('會議決議','Decision')}</th><th>${bi('原型中的位置','In the prototype')}</th><th>${bi('狀態','Status')}</th></tr></thead>
-        <tbody>${MEETING_DECISIONS.map(d=>`<tr><td style="white-space:normal">${esc(both(d.zh,d.en))}</td>
+        <thead><tr><th>${bi('來源','From')}</th><th>${bi('會議決議','Decision')}</th><th>${bi('原型中的位置','In the prototype')}</th><th>${bi('狀態','Status')}</th></tr></thead>
+        <tbody>${MEETING_DECISIONS.map(d=>`<tr><td class="mono">${esc(d.src)}</td><td style="white-space:normal">${esc(both(d.zh,d.en))}</td>
           <td style="white-space:normal" class="muted">${esc(both(d.whereZh,d.whereEn))}</td>
           <td><span class="chip ${DECISION_ST[d.st].cls}">${esc(both(DECISION_ST[d.st].zh,DECISION_ST[d.st].en))}</span></td></tr>`).join('')}</tbody>
       </table></div>
     </section>
     <section class="card">
-      <div class="card-h"><h2>${esc(both('後續追蹤事項','Follow-up actions'))}</h2><span class="en">${esc(both('9/20 會議紀錄第三節','Minutes, section 3'))}</span></div>
+      <div class="card-h"><h2>${esc(both('後續追蹤事項','Follow-up actions'))}</h2><span class="en">${esc(both('9/20、9/30 會議紀錄','Minutes of 20 and 30 Sept'))}</span></div>
       <div class="tablewrap"><table>
-        <thead><tr><th>${bi('工作事項','Action')}</th><th>${bi('負責','Owner')}</th><th>${bi('預計時程','When')}</th><th>${bi('狀態','Status')}</th></tr></thead>
-        <tbody>${FOLLOW_UPS.map(f=>`<tr><td style="white-space:normal">${esc(f.zh)}</td><td>${esc(f.ownerZh)}</td><td>${esc(f.whenZh)}</td><td><span class="chip">${esc(f.st)}</span></td></tr>`).join('')}</tbody>
+        <thead><tr><th>${bi('來源','From')}</th><th>${bi('工作事項','Action')}</th><th>${bi('負責','Owner')}</th><th>${bi('預計時程','When')}</th><th>${bi('狀態','Status')}</th></tr></thead>
+        <tbody>${FOLLOW_UPS.map(f=>`<tr><td class="mono">${f.src}</td><td style="white-space:normal">${esc(f.zh)}</td><td style="white-space:normal">${esc(f.ownerZh)}</td><td>${esc(f.whenZh)}</td><td><span class="chip">${esc(f.st)}</span></td></tr>`).join('')}</tbody>
       </table></div>
+      <div class="legend">${esc(FOLLOW_UP_NOTE)}</div>
     </section>
     <section class="card">
       <div class="card-h"><h2>${esc(both('分期規劃','Phases'))}</h2><span class="en">${esc(both('需求簡報第 7 頁；時程依 v2.0 規格','Deck p.7; dates from the v2.0 spec'))}</span></div>
@@ -1065,6 +1128,16 @@ function viewArchRoles(){
           <td>${r.built?`<span class="chip ok">${esc(both('可切換：'+ROLES[r.built].zh,'Try: '+ROLES[r.built].en))}</span>`:`<span class="chip">${esc(both('待權限確認後建置','After permissions are confirmed'))}</span>`}</td></tr>`).join('')}</tbody>
       </table></div>
       <div class="legend">${esc(both('註：一般人員僅檢視本人資料，不應檢視其他員工的薪資帳戶、投保或績效資料。','Note: regular staff see only their own data — never other staff’s salary account, insurance or performance.'))}</div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('9/30 會議：員工角色與待新增項目','30 Sept: employee role and what is still to add'))}</h2></div>
+      <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.8">
+        <li>${esc(both('新增「員工個別」角色：只能看自己的打卡記錄、請假申請與審核狀態、特休餘額。原型的「一般員工」身分就是這個角色，進入「私人秘書」。','New individual-employee role: own punch records, leave requests and status, leave balance. The prototype’s Employee role is this one and opens My Desk.'))}</li>
+        <li>${esc(both('管理層與員工看到的是完全不同的系統介面，不是只少幾個功能。','Management and employees see completely different interfaces, not the same one with a few functions removed.'))}</li>
+        <li>${esc(both('護理師等員工個別資訊尚未建立獨立角色，待新增。','Roles for nurses and similar positions are not yet built.'))}</li>
+        <li>${esc(both('待團隊提供：員工、護理師、社工、督導等各職位可查看的功能與資料範圍，以及組織架構圖（10/7 會議前）。','Due from the team: the functions and data scope for employees, nurses, social workers, supervisors etc., plus the org chart (before 7 Oct).'))}</li>
+        <li>${esc(both('9/30 紀錄把現有的管理角色寫成「系統管理員、經理、院長」；原型目前以系統管理員、人資、管理者（日照主管）三個管理身分示意，對應關係待確認。','The 30 Sept notes list the current management roles as system administrator, manager and director; the prototype shows system administrator, HR and manager (day care supervisor). The mapping is to be confirmed.'))}</li>
+      </ul></div>
     </section>
     <section class="card">
       <div class="card-h"><h2>${esc(both('原型中可切換的身分','Roles you can switch to'))}</h2></div>
@@ -1346,6 +1419,8 @@ function viewEmployees(){
       <div class="tile"><span class="k">${esc(both('公司數','Companies in scope'))}</span><span class="v">${units.filter(u=>u!=='HQ').length}</span>
         <span class="d">${esc(both('全公司 '+ALL_UNITS.length+' 個公司','of '+ALL_UNITS.length+' units'))}</span></div>
       <div class="tile"><span class="k">${esc(both('平均年資','Average tenure'))}</span><span class="v">${tenure}</span><span class="d">${esc(both('年','years'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('在職','Active'))}</span><span class="v">${list.filter(s=>s.status==='active').length}</span>
+        <span class="d">${esc(both('留職停薪 '+list.filter(s=>s.status==='loa').length+' · 離職 '+list.filter(s=>s.status==='left').length,'On leave '+list.filter(s=>s.status==='loa').length+' · resigned '+list.filter(s=>s.status==='left').length))}</span></div>
       <div class="tile"><span class="k">${esc(both('部分工時','Part-time'))}</span><span class="v">${part}</span><span class="d">${esc(both('人','people'))}</span></div>
       <div class="tile"><span class="k">${esc(both('證照 90 天內到期','Licenses expiring ≤90d'))}</span><span class="v">${licSoon}</span><span class="d">${esc(both('張，點選員工查看','licenses — open a record'))}</span></div>
     </div>
@@ -1364,7 +1439,7 @@ function viewEmployees(){
         <thead><tr>
           <th>${bi('員工編號','Employee no.')}</th><th>${bi('姓名','Name')}</th><th>${bi('職稱','Title')}</th>
           <th>${bi('部門','Department')}</th><th>${bi('所屬公司','Company')}</th><th>${bi('到職日','Hire date')}</th>
-          <th>${bi('僱用別','Employment')}</th><th>${bi('月薪','Monthly pay')}</th>
+          <th>${bi('僱用別','Employment')}</th><th>${bi('在職狀態','Status')}</th><th>${bi('月薪','Monthly pay')}</th>
         </tr></thead>
         <tbody>
         ${list.map(s=>`<tr class="clickable" data-emp="${s.id}">
@@ -1375,6 +1450,7 @@ function viewEmployees(){
           <td>${esc(both(unit(s.unit).zh,unit(s.unit).en))}</td>
           <td class="mono">${s.hired}</td>
           <td><span class="chip ${s.type==='part'?'warn':''}">${esc(s.type==='part'?both('部分工時','Part-time'):both('全職','Full-time'))}</span></td>
+          <td>${empStatusChip(s)}</td>
           <td>${can('salary')?`<span class="mono">${money(s.salary)}</span>`
               :`<span class="lock">${lockIcon()}${esc(both('僅人資可見','HR only'))}</span>`}</td>
         </tr>`).join('')}
@@ -1407,7 +1483,7 @@ const REC_SECS = [
   {id:'perf', zh:'績效與文件',     en:'Performance & documents'}
 ];
 const HIST_KIND = {hire:{zh:'到職',en:'Hired'}, transfer:{zh:'調職',en:'Transfer'}, promote:{zh:'升遷',en:'Promotion'},
-  raise:{zh:'調薪',en:'Pay change'}, grade:{zh:'職等調整',en:'Band change'}, leave:{zh:'留職停薪',en:'Unpaid leave'}, exit:{zh:'離職',en:'Exit'}};
+  raise:{zh:'調薪',en:'Pay change'}, grade:{zh:'職等調整',en:'Band change'}, leave:{zh:'留職停薪',en:'Unpaid leave'}, return:{zh:'復職',en:'Reinstated'}, exit:{zh:'離職',en:'Exit'}};
 const INS_EVENT = {join:{zh:'加保',en:'Enrolled'}, adjust:{zh:'調整投保薪資',en:'Grade change'}, quit:{zh:'退保',en:'Withdrawn'}};
 const DOC_CAT = {id:{zh:'身分證明',en:'ID'}, contract:{zh:'契約',en:'Contract'}, license:{zh:'證照',en:'License'},
   health:{zh:'體檢',en:'Health check'}, record:{zh:'良民證',en:'Police record'}, ins:{zh:'勞健保',en:'Insurance'}, perf:{zh:'考核',en:'Appraisal'}, other:{zh:'其他',en:'Other'}};
@@ -1451,6 +1527,9 @@ function empRecord(id){
   const dep=Math.floor(r('dep')*3), lg=gradeFor(start,LABOR_GRADES), hg=gradeFor(start,HEALTH_GRADES);
   const ins=[{date:p.hired, kind:'join', labor:lg, health:hg, note:'到職加保'}];
   if(p.salary!==start) ins.push({date:'2026-01-01', kind:'adjust', labor:gradeFor(p.salary,LABOR_GRADES), health:gradeFor(p.salary,HEALTH_GRADES), note:'隨調薪調整'});
+  const sd=STATUS_DEMO[id];
+  if(sd){ hist.push({date:sd.since, kind:sd.status==='loa'?'leave':'exit', title:p.title, unit:p.unit, band:p.band, salary:p.salary, note:sd.status==='loa'?'留職停薪（示範）':'離職（示範）'});
+    if(sd.status==='left') ins.push({date:sd.since, kind:'quit', labor:0, health:0, note:'離職退保（示範）'}); }
   const lic=(LICENSES[p.title]||[]).map((l,i)=>{
     let issued=p.hired, exp='';
     if(l.renew){ const x=new Date(TODAY); x.setMonth(x.getMonth()+4+Math.floor(r('m'+i)*(l.renew*12-4))); exp=ymd(x); issued=addYears(exp,-l.renew); }
@@ -1476,9 +1555,12 @@ function empRecord(id){
       address:'新竹縣'+['竹北市光明六路','竹東鎮東林路','竹北市縣政九路','竹東鎮長春路'][n%4]+(10+n%190)+'號',
       emerName:SURN[Math.floor(r('es')*SURN.length)]+GIVEN[Math.floor(r('eg')*GIVEN.length)], emerRel:['配偶','父親','母親','子女','手足'][n%5],
       emerPhone:'09'+String(10000000+Math.floor(r('ep')*89999999)),
+      emer2Name:n%2===0?SURN[Math.floor(r('es2')*SURN.length)]+GIVEN[Math.floor(r('eg2')*GIVEN.length)]:'', emer2Rel:n%2===0?['配偶','父親','母親','子女','手足'][(n+2)%5]:'',
+      emer2Phone:n%2===0?'09'+String(10000000+Math.floor(r('ep2')*89999999)):'',
       bank:['台灣銀行','第一銀行','合作金庫','玉山銀行','國泰世華'][n%5], branch:['竹北分行','竹東分行','新竹分行'][n%3],
       acct:String(100000000000+Math.floor(r('ac')*899999999999)), payMethod:'bank' },
-    hist, ins, dep, pension:6, selfPension:n%3===0?6:0, lic, contracts, renewals, perf, docs
+    hist, ins, dep, pension:6, selfPension:n%3===0?6:0, lic, contracts, renewals, perf, docs,
+    training:DONE_COURSES.map(c=>({d:c.d, zh:c.zh, en:c.en, h:c.h}))
   };
   if(CASH_PAY.includes(id)) Object.assign(state.empRecords[id].basic, {payMethod:'cash', bank:'', branch:'', acct:''});
   return state.empRecords[id];
@@ -1516,9 +1598,14 @@ function secBasic(p, rec){
       </div>
       <div><label>${esc(both('通訊地址','Address'))}</label><input name="address" value="${esc(b.address)}"></div>
       <div class="row">
-        <div><label>${esc(both('緊急聯絡人','Emergency contact'))}</label><input name="emerName" value="${esc(b.emerName)}"></div>
-        <div><label>${esc(both('關係','Relationship'))}</label><input name="emerRel" value="${esc(b.emerRel)}"></div>
-        <div><label>${esc(both('緊急聯絡電話','Emergency phone'))}</label><input name="emerPhone" value="${esc(b.emerPhone)}"></div>
+        <div><label>${esc(both('緊急聯絡人（必填）','Emergency contact (required)'))}</label><input name="emerName" value="${esc(b.emerName)}" required></div>
+        <div><label>${esc(both('關係','Relationship'))}</label><input name="emerRel" value="${esc(b.emerRel)}" required></div>
+        <div><label>${esc(both('緊急聯絡電話','Emergency phone'))}</label><input name="emerPhone" value="${esc(b.emerPhone)}" required></div>
+      </div>
+      <div class="row">
+        <div><label>${esc(both('第二位緊急聯絡人（選填）','Second emergency contact (optional)'))}</label><input name="emer2Name" value="${esc(b.emer2Name||'')}"></div>
+        <div><label>${esc(both('關係','Relationship'))}</label><input name="emer2Rel" value="${esc(b.emer2Rel||'')}"></div>
+        <div><label>${esc(both('緊急聯絡電話','Emergency phone'))}</label><input name="emer2Phone" value="${esc(b.emer2Phone||'')}"></div>
       </div>
       ${fin?`<div class="eyebrow">${esc(both('薪資帳戶','Salary account'))}</div>
       <div class="row">
@@ -1547,6 +1634,7 @@ function secBasic(p, rec){
       ${kvRow('分機','Extension', `<span class="mono">${p.ext}</span>`)}
       ${kvRow('通訊地址','Address', contact?esc(b.address):lockTxt('受限','Restricted'))}
       ${kvRow('緊急聯絡人','Emergency contact', contact?esc(b.emerName+'（'+b.emerRel+'）')+` <span class="mono">${esc(b.emerPhone)}</span>`:lockTxt('受限','Restricted'))}
+      ${b.emer2Name?kvRow('第二位緊急聯絡人','Second contact', contact?esc(b.emer2Name+'（'+b.emer2Rel+'）')+` <span class="mono">${esc(b.emer2Phone)}</span>`:lockTxt('受限','Restricted')):''}
     </dl>
     <div class="eyebrow">${esc(both('薪資帳戶','Salary account'))}</div>
     ${fin?`<dl class="kv">
@@ -1633,6 +1721,15 @@ function secQual(p, rec){
       ${fld('證照名稱','License','name','text','required')}${fld('字號','No.','no')}
       ${fld('發證日','Issued','issued','date','required')}${fld('到期日（無則留空）','Expires (blank if none)','exp','date')}
       ${fld('應修積分','CE required','ceNeed','number','min="0"')}${fld('已修積分','CE earned','ceHave','number','min="0"')}
+      ${fld('證照檔案（上傳）','License file (upload)','file','file','accept=".pdf,.jpg,.png"')}
+    </div>`):''}
+    <div class="eyebrow">${esc(both('教育訓練記錄（示範）','Training records (demo)'))}</div>
+    ${rec.training.length?`<div class="tablewrap"><table>
+      <thead><tr><th>${bi('日期','Date')}</th><th>${bi('課程','Course')}</th><th>${bi('時數','Hours')}</th></tr></thead>
+      <tbody>${rec.training.slice().sort((a,b)=>b.d.localeCompare(a.d)).map(c=>`<tr><td class="mono">${c.d}</td><td>${bi(c.zh,c.en)}</td><td class="num">${c.h}</td></tr>`).join('')}</tbody>
+    </table></div>`:`<div class="muted" style="font-size:12.5px">${esc(both('尚無訓練紀錄','No training records'))}</div>`}
+    ${edit?addBox('train', both('新增訓練紀錄','Add training record'), `<div class="row">
+      ${fld('日期','Date','date','date','required value="'+ymd(TODAY)+'"')}${fld('課程名稱','Course','name','text','required')}${fld('時數','Hours','hours','number','min="0" step="0.5" required')}
     </div>`):''}
     <div class="eyebrow">${esc(both('勞動契約','Employment contracts'))}</div>
     <div class="tablewrap"><table>
@@ -1686,7 +1783,11 @@ function saveRec(id, kind, fd){
   if(kind==='basic'){ Object.keys(rec.basic).forEach(k=>{ if(fd.has(k)) rec.basic[k]=f(k); }); }
   if(kind==='hist') rec.hist.push({date:f('date'), kind:f('kind'), title:f('title'), unit:f('unit'), band:f('band'), salary:+f('salary')||0, note:f('note')});
   if(kind==='ins'){ rec.ins.push({date:f('date'), kind:f('kind'), labor:+f('labor'), health:+f('health'), note:f('note')}); rec.dep=+f('dep')||0; addDoc(file(),'ins'); rec.ins.sort((a,b)=>a.date.localeCompare(b.date)); }
-  if(kind==='lic') rec.lic.push({name:f('name'), no:f('no'), issued:f('issued'), exp:f('exp'), ce:+f('ceNeed')?{need:+f('ceNeed'),have:+f('ceHave')||0}:null});
+  if(kind==='lic'){ rec.lic.push({name:f('name'), no:f('no'), issued:f('issued'), exp:f('exp'), ce:+f('ceNeed')?{need:+f('ceNeed'),have:+f('ceHave')||0}:null, file:file()}); addDoc(file(),'license'); }
+  if(kind==='train') rec.training.push({d:f('date'), zh:f('name'), en:f('name'), h:+f('hours')||0});
+  if(kind==='status'){ const p=person(id), st=f('status'), d=f('date');
+    p.status=st; p.statusSince=st==='active'?'':d;
+    rec.hist.push({date:d, kind:st==='active'?'return':st==='loa'?'leave':'exit', title:p.title, unit:p.unit, band:p.band, salary:p.salary, note:f('note')}); }
   if(kind==='contract'){ if(f('kind')==='續約') rec.renewals.push({date:f('start'), note:f('note')||'續約'+(f('end')?'至 '+f('end'):'')});
     else rec.contracts.push({kind:f('kind'), start:f('start'), end:f('end'), note:f('note')}); }
   if(kind==='perf'){ rec.perf.push({year:TODAY.getFullYear(), period:f('period'), score:+f('score'), grade:f('grade'), reviewer:me().id, note:f('note')}); addDoc(file(),'perf'); }
@@ -1719,16 +1820,22 @@ function openPerson(id){
           <dt>${esc(both('部門','Department'))}</dt><dd>${esc(both(DEPTS[p.dept].zh,DEPTS[p.dept].en))}</dd>
           <dt>${esc(both('直屬主管','Reports to'))}</dt><dd>${mgr?esc(nameOf(mgr)+' · '+L(TITLES[mgr.title])):esc(both('無','—'))}</dd>
           <dt>${esc(both('到職日','Hire date'))}</dt><dd class="mono">${visible?p.hired:'—'}</dd>
+          ${visible?`<dt>${esc(both('年資','Tenure'))}</dt><dd>${esc(both(tenureOf(p).y+' 年 '+tenureOf(p).m+' 個月',tenureOf(p).y+' y '+tenureOf(p).m+' m'))}
+            <span class="muted" style="font-size:11.5px">${esc(both('跨公司轉調員工編號不變，年資不歸零；離職後回任才重新計算','Transfers keep the employee no. and tenure; rehire after leaving restarts it'))}</span></dd>
+          <dt>${esc(both('在職狀態','Status'))}</dt><dd>${empStatusChip(p)}${p.statusSince?` <span class="mono muted">${p.statusSince}</span>`:''}</dd>`:''}
           <dt>${esc(both('分機','Extension'))}</dt><dd class="mono">${p.ext}</dd>
           <dt>${esc(both('手機','Mobile'))}</dt><dd>${visible&&can('mobile')?`<span class="mono">${esc(rec.basic.mobile)}</span>`:lockTxt('受限','Restricted')}</dd>
           <dt>${esc(both('職等','Pay band'))}</dt><dd>${visible&&can('salary')?`<span class="mono">${p.band}</span>`:lockTxt('受限','Restricted')}</dd>
           <dt>${esc(both('月薪','Monthly pay'))}</dt><dd>${visible&&can('salary')?`<span class="mono">${money(p.salary)}</span>`:lockTxt('僅人資可見','HR only')}</dd>
         </dl>
       </section>
+      ${visible&&can('editEmp')?`<section>${addBox('status', both('變更在職狀態','Change employment status'), `<div class="row">
+        ${sel('狀態','Status','status',EMP_STATUS)}${fld('生效日','Effective','date','date','required value="'+ymd(TODAY)+'"')}${fld('說明','Note','note')}</div>`)}
+        <div class="legend">${esc(both('留職停薪與離職自生效月起不列入計薪與出勤統計；實際規則待人資確認。','Unpaid leave and resignation drop out of payroll and attendance stats from the effective month; the rules are for HR to confirm.'))}</div></section>`:''}
       ${visible?`
       <section>
         <div class="eyebrow" style="margin-bottom:8px">${esc(both('出勤摘要','Attendance summary'))} · <span class="mono">${state.attMonth}</span></div>
-        <div class="tiles" style="grid-template-columns:repeat(3,1fr)">
+        <div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">
           <div class="tile"><span class="k">${esc(both('出勤率','Attendance'))}</span><span class="v">${sum.rate}%</span></div>
           <div class="tile"><span class="k">${esc(both('準時率','Punctuality'))}</span><span class="v">${sum.punctual}%</span></div>
           <div class="tile"><span class="k">${esc(both('加班','Overtime'))}</span><span class="v">${sum.ot.toFixed(1)}</span><span class="d">${esc(both('小時','hours'))}</span></div>
@@ -2810,6 +2917,7 @@ function dqRec(){
           ${kvRow('Email','Email',`<span class="mono">${esc(b.email)}</span>`)}
           ${kvRow('通訊地址','Address',esc(b.address))}
           ${kvRow('緊急聯絡人','Emergency contact',esc(b.emerName+'（'+b.emerRel+'）')+` <span class="mono">${esc(b.emerPhone)}</span>`)}
+          ${b.emer2Name?kvRow('第二位緊急聯絡人','Second contact',esc(b.emer2Name+'（'+b.emer2Rel+'）')+` <span class="mono">${esc(b.emer2Phone)}</span>`):''}
         </dl>
       </div>
       <div style="display:grid;gap:10px">
@@ -2929,7 +3037,7 @@ BINDERS['desk:query']=function(){
 /* ---------------- 課程 ---------------- */
 function viewDeskCourse(){
   const u=me(), ce=empRecord(u.id).lic.filter(l=>l.ce), en=state.enrolled||{};
-  const doneH=DONE_COURSES.reduce((a,c)=>a+c.h,0);
+  const trainRec=empRecord(u.id).training, doneH=trainRec.reduce((a,c)=>a+c.h,0);
   return `<div class="grid">
     <section class="card"><div class="card-h"><h2>${esc(both('繼續教育時數','Continuing education'))}</h2></div>
       ${ce.length?`<div class="card-b" style="display:grid;gap:12px">${ce.map(l=>`<div>
@@ -2946,7 +3054,7 @@ function viewDeskCourse(){
     <section class="card"><div class="card-h"><h2>${esc(both('訓練紀錄（示範）','Training record (demo)'))}</h2>
         <span class="en">${esc(both('本年度 '+doneH+' 小時',doneH+' h this year'))}</span></div>
       <div class="tablewrap"><table><thead><tr><th>${bi('日期','Date')}</th><th>${bi('課程','Course')}</th><th>${bi('時數','Hours')}</th></tr></thead>
-        <tbody>${DONE_COURSES.map(c=>`<tr><td class="mono">${c.d}</td><td>${bi(c.zh,c.en)}</td><td class="num">${c.h}</td></tr>`).join('')}</tbody></table></div>
+        <tbody>${trainRec.map(c=>`<tr><td class="mono">${c.d}</td><td>${bi(c.zh,c.en)}</td><td class="num">${c.h}</td></tr>`).join('')}</tbody></table></div>
       <div class="legend">${esc(both('原型示意：課程紀錄為虛構資料，尚未串接 104 企業學習平台。','Prototype: course records are fictional and not linked to the 104 learning platform.'))}</div>
     </section>
   </div>`;
@@ -2963,7 +3071,7 @@ BINDERS['desk:course']=function(){
 const ATT_MONTHS=['2026-06','2026-07','2026-08','2026-09'];
 function viewAttendance(){
   const units=activeUnitIds();
-  const list=STAFF.filter(s=>units.includes(s.unit));
+  const list=STAFF.filter(s=>units.includes(s.unit) && onRoster(s,state.attMonth));
   const [y,m]=state.attMonth.split('-').map(Number);
   const sums=list.map(s=>({s, c:attSummary(s.id,y,m)}));
   const agg=sums.reduce((a,x)=>({rate:a.rate+x.c.rate, punc:a.punc+x.c.punctual, late:a.late+x.c.late,
@@ -3183,10 +3291,36 @@ const MEETING_ITEMS = [
   {h:'核薪功能設計', items:['核薪功能須依不同薪資制度分別設計，包括月薪制、時薪制及拆帳制。','各制度的計薪規則、資料來源、例外調整及核准流程，待人事與相關單位進一步確認。']},
   {h:'既有系統整併與法規確認', items:['正式進行系統串接或資料整併前，須先確認個人資料保護、資訊安全及其他相關法規與管理要求。','在法規、資料範圍與資安機制尚未確認前，可先於入口網站設置連結，導向現有系統使用。','後續整併時，應同步確認資料存取權限、保存方式、傳輸安全及操作紀錄等需求。']}
 ];
+const MEETING_930 = [
+  {h:'系統架構與功能更新', items:['網站自上次會議後已更新，新增模組：文件管理、服務管理、財務採購（表單申請）。','新增出勤管理、工時記錄（打卡、補卡、請假、加班，以半小時為單位）。','新增報表匯出（CSV 或 Excel）。','三個據點員工統一使用同一個 centralized 系統。','員工個別資訊（護理師等）目前尚未建立獨立角色，待新增。']},
+  {h:'員工資料與權限設計', items:['權限角色目前分三類：系統管理員、經理、院長，待新增「員工個別」角色。','員工個別可查看：自己的打卡記錄、請假申請與審核狀態、特休餘額。','管理層與員工看到的是完全不同的系統介面（非僅少幾個功能）。']},
+  {h:'同名同姓問題', items:['建議以員工編號作為主要識別碼，報表必須同時產出員工編號與中文姓名。']},
+  {h:'員工編號格式', items:['現行各公司前綴不同（如 CSHR、OXHR），建議集團內統一改為 A/B/C 等英文字母前綴。','未來收購公司時仍需保留彈性，建議從 proposal 開始討論。']},
+  {h:'在職狀態', items:['在職狀態三種：在職、留職停薪、離職。']},
+  {h:'年資保留', items:['員工跨單位轉調時承諾保留年資，影響特休天數與退休金計算。','若系統為 centralized，員工編號不變，年資應不會歸零。','離職後重新回任才會重新計算。']},
+  {h:'薪資計算', items:['計薪方式分月薪制、時薪制、拆帳制，各職位標準不同。','建議先匯出 104 的資料，專案負責人看過格式後自行建立計算邏輯。']},
+  {h:'其他員工資料欄位', items:['緊急聯絡人（一位必填、一位選填）、勞健保加保日期、退休金自提、銀行帳號（含現金領取選項）、職務歷程、教育訓練記錄、證照上傳。']},
+  {h:'104 系統評估', items:['月費 NT$1,500，功能完整（打卡補卡、差勤、overtime）。','若 Portal 要完全取代 104，開發成本可能超過 NT$1,500/月。','老闆表示費用非主要考量，重點是建立可支撐未來 2,000 名員工的長期系統。']},
+  {h:'人保系統（個案管理）', items:['服務員可在個案家打卡並記錄服務項目。','需確認 104 與人保是否提供 API 或 MCP 串接。','MCP 為較新方式（AI Agent 自動執行），但有資安風險；傳統 API 較穩定。']},
+  {h:'資料儲存', items:['短期建議使用雲端服務；公司規模擴大後再投資自有硬體，並維持雙備份。']}
+];
+const NEXT_MEETING = ['傳送最新 Portal 網址至群組，讓團隊實際操作後，以 PM 角度回饋各角色需要哪些功能與按鈕。','整理各角色權限清單並提供給專案負責人，包含員工、護理師、社工、督導等各職位可查看的功能與資料範圍。','截圖整理 104 與人保系統頁面，供評估 Portal 是否可直接取代 104 差勤功能，並確認兩系統是否提供 API 串接。','提供組織架構圖（Work Chart），供依職位設定對應權限與員工編號前綴規則。'];
 const NEXT_AGENDA = ['IT 說明 104 差勤系統取代可行性、成本及限制。','人事說明員工資料欄位、維護流程及權限需求。','確認月薪、時薪及拆帳制的核薪規則與資料來源。','確認既有系統連結方式，以及後續整併的個資與資安要求。','確認下一階段開發範圍、優先順序及預定時程。'];
 function viewDocMeeting(){
   return `
   <div class="grid">
+    <section class="card">
+      <div class="card-h"><h2>9/30 會議</h2><span class="en">${esc(both('9/30（三）11:30','Wed 30 Sept, 11:30'))}</span></div>
+      <div class="card-b"><div class="muted" style="font-size:12.5px;margin-bottom:10px">${esc(both('下列內容照 9/30 會議紀錄整理，用字保持原樣；紀錄中的人名以職務表示。','Taken from the 30 Sept notes with their wording kept; names are shown by role.'))}</div>
+        <div style="display:grid;gap:12px">${MEETING_930.map((m,i)=>`<div><b>${i+1}. ${esc(m.h)}</b>
+        <ul style="margin:6px 0 0;padding-left:20px;line-height:1.75">${m.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div>
+        <div class="note q" style="margin-top:12px">${esc(both('名稱待確認：9/20 會議紀錄與需求簡報稱為「仁寶」系統，9/30 紀錄稱為「人保」系統，是否為同一套系統待確認。',
+          'To confirm: the 20 Sept minutes and the deck say “Renbao”, the 30 Sept notes say “人保”. Are they the same system?'))}</div></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>下次會議</h2><span class="en">${esc(both('10/7（三）11:30','Wed 7 Oct, 11:30'))}</span></div>
+      <div class="card-b"><ol style="margin:0;padding-left:20px;line-height:1.8">${NEXT_MEETING.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>
+    </section>
     <section class="card">
       <div class="card-h"><h2>入口網站建置第一次需求討論會議</h2><span class="en">V1.0</span></div>
       <div class="card-b"><dl class="kv">
@@ -3208,14 +3342,14 @@ function viewDocMeeting(){
     <section class="card">
       <div class="card-h"><h2>後續追蹤事項</h2><span class="en">${esc(both('負責人以職務表示','Owners shown by role'))}</span></div>
       <div class="tablewrap"><table>
-        <thead><tr><th>${bi('工作事項','Action')}</th><th>${bi('負責','Owner')}</th><th>${bi('預計時程','When')}</th><th>${bi('狀態','Status')}</th></tr></thead>
-        <tbody>${FOLLOW_UPS.map(f=>`<tr><td style="white-space:normal">${esc(f.zh)}</td><td>${esc(f.ownerZh)}</td><td>${esc(f.whenZh)}</td><td><span class="chip">${esc(f.st)}</span></td></tr>`).join('')}</tbody>
+        <thead><tr><th>${bi('來源','From')}</th><th>${bi('工作事項','Action')}</th><th>${bi('負責','Owner')}</th><th>${bi('預計時程','When')}</th><th>${bi('狀態','Status')}</th></tr></thead>
+        <tbody>${FOLLOW_UPS.map(f=>`<tr><td class="mono">${f.src}</td><td style="white-space:normal">${esc(f.zh)}</td><td style="white-space:normal">${esc(f.ownerZh)}</td><td>${esc(f.whenZh)}</td><td><span class="chip">${esc(f.st)}</span></td></tr>`).join('')}</tbody>
       </table></div>
+      <div class="legend">${esc(FOLLOW_UP_NOTE)}</div>
     </section>
     <section class="card">
-      <div class="card-h"><h2>下次會議議程</h2><span class="en">${esc(both('9/30（三）11:30','Wed 30 Sept, 11:30'))}</span></div>
-      <div class="card-b"><ol style="margin:0;padding-left:20px;line-height:1.8">${NEXT_AGENDA.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>
-        <div class="muted" style="font-size:12.5px;margin-top:8px">${esc(both('第二次會議紀錄尚未提供，提供後補上。','Minutes of the second meeting have not been provided yet.'))}</div></div>
+      <div class="card-h"><h2>9/30 會議議程（9/20 會議訂定）</h2><span class="en">${esc(both('9/30（三）11:30','Wed 30 Sept, 11:30'))}</span></div>
+      <div class="card-b"><ol style="margin:0;padding-left:20px;line-height:1.8">${NEXT_AGENDA.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>
     </section>
   </div>`;
 }
@@ -3258,21 +3392,128 @@ function viewDocCompliance(){
       <div class="card-b split" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
         <div><div class="eyebrow">${esc(both('入口網站可直接儲存','Stored in the portal'))}</div>
           <ul style="margin:6px 0 0;padding-left:20px;line-height:1.75">${['員工基本資料（姓名、員工代碼、部門、職務、聯絡方式）','帳號與權限設定','組織架構（公司、據點、部門）','出勤記錄（打卡、請假、加班申請與核准狀態）','申請流程與簽核記錄','操作日誌與稽核追蹤'].map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+        <div><div class="eyebrow">${esc(both('資料儲存位置（9/30 會議）','Where to host it (30 Sept)'))}</div>
+          <ul style="margin:6px 0 0;padding-left:20px;line-height:1.75">${['短期建議使用雲端服務。','公司規模擴大後，再投資自有硬體。','不論放在哪裡，都維持雙備份。'].map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
         <div><div class="eyebrow">${esc(both('暫不直接儲存，以連結或摘要呈現','Linked or summarised only'))}</div>
           <ul style="margin:6px 0 0;padding-left:20px;line-height:1.75">${['個案資訊（姓名、年齡、身分證字號、病歷）：暫存於仁寶系統，入口網站以連結或摘要呈現（待仁寶 API 確認）','健康／照護資訊（診斷、用藥、過敏、失能程度）：暫存於仁寶系統或醫療機構','敏感醫療紀錄：依護理人員法規定，需書面同意始可存取或記錄'].map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
       </div>
     </section>
   </div>`;
 }
+/* 104 功能對照：依使用者提供的 104 截圖（管理端與私人秘書）逐項比對；狀態只反映本原型目前的實際內容 */
+const CMP104_ST = {have:{zh:'原型已有',en:'In prototype',cls:'ok'}, part:{zh:'部分',en:'Partly',cls:'info'}, none:{zh:'原型尚無',en:'Not in prototype',cls:''}, off:{zh:'104 未啟用',en:'Not enabled in 104',cls:'warn'}};
+const CMP104 = [
+  {mod:'私人秘書（員工端）', rows:[
+    ['月曆：每日出勤狀態與打卡時間','have','私人秘書 › 首頁'],
+    ['常用表單：請假單、加班單、銷假單、公出差旅單、忘刷申請單','have','私人秘書 › 表單（另有預先加班單、文件證明、勞健保證明）'],
+    ['批次忘刷','have','私人秘書 › 首頁「批次忘刷」'],
+    ['部屬異常打卡（主管）','part','私人秘書 › 查詢 › 部屬出勤資料；沒有 104 那樣的月曆'],
+    ['同事今天請假或公出嗎？','have','私人秘書 › 首頁；員工只看到姓名'],
+    ['查詢','part','薪資袋、保險費、所得稅、人事資料、年度假勤等；內容為示範資料'],
+    ['課程（企業學習平台）','part','只有繼續教育時數與訓練記錄（示範）；104 的線上課程內容沒有納入'],
+    ['手機 App（iOS、Android）','none','原型是網頁版，可用手機瀏覽器開啟；是否需要完整手機支援待決議（簡報第 15 頁）']]},
+  {mod:'組織', rows:[
+    ['組織圖','have','公告欄 › 組織圖（只能檢視）'],
+    ['公司規章管理','part','私人秘書 › 公司規章下載（員工下載清單），沒有管理維護畫面'],
+    ['權限管理（超級系統管理員、人資管理最高管理員）','part','權限與範圍 › 權限對照表'],
+    ['公司資料','none','—'],
+    ['職務管理（職務等級、職務類別、職務說明書）','part','員工資料有職稱與職等，沒有維護畫面；職務類別與 104 的差異見下表']]},
+  {mod:'人事', rows:[
+    ['員工資料','have','人事系統 › 員工資料'],
+    ['異動作業','part','員工資料可新增任職異動紀錄，沒有異動申請流程'],
+    ['留職停薪、復職、離職作業','part','人資可變更在職狀態與生效日；沒有交接、結算等離職流程'],
+    ['非員工資料','none','—'],
+    ['文件證明','have','私人秘書 › 表單 › 文件證明申請單、勞健保證明申請單']]},
+  {mod:'出勤', rows:[
+    ['打卡','have','私人秘書 › 首頁、人事系統 › 我的工時'],
+    ['出勤申請（請假、加班、補卡）','have','以 0.5 小時為單位；簽核流程為直屬主管 → 人資'],
+    ['假勤明細、特休管理','have','出勤管理、我的工時 › 假別餘額、私人秘書 › 年度假勤'],
+    ['行事曆','have','公告欄 › 公司行事曆'],
+    ['員工出勤規則、工作時間設定、假勤設定','part','規則內建在原型（白班 08:00–17:00、午休 12:00–13:00、最小單位 0.5 小時），沒有設定畫面'],
+    ['超時出勤提醒設定','part','加班有每月上限檢查（46 小時），沒有提醒設定']]},
+  {mod:'薪資', rows:[
+    ['薪資資料、薪資計算、發薪紀錄','have','薪資計算 › 薪資試算、版本與覆核；發薪方式可選銀行轉帳或現金'],
+    ['薪資加扣項','part','薪資試算可人工調整，需填原因'],
+    ['保險資料、保費明細、保險規則','part','員工資料 › 勞健保；級距與費率為示意'],
+    ['所得稅、所得稅規則','part','薪資袋與所得稅查詢；稅率為示意'],
+    ['保險證明','have','勞健保證明申請單'],
+    ['薪資科目、薪資標籤設定、出差費用薪資設定','none','—']]},
+  {mod:'表單', rows:[
+    ['表單查詢','have','私人秘書 › 表單 › 追蹤表單'],
+    ['簽核設定','part','104 可依組織圖或自訂流程（截圖中各員工有「依組織圖」與「自訂流程」兩種）；原型是固定流程：直屬主管 → 人資'],
+    ['簽核通知','part','私人秘書 › 表單通知'],
+    ['代理人設定','none','—'],
+    ['自訂表單（104 標示 New）','none','—'],
+    ['員工權限管理、打卡設定','part','權限對照表；沒有打卡設定畫面']]},
+  {mod:'報表', rows:[
+    ['人事分析、出勤分析、薪酬分析','part','報表匯出：人事資料、出勤統計、差勤申請、財務；沒有圖表分析'],
+    ['自訂報表（104 標示 Beta）、報表設定、下載封存資料','none','—']]},
+  {mod:'排班', rows:[
+    ['排班模組','off','104 畫面顯示目前尚未啟用排班模組；原型只有示範班別（白班、小夜），沒有排班功能']]}
+];
+/* 104 的職務類別（職務管理頁截圖，共 13 筆）與原型職稱的對照；只比對名稱，是否為同一職務待確認 */
+const JOBS_104 = [
+  ['護理師','護理師','相同'], ['社工','社工','相同'],
+  ['個案管理師','個案管理員','名稱相近'], ['居家服務督導員','居家服務督導','名稱相近'],
+  ['居家照顧服務員','居服員','名稱相近'], ['日照照顧服務員','照服員','名稱相近'],
+  ['教育訓練行政專員','教育訓練專員','名稱相近'], ['人力資源人員','人資','名稱相近'], ['出納/會計人員','會計','名稱相近'],
+  ['總經理','','原型沒有同名職稱，是否對應老闆或管理者待確認'], ['業務負責人','','原型沒有同名職稱，待確認'],
+  ['總務','','原型沒有此職稱'], ['行政人員','','原型沒有此職稱']
+];
+const PORTAL_ONLY_TITLES = ['系統管理員','日照主管','司機'];
+function viewDocCmp104(){
+  const all=CMP104.flatMap(g=>g.rows), cnt=k=>all.filter(r=>r[1]===k).length;
+  return `
+  <div class="grid">
+    <div class="note">${esc(both('這份對照依你提供的 104 截圖（管理端與私人秘書）逐項整理，狀態只反映本原型目前實際有的內容。它是 9/30 會議待辦「評估 Portal 能否取代 104 差勤功能」的輸入資料，不是評估結論。',
+      'Built item by item from the 104 screenshots you provided (admin and My Desk). Status reflects only what the prototype actually has today. It is input for the 30 Sept action “assess whether the portal can replace 104 attendance”, not the conclusion.'))}</div>
+    <div class="tiles">
+      ${['have','part','none','off'].map(k=>`<div class="tile"><span class="k">${esc(both(CMP104_ST[k].zh,CMP104_ST[k].en))}</span><span class="v">${cnt(k)}</span><span class="d">${esc(both('項','items'))}</span></div>`).join('')}
+    </div>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('104 功能與原型對照','104 functions vs the prototype'))}</h2><span class="en">${esc(both('104 企業大師','104 企業大師'))}</span></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('104 功能','104 function')}</th><th>${bi('原型','Prototype')}</th><th>${bi('說明','Where / note')}</th></tr></thead>
+        <tbody>${CMP104.map(g=>`<tr><td colspan="3" style="background:var(--surface-2)"><b>${esc(g.mod)}</b></td></tr>`+g.rows.map(r=>`<tr><td style="white-space:normal">${esc(r[0])}</td>
+          <td><span class="chip ${CMP104_ST[r[1]].cls}">${esc(both(CMP104_ST[r[1]].zh,CMP104_ST[r[1]].en))}</span></td><td style="white-space:normal" class="muted">${esc(r[2])}</td></tr>`).join('')).join('')}</tbody>
+      </table></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('職務類別：104 與原型','Job types: 104 vs the prototype'))}</h2><span class="en">${esc(both('104 職務管理頁，共 13 筆','104 job-management page, 13 entries'))}</span></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('104 職務類別','104 job type')}</th><th>${bi('原型職稱','Prototype title')}</th><th>${bi('說明','Note')}</th></tr></thead>
+        <tbody>${JOBS_104.map(j=>`<tr><td>${esc(j[0])}</td><td>${j[1]?esc(j[1]):'—'}</td><td style="white-space:normal" class="muted">${esc(j[2])}</td></tr>`).join('')}
+          <tr><td>—</td><td>${esc(PORTAL_ONLY_TITLES.join('、'))}</td><td style="white-space:normal" class="muted">${esc('104 職務類別沒有這幾個職稱；它們來自需求簡報與規格，請確認要不要加進職務表')}</td></tr></tbody>
+      </table></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('104 現況（截圖所見）','What the screenshots show'))}</h2></div>
+      <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.8">
+        <li>${esc(both('員工編號前綴各公司不同：截圖有 CSCT、CSHR、CSHC，9/30 紀錄另提到 OXHR。建議統一改為 A/B/C 等英文字母前綴，待討論。','Employee-number prefixes differ by company: CSCT, CSHR and CSHC appear in the screenshots, and the 30 Sept notes mention OXHR. The proposal is A/B/C letters; to be discussed.'))}</li>
+        <li>${esc(both('104 的部門名稱例：人力資源管理部、社區整合型服務部、誠馨居家服務部、誠芯居家服務部。原型的部門名稱依需求簡報第 3 頁，兩邊的對應待確認。','Department names seen in 104 include HR management, community-integrated services, and home care for 誠馨 and 誠芯. The prototype follows deck p.3; the mapping is to be confirmed.'))}</li>
+        <li>${esc(both('104 權限管理只有「超級系統管理員」與「人資管理最高管理員」兩類有人員，其餘模組的最高管理員未設定。','In 104 only “super system administrator” and “HR top administrator” have people assigned; the other modules’ top administrators are empty.'))}</li>
+        <li>${esc(both('104 的簽核流程分「依組織圖」與「自訂流程」兩種。','104 approval flows are either “by org chart” or “custom”.'))}</li>
+        <li>${esc(both('9/30 會議提到 104 月費 NT$1,500；完全取代的開發成本可能超過這個數字，但老闆表示費用不是主要考量。','The 30 Sept meeting put 104 at NT$1,500 a month; replacing it fully may cost more, but the owner said cost is not the main concern.'))}</li>
+      </ul></div>
+    </section>
+  </div>`;
+}
 function viewDocSysInfo(){
-  const built=[['公告欄','公告、行事曆、組織圖、通訊錄'],['私人秘書','員工自助：出勤月曆、打卡、表單、薪資袋、保險費、所得稅、人事資料'],
-    ['人事系統','員工資料（5 大類）、我的工時、出勤管理、請假審核、績效考核（含期中考核）'],['薪資計算','月薪制、時薪制試算、薪資計算機、版本與覆核、現金發放簽收清冊；拆帳制待規則確認'],
-    ['線上申請','5 種申請的流程規劃（待規則確認後開放）'],['報表匯出','人事、出勤、差勤申請、財務 CSV'],['權限與範圍','權限對照表、待決議題'],['系統設定','既有系統連結（104、仁寶、衛福部長照系統）']];
+  const built=[['文件管理','會議紀錄（9/20、9/30）、使用指南、法規與資安、104 功能對照、系統說明'],['公告欄','公告、行事曆、組織圖、通訊錄'],['私人秘書','員工自助：出勤月曆、打卡、表單、薪資袋、保險費、所得稅、人事資料'],
+    ['人事系統','員工資料（含在職狀態、第二位緊急聯絡人、證照上傳、訓練記錄）、我的工時（0.5 小時為單位）、出勤管理、請假審核、績效考核（含期中考核）'],['薪資計算','月薪制、時薪制試算、薪資計算機、版本與覆核、現金發放簽收清冊；拆帳制待規則確認'],
+    ['線上申請','5 種申請的流程規劃（待規則確認後開放）'],['報表匯出','人事、出勤、差勤申請、財務；CSV 或 Excel；每份都有員工編號與姓名'],['權限與範圍','權限對照表、待決議題'],['系統設定','既有系統連結（104、仁寶、衛福部長照系統）']];
   return `
   <div class="grid">
     <section class="card">
       <div class="card-h"><h2>${esc(both('目前原型包含','What the prototype includes'))}</h2></div>
       <div class="tablewrap"><table><tbody>${built.map(([a,b])=>`<tr><td><b>${esc(a)}</b></td><td style="white-space:normal">${esc(b)}</td></tr>`).join('')}</tbody></table></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('設計目標','Design goal'))}</h2><span class="en">${esc(both('9/30 會議','30 Sept meeting'))}</span></div>
+      <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.8">
+        <li>${esc(both('老闆表示費用不是主要考量，重點是建立可支撐未來 2,000 名員工的長期系統。','The owner said cost is not the main concern; the aim is a long-term system that can support 2,000 employees in future.'))}</li>
+        <li>${esc(both('三個據點的員工統一使用同一個 centralized 系統。','Staff at all three sites use one centralized system.'))}</li>
+      </ul></div>
     </section>
     <section class="card">
       <div class="card-h"><h2>${esc(both('原型限制','Prototype limits'))}</h2></div>
@@ -3289,6 +3530,7 @@ BINDERS['doc:comp']=function(){};
 BINDERS['doc:guide']=function(){ document.querySelectorAll('[data-tour]').forEach(b=>b.onclick=()=>startTour(b.dataset.tour)); };
 BINDERS['doc:meeting']=function(){};
 BINDERS['doc:sysinfo']=function(){};
+BINDERS['doc:cmp104']=function(){};
 
 /* =============================== 業務資料整合（中期規劃）=============================== */
 /* 需求簡報第 12–14 頁：尚未開發，只呈現規劃與待確認事項，不放示範個案資料 */
@@ -3300,10 +3542,10 @@ const planCard=(title, src, steps, todo, note)=>`<div class="grid">
       <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.8">${todo.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
       ${note?`<div class="muted" style="font-size:12.5px;margin-top:8px">${esc(note)}</div>`:''}</div></section>
   </div>`;
-function viewSvcCase(){ return planCard('居家服務資料：仁寶系統','第 12 頁',
-  ['仁寶系統：評估 API 串接，或匯出 Excel 後匯入','入口網站資料層：欄位比對、驗證、錯誤清單、匯入紀錄','營運報表：依確認後的指標與權限產出'],
-  ['仁寶是否提供 API、排程匯出或固定 Excel 格式','資料更新頻率與歷史資料範圍','欄位異動、重複資料與匯入失敗的處理方式','哪一套系統是正式資料來源'],
-  '簡報註記：不要直接假設仁寶一定能 API 串接；第一步應取得系統介接文件或實際 Excel 範例。過渡期間請由「系統設定 › 既有系統連結」進入仁寶。'); }
+function viewSvcCase(){ return planCard('居家服務資料：仁寶／人保系統（個案管理）','第 12 頁與 9/30 會議紀錄',
+  ['個案管理系統：評估 API 串接，或匯出 Excel 後匯入','服務員可在個案家打卡並記錄服務項目（9/30 會議提出的需求）','入口網站資料層：欄位比對、驗證、錯誤清單、匯入紀錄','營運報表：依確認後的指標與權限產出'],
+  ['名稱：9/20 資料稱「仁寶」，9/30 紀錄稱「人保」，是否同一套系統','104 與人保是否提供 API 或 MCP 串接（9/30 會議）：傳統 API 較穩定；MCP 較新（由 AI Agent 自動執行），但有資安風險','是否提供 API、排程匯出或固定 Excel 格式','資料更新頻率與歷史資料範圍','欄位異動、重複資料與匯入失敗的處理方式','哪一套系統是正式資料來源'],
+  '簡報註記：不要直接假設一定能 API 串接；第一步應取得系統介接文件或實際 Excel 範例。團隊會提供 104 與人保的頁面截圖（10/7 會議前）。過渡期間請由「系統設定 › 既有系統連結」進入既有系統。'); }
 function viewSvcContract(){ return planCard('個案資料、契約與報表','第 13 頁',
   ['HTML 匯入：上傳衛福部下載的檔案並辨識個案欄位','資料驗證：缺漏、格式、重複個案與異動比對','文件產出：依核准範本建立契約及相關表單','總表管理：在案、暫停、結案與歷程紀錄','報表輸出：依公司、部門與授權範圍統計'],
   ['HTML 版本是否固定，哪些欄位可直接帶入','入口網站與原始下載資料何者為正式來源','契約範本更新後，舊契約如何保留','跨公司、跨部門及敏感個案資料的檢視範圍'],
@@ -3365,7 +3607,7 @@ function generatePersonnelReport(month){
   const units=activeUnitIds();
   const list=STAFF.filter(s=>units.includes(s.unit)).sort((a,b)=>a.id.localeCompare(b.id));
   const myLog=state.myHoursLog||{entries:[]};
-  const rows=[['員工編號','姓名','職稱','部門','公司','到職日','職等','薪資','Email','手機','緊急聯絡人','薪轉帳戶',
+  const rows=[['員工編號','姓名','職稱','部門','公司','到職日','在職狀態','職等','薪資','Email','手機','緊急聯絡人','薪轉帳戶',
     '勞保投保薪資','健保投保金額','勞退自提%','契約類型','證照（到期日）','最近考核','工作日誌時數','工作類型統計','特休剩餘(時)','補休剩餘(時)']];
   list.forEach(e=>{
     const entries=myLog.entries.filter(x=>x.empId===e.id&&x.date.startsWith(month));
@@ -3376,8 +3618,8 @@ function generatePersonnelReport(month){
     const bal=leaveBalance(e.id), left=k=>fmtH(bal.find(b=>b.k===k).left);
     const rec=empRecord(e.id), b=rec.basic, ins=rec.ins.filter(x=>x.kind!=='quit').slice(-1)[0], pf=rec.perf.slice(-1)[0];
     const fin=can('salary'), contact=can('mobile');
-    rows.push([e.id, b.name, TITLES[e.title].zh, DEPTS[e.dept].zh, unit(e.unit).zh, e.hired,
-      fin?e.band:'受限', fin?e.salary:'受限', b.email, contact?b.mobile:'受限', contact?`${b.emerName}(${b.emerRel}) ${b.emerPhone}`:'受限',
+    rows.push([e.id, b.name, TITLES[e.title].zh, DEPTS[e.dept].zh, unit(e.unit).zh, e.hired, EMP_STATUS[e.status].zh,
+      fin?e.band:'受限', fin?e.salary:'受限', b.email, contact?b.mobile:'受限', contact?`${b.emerName}(${b.emerRel}) ${b.emerPhone}`+(b.emer2Name?`; ${b.emer2Name}(${b.emer2Rel}) ${b.emer2Phone}`:''):'受限',
       fin?`${b.bank}${b.branch} ${b.acct}`:'受限', fin&&ins?ins.labor:'受限', fin&&ins?ins.health:'受限', rec.selfPension,
       rec.contracts.slice(-1)[0].kind, rec.lic.map(l=>`${l.name}(${l.exp||'永久'})`).join('; ')||'無',
       pf?`${pf.period} ${PERF_GRADE[pf.grade].zh}(${pf.score})`:'無',
@@ -3387,15 +3629,15 @@ function generatePersonnelReport(month){
 }
 function generateAttendanceReport(month){
   const units=activeUnitIds();
-  const list=STAFF.filter(s=>units.includes(s.unit)).sort((a,b)=>a.id.localeCompare(b.id));
+  const list=STAFF.filter(s=>units.includes(s.unit) && onRoster(s,month)).sort((a,b)=>a.id.localeCompare(b.id));
   const [y,m]=month.split('-').map(Number);
-  const rows=[['員工編號','職稱','公司','部門','出勤率%','正常','遲到','請假(天)','未打卡','請假時數','加班時數(核准)','補打卡次數','工作日誌時數']];
+  const rows=[['員工編號','姓名','職稱','公司','部門','出勤率%','正常','遲到','請假(天)','未打卡','請假時數','加班時數(核准)','補打卡次數','工作日誌時數']];
   list.forEach(e=>{
     const sum=attSummary(e.id,y,m);
     const logged=(state.myHoursLog||{entries:[]}).entries.filter(x=>x.empId===e.id&&x.date.startsWith(month));
     const loggedHours=logged.reduce((s,x)=>s+(parseFloat(x.hours)||0),0);
     const fixes=PUNCH_FIX.filter(f=>f.emp===e.id&&f.status==='approved'&&f.date.startsWith(month)).length;
-    rows.push([e.id, TITLES[e.title].zh, unit(e.unit).zh, DEPTS[e.dept].zh, sum.rate, sum.present, sum.late, sum.leave, sum.miss,
+    rows.push([e.id, empName(e.id), TITLES[e.title].zh, unit(e.unit).zh, DEPTS[e.dept].zh, sum.rate, sum.present, sum.late, sum.leave, sum.miss,
       fmtH(monthLeaveH(e.id,month)), fmtH(monthOTH(e.id,month)), fixes, fmtH(loggedHours)]);
   });
   return toCSV(rows);
@@ -3403,28 +3645,82 @@ function generateAttendanceReport(month){
 function generateLeaveReport(month){
   const units=activeUnitIds();
   const inScope=x=>units.includes(person(x.emp).unit);
-  const rows=[['單號','類型','員工編號','職稱','項目','開始','結束','時數','折合天數','狀態','申請日','備註']];
+  const rows=[['單號','類型','員工編號','姓名','職稱','項目','開始','結束','時數','折合天數','狀態','申請日','備註']];
   LEAVE.filter(l=>inScope(l)&&l.from.startsWith(month)).sort((a,b)=>a.from.localeCompare(b.from)).forEach(l=>{
-    rows.push([l.id,'請假',l.emp,person(l.emp).zh,LEAVE_TYPES[l.type].zh,`${l.from} ${l.fromT}`,`${l.to} ${l.toT}`,fmtH(l.hours),hToDays(l.hours),LEAVE_STATUS[l.status].zh,l.filed,l.note?l.note.zh:'']);
+    rows.push([l.id,'請假',l.emp,empName(l.emp),person(l.emp).zh,LEAVE_TYPES[l.type].zh,`${l.from} ${l.fromT}`,`${l.to} ${l.toT}`,fmtH(l.hours),hToDays(l.hours),LEAVE_STATUS[l.status].zh,l.filed,l.note?l.note.zh:'']);
   });
   OT_REQ.filter(o=>inScope(o)&&o.date.startsWith(month)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(o=>{
-    rows.push([o.id,'加班',o.emp,person(o.emp).zh,OT_COMP[o.comp].zh,`${o.date} ${o.start}`,`${o.date} ${o.end}`,fmtH(o.hours),'',LEAVE_STATUS[o.status].zh,o.filed,o.note?o.note.zh:'']);
+    rows.push([o.id,'加班',o.emp,empName(o.emp),person(o.emp).zh,OT_COMP[o.comp].zh,`${o.date} ${o.start}`,`${o.date} ${o.end}`,fmtH(o.hours),'',LEAVE_STATUS[o.status].zh,o.filed,o.note?o.note.zh:'']);
   });
   PUNCH_FIX.filter(f=>inScope(f)&&f.date.startsWith(month)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(f=>{
-    rows.push([f.id,'補打卡',f.emp,person(f.emp).zh,PUNCH_KIND[f.kind].zh,`${f.date} ${f.time}`,'','','',LEAVE_STATUS[f.status].zh,f.filed,f.note?f.note.zh:'']);
+    rows.push([f.id,'補打卡',f.emp,empName(f.emp),person(f.emp).zh,PUNCH_KIND[f.kind].zh,`${f.date} ${f.time}`,'','','',LEAVE_STATUS[f.status].zh,f.filed,f.note?f.note.zh:'']);
   });
   return toCSV(rows);
 }
 function generateFinancialReport(month){
   if(!can('salary')) return '';
   const units=activeUnitIds();
-  const list=STAFF.filter(s=>units.includes(s.unit)).sort((a,b)=>a.id.localeCompare(b.id));
+  const list=STAFF.filter(s=>units.includes(s.unit) && onRoster(s,month)).sort((a,b)=>a.id.localeCompare(b.id));
   const rows=[['員工編號','姓名','公司','部門','計薪方式','應發金額','實發金額','雇主勞保','雇主健保','雇主勞退','人事成本合計','發薪方式']];
   list.forEach(e=>{
     const r=calcPay(e.id, month);
     rows.push([e.id, empName(e.id), unit(e.unit).zh, DEPTS[e.dept].zh, e.type==='part'?'時薪':'月薪', r.gross, r.net, r.er.labor, r.er.health, r.er.pension, r.gross+r.er.total, PAY_METHOD[payMethodOf(e.id)].zh]);
   });
   return toCSV(rows);
+}
+/* ---------- Excel（.xlsx）匯出：不依賴外部程式庫，自行組成最小的 xlsx 檔 ---------- */
+function parseCSV(text){
+  const rows=[]; let row=[], cur='', q=false;
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(cur); cur=''; }
+    else if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur=''; }
+    else cur+=c; }
+  if(cur!==''||row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+const CRC_TABLE=(()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0; } return t; })();
+const crc32=b=>{ let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c=CRC_TABLE[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+function zipStore(files){
+  const enc=new TextEncoder(), chunks=[], central=[]; let off=0;
+  const u16=n=>[n&255,(n>>>8)&255], u32=n=>[n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255];
+  files.forEach(f=>{
+    const name=enc.encode(f.name), data=enc.encode(f.text), crc=crc32(data), n=data.length;
+    const head=Uint8Array.from([0x50,0x4b,3,4,...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(n),...u32(n),...u16(name.length),...u16(0)]);
+    chunks.push(head,name,data);
+    central.push(Uint8Array.from([0x50,0x4b,1,2,...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0x21),...u32(crc),...u32(n),...u32(n),...u16(name.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),name);
+    off+=head.length+name.length+n;
+  });
+  const cSize=central.reduce((a,x)=>a+x.length,0);
+  const end=Uint8Array.from([0x50,0x4b,5,6,0,0,0,0,...u16(files.length),...u16(files.length),...u32(cSize),...u32(off),...u16(0)]);
+  return new Blob([...chunks,...central,end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+const xlsxCol=i=>{ let n=i+1, out=''; while(n>0){ const m=(n-1)%26; out=String.fromCharCode(65+m)+out; n=Math.floor((n-1)/26); } return out; };
+const xmlEsc=t=>String(t).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function buildXlsx(rows){
+  /* 純數字（不含前導 0、最多 9 位）存成數字，其餘（員工編號、電話、帳號）存成文字 */
+  const sheet=rows.map((r,ri)=>`<row r="${ri+1}">`+r.map((v,ci)=>{
+    const t=String(v??''); if(t==='') return '';
+    const ref=xlsxCol(ci)+(ri+1);
+    return /^-?(0|[1-9]\d{0,8})(\.\d+)?$/.test(t) ? `<c r="${ref}"><v>${t}</v></c>` : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(t)}</t></is></c>`;
+  }).join('')+'</row>').join('');
+  const X='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  return zipStore([
+    {name:'[Content_Types].xml', text:X+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'},
+    {name:'_rels/.rels', text:X+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'},
+    {name:'xl/workbook.xml', text:X+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="報表" sheetId="1" r:id="rId1"/></sheets></workbook>'},
+    {name:'xl/_rels/workbook.xml.rels', text:X+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'},
+    {name:'xl/worksheets/sheet1.xml', text:X+'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'+sheet+'</sheetData></worksheet>'}
+  ]);
+}
+function saveBlob(blob, filename){
+  const url=URL.createObjectURL(blob), link=document.createElement('a');
+  link.href=url; link.download=filename; document.body.appendChild(link); link.click(); document.body.removeChild(link);
+}
+function downloadReport(csvText, base, month, fmt){
+  if(fmt==='xlsx') saveBlob(buildXlsx(parseCSV(csvText)), `${base}_${month}.xlsx`);
+  else downloadCSV(csvText, `${base}_${month}.csv`);
 }
 function downloadCSV(data, filename){
   const bom='﻿';
@@ -3444,7 +3740,7 @@ function viewReports(){
   <div class="grid">
     <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
       <b>報表匯出</b><br>
-      系統各模組數據彙總與統計分析。按月份、公司匯出成 CSV 檔案。
+      系統各模組數據彙總與統計分析。按月份、公司匯出，格式可選 CSV 或 Excel（.xlsx）。每份報表同時列出員工編號與中文姓名。
     </div>
     <section class="card">
       <div class="card-h"><h2>可匯出報表</h2></div>
@@ -3452,22 +3748,22 @@ function viewReports(){
         <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
           <div style="font-weight:500">出勤統計報表</div>
           <div style="font-size:12px;color:var(--ink-3)">按員工彙總出勤率、遲到、未打卡、請假時數、核准加班時數、補打卡次數與工作日誌時數。</div>
-          <button class="btn mini" data-export="attendance">下載 CSV</button>
+          <button class="btn mini" data-export="attendance">下載報表</button>
         </div>
         <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
           <div style="font-weight:500">人事資料報表</div>
           <div style="font-size:12px;color:var(--ink-3)">人事資料卡五大類摘要（聯絡、薪轉帳戶、勞健保級距、證照到期、契約、考核）、工作日誌時數、特休與補休剩餘時數。依身分遮蔽敏感欄位。</div>
-          <button class="btn mini" data-export="personnel">下載 CSV</button>
+          <button class="btn mini" data-export="personnel">下載報表</button>
         </div>
         <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
           <div style="font-weight:500">差勤申請報表</div>
           <div style="font-size:12px;color:var(--ink-3)">請假（以小時計，含折合天數）、加班、補打卡申請與審核狀態。</div>
-          <button class="btn mini" data-export="leave">下載 CSV</button>
+          <button class="btn mini" data-export="leave">下載報表</button>
         </div>
         <div style="border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px">
           <div style="font-weight:500">財務報表</div>
           <div style="font-size:12px;color:var(--ink-3)">依薪資試算結果彙總應發、實發與雇主勞健保、勞退負擔（人事成本）。</div>
-          ${can('salary')?`<button class="btn mini" data-export="financial">下載 CSV</button>`:`<span class="lock">${lockIcon()}僅人資可匯出薪資資料</span>`}
+          ${can('salary')?`<button class="btn mini" data-export="financial">下載報表</button>`:`<span class="lock">${lockIcon()}僅人資可匯出薪資資料</span>`}
         </div>
       </div>
     </section>
@@ -3484,8 +3780,15 @@ function viewReports(){
               <option value="2026-06" ${month==='2026-06'?'selected':''}>2026-06</option>
             </select>
           </div>
+          <div>
+            <label style="color:var(--ink-3);margin-bottom:4px;font-weight:500;display:block">匯出格式</label>
+            <select id="reportFmt" style="font-size:13px;width:100%">
+              <option value="csv" ${(state.reportFmt||'csv')==='csv'?'selected':''}>CSV</option>
+              <option value="xlsx" ${state.reportFmt==='xlsx'?'selected':''}>Excel（.xlsx）</option>
+            </select>
+          </div>
         </div>
-        <div style="font-size:12px;color:var(--ink-3)">✓ 選擇月份後自動套用到所有報表。CSV 檔案支援 Excel 與其他試算表軟體開啟。</div>
+        <div style="font-size:12px;color:var(--ink-3)">✓ 選擇月份與格式後套用到所有報表。同名同姓的同仁以員工編號區分，所以每份報表都同時列出員工編號與中文姓名。</div>
       </div>
     </section>
   </div>`;
@@ -3496,7 +3799,7 @@ function viewReports(){
    名稱取自使用者截圖的瀏覽器書籤；只有 104 的網址出現在截圖中，其餘網址待 IT 提供。 */
 const EXISTING_SYSTEMS = [
   {zh:'104 企業大師（差勤、薪資）', url:'https://pro.104.com.tw/', noteZh:'現行打卡、請假、加班與薪資作業；取代與否待 IT 評估'},
-  {zh:'仁寶 i 照護', url:'', noteZh:'居家服務個案、排班與服務紀錄；個案敏感資訊保留在原系統'},
+  {zh:'仁寶 i 照護', url:'', noteZh:'居家服務個案、排班與服務紀錄；個案敏感資訊保留在原系統。9/30 紀錄稱「人保系統」，是否同一套待確認'},
   {zh:'衛福部長照系統', url:'', noteZh:'政府申報與個案資料'},
   {zh:'誠馨雲端（NAS）', url:'', noteZh:'檔案儲存與備份'}
 ];
@@ -3514,12 +3817,16 @@ function viewSettings(){
         'Before integrating, confirm privacy, security and regulatory requirements; when integrating, also confirm access rights, retention, transport security and audit logs.'))}</div>
     </section>
     <section class="card">
-      <div class="card-h"><h2>${esc(both('帳號原則','Account rules'))}</h2><span class="en">${esc(both('9/20 會議紀錄；v2.0 規格 1.3','Minutes; spec 1.3'))}</span></div>
+      <div class="card-h"><h2>${esc(both('帳號原則','Account rules'))}</h2><span class="en">${esc(both('9/20、9/30 會議紀錄；v2.0 規格 1.3','Minutes of 20 and 30 Sept; spec 1.3'))}</span></div>
       <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.8">
         <li>${esc(both('一人一組帳號；公司提供員工編號作為身分識別及資料綁定依據。','One account per person; the company issues the employee number used for identity and data binding.'))}</li>
         <li>${esc(both('帳號與密碼由員工自行設定；管理者無法查看密碼，忘記密碼走重設流程。','Employees set their own login; managers cannot see passwords; forgotten passwords go through reset.'))}</li>
         <li>${esc(both('管理者與共用行政人員可依授權切換公司，或查看全公司總覽。','Managers and shared admin staff can switch company or view an all-company overview, as authorised.'))}</li>
         <li>${esc(both('待確認：共用行政採單一帳號切換三家公司，或每家公司各自帳號（人事確認）。','To confirm: one account switching across the three companies, or one per company (HR to confirm).'))}</li>
+        <li>${esc(both('同名同姓：以員工編號為主要識別碼，報表同時列出員工編號與中文姓名（9/30）。','Same names: the employee number is the primary identifier, and reports show both number and Chinese name (30 Sept).'))}</li>
+        <li>${esc(both('在職狀態三種：在職、留職停薪、離職（9/30）。','Three employment statuses: active, unpaid leave, resigned (30 Sept).'))}</li>
+        <li>${esc(both('員工編號前綴（待討論）：現行各公司不同（如 CSHR、OXHR）；建議集團內統一為 A/B/C 等英文字母前綴，並保留日後收購公司的彈性，從 proposal 開始討論。','Employee-number prefixes (to discuss): they differ by company today (e.g. CSHR, OXHR); the proposal is A/B/C-style letters across the group, leaving room for acquisitions, starting from a proposal.'))}</li>
+        <li>${esc(both('原型的示範員工編號以 E 開頭，不是現行格式，也不是上述提案格式。','The prototype’s demo numbers start with E; they are neither the current format nor the proposed one.'))}</li>
       </ul>
       <div class="muted" style="font-size:12.5px;margin-top:8px">${esc(both('原型沒有真實登入，請用上方「身分」選單切換角色。','The prototype has no real login; use the Role selector to switch.'))}</div></div>
     </section>
@@ -3538,17 +3845,19 @@ BINDERS['rpt']=function(){
   const month=state.reportMonth||'2026-09';
   const monthSel=document.getElementById('reportMonth');
   if(monthSel) monthSel.onchange=e=>{ state.reportMonth=e.target.value; render(); };
+  const fmtSel=document.getElementById('reportFmt');
+  if(fmtSel) fmtSel.onchange=e=>{ state.reportFmt=e.target.value; render(); };
 
   document.querySelectorAll('[data-export]').forEach(btn=>{
     btn.onclick=e=>{
       const type=e.target.dataset.export;
-      const filename=`${{personnel:'人事資料',attendance:'出勤統計',leave:'差勤申請',financial:'財務'}[type]}報表_${month}.csv`;
+      const base=`${{personnel:'人事資料',attendance:'出勤統計',leave:'差勤申請',financial:'財務'}[type]}報表`;
       let data='';
       if(type==='personnel') data=generatePersonnelReport(month);
       else if(type==='attendance') data=generateAttendanceReport(month);
       else if(type==='leave') data=generateLeaveReport(month);
       else if(type==='financial') data=generateFinancialReport(month);
-      if(data) downloadCSV(data, filename);
+      if(data) downloadReport(data, base, month, state.reportFmt||'csv');
     };
   });
 };
@@ -3702,7 +4011,7 @@ function payTotals(res){
   const v=Object.values(res);
   return {n:v.length, gross:v.reduce((a,r)=>a+r.gross,0), net:v.reduce((a,r)=>a+r.net,0), er:v.reduce((a,r)=>a+r.er.total,0), warn:v.filter(r=>r.warn.length).length};
 }
-const allPay = month => Object.fromEntries(STAFF.map(s=>[s.id, calcPay(s.id, month)]));
+const allPay = month => Object.fromEntries(STAFF.filter(s=>onRoster(s,month)).map(s=>[s.id, calcPay(s.id, month)]));
 const monthState = run => {
   const last=run.versions.slice(-1)[0];
   if(run.locked) return {zh:'已覆核鎖定',en:'Approved & locked',cls:'ok'};
@@ -3738,7 +4047,8 @@ function monthPicker(id, val){
 function viewPayRun(){
   const month=state.payMonth||'2026-08', run=payrun(month), st=monthState(run);
   const units=activeUnitIds(), res=allPay(month);
-  const list=STAFF.filter(s=>units.includes(s.unit));
+  const list=STAFF.filter(s=>units.includes(s.unit) && res[s.id]);
+  const offRoster=STAFF.filter(s=>units.includes(s.unit) && !res[s.id]);
   const t=payTotals(Object.fromEntries(list.map(s=>[s.id,res[s.id]])));
   const last=run.versions.slice(-1)[0], all=payTotals(res);
   const drift = last && (last.totals.net!==all.net || last.totals.gross!==all.gross);
@@ -3756,6 +4066,8 @@ function viewPayRun(){
     </div></div>
     ${pendAll?`<div class="note q">${esc(both('本月仍有 '+pendAll+' 筆請假／加班／補打卡未完成簽核，依規則不納入計算。請先至「人事系統 › 請假審核」處理。',
       pendAll+' leave / overtime / punch requests this month are not yet approved and are excluded. Clear them in HR › Leave approvals first.'))}</div>`:''}
+    ${offRoster.length?`<div class="note">${esc(both('留職停薪或離職者自狀態生效月起不列入試算：'+offRoster.map(s=>empName(s.id)+'（'+EMP_STATUS[s.status].zh+' '+s.statusSince+'）').join('、')+'。實際計薪規則待人資確認。',
+      'Excluded from this run from the month their status took effect: '+offRoster.map(s=>empName(s.id)+' ('+EMP_STATUS[s.status].en+' '+s.statusSince+')').join(', ')+'. Pay rules to be confirmed by HR.'))}</div>`:''}
     <div class="tiles">
       <div class="tile"><span class="k">${esc(both('計薪人數','Employees'))}</span><span class="v">${t.n}</span><span class="d">${esc(both('全公司 '+all.n+' 人','of '+all.n+' company-wide'))}</span></div>
       <div class="tile"><span class="k">${esc(both('應發合計','Gross pay'))}</span><span class="v" style="font-size:18px">${money(t.gross)}</span></div>
@@ -3809,7 +4121,7 @@ BINDERS['pay:run']=function(){
   const sv=document.querySelector('[data-savever]'); if(sv&&!sv.disabled) sv.onclick=()=>saveVersion(month);
   document.querySelector('[data-paycsv]').onclick=()=>downloadCSV(payCSV(allPay(month),month), `薪資試算_${month}.csv`);
   const cc=document.querySelector('[data-cashcsv]');
-  if(cc) cc.onclick=()=>{ const ids=STAFF.filter(s=>activeUnitIds().includes(s.unit)&&payMethodOf(s.id)==='cash').map(s=>s.id);
+  if(cc) cc.onclick=()=>{ const ids=STAFF.filter(s=>activeUnitIds().includes(s.unit)&&onRoster(s,month)&&payMethodOf(s.id)==='cash').map(s=>s.id);
     downloadCSV(cashCSV(allPay(month),month,ids), `現金發薪簽收清冊_${month}.csv`); };
 };
 function saveVersion(month){
@@ -3939,7 +4251,7 @@ function viewPayCalc(){
   const c=state.calcInp||(state.calcInp=calcDefaults(empId, month));
   const num=(k,zh,en,unit,extra='')=>`<div><label>${esc(both(zh,en))}${unit?` <span class="muted">(${unit})</span>`:''}</label><input type="number" name="${k}" value="${c[k]}" min="0" step="${unit==='h'?0.5:1}" ${extra}></div>`;
   return `
-  <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);align-items:start">
+  <div class="grid calc2">
     <section class="card">
       <div class="card-h"><h2>${esc(both('薪資計算機','Pay calculator'))}</h2><span class="en">${esc(both('修改任一欄位即時重算','Change any field to recalculate'))}</span></div>
       <form id="calcForm" class="card-b frm">
@@ -4028,7 +4340,7 @@ BINDERS['pay:calc']=function(){
     const r=payMath(calcToInput(c));
     document.getElementById('calcHead').textContent = c.empId ? `${c.empId} ${empName(c.empId)} · ${month()}` : both('自訂','Custom');
     document.getElementById('calcOut').innerHTML = `
-      <div class="tiles" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
+      <div class="tiles" style="grid-template-columns:repeat(auto-fit,minmax(104px,1fr));margin-bottom:12px">
         <div class="tile"><span class="k">${esc(both('應發','Gross'))}</span><span class="v" style="font-size:18px">${money(r.gross)}</span></div>
         <div class="tile"><span class="k">${esc(both('實發','Net'))}</span><span class="v" style="font-size:18px">${money(r.net)}</span></div>
         <div class="tile"><span class="k">${esc(both('公司成本','Labor cost'))}</span><span class="v" style="font-size:18px">${money(r.gross+r.er.total)}</span></div>
@@ -4052,7 +4364,7 @@ function viewPayVer(){
   const VST={draft:{zh:'草稿',en:'Draft',cls:'warn'}, superseded:{zh:'已被取代',en:'Superseded',cls:''}, submitted:{zh:'覆核中',en:'In review',cls:'info'},
     approved:{zh:'已覆核',en:'Approved',cls:'ok'}, returned:{zh:'已退回',en:'Returned',cls:'crit'}};
   const last=vs.slice(-1)[0], prev=vs.slice(-2,-1)[0];
-  const diffs = last&&prev ? STAFF.map(s=>({s, a:prev.res[s.id].net, b:last.res[s.id].net})).filter(x=>x.a!==x.b) : [];
+  const diffs = last&&prev ? STAFF.filter(s=>prev.res[s.id]&&last.res[s.id]).map(s=>({s, a:prev.res[s.id].net, b:last.res[s.id].net})).filter(x=>x.a!==x.b) : [];
   const action=v=>{
     if(v!==last) return '';
     if(v.status==='draft') return `<button class="btn mini" data-vact="submit">${esc(both('送出覆核','Submit for review'))}</button>`;
@@ -4311,6 +4623,11 @@ const TOURS = [
    {target:'tr[data-payemp]', zh:'點任一員工看計算明細；需要人工調整時要填寫原因，會記入覆核紀錄。'},
    {target:'#cashList', zh:'沒有銀行帳戶的同仁領現金：「現金發薪簽收清冊」列出金額與簽名欄，可匯出 CSV 印出簽收。'},
    {go:{tab:'calc'}, target:'#calcForm', zh:'「薪資計算機」可以手動試算月薪或時薪；拆帳制的規則待人事確認。'}
+ ]},
+ {id:'hr', zh:'人資：員工資料、在職狀態與報表匯出', role:'hr', steps:[
+   {go:{module:'hr',tab:'emp'}, target:'#view table', zh:'「人事系統 › 員工資料」列出員工編號、姓名、職稱、公司與在職狀態（在職、留職停薪、離職）。同名同姓的人靠員工編號區分。'},
+   {target:'#view tbody tr[data-emp]', zh:'點任一位員工開啟人事資料：緊急聯絡人（一位必填、一位選填）、年資、任職異動、勞健保、證照上傳、教育訓練記錄與績效。人資可以在這裡變更在職狀態。'},
+   {go:{module:'rpt',tab:null}, target:'#reportFmt', zh:'「報表匯出」先選月份與格式（CSV 或 Excel），再下載報表；每份報表都同時列出員工編號與中文姓名。'}
  ]},
  {id:'admin', zh:'系統管理員：權限與既有系統連結', role:'admin', steps:[
    {go:{module:'perm',tab:'matrix'}, target:'.permtable', zh:'「權限與範圍 › 權限對照表」勾選或取消各身分的權限，立即生效（只在本次瀏覽）。'},
