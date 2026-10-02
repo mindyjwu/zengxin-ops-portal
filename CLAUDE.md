@@ -5,11 +5,11 @@ should be pointed at `docs/INDEX.md` (and the repo) so every surface shares the 
 
 ## What this is
 - A role-based operations portal for a multi-site long-term-care / day-care operator in Taiwan.
-- **Goal (owner's stated):** a fully running production product that can serve 300+ employees — not a demo.
+- **Goal (owner's stated):** a fully running production product that can serve 300+ employees — not a demo. The 9/30 minutes say the long-term system should support 2,000 employees; confirm which target applies (see `docs/DECISIONS.md`).
 - **Today (v2.1):** a single-file static prototype (`ltc-portal.html`) with mock data. No backend, no auth,
   no database, no persistence. Jest unit + Playwright e2e tests exist (`npm test`).
 - Roadmap (v2.0 spec): short term admin core (MVP target end of Oct 2026) → mid term business data integration → long term risk and quality management.
-- **Sources only:** content must come from the 9/20 meeting minutes, the requirements deck, the v2.0 spec or the owner's direct statements. Anything else is marked 待確認. No real personal names. Scope: 誠馨、誠芯、牛津 (greater Hsinchu) + 共用行政.
+- **Sources only:** content must come from the 9/20 and 9/30 meeting minutes, the requirements deck, the v2.0 spec, the 104 screenshots the owner provided, or the owner's direct statements. Anything else is marked 待確認. No real personal names. Scope: 誠馨、誠芯、牛津 (greater Hsinchu) + 共用行政.
 
 ## Canonical repo rule
 - **This is the only active repo for this project.** `ltc-ops-portal` was an older predecessor (Sept 7–16) and is
