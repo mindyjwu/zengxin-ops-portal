@@ -25,7 +25,7 @@ The prototype has no login and no database. All data is fictional and lives in
 browser memory, so **reloading the page resets everything**. Staff names are
 generated demo data.
 
-The demo date defaults to **2026-09-29**. Add `?demoDate=YYYY-MM-DD` to change
+The demo date defaults to **2026-10-07**. Add `?demoDate=YYYY-MM-DD` to change
 it; the automated tests open the page with `?demoDate=2026-09-08`, so the
 request IDs and dates below refer to that date.
 
@@ -237,7 +237,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 
 ### Phase 9: Grounded content, walkthroughs and user guide
 
-- [ ] Opening the page without `demoDate` shows 2026-09-29; 9/25 中秋節 and 9/28 孔子誕辰紀念日 are days off with no punches — *Grounded content › without a demoDate the demo date is 2026-09-29…*
+- [ ] Opening the page without `demoDate` shows 2026-10-07; 9/25 中秋節 and 9/28 孔子誕辰紀念日 are days off with no punches — *Grounded content › without a demoDate the demo date is 2026-09-29…*
 - [ ] The company filter lists 誠馨, 誠芯 and 牛津; the 目前公司 chip follows the filter and shows 誠馨 for the manager — *…three companies in greater Hsinchu…*
 - [ ] No module or tab, in any role, shows removed unsourced content (竹北／竹東日照中心, 康禾, 營運長, 執行長, 評鑑準備, 流感疫苗, 仁仁, 院長, 住民) — *…no page shows the removed, unsourced content*
 - [ ] 文件管理 › 會議紀錄 shows the 9/20 minutes; 系統設定 links to https://pro.104.com.tw/ and lists 仁寶 i 照護; choosing 拆帳制 in the calculator shows the rules-pending note — *…meeting minutes, existing-system links and the revenue-share pay system*
