@@ -637,14 +637,14 @@ test.describe('Payroll night-shift allowance', () => {
 test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => {
   const BARE = 'file://' + path.resolve(__dirname, '../ltc-portal.html');
 
-  test('without a demoDate the demo date is 2026-09-29 and holidays are days off', async ({ page }) => {
+  test('without a demoDate the demo date is 2026-10-07 and holidays are days off', async ({ page }) => {
     await page.goto(BARE);
-    await expect(page.locator('.rail-foot')).toContainText('2026-09-29');
+    await expect(page.locator('.rail-foot')).toContainText('2026-10-07');
     await setRole(page, 'employee');
-    const d25 = page.locator('[data-dday="2026-09-25"]');
-    await expect(d25).toContainText('中秋節');
-    await expect(d25.locator('.dtime')).toHaveCount(0);
-    await expect(page.locator('[data-dday="2026-09-28"]')).toContainText('孔子誕辰紀念日');
+    await expect(page.locator('[data-dday="2026-10-07"]')).toHaveCount(1);          // the home calendar opens on the demo month
+    const status = await page.evaluate(() => [25, 28].map(d => attendance('E2104', 2026, 9)[d - 1].status));
+    expect(status).toEqual(['off', 'off']);                                       // 中秋節、孔子誕辰紀念日
+    expect(await page.evaluate(() => [HOLIDAYS['2026-09-25'], HOLIDAYS['2026-09-28']])).toEqual(['中秋節', '孔子誕辰紀念日']);
   });
 
   test('three companies in greater Hsinchu, with the current company labelled', async ({ page }) => {
