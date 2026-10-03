@@ -237,6 +237,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 
 ### Phase 9: Grounded content, walkthroughs and user guide
 
+- [ ] Payroll (薪資試算), 出勤管理 and 報表匯出 open on the month of the demo date (2026-10 by default; 2026-09 with `?demoDate=2026-09-08`) — *Grounded content › payroll, attendance and reports open on the month of the demo date*
 - [ ] Opening the page without `demoDate` shows 2026-10-07; 9/25 中秋節 and 9/28 孔子誕辰紀念日 are days off with no punches — *Grounded content › without a demoDate the demo date is 2026-09-29…*
 - [ ] The company filter lists 誠馨, 誠芯 and 牛津; the 目前公司 chip follows the filter and shows 誠馨 for the manager — *…three companies in greater Hsinchu…*
 - [ ] No module or tab, in any role, shows removed unsourced content (竹北／竹東日照中心, 康禾, 營運長, 執行長, 評鑑準備, 流感疫苗, 仁仁, 院長, 住民) — *…no page shows the removed, unsourced content*
