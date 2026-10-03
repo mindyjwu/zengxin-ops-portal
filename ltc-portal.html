@@ -446,6 +446,7 @@ const TODAY = (()=>{
   return m ? new Date(+m[1], +m[2]-1, +m[3]) : new Date(2026,9,7);
 })();
 const ymd = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const CUR_MONTH = ymd(TODAY).slice(0,7);   // 薪資、出勤、報表的預設月份 = 展示日期所在月份
 
 /* ---------- announcements（內容取自 9/20 入口網站建置第一次會議紀錄與 v2.0 規格；不列個人姓名）---------- */
 const ANN_CAT = {
@@ -686,7 +687,7 @@ const state = {
   crossOffice:false,          // ASSUMPTION TOGGLE: managers see all offices?
   office:'ALL',               // office filter within the allowed scope
   annId:'A03', calMonth:ymd(TODAY).slice(0,7), calDay:null,
-  q:'', dirQ:'', empId:null, attMonth:'2026-08', attView:'summary', nodeId:null
+  q:'', dirQ:'', empId:null, attMonth:CUR_MONTH, attView:'summary', nodeId:null
 };
 const role = () => ROLES[state.role];
 const me = () => person(role().persona);
@@ -3735,7 +3736,7 @@ function downloadCSV(data, filename){
 }
 function viewReports(){
   const units=activeUnitIds();
-  const month=state.reportMonth||'2026-09';
+  const month=state.reportMonth||CUR_MONTH;
   return `
   <div class="grid">
     <div class="note" style="border-left-color:var(--info);background:var(--info-soft)">
@@ -3843,7 +3844,7 @@ function viewSettings(){
 }
 
 BINDERS['rpt']=function(){
-  const month=state.reportMonth||'2026-09';
+  const month=state.reportMonth||CUR_MONTH;
   const monthSel=document.getElementById('reportMonth');
   if(monthSel) monthSel.onchange=e=>{ state.reportMonth=e.target.value; render(); };
   const fmtSel=document.getElementById('reportFmt');
@@ -3879,7 +3880,8 @@ const PAY_CFG = {
 const HOURLY_WAGE = {E2107:220, E2206:215, E2303:200};  // 部分工時人員時薪
 const HOLIDAYS = {'2026-09-25':'中秋節','2026-09-28':'孔子誕辰紀念日','2026-10-09':'國慶日補假','2026-10-26':'光復節補假'};
 const PENSION_GRADES = HEALTH_GRADES.filter(g=>g<=150000);
-const PAY_MONTHS = ['2026-06','2026-07','2026-08','2026-09'];
+const PAY_MONTHS = ['2026-06','2026-07','2026-08','2026-09','2026-10'];
+const payDefault = () => state.payMonth || (PAY_MONTHS.includes(CUR_MONTH) ? CUR_MONTH : PAY_MONTHS[PAY_MONTHS.length-1]);
 const OT_TIERS = [
   {k:'wd1', zh:'平日加班（前 2 小時）',     en:'Weekday OT, first 2h',  mult:4/3, f:'4/3'},
   {k:'wd2', zh:'平日加班（第 3–4 小時）',   en:'Weekday OT, hours 3–4', mult:5/3, f:'5/3'},
@@ -4046,7 +4048,7 @@ function monthPicker(id, val){
   return `<select id="${id}">${PAY_MONTHS.map(m=>`<option ${m===val?'selected':''}>${m}</option>`).join('')}</select>`;
 }
 function viewPayRun(){
-  const month=state.payMonth||'2026-08', run=payrun(month), st=monthState(run);
+  const month=payDefault(), run=payrun(month), st=monthState(run);
   const units=activeUnitIds(), res=allPay(month);
   const list=STAFF.filter(s=>units.includes(s.unit) && res[s.id]);
   const offRoster=STAFF.filter(s=>units.includes(s.unit) && !res[s.id]);
@@ -4116,7 +4118,7 @@ function viewPayRun(){
   </div>`;
 }
 BINDERS['pay:run']=function(){
-  const month=state.payMonth||'2026-08';
+  const month=payDefault();
   document.getElementById('payMonth').onchange=e=>{ state.payMonth=e.target.value; render(); };
   document.querySelectorAll('[data-payemp]').forEach(r=>r.onclick=()=>openPayslip(r.dataset.payemp, month));
   const sv=document.querySelector('[data-savever]'); if(sv&&!sv.disabled) sv.onclick=()=>saveVersion(month);
@@ -4247,7 +4249,7 @@ function calcToInput(c){
   return {...c, part:c.part===true||c.part==='true', leave, adjust, pensionG, missing:0, pending:0, otOver:[], compH:0};
 }
 function viewPayCalc(){
-  const month=state.calcMonth||state.payMonth||'2026-08';
+  const month=state.calcMonth||payDefault();
   const empId=state.calcEmp===undefined?'E2104':state.calcEmp;
   const c=state.calcInp||(state.calcInp=calcDefaults(empId, month));
   const num=(k,zh,en,unit,extra='')=>`<div><label>${esc(both(zh,en))}${unit?` <span class="muted">(${unit})</span>`:''}</label><input type="number" name="${k}" value="${c[k]}" min="0" step="${unit==='h'?0.5:1}" ${extra}></div>`;
@@ -4359,7 +4361,7 @@ BINDERS['pay:calc']=function(){
 
 /* ---------- 版本與覆核 ---------- */
 function viewPayVer(){
-  const month=state.payMonth||'2026-08', run=payrun(month), st=monthState(run), vs=run.versions;
+  const month=payDefault(), run=payrun(month), st=monthState(run), vs=run.versions;
   const ACT={save:{zh:'儲存版本',en:'Saved version'}, submit:{zh:'送出覆核',en:'Submitted'}, approve:{zh:'覆核通過並鎖定',en:'Approved & locked'},
     return:{zh:'退回',en:'Returned'}, unlock:{zh:'解除鎖定',en:'Unlocked'}, adjust:{zh:'人工調整',en:'Adjustment'}, unadjust:{zh:'移除調整',en:'Removed adjustment'}};
   const VST={draft:{zh:'草稿',en:'Draft',cls:'warn'}, superseded:{zh:'已被取代',en:'Superseded',cls:''}, submitted:{zh:'覆核中',en:'In review',cls:'info'},
@@ -4418,7 +4420,7 @@ function viewPayVer(){
   </div>`;
 }
 BINDERS['pay:ver']=function(){
-  const month=state.payMonth||'2026-08', run=payrun(month), last=run.versions.slice(-1)[0];
+  const month=payDefault(), run=payrun(month), last=run.versions.slice(-1)[0];
   document.getElementById('verMonth').onchange=e=>{ state.payMonth=e.target.value; render(); };
   document.querySelectorAll('[data-vcsv]').forEach(b=>b.onclick=()=>{ const v=run.versions[+b.dataset.vcsv-1]; downloadCSV(payCSV(v.res,month), `薪資清冊_${month}_v${v.v}.csv`); });
   document.querySelectorAll('[data-vact]').forEach(b=>b.onclick=()=>{

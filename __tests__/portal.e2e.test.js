@@ -543,6 +543,7 @@ test.describe('Payroll night-shift allowance', () => {
 
   test('rotating nurse is paid per evening shift and OT base includes it', async ({ page }) => {
     // E2203 in 2026-08: 5 evening shifts (no overnight shift), 3.5 h approved weekday overtime
+    await page.selectOption('#payMonth', '2026-08');
     await page.click('[data-payemp="E2203"]');
     const d = drawer(page);
     await expect(d.locator('tr', { hasText: '小夜班津貼' })).toContainText('5 班 × 200');
@@ -645,6 +646,29 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     const status = await page.evaluate(() => [25, 28].map(d => attendance('E2104', 2026, 9)[d - 1].status));
     expect(status).toEqual(['off', 'off']);                                       // 中秋節、孔子誕辰紀念日
     expect(await page.evaluate(() => [HOLIDAYS['2026-09-25'], HOLIDAYS['2026-09-28']])).toEqual(['中秋節', '孔子誕辰紀念日']);
+  });
+
+  test('payroll, attendance and reports open on the month of the demo date', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.goto(BARE);
+    await setRole(page, 'hr');
+    await go(page, 'pay', 'run');
+    await expect(page.locator('#payMonth')).toHaveValue('2026-10');
+    await expect(page.locator('tr[data-payemp]').first()).toBeVisible();
+    await go(page, 'pay', 'calc');
+    await expect(page.locator('#calcForm')).toBeVisible();
+    await go(page, 'pay', 'ver');
+    await go(page, 'hr', 'att');
+    await expect(page.locator('#attMon')).toHaveValue('2026-10');
+    await go(page, 'rpt');
+    await expect(page.locator('#reportMonth')).toHaveValue('2026-10');
+    expect(errors).toEqual([]);
+    // with an explicit earlier demo date the defaults follow it
+    await page.goto(PORTAL);
+    await setRole(page, 'hr');
+    await go(page, 'pay', 'run');
+    await expect(page.locator('#payMonth')).toHaveValue('2026-09');
   });
 
   test('three companies in greater Hsinchu, with the current company labelled', async ({ page }) => {
@@ -907,6 +931,7 @@ test.describe('Cash pay for staff without a bank account', () => {
 
   test('payroll run lists cash-paid staff with a receipt list to export', async ({ page }) => {
     await go(page, 'pay', 'run');
+    await page.selectOption('#payMonth', '2026-08');
     await expect(page.locator('tr[data-payemp="E2107"]')).toContainText('現金發放');
     await expect(page.locator('tr[data-payemp="E2103"]')).toContainText('銀行轉帳');
     const nets = await page.evaluate(() => ['E2107', 'E2206'].map(id => calcPay(id, '2026-08').net));
