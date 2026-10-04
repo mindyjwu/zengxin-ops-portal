@@ -36,10 +36,10 @@ a future expansion idea.
 
 | Unit | ID | Staff |
 |------|----|-------|
-| 共用行政 (shared admin) | HQ | 6 (E1001–E1006) |
-| 誠馨 | O1 | 10 (E2101–E2110) |
-| 誠芯 | O2 | 9 (E2201–E2209) |
-| 牛津 | O3 | 3 (E2301–E2303) |
+| 共用行政 (shared admin) | HQ | 6 (ADM001–ADM006) |
+| 誠馨 | O1 | 10 (A001–A010) |
+| 誠芯 | O2 | 9 (B001–B009) |
+| 牛津 | O3 | 3 (C001–C003) |
 | **Total** | | **28** |
 
 ---
@@ -50,7 +50,7 @@ Switch roles with the **身分 / Role** selector (`#roleSel`) at the top of ever
 
 | | 系統管理員 System Admin (`admin`) | 人資 HR (`hr`) | 管理者（日照主管）Manager (`manager`) | 一般員工 Employee (`employee`) |
 |---|---|---|---|---|
-| Persona | E1005, 共用行政 | E1003, 共用行政 | E2101, 日照主管 at 誠馨 | E2104, 照服員 at 誠馨 |
+| Persona | ADM005, 共用行政 | ADM003, 共用行政 | A001, 日照主管 at 誠馨 | A004, 照服員 at 誠馨 |
 | Data scope | All companies | All companies | 誠馨 only (all if the assumption toggle is ON) | Own records only; announcements and directory for 誠馨 |
 | 私人秘書 My Desk (own calendar, forms, payslips) | ✅ | ✅ | ✅ | ✅ (lands here) |
 | Back office (人事、權限、文件、線上申請、業務資料整合、報表) | ✅ | ✅ | ✅ | Hidden |
@@ -132,7 +132,7 @@ Modelled on the 104 企業大師「私人秘書」employee page: 首頁 / 表單
 ### Phase 2: Salary Visibility & Personnel File
 
 #### Test 2.1: Employee table (HR › 員工資料)
-- [ ] hr sees 月薪 amounts (E2103 = NT$58,000) — *Salary visibility › hr sees monthly pay*
+- [ ] hr sees 月薪 amounts (A003 = NT$58,000) — *Salary visibility › hr sees monthly pay*
 - [ ] admin and manager see 🔒 僅人資可見 and no NT$ amounts — *…admin / manager sees the lock instead of pay*
 
 #### Test 2.2: Personnel-file drawer (click an employee row)
@@ -170,11 +170,11 @@ leave unit 0.5 h.
 
 - [ ] Clock in at 08:00 and out at 17:30 → today's row shows 白班 and 8.5 h — *My Hours › clock in and out…*
 - [ ] Clocking in and out in the same minute shows no hours (—), not 24 h — *…clocking in and out in the same minute counts 0 h…*
-- [ ] Punch records show a 班別 column. None of the management roles works rotating shifts, so My Hours shows 白班 for them; the employee role (E2104) rotates and its 私人秘書 calendar shows evening shifts — **manual**
+- [ ] Punch records show a 班別 column. None of the management roles works rotating shifts, so My Hours shows 白班 for them; the employee role (A004) rotates and its 私人秘書 calendar shows evening shifts — **manual**
 - [ ] Leave: the 上午 4h and 下午 4h quick picks each compute 4 h; submitting creates a pending request — *…half-day leave computes 4 h…*
-- [ ] Rotating staff (nurses and care attendants outside 共用行政) get start and end times from 00:00 to 24:00, the start date's shift, and 整班 / 前半班 / 後半班 quick picks that fill in that day's shift: on a day shift, 整班 = 08:00–17:00; on an evening day, 後半班 = 20:00–24:00 (4 h). 2026-08-27, formerly an overnight shift, is now a day shift. The test points admin's persona at E2203 — *…rotating staff can request leave for evening shifts; there is no overnight shift*
+- [ ] Rotating staff (nurses and care attendants outside 共用行政) get start and end times from 00:00 to 24:00, the start date's shift, and 整班 / 前半班 / 後半班 quick picks that fill in that day's shift: on a day shift, 整班 = 08:00–17:00; on an evening day, 後半班 = 20:00–24:00 (4 h). 2026-08-27, formerly an overnight shift, is now a day shift. The test points admin's persona at B003 — *…rotating staff can request leave for evening shifts; there is no overnight shift*
 - [ ] Overtime: 17:00–19:00 = 2 h, 17:00–20:30 = 3.5 h, 22:00–02:00 = 4 h (crosses midnight) — *…overtime hours compute…*
-- [ ] Balance (admin, E1005): annual leave 120 h entitlement, 4 h used, 116 h left; comp time 4 h; a pending 4 h request leaves 112 h — *…balance tab reflects entitlement…*
+- [ ] Balance (admin, ADM005): annual leave 120 h entitlement, 4 h used, 116 h left; comp time 4 h; a pending 4 h request leaves 112 h — *…balance tab reflects entitlement…*
 - [ ] Overtime over the 46 h monthly cap is refused — **manual**
 - [ ] 出勤異常 lists exceptions and links to 補打卡 or 補請假 — **manual**
 - [ ] 工作日誌 entries appear in the attendance and personnel CSVs — **manual**
@@ -186,16 +186,16 @@ leave unit 0.5 h.
 - [ ] The Payroll module appears in the menu for hr only — **manual**
 - [ ] Switching from hr to another role while on Payroll returns to 原型說明 — **manual**
 - [ ] 薪資試算 excludes requests that aren't approved yet and says how many — **manual**
-- [ ] Shift allowance: NT$200 per evening shift (NT$400 per overnight shift once one opens). For E2203 in 2026-08 (5 evening shifts), the breakdown shows NT$1,000 and no 大夜 line, and the overtime hourly base becomes (58,500 + 1,000) ÷ 240 = 247.92 — *Payroll night-shift allowance › rotating nurse is paid per evening shift…*
+- [ ] Shift allowance: NT$200 per evening shift (NT$400 per overnight shift once one opens). For B003 in 2026-08 (5 evening shifts), the breakdown shows NT$1,000 and no 大夜 line, and the overtime hourly base becomes (58,500 + 1,000) ÷ 240 = 247.92 — *Payroll night-shift allowance › rotating nurse is paid per evening shift…*
 - [ ] No overnight shift appears in any month's roster, and the calculator hides the 大夜 fields — *…no overnight shifts are rostered…*
-- [ ] Day-shift staff (E1003) get no allowance lines — *…day-shift staff get no allowance*
+- [ ] Day-shift staff (ADM003) get no allowance lines — *…day-shift staff get no allowance*
 - [ ] The calculator adds the allowance per shift, and the allowance can be excluded from the overtime base — *…calculator adds allowance per shift…*
 - [ ] For a part-time worker the allowance is also in the overtime rate: (160 h × 200 + 800) ÷ 160 h = 205 per hour — *…calculator includes a part-timer's allowance in their OT rate*
-- [ ] With `NIGHT_SHIFT` switched on, leave is counted against the shift worked that day: on E2203's 2026-08-27 overnight shift, 00:00–08:00 or a full-day 08:00–17:00 request is 8 h; on the 2026-08-21 evening shift, 13:00–17:00 is 1 h — *…leave is counted against the evening or overnight shift…*
+- [ ] With `NIGHT_SHIFT` switched on, leave is counted against the shift worked that day: on B003's 2026-08-27 overnight shift, 00:00–08:00 or a full-day 08:00–17:00 request is 8 h; on the 2026-08-21 evening shift, 13:00–17:00 is 1 h — *…leave is counted against the evening or overnight shift…*
 - [ ] Partial leave on an evening or overnight shift keeps that shift's allowance; only a full-shift leave removes it — *…partial leave on an overnight shift keeps the allowance*
-- [ ] Open E2203's payslip for 2026-08: the 小夜 row lists the shift dates, and late minutes follow each shift's start time — **manual**
+- [ ] Open B003's payslip for 2026-08: the 小夜 row lists the shift dates, and late minutes follow each shift's start time — **manual**
 - [ ] The payroll CSV has 小夜班次, 夜班津貼 and 發薪方式 columns, and no 大夜班次 column while there is no overnight shift — *Cash pay… › payroll CSV has a pay-method column…*
-- [ ] Cash pay: E2107 and E2206 (no salary account) show 現金發放 in the register; the 現金發放 tile totals their net pay; 現金發薪簽收清冊 lists them with signature columns and exports as `現金發薪簽收清冊_<月份>.csv` — *Cash pay… › payroll run lists cash-paid staff…*
+- [ ] Cash pay: A007 and B006 (no salary account) show 現金發放 in the register; the 現金發放 tile totals their net pay; 現金發薪簽收清冊 lists them with signature columns and exports as `現金發薪簽收清冊_<月份>.csv` — *Cash pay… › payroll run lists cash-paid staff…*
 - [ ] HR can switch an employee to 現金發放 under 薪資帳戶 in the personnel file, and they then appear on the cash list — *…HR can switch an employee to cash…*
 - [ ] The employee's 薪資袋 says 匯入薪資帳戶 (masked account) or 現金發放：發薪日至人資領取並簽收 — *…the employee's payslip says how they are paid*
 - [ ] A warning shows when the labor insured salary is below the bracket for regular pay including the allowance — **manual**
@@ -242,7 +242,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] The company filter lists 誠馨, 誠芯 and 牛津; the 目前公司 chip follows the filter and shows 誠馨 for the manager — *…three companies in greater Hsinchu…*
 - [ ] No module or tab, in any role, shows removed unsourced content (竹北／竹東日照中心, 康禾, 營運長, 執行長, 評鑑準備, 流感疫苗, 仁仁, 院長, 住民) — *…no page shows the removed, unsourced content*
 - [ ] 文件管理 › 會議紀錄 shows the 9/20 minutes; 系統設定 links to https://pro.104.com.tw/ and lists 仁寶 i 照護; choosing 拆帳制 in the calculator shows the rules-pending note — *…meeting minutes, existing-system links and the revenue-share pay system*
-- [ ] Mid-year review: as manager, 私人秘書 › 查詢 › 部屬績效考核 shows 期中考核 0 / 6; 填寫期中考核 for E2103 opens 績效與文件 with the add form; saving 期中考核（上半年） makes it 1 / 6 and marks E2103 已完成 — *…a manager fills in a mid-year review…*
+- [ ] Mid-year review: as manager, 私人秘書 › 查詢 › 部屬績效考核 shows 期中考核 0 / 6; 填寫期中考核 for A003 opens 績效與文件 with the add form; saving 期中考核（上半年） makes it 1 / 6 and marks A003 已完成 — *…a manager fills in a mid-year review…*
 - [ ] `?tour=leave` switches to the employee role and highlights the leave form; 下一步 walks every step and the last one closes the card — *…a walkthrough switches role and page…*
 - [ ] Every step of all 9 walkthroughs (clock, leave, slip, approve, perf, ann, pay, hr, admin) highlights exactly one element — *…every walkthrough step finds what it points at*
 - [ ] guide.html links only to walkthroughs that exist — *…the user guide links only to walkthroughs that exist*
@@ -255,10 +255,10 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] 文件管理 › 會議紀錄 shows the 9/30 notes (statuses, tenure, 104, case system, storage), the next meeting on 10/7 11:30 and the follow-ups; the 9/20 notes are still there; 人保 vs 仁寶 is flagged as to-confirm; the calendar has a 10/7 event — *…the minutes page holds the 9/30 notes…*
 - [ ] 原型說明 › 範圍與進展 lists the 9/30 decisions with their source, where they are in the prototype, and a status — *…decisions page lists the 9/30 decisions…*
 - [ ] 文件管理 › 104 功能對照 compares 104 functions item by item (in prototype / partly / not in prototype / not enabled in 104) and lists 104 job types against the prototype's titles, flagging the ones that differ — *…104 comparison tab…*
-- [ ] 員工資料 shows 在職狀態: E2209 留職停薪 (from 2026-08-01), E2303 離職 (from 2026-09-15), everyone else 在職; the tile counts them — *…employment status: three kinds…*
-- [ ] 薪資試算 leaves out unpaid-leave and resigned staff from the effective month, and says so (E2209 is in 2026-07 but not 2026-08; E2303 is in 2026-08 but not 2026-09) — *…drop out of payroll from the effective month*
+- [ ] 員工資料 shows 在職狀態: B009 留職停薪 (from 2026-08-01), C003 離職 (from 2026-09-15), everyone else 在職; the tile counts them — *…employment status: three kinds…*
+- [ ] 薪資試算 leaves out unpaid-leave and resigned staff from the effective month, and says so (B009 is in 2026-07 but not 2026-08; C003 is in 2026-08 but not 2026-09) — *…drop out of payroll from the effective month*
 - [ ] HR changes a status under 概要 › 變更在職狀態; the history gets an entry and the person drops out of payroll from that month — *…HR changes a status…*
-- [ ] Personnel file: second emergency contact (optional; E2102 has one, E2103 does not), first contact required when editing, license upload field, 教育訓練記錄 and an add form — *…two emergency contacts, license upload and training records*; *…the first emergency contact is required…*
+- [ ] Personnel file: second emergency contact (optional; A002 has one, A003 does not), first contact required when editing, license upload field, 教育訓練記錄 and an add form — *…two emergency contacts, license upload and training records*; *…the first emergency contact is required…*
 - [ ] `?tour=hr` highlights each of its three steps — *…the HR walkthrough finds its targets*
 - [ ] Banned-word scan: 院長 appears only on the minutes page and the roles page, where the 9/30 notes are quoted — *Grounded content › no page shows the removed, unsourced content*
 - [ ] Excel files open in a real spreadsheet program — **manual** (checked with openpyxl only)
@@ -273,7 +273,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] **Open:** links for 仁寶 i 照護, 衛福部長照系統 and 誠馨雲端（NAS） (shown as URL pending in 系統設定)
 - [ ] **Open:** permissions for 老闆, 教育訓練專員 and 會計
 - [ ] **Open question:** must payroll calculation and review be done by different people?
-- [ ] **Open:** employee-number prefix (9/30 proposal: A/B/C letters); demo numbers use an E prefix
+- [ ] **Open:** employee-number prefix (9/30 proposal: A/B/C letters); the prototype now demos the proposal (誠馨 A, 誠芯 B, 牛津 C, shared admin ADM as a placeholder)
 - [ ] **Open:** 仁寶 (9/20) vs 人保 (9/30) — same system?
 - [ ] **Open:** target size, 2,000 (9/30 minutes) vs 300+ (CLAUDE.md)
 - [ ] **Open:** roles for nurses, social workers and supervisors (permission lists due from the team before 10/7)
