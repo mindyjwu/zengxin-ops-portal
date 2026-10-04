@@ -386,47 +386,48 @@ const DEPTS = {
 /* ---------- 示範人員（虛構）---------- */
 /* [id, title, unit, titleKey, deptKey, hireDate, ext, band, salary, type, managerId] */
 const RAW = [
- ['E1001','老闆','HQ','boss','exec','2018-01-15','101','M5',185000,'full',null],
- ['E1002','管理者','HQ','mgr','exec','2017-03-20','102','M4',152000,'full','E1001'],
- ['E1003','人資','HQ','hrd','adm','2019-06-10','120','M3',108000,'full','E1002'],
- ['E1004','會計','HQ','acc','adm','2020-02-14','130','M3',72000,'full','E1002'],
- ['E1005','系統管理員','HQ','it','it','2021-08-01','140','P3',78000,'full','E1002'],
- ['E1006','教育訓練專員','HQ','trn','adm','2022-05-18','121','P2',54000,'full','E1002'],
+ ['ADM001','老闆','HQ','boss','exec','2018-01-15','101','M5',185000,'full',null],
+ ['ADM002','管理者','HQ','mgr','exec','2017-03-20','102','M4',152000,'full','ADM001'],
+ ['ADM003','人資','HQ','hrd','adm','2019-06-10','120','M3',108000,'full','ADM002'],
+ ['ADM004','會計','HQ','acc','adm','2020-02-14','130','M3',72000,'full','ADM002'],
+ ['ADM005','系統管理員','HQ','it','it','2021-08-01','140','P3',78000,'full','ADM002'],
+ ['ADM006','教育訓練專員','HQ','trn','adm','2022-05-18','121','P2',54000,'full','ADM002'],
 
- ['E2101','日照主管','O1','dir','day','2017-09-11','201','M3',125000,'full','E1002'],
- ['E2102','護理師','O1','rn','day','2018-11-05','202','P3',76000,'full','E2101'],
- ['E2103','護理師','O1','rn','day','2020-01-23','203','P2',58000,'full','E2101'],
- ['E2104','照服員','O1','ca','day','2021-04-16','204','G2',38000,'full','E2101'],
- ['E2105','社工','O1','sw','day','2021-10-20','205','P2',52000,'full','E2101'],
- ['E2106','個案管理員','O1','cm','comm','2022-12-06','206','G3',42000,'full','E1002'],
- ['E2107','照服員','O1','ca','day','2023-03-14','207','G2',37500,'part','E2101'],
- ['E2108','司機','O1','drv','day','2023-07-21','208','G1',34000,'full','E2101'],
- ['E2109','居家服務督導','O1','sup','home','2020-05-04','209','P3',56000,'full','E1002'],
- ['E2110','居服員','O1','hca','home','2022-03-01','210','G2',36000,'full','E2109'],
+ ['A001','日照主管','O1','dir','day','2017-09-11','201','M3',125000,'full','ADM002'],
+ ['A002','護理師','O1','rn','day','2018-11-05','202','P3',76000,'full','A001'],
+ ['A003','護理師','O1','rn','day','2020-01-23','203','P2',58000,'full','A001'],
+ ['A004','照服員','O1','ca','day','2021-04-16','204','G2',38000,'full','A001'],
+ ['A005','社工','O1','sw','day','2021-10-20','205','P2',52000,'full','A001'],
+ ['A006','個案管理員','O1','cm','comm','2022-12-06','206','G3',42000,'full','ADM002'],
+ ['A007','照服員','O1','ca','day','2023-03-14','207','G2',37500,'part','A001'],
+ ['A008','司機','O1','drv','day','2023-07-21','208','G1',34000,'full','A001'],
+ ['A009','居家服務督導','O1','sup','home','2020-05-04','209','P3',56000,'full','ADM002'],
+ ['A010','居服員','O1','hca','home','2022-03-01','210','G2',36000,'full','A009'],
 
- ['E2201','日照主管','O2','dir','day','2016-05-27','301','M3',125000,'full','E1002'],
- ['E2202','個案管理員','O2','cm','comm','2018-02-08','302','P3',48000,'full','E1002'],
- ['E2203','護理師','O2','rn','day','2019-09-13','303','P2',58500,'full','E2201'],
- ['E2204','照服員','O2','ca','day','2020-07-01','304','G2',38500,'full','E2201'],
- ['E2205','居家服務督導','O2','sup','home','2021-01-25','305','P2',56000,'full','E1002'],
- ['E2206','照服員','O2','ca','day','2023-02-10','306','G2',37000,'part','E2201'],
- ['E2207','司機','O2','drv','day','2022-06-15','307','G1',34000,'full','E2201'],
- ['E2208','社工','O2','sw','day','2022-09-05','308','P2',51500,'full','E2201'],
- ['E2209','居服員','O2','hca','home','2023-08-19','309','G2',36000,'full','E2205'],
+ ['B001','日照主管','O2','dir','day','2016-05-27','301','M3',125000,'full','ADM002'],
+ ['B002','個案管理員','O2','cm','comm','2018-02-08','302','P3',48000,'full','ADM002'],
+ ['B003','護理師','O2','rn','day','2019-09-13','303','P2',58500,'full','B001'],
+ ['B004','照服員','O2','ca','day','2020-07-01','304','G2',38500,'full','B001'],
+ ['B005','居家服務督導','O2','sup','home','2021-01-25','305','P2',56000,'full','ADM002'],
+ ['B006','照服員','O2','ca','day','2023-02-10','306','G2',37000,'part','B001'],
+ ['B007','司機','O2','drv','day','2022-06-15','307','G1',34000,'full','B001'],
+ ['B008','社工','O2','sw','day','2022-09-05','308','P2',51500,'full','B001'],
+ ['B009','居服員','O2','hca','home','2023-08-19','309','G2',36000,'full','B005'],
 
- ['E2301','居家服務督導','O3','sup','home','2019-04-01','401','P3',56000,'full','E1002'],
- ['E2302','居服員','O3','hca','home','2021-06-15','402','G2',36000,'full','E2301'],
- ['E2303','居服員','O3','hca','home','2024-02-01','403','G2',30000,'part','E2301']
+ ['C001','居家服務督導','O3','sup','home','2019-04-01','401','P3',56000,'full','ADM002'],
+ ['C002','居服員','O3','hca','home','2021-06-15','402','G2',36000,'full','C001'],
+ ['C003','居服員','O3','hca','home','2024-02-01','403','G2',30000,'part','C001']
 ];
+const LEGACY_NO = {ADM001:'E1001', ADM002:'E1002', ADM003:'E1003', ADM004:'E1004', ADM005:'E1005', ADM006:'E1006', A001:'E2101', A002:'E2102', A003:'E2103', A004:'E2104', A005:'E2105', A006:'E2106', A007:'E2107', A008:'E2108', A009:'E2109', A010:'E2110', B001:'E2201', B002:'E2202', B003:'E2203', B004:'E2204', B005:'E2205', B006:'E2206', B007:'E2207', B008:'E2208', B009:'E2209', C001:'E2301', C002:'E2302', C003:'E2303'};   // 新編號 → 舊編號：示範資料（姓名、出勤、手機）的亂數種子沿用舊編號，換前綴不會改變內容
 const STAFF = RAW.map(r=>({
   id:r[0], zh:r[1], en:TITLES[r[3]].en, unit:r[2], title:r[3], titleKey:r[3], dept:r[4],
   hired:r[5], ext:r[6], band:r[7], salary:r[8], type:r[9], mgr:r[10],
-  mobile:'09'+r[0].slice(1,3)+'-'+r[0].slice(3)+'8-'+r[0].slice(2)+'1'
+  mobile:'09'+LEGACY_NO[r[0]].slice(1,3)+'-'+LEGACY_NO[r[0]].slice(3)+'8-'+LEGACY_NO[r[0]].slice(2)+'1'
 }));
 const person = id => STAFF.find(s=>s.id===id);
 /* 在職狀態（9/30 會議：在職、留職停薪、離職）。示範資料：兩位同仁帶有狀態，其餘皆在職 */
 const EMP_STATUS = {active:{zh:'在職',en:'Active',cls:'ok'}, loa:{zh:'留職停薪',en:'Unpaid leave of absence',cls:'warn'}, left:{zh:'離職',en:'Resigned',cls:''}};
-const STATUS_DEMO = {E2209:{status:'loa', since:'2026-08-01'}, E2303:{status:'left', since:'2026-09-15'}};
+const STATUS_DEMO = {B009:{status:'loa', since:'2026-08-01'}, C003:{status:'left', since:'2026-09-15'}};
 STAFF.forEach(s=>{ const d=STATUS_DEMO[s.id]; s.status=d?d.status:'active'; s.statusSince=d?d.since:''; });
 /* 當月是否仍在名冊（計薪與出勤統計用）：留職停薪、離職自生效月起不列入；規則待人資確認 */
 const onRoster = (s, month) => s.status==='active' || !s.statusSince || month < s.statusSince.slice(0,7);
@@ -455,52 +456,52 @@ const ANN_CAT = {
   facility:{zh:'會議與專案',en:'Meetings & project',cls:'warn'}
 };
 const ANNOUNCEMENTS = [
- {id:'A10', date:'2026-09-30', cat:'facility', scope:'ALL', pin:false, author:'E1002',
+ {id:'A10', date:'2026-09-30', cat:'facility', scope:'ALL', pin:false, author:'ADM002',
   zh:'下次會議：10/7（三）11:30，會前請完成的事項',
   en:'Next meeting: Wed 7 Oct, 11:30 — what to prepare',
   bodyZh:'1. 團隊實際操作最新 Portal 後，以 PM 角度回饋各角色需要哪些功能與按鈕。\n2. 整理各角色權限清單：員工、護理師、社工、督導等各職位可查看的功能與資料範圍。\n3. 截圖整理 104 與人保系統頁面，供評估 Portal 能否直接取代 104 差勤功能，並確認兩系統是否提供 API 串接。\n4. 提供組織架構圖（Work Chart），供依職位設定對應權限與員工編號前綴規則。',
   bodyEn:'1. After trying the latest portal, give PM-style feedback on the functions and buttons each role needs.\n2. List each role’s permissions: what employees, nurses, social workers, supervisors etc. can see and which data.\n3. Screenshots of the 104 and Renbao pages, to judge whether the portal can replace 104 attendance and whether either system offers an API.\n4. The org chart (work chart), to set permissions by position and the employee-number prefix rules.'},
- {id:'A09', date:'2026-09-30', cat:'policy', scope:'ALL', pin:true, author:'E1002',
+ {id:'A09', date:'2026-09-30', cat:'policy', scope:'ALL', pin:true, author:'ADM002',
   zh:'9/30 會議結論：員工個別角色、員工編號、在職狀態與報表',
   en:'30 Sept meeting: employee role, employee numbers, statuses and reports',
   bodyZh:'1. 三個據點員工統一使用同一個 centralized 系統。\n2. 新增「員工個別」角色：只能看自己的打卡記錄、請假申請與審核狀態、特休餘額；管理層與員工看到的是完全不同的系統介面。\n3. 同名同姓以員工編號為主要識別碼，報表必須同時有員工編號與中文姓名。\n4. 在職狀態分三種：在職、留職停薪、離職。\n5. 員工編號前綴：現行各公司不同，建議統一改為 A/B/C 等英文字母前綴，並保留日後收購公司的彈性（待討論）。\n6. 報表匯出支援 CSV 或 Excel；工時記錄以半小時為單位。\n完整紀錄見「文件管理 › 會議紀錄」。',
   bodyEn:'1. Staff at all three sites use one centralized system.\n2. A new individual-employee role sees only their own punch records, leave requests and approval status, and leave balance; management and employees see completely different interfaces.\n3. Employee number is the primary identifier for people with the same name; reports must show both employee number and Chinese name.\n4. Three employment statuses: active, unpaid leave of absence, resigned.\n5. Employee-number prefixes differ per company today; the proposal is A/B/C-style letter prefixes, leaving room for acquisitions (to be discussed).\n6. Reports export as CSV or Excel; time records use half-hour units.\nFull notes: Documents › Meeting minutes.'},
- {id:'A08', date:'2026-09-27', cat:'hr', scope:'ALL', pin:false, author:'E1003',
+ {id:'A08', date:'2026-09-27', cat:'hr', scope:'ALL', pin:false, author:'ADM003',
   zh:'待提供資料：員工資料表頭、共用行政帳號方案、104 資料匯出',
   en:'Data due: employee fields, shared-admin account plan, 104 export',
   bodyZh:'依開發規格的待確認清單，以下三項為 MVP 開發依賴：\n1. 員工資料表頭最終版（人事）\n2. 共用行政帳號方案：單一帳號切換三家公司，或每家公司各自帳號（人事／老闆）\n3. 現有 104 系統資料匯出（人事）\n預定期限：9/27。',
   bodyEn:'From the spec’s open-items list, three inputs block MVP development:\n1. Final employee data fields (HR)\n2. Shared-admin account plan: one account switching between the three companies, or one account per company (HR / owner)\n3. Export of current 104 data (HR)\nTarget date: 27 Sept.'},
- {id:'A07', date:'2026-09-26', cat:'policy', scope:'ALL', pin:false, author:'E1003',
+ {id:'A07', date:'2026-09-26', cat:'policy', scope:'ALL', pin:false, author:'ADM003',
   zh:'核薪制度：月薪制、時薪制、拆帳制分別設計',
   en:'Pay systems: monthly, hourly and revenue-share designed separately',
   bodyZh:'會議決議：核薪功能須依不同薪資制度分別設計，包括月薪制、時薪制及拆帳制。\n各制度的計薪規則、資料來源、例外調整及核准流程，待人事與相關單位進一步確認。',
   bodyEn:'Meeting decision: pay calculation is designed separately for each pay system — monthly, hourly and revenue-share.\nCalculation rules, data sources, exceptions and approval flow for each are to be confirmed by HR and the units concerned.'},
- {id:'A06', date:'2026-09-24', cat:'hr', scope:'ALL', pin:false, author:'E1003',
+ {id:'A06', date:'2026-09-24', cat:'hr', scope:'ALL', pin:false, author:'ADM003',
   zh:'員工資料維護：由人事新增與修改，一般員工僅可檢視',
   en:'Employee records: maintained by HR; employees can only view',
   bodyZh:'會議決議：一般員工僅具資料檢視權限，員工資料仍由人事負責新增、修改及維護。\n人事將彙整現有表單、欄位及資料來源，作為系統欄位規劃依據。',
   bodyEn:'Meeting decision: employees have view-only access to their records; HR adds, edits and maintains employee data.\nHR will compile current forms, fields and data sources to plan the system fields.'},
- {id:'A05', date:'2026-09-23', cat:'safety', scope:'ALL', pin:false, author:'E1005',
+ {id:'A05', date:'2026-09-23', cat:'safety', scope:'ALL', pin:false, author:'ADM005',
   zh:'既有系統過渡作法：先以連結導向現有系統',
   en:'Transition: link out to existing systems for now',
   bodyZh:'會議決議：正式進行系統串接或資料整併前，須先確認個人資料保護、資訊安全及其他相關法規與管理要求。\n在法規、資料範圍與資安機制確認前，入口網站先設置連結，導向現有系統使用（見「系統設定 › 既有系統連結」）。',
   bodyEn:'Meeting decision: before any integration or data consolidation, personal-data protection, information security and other regulatory requirements must be confirmed.\nUntil then the portal links out to the existing systems (see Settings › Existing systems).'},
- {id:'A04', date:'2026-09-22', cat:'hr', scope:'ALL', pin:false, author:'E1002',
+ {id:'A04', date:'2026-09-22', cat:'hr', scope:'ALL', pin:false, author:'ADM002',
   zh:'差勤管理：評估入口網站取代 104 打卡',
   en:'Attendance: assessing whether the portal can replace 104',
   bodyZh:'會議決議：評估入口網站是否能完全取代現行 104 打卡上下班功能；現行 104 系統月費新臺幣 1,500 元，作為成本比較基準。\n預計納入：補打卡紀錄、請假申請、加班申請、出差申請、出勤異常紀錄檢核及各假別可用天數管理。評估完成後再決定差勤管理方式。',
   bodyEn:'Meeting decision: assess whether the portal can fully replace 104 clock-in/out; the current 104 fee of NT$1,500 a month is the cost baseline.\nPlanned: missed-punch records, leave, overtime, business-trip requests, attendance-exception checks and leave balances by type. The attendance approach will be decided after the assessment.'},
- {id:'A03', date:'2026-09-21', cat:'policy', scope:'ALL', pin:true, author:'E1002',
+ {id:'A03', date:'2026-09-21', cat:'policy', scope:'ALL', pin:true, author:'ADM002',
   zh:'帳號原則：一人一帳號，以員工編號識別',
   en:'Accounts: one per person, identified by employee number',
   bodyZh:'會議決議：帳號以個人為主，原則為一人一組帳號。公司提供員工編號，作為身分識別及資料綁定依據；帳號與密碼由員工自行設定。\n管理者或三家公司共用的行政人員，可依授權在系統內切換不同公司，或查看全公司資料總覽。各角色的範圍後續以權限矩陣確認。',
   bodyEn:'Meeting decision: one account per person. The company issues an employee number used for identity and data binding; employees set their own username and password.\nManagers and staff shared across the three companies can switch company or see an all-company overview, as authorised. Each role’s scope will be confirmed in the permission matrix.'},
- {id:'A02', date:'2026-09-21', cat:'facility', scope:'ALL', pin:true, author:'E1002',
+ {id:'A02', date:'2026-09-21', cat:'facility', scope:'ALL', pin:true, author:'ADM002',
   zh:'第二次需求會議：9/30（三）11:30 議程',
   en:'Requirements meeting #2: Wed 30 Sept, 11:30 — agenda',
   bodyZh:'1. IT 說明 104 差勤系統取代可行性、成本及限制。\n2. 人事說明員工資料欄位、維護流程及權限需求。\n3. 確認月薪、時薪及拆帳制的核薪規則與資料來源。\n4. 確認既有系統連結方式，以及後續整併的個資與資安要求。\n5. 確認下一階段開發範圍、優先順序及預定時程。',
   bodyEn:'1. IT: feasibility, cost and limits of replacing 104 attendance.\n2. HR: employee data fields, maintenance process and permission needs.\n3. Confirm pay rules and data sources for monthly, hourly and revenue-share pay.\n4. Confirm how to link existing systems, and the privacy and security requirements for later integration.\n5. Confirm next-phase scope, priorities and timeline.'},
- {id:'A01', date:'2026-09-20', cat:'facility', scope:'ALL', pin:false, author:'E1002',
+ {id:'A01', date:'2026-09-20', cat:'facility', scope:'ALL', pin:false, author:'ADM002',
   zh:'入口網站建置第一次需求討論會議：結論摘要',
   en:'Portal requirements meeting #1: summary',
   bodyZh:'入口網站帳號採一人一帳號，並以員工編號作為人員識別資料；管理者及共用行政人員得依授權切換公司或查看全公司總覽。\n短期優先完成 104 差勤系統取代可行性評估、人事資料欄位整合及多元薪資制度需求整理。既有系統整併前，須先確認個人資料保護與資訊安全等規範，過渡期間可先以連結方式導向現有系統。',
@@ -588,40 +589,40 @@ const hToDays = h => fmtH(h/WORK_DAY_H);
 const mkLeave = (id,emp,type,from,fromT,to,toT,filed,status,note) =>
   ({id,emp,type,from,fromT,to,toT,hours:leaveHours(from,fromT,to,toT,emp),filed,status,note});
 let LEAVE = [
- mkLeave('L241','E2103','annual',  '2026-09-14','08:00','2026-09-16','17:00','2026-09-01','pending', {zh:'家庭旅遊，已與同仁換班',en:'Family trip; shift swap arranged'}),
- mkLeave('L242','E2104','sick',    '2026-09-09','08:00','2026-09-09','17:00','2026-09-08','pending', {zh:'附診斷證明',en:'Medical certificate attached'}),
- mkLeave('L243','E2107','family',  '2026-09-18','13:00','2026-09-18','17:00','2026-09-05','pending', {zh:'子女學校活動（下午半天）',en:'Child school event (afternoon)'}),
- mkLeave('L244','E2102','annual',  '2026-09-28','08:00','2026-09-30','17:00','2026-09-06','pending', {zh:'需確認班表覆蓋',en:'Roster coverage to be confirmed'}),
- mkLeave('L245','E2203','personal','2026-09-11','08:00','2026-09-11','12:00','2026-09-04','pending', {zh:'家中事務（上午半天）',en:'Personal matter (morning)'}),
- mkLeave('L246','E2204','sick',    '2026-09-07','08:00','2026-09-08','17:00','2026-09-07','pending', {zh:'腸胃不適',en:'Gastrointestinal illness'}),
- mkLeave('L247','E2206','annual',  '2026-09-21','08:00','2026-09-22','17:00','2026-09-02','pending', {zh:'',en:''}),
- mkLeave('L248','E2208','comp',    '2026-09-10','15:00','2026-09-10','17:00','2026-09-03','pending', {zh:'中秋加班補休 2 小時',en:'2h comp time for holiday shift'}),
- mkLeave('L231','E2105','annual',  '2026-08-24','08:00','2026-08-26','17:00','2026-08-10','approved',{zh:'',en:''}),
- mkLeave('L232','E2203','sick',    '2026-08-19','08:00','2026-08-20','17:00','2026-08-19','approved',{zh:'',en:''}),
- mkLeave('L233','E2209','personal','2026-08-28','08:00','2026-08-28','17:00','2026-08-21','rejected',{zh:'當日人力不足，建議改期',en:'Insufficient coverage; asked to reschedule'}),
- mkLeave('L234','E1005','annual',  '2026-08-14','13:00','2026-08-14','17:00','2026-08-07','approved',{zh:'',en:''}),
- mkLeave('L235','E1005','sick',    '2026-07-22','08:00','2026-07-22','10:00','2026-07-22','approved',{zh:'看診 2 小時',en:'2h clinic visit'}),
- mkLeave('L236','E2104','personal','2026-08-12','13:00','2026-08-12','17:00','2026-08-05','approved',{zh:'辦理證件（下午半天）',en:'Paperwork (afternoon)'}),
- mkLeave('L237','E2107','sick',    '2026-08-06','08:00','2026-08-06','17:00','2026-08-06','approved',{zh:'發燒',en:'Fever'}),
- mkLeave('L238','E2206','family',  '2026-08-21','08:00','2026-08-21','12:00','2026-08-18','approved',{zh:'陪同家人就醫',en:'Family medical visit'}),
- mkLeave('L239','E2204','menstrual','2026-08-18','08:00','2026-08-18','17:00','2026-08-18','approved',{zh:'',en:''}),
- mkLeave('L240','E2202','annual',  '2026-08-10','08:00','2026-08-11','17:00','2026-07-28','approved',{zh:'',en:''})
+ mkLeave('L241','A003','annual',  '2026-09-14','08:00','2026-09-16','17:00','2026-09-01','pending', {zh:'家庭旅遊，已與同仁換班',en:'Family trip; shift swap arranged'}),
+ mkLeave('L242','A004','sick',    '2026-09-09','08:00','2026-09-09','17:00','2026-09-08','pending', {zh:'附診斷證明',en:'Medical certificate attached'}),
+ mkLeave('L243','A007','family',  '2026-09-18','13:00','2026-09-18','17:00','2026-09-05','pending', {zh:'子女學校活動（下午半天）',en:'Child school event (afternoon)'}),
+ mkLeave('L244','A002','annual',  '2026-09-28','08:00','2026-09-30','17:00','2026-09-06','pending', {zh:'需確認班表覆蓋',en:'Roster coverage to be confirmed'}),
+ mkLeave('L245','B003','personal','2026-09-11','08:00','2026-09-11','12:00','2026-09-04','pending', {zh:'家中事務（上午半天）',en:'Personal matter (morning)'}),
+ mkLeave('L246','B004','sick',    '2026-09-07','08:00','2026-09-08','17:00','2026-09-07','pending', {zh:'腸胃不適',en:'Gastrointestinal illness'}),
+ mkLeave('L247','B006','annual',  '2026-09-21','08:00','2026-09-22','17:00','2026-09-02','pending', {zh:'',en:''}),
+ mkLeave('L248','B008','comp',    '2026-09-10','15:00','2026-09-10','17:00','2026-09-03','pending', {zh:'中秋加班補休 2 小時',en:'2h comp time for holiday shift'}),
+ mkLeave('L231','A005','annual',  '2026-08-24','08:00','2026-08-26','17:00','2026-08-10','approved',{zh:'',en:''}),
+ mkLeave('L232','B003','sick',    '2026-08-19','08:00','2026-08-20','17:00','2026-08-19','approved',{zh:'',en:''}),
+ mkLeave('L233','B009','personal','2026-08-28','08:00','2026-08-28','17:00','2026-08-21','rejected',{zh:'當日人力不足，建議改期',en:'Insufficient coverage; asked to reschedule'}),
+ mkLeave('L234','ADM005','annual',  '2026-08-14','13:00','2026-08-14','17:00','2026-08-07','approved',{zh:'',en:''}),
+ mkLeave('L235','ADM005','sick',    '2026-07-22','08:00','2026-07-22','10:00','2026-07-22','approved',{zh:'看診 2 小時',en:'2h clinic visit'}),
+ mkLeave('L236','A004','personal','2026-08-12','13:00','2026-08-12','17:00','2026-08-05','approved',{zh:'辦理證件（下午半天）',en:'Paperwork (afternoon)'}),
+ mkLeave('L237','A007','sick',    '2026-08-06','08:00','2026-08-06','17:00','2026-08-06','approved',{zh:'發燒',en:'Fever'}),
+ mkLeave('L238','B006','family',  '2026-08-21','08:00','2026-08-21','12:00','2026-08-18','approved',{zh:'陪同家人就醫',en:'Family medical visit'}),
+ mkLeave('L239','B004','menstrual','2026-08-18','08:00','2026-08-18','17:00','2026-08-18','approved',{zh:'',en:''}),
+ mkLeave('L240','B002','annual',  '2026-08-10','08:00','2026-08-11','17:00','2026-07-28','approved',{zh:'',en:''})
 ];
 /* 加班申請 */
 let OT_REQ = [
- {id:'OT31', emp:'E2104', date:'2026-09-04', start:'17:00', end:'20:00', hours:3, comp:'pay',  filed:'2026-09-04', status:'pending',  note:{zh:'長輩送醫陪同，延後下班',en:'Escorted an older adult to hospital; left late'}},
- {id:'OT32', emp:'E2203', date:'2026-09-05', start:'08:00', end:'12:00', hours:4, comp:'comp', filed:'2026-09-03', status:'pending',  note:{zh:'週六資料整理',en:'Saturday paperwork'}},
- {id:'OT21', emp:'E2208', date:'2026-08-29', start:'17:00', end:'19:00', hours:2, comp:'comp', filed:'2026-08-29', status:'approved', note:{zh:'家屬座談',en:'Family meeting'}},
- {id:'OT22', emp:'E1005', date:'2026-08-20', start:'17:00', end:'21:00', hours:4, comp:'comp', filed:'2026-08-20', status:'approved', note:{zh:'系統維護',en:'System maintenance'}},
- {id:'OT23', emp:'E2104', date:'2026-08-15', start:'08:00', end:'12:00', hours:4, comp:'pay',  filed:'2026-08-14', status:'approved', note:{zh:'週六人力支援',en:'Saturday cover shift'}},
- {id:'OT24', emp:'E2203', date:'2026-08-12', start:'17:00', end:'20:30', hours:3.5, comp:'pay', filed:'2026-08-12', status:'approved', note:{zh:'長輩病況觀察，等候家屬接回',en:'Observed an unwell older adult until family pick-up'}},
- {id:'OT25', emp:'E2102', date:'2026-08-26', start:'17:00', end:'19:00', hours:2, comp:'pay',  filed:'2026-08-26', status:'approved', note:{zh:'資料整理',en:'Paperwork'}},
- {id:'OT26', emp:'E2201', date:'2026-08-29', start:'09:00', end:'19:00', hours:10, comp:'pay', filed:'2026-08-28', status:'approved', note:{zh:'週六家屬活動支援',en:'Saturday family event cover'}}
+ {id:'OT31', emp:'A004', date:'2026-09-04', start:'17:00', end:'20:00', hours:3, comp:'pay',  filed:'2026-09-04', status:'pending',  note:{zh:'長輩送醫陪同，延後下班',en:'Escorted an older adult to hospital; left late'}},
+ {id:'OT32', emp:'B003', date:'2026-09-05', start:'08:00', end:'12:00', hours:4, comp:'comp', filed:'2026-09-03', status:'pending',  note:{zh:'週六資料整理',en:'Saturday paperwork'}},
+ {id:'OT21', emp:'B008', date:'2026-08-29', start:'17:00', end:'19:00', hours:2, comp:'comp', filed:'2026-08-29', status:'approved', note:{zh:'家屬座談',en:'Family meeting'}},
+ {id:'OT22', emp:'ADM005', date:'2026-08-20', start:'17:00', end:'21:00', hours:4, comp:'comp', filed:'2026-08-20', status:'approved', note:{zh:'系統維護',en:'System maintenance'}},
+ {id:'OT23', emp:'A004', date:'2026-08-15', start:'08:00', end:'12:00', hours:4, comp:'pay',  filed:'2026-08-14', status:'approved', note:{zh:'週六人力支援',en:'Saturday cover shift'}},
+ {id:'OT24', emp:'B003', date:'2026-08-12', start:'17:00', end:'20:30', hours:3.5, comp:'pay', filed:'2026-08-12', status:'approved', note:{zh:'長輩病況觀察，等候家屬接回',en:'Observed an unwell older adult until family pick-up'}},
+ {id:'OT25', emp:'A002', date:'2026-08-26', start:'17:00', end:'19:00', hours:2, comp:'pay',  filed:'2026-08-26', status:'approved', note:{zh:'資料整理',en:'Paperwork'}},
+ {id:'OT26', emp:'B001', date:'2026-08-29', start:'09:00', end:'19:00', hours:10, comp:'pay', filed:'2026-08-28', status:'approved', note:{zh:'週六家屬活動支援',en:'Saturday family event cover'}}
 ];
 /* 補打卡申請 */
 let PUNCH_FIX = [
- {id:'PF11', emp:'E2107', date:'2026-09-03', kind:'out', time:'17:05', filed:'2026-09-04', status:'pending', note:{zh:'下班忘記打卡',en:'Forgot to clock out'}},
- {id:'PF12', emp:'E2206', date:'2026-09-02', kind:'in',  time:'07:55', filed:'2026-09-02', status:'pending', note:{zh:'打卡機故障',en:'Time clock malfunction'}}
+ {id:'PF11', emp:'A007', date:'2026-09-03', kind:'out', time:'17:05', filed:'2026-09-04', status:'pending', note:{zh:'下班忘記打卡',en:'Forgot to clock out'}},
+ {id:'PF12', emp:'B006', date:'2026-09-02', kind:'in',  time:'07:55', filed:'2026-09-02', status:'pending', note:{zh:'打卡機故障',en:'Time clock malfunction'}}
 ];
 /* 其他表單（對應 104 私人秘書「表單申請」）：預先加班、公出差旅、銷假、文件證明、勞健保證明。
    flow:'mgr' = 主管簽核 → 人資複核；flow:'hr' = 直接由人資辦理 */
@@ -633,11 +634,11 @@ const FORM_KINDS = {
   inscert:{zh:'勞健保證明申請單',en:'Insurance certificate request',flow:'hr'}
 };
 let FORMS = [
- {id:'F11', emp:'E2105', kind:'trip',  date:'2026-09-10', to:'2026-09-10', fromT:'09:00', toT:'12:00', filed:'2026-09-07', status:'pending',
+ {id:'F11', emp:'A005', kind:'trip',  date:'2026-09-10', to:'2026-09-10', fromT:'09:00', toT:'12:00', filed:'2026-09-07', status:'pending',
   what:{zh:'新竹市 · 個案家訪',en:'Hsinchu City · home visit'}, note:{zh:'新個案入案前家訪',en:'Pre-admission home visit'}},
- {id:'F12', emp:'E2106', kind:'cert',  date:'2026-09-07', filed:'2026-09-07', status:'countersign',
+ {id:'F12', emp:'A006', kind:'cert',  date:'2026-09-07', filed:'2026-09-07', status:'countersign',
   what:{zh:'在職證明（中文）× 1',en:'Employment certificate (Chinese) × 1'}, note:{zh:'申辦銀行貸款',en:'Bank loan application'}},
- {id:'F13', emp:'E2104', kind:'inscert', date:'2026-08-20', filed:'2026-08-20', status:'approved',
+ {id:'F13', emp:'A004', kind:'inscert', date:'2026-08-20', filed:'2026-08-20', status:'approved',
   what:{zh:'勞保投保證明 × 1',en:'Labor insurance certificate × 1'}, note:{zh:'子女學費補助申請',en:'Child tuition subsidy application'}}
 ];
 const OT_COMP = {pay:{zh:'加班費',en:'Overtime pay'}, comp:{zh:'換補休',en:'Comp time'}};
@@ -661,17 +662,17 @@ const nextId = (prefix, arr) => prefix+(Math.max(0,...arr.map(x=>+x.id.replace(/
 /* v2.0: 10 roles per specification; 4 fully working in this prototype (3 management + 1 employee) */
 const ROLES = {
   /* --- Built (working in this prototype) --- */
-  admin:{ id:'admin', zh:'系統管理員', en:'System Admin', persona:'E1005', allOffices:true, built:true,
+  admin:{ id:'admin', zh:'系統管理員', en:'System Admin', persona:'ADM005', allOffices:true, built:true,
     perms:{ salary:false, editEmp:true, mobile:true, approve:false, finalize:false,
             annGroup:true, annOffice:true, perms:true, exportAll:true, mgmt:true } },
-  hr:{ id:'hr', zh:'人資', en:'HR', persona:'E1003', allOffices:true, built:true,
+  hr:{ id:'hr', zh:'人資', en:'HR', persona:'ADM003', allOffices:true, built:true,
     perms:{ salary:true, editEmp:true, mobile:true, approve:true, finalize:true,
             annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
-  manager:{ id:'manager', zh:'管理者（日照主管）', en:'Manager (day care supervisor)', persona:'E2101', allOffices:false, built:true,
+  manager:{ id:'manager', zh:'管理者（日照主管）', en:'Manager (day care supervisor)', persona:'A001', allOffices:false, built:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false,
             annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
   /* 一般員工：只用「私人秘書」自助頁面（對應 104 私人秘書），資料範圍僅限本人 */
-  employee:{ id:'employee', zh:'一般員工', en:'Employee', persona:'E2104', allOffices:false, selfOnly:true, built:true,
+  employee:{ id:'employee', zh:'一般員工', en:'Employee', persona:'A004', allOffices:false, selfOnly:true, built:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false,
             annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } },
 
@@ -721,7 +722,7 @@ const nameFull = p => state.lang==='zh' ? `${p.zh}` : `${p.en}`;
 const money = n => 'NT$'+n.toLocaleString('en-US');
 
 /* ---------- deterministic mock attendance ---------- */
-function seed(str){ let h=2166136261;
+function seed(str){ str=str.replace(/^(ADM|[ABC])\d{3}(?![0-9A-Za-z])/, m=>LEGACY_NO[m]||m); let h=2166136261;
   for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); }
   h^=h>>>13; h=Math.imul(h,1540483477); h^=h>>>15;   // avalanche, so nearby ids don't correlate
   return (h>>>0)/4294967296; }
@@ -996,7 +997,7 @@ const BINDERS={};
 /* 會議決議（9/20 入口網站建置第一次會議紀錄）與原型對應 */
 const MEETING_DECISIONS = [
   {src:'9/20', zh:'帳號一人一組，以員工編號識別，帳號密碼由員工自行設定', en:'One account per person, identified by employee number; employees set their own login',
-   whereZh:'原型沒有真實登入，以上方「身分」切換示意；員工編號以 E 開頭編號示意', whereEn:'No real login in the prototype; the Role selector stands in. Employee numbers are shown as E-codes', st:'demo'},
+   whereZh:'原型沒有真實登入，以上方「身分」切換示意；員工編號以 A／B／C 前綴示意（提案格式）', whereEn:'No real login in the prototype; the Role selector stands in. Employee numbers are shown with the proposed A/B/C prefixes', st:'demo'},
   {src:'9/20', zh:'管理者與共用行政人員可依授權切換公司，或查看全公司總覽', en:'Managers and shared admin staff can switch company or see an all-company overview',
    whereZh:'上方「公司」選單；畫面上方標示目前公司', whereEn:'Company selector at the top; the current company is labelled on every page', st:'built'},
   {src:'9/20', zh:'差勤：補打卡、請假、加班、出差、出勤異常檢核、各假別可用天數', en:'Attendance: missed punch, leave, overtime, business trips, exception checks, leave balances',
@@ -1018,7 +1019,7 @@ const MEETING_DECISIONS = [
   {src:'9/30', zh:'同名同姓：以員工編號為主要識別碼，報表同時產出員工編號與中文姓名', en:'Same names: employee number is the primary identifier; reports show both number and Chinese name',
    whereZh:'報表匯出的四份報表都有員工編號與姓名欄', whereEn:'All four exported reports have employee-number and name columns', st:'built'},
   {src:'9/30', zh:'員工編號前綴：現行各公司不同（如 CSHR、OXHR），建議統一為 A/B/C 等英文字母前綴，並保留收購公司的彈性', en:'Employee-number prefixes differ per company (e.g. CSHR, OXHR); proposal: unify as A/B/C-style letters, with room for acquisitions',
-   whereZh:'待討論，從 proposal 開始；示範編號為 E 開頭，不是現行格式也不是提案格式（系統設定 › 帳號原則）', whereEn:'To be discussed, starting from a proposal; demo numbers start with E and are neither the current nor the proposed format', st:'todo'},
+   whereZh:'待討論，從 proposal 開始；網站先用提案格式示範：誠馨 A、誠芯 B、牛津 C，共用行政暫用 ADM（共用行政怎麼編待確認；系統設定 › 帳號原則）', whereEn:'To be discussed, starting from a proposal; the prototype demos the proposal: 誠馨 A, 誠芯 B, 牛津 C, and a placeholder ADM for shared administration (how to number shared admin is to be confirmed)', st:'todo'},
   {src:'9/30', zh:'在職狀態三種：在職、留職停薪、離職', en:'Three employment statuses: active, unpaid leave, resigned',
    whereZh:'人事系統 › 員工資料的「在職狀態」；人資可在員工資料中變更；留職停薪與離職自生效月起不列入計薪與出勤統計', whereEn:'HR › Employee records › Status; HR can change it; unpaid leave and resignation drop out of payroll and attendance from the effective month', st:'built'},
   {src:'9/30', zh:'年資保留：跨單位轉調員工編號不變，年資不歸零；離職後重新回任才重新計算', en:'Tenure carries over: a transfer keeps the employee number and tenure; rehire after leaving restarts it',
@@ -1307,8 +1308,8 @@ BINDERS['ann:cal']=function(){
 <script>
 /* =============================== 組織圖 Org chart =============================== */
 function viewOrg(){
-  const boss=person('E1001'), mgr=person('E1002');
-  const shared=STAFF.filter(s=>s.unit==='HQ' && !['E1001','E1002'].includes(s.id));
+  const boss=person('ADM001'), mgr=person('ADM002');
+  const shared=STAFF.filter(s=>s.unit==='HQ' && !['ADM001','ADM002'].includes(s.id));
   const nodeBtn=(p,cls)=>`<button class="node ${cls||''} ${inScope(p.unit)?'':'dim'}" data-node="${p.id}">
       <span class="n">${esc(empName(p.id))}</span><span class="r">${esc(both(TITLES[p.title].zh,TITLES[p.title].en))}</span></button>`;
   const leaf=p=>`<button class="leaf" data-node="${p.id}">${esc(empName(p.id))} · ${esc(both(TITLES[p.title].zh,TITLES[p.title].en))}</button>`;
@@ -1514,13 +1515,13 @@ const mask = (s, keep=4) => s ? '•'.repeat(Math.max(0,s.length-keep))+s.slice(
 
 /* 發薪方式：銀行轉帳或現金（未開立薪資帳戶的同仁）。示範資料：兩位部分工時照服員領現金 */
 const PAY_METHOD = {bank:{zh:'銀行轉帳',en:'Bank transfer',cls:''}, cash:{zh:'現金發放',en:'Cash',cls:'warn'}};
-const CASH_PAY = ['E2107','E2206'];
+const CASH_PAY = ['A007','B006'];
 const payMethodOf = id => empRecord(id).basic.payMethod==='cash' ? 'cash' : 'bank';
 const payChip = m => `<span class="chip ${PAY_METHOD[m].cls}">${esc(both(PAY_METHOD[m].zh,PAY_METHOD[m].en))}</span>`;
 function empRecord(id){
   state.empRecords = state.empRecords || {};
   if(state.empRecords[id]) return state.empRecords[id];
-  const p=person(id), r=k=>seed(id+'-'+k), n=+id.slice(1);
+  const p=person(id), r=k=>seed(id+'-'+k), n=+LEGACY_NO[id].slice(1);
   const hiredY=+p.hired.slice(0,4), start=Math.round(p.salary*0.86/100)*100;
   const hist=[{date:p.hired, kind:'hire', title:p.title, unit:p.unit, band:p.band, salary:start, note:''}];
   if(TODAY.getFullYear()-hiredY>=3) hist.push({date:addYears(p.hired,2), kind:'raise', title:p.title, unit:p.unit, band:p.band, salary:Math.round(p.salary*0.93/100)*100, note:'年度調薪'});
@@ -3606,7 +3607,7 @@ const monthLeaveH = (empId, month) => LEAVE.filter(l=>l.emp===empId&&l.status===
 const monthOTH = (empId, month) => OT_REQ.filter(o=>o.emp===empId&&o.status==='approved'&&o.date.startsWith(month)).reduce((a,o)=>a+o.hours,0);
 function generatePersonnelReport(month){
   const units=activeUnitIds();
-  const list=STAFF.filter(s=>units.includes(s.unit)).sort((a,b)=>a.id.localeCompare(b.id));
+  const list=STAFF.filter(s=>units.includes(s.unit));
   const myLog=state.myHoursLog||{entries:[]};
   const rows=[['員工編號','姓名','職稱','部門','公司','到職日','在職狀態','職等','薪資','Email','手機','緊急聯絡人','薪轉帳戶',
     '勞保投保薪資','健保投保金額','勞退自提%','契約類型','證照（到期日）','最近考核','工作日誌時數','工作類型統計','特休剩餘(時)','補休剩餘(時)']];
@@ -3630,7 +3631,7 @@ function generatePersonnelReport(month){
 }
 function generateAttendanceReport(month){
   const units=activeUnitIds();
-  const list=STAFF.filter(s=>units.includes(s.unit) && onRoster(s,month)).sort((a,b)=>a.id.localeCompare(b.id));
+  const list=STAFF.filter(s=>units.includes(s.unit) && onRoster(s,month));
   const [y,m]=month.split('-').map(Number);
   const rows=[['員工編號','姓名','職稱','公司','部門','出勤率%','正常','遲到','請假(天)','未打卡','請假時數','加班時數(核准)','補打卡次數','工作日誌時數']];
   list.forEach(e=>{
@@ -3661,7 +3662,7 @@ function generateLeaveReport(month){
 function generateFinancialReport(month){
   if(!can('salary')) return '';
   const units=activeUnitIds();
-  const list=STAFF.filter(s=>units.includes(s.unit) && onRoster(s,month)).sort((a,b)=>a.id.localeCompare(b.id));
+  const list=STAFF.filter(s=>units.includes(s.unit) && onRoster(s,month));
   const rows=[['員工編號','姓名','公司','部門','計薪方式','應發金額','實發金額','雇主勞保','雇主健保','雇主勞退','人事成本合計','發薪方式']];
   list.forEach(e=>{
     const r=calcPay(e.id, month);
@@ -3828,7 +3829,7 @@ function viewSettings(){
         <li>${esc(both('同名同姓：以員工編號為主要識別碼，報表同時列出員工編號與中文姓名（9/30）。','Same names: the employee number is the primary identifier, and reports show both number and Chinese name (30 Sept).'))}</li>
         <li>${esc(both('在職狀態三種：在職、留職停薪、離職（9/30）。','Three employment statuses: active, unpaid leave, resigned (30 Sept).'))}</li>
         <li>${esc(both('員工編號前綴（待討論）：現行各公司不同（如 CSHR、OXHR）；建議集團內統一為 A/B/C 等英文字母前綴，並保留日後收購公司的彈性，從 proposal 開始討論。','Employee-number prefixes (to discuss): they differ by company today (e.g. CSHR, OXHR); the proposal is A/B/C-style letters across the group, leaving room for acquisitions, starting from a proposal.'))}</li>
-        <li>${esc(both('原型的示範員工編號以 E 開頭，不是現行格式，也不是上述提案格式。','The prototype’s demo numbers start with E; they are neither the current format nor the proposed one.'))}</li>
+        <li>${esc(both('原型已用提案格式示範：誠馨 A、誠芯 B、牛津 C（例：A001），共用行政暫用 ADM（怎麼編待確認）。現行格式（CSHR、OXHR 等）沒有納入。','The prototype demos the proposal: 誠馨 A, 誠芯 B, 牛津 C (e.g. A001), with ADM as a placeholder for shared administration. The current formats (CSHR, OXHR…) are not used.'))}</li>
       </ul>
       <div class="muted" style="font-size:12.5px;margin-top:8px">${esc(both('原型沒有真實登入，請用上方「身分」選單切換角色。','The prototype has no real login; use the Role selector to switch.'))}</div></div>
     </section>
@@ -3877,7 +3878,7 @@ const PAY_CFG = {
   eveRate:200, nightRate:400,                // 夜班津貼（每班）
   nightInOTBase:true                         // 夜班津貼屬經常性給與，計入加班費時薪基準
 };
-const HOURLY_WAGE = {E2107:220, E2206:215, E2303:200};  // 部分工時人員時薪
+const HOURLY_WAGE = {A007:220, B006:215, C003:200};  // 部分工時人員時薪
 const HOLIDAYS = {'2026-09-25':'中秋節','2026-09-28':'孔子誕辰紀念日','2026-10-09':'國慶日補假','2026-10-26':'光復節補假'};
 const PENSION_GRADES = HEALTH_GRADES.filter(g=>g<=150000);
 const PAY_MONTHS = ['2026-06','2026-07','2026-08','2026-09','2026-10'];
@@ -4250,7 +4251,7 @@ function calcToInput(c){
 }
 function viewPayCalc(){
   const month=state.calcMonth||payDefault();
-  const empId=state.calcEmp===undefined?'E2104':state.calcEmp;
+  const empId=state.calcEmp===undefined?'A004':state.calcEmp;
   const c=state.calcInp||(state.calcInp=calcDefaults(empId, month));
   const num=(k,zh,en,unit,extra='')=>`<div><label>${esc(both(zh,en))}${unit?` <span class="muted">(${unit})</span>`:''}</label><input type="number" name="${k}" value="${c[k]}" min="0" step="${unit==='h'?0.5:1}" ${extra}></div>`;
   return `

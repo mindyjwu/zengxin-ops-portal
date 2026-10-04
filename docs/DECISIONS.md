@@ -31,7 +31,7 @@ Format: `YYYY-MM-DD — decision — why / who decided`. Keep one line each.
 7. **Production path:** the prototype is static HTML. Choose stack, auth, database, and hosting for the 300+ employee build.
 8. **拆帳制 (revenue-share) pay rules** — not yet defined.
 9. **Links** for 仁寶 i 照護, 衛福部長照系統 and 誠馨雲端（NAS） — waiting on IT.
-10. **Employee-number prefix** — proposal only (9/30): replace the per-company prefixes (e.g. CSHR, OXHR) with A/B/C-style letters, keeping room for acquisitions. Not decided; demo numbers use an E prefix.
+10. **Employee-number prefix** — proposal only (9/30): replace the per-company prefixes (e.g. CSHR, OXHR) with A/B/C-style letters, keeping room for acquisitions. Not decided; the prototype demos the proposal (誠馨 A, 誠芯 B, 牛津 C; shared admin uses ADM as a placeholder).
 11. **Case-management system name** — the 9/20 notes and deck say 仁寶, the 9/30 notes say 人保. Same system?
 12. **Target size** — the 9/30 notes say 2,000 employees long term; `CLAUDE.md` says 300+. Confirm which one to design for.
 13. **Management role names** — the 9/30 notes list the current roles as system administrator, manager and 院長; the prototype uses system administrator, HR and manager (day care supervisor).

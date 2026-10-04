@@ -2,8 +2,8 @@
  * End-to-end UI tests for the 誠馨日照 operations portal (ltc-portal.html).
  *
  * The page is a single-file prototype with in-memory data and a fixed demo
- * date of 2026-09-08. Built roles: admin (E1005, HQ), hr (E1003, HQ),
- * manager (E2101, director of O1 竹北日照中心) and employee (E2104, care
+ * date of 2026-09-08. Built roles: admin (ADM005, HQ), hr (ADM003, HQ),
+ * manager (A001, director of O1 竹北日照中心) and employee (A004, care
  * attendant at O1, self-service 私人秘書 only).
  */
 
@@ -78,7 +78,7 @@ test.describe('Data scope', () => {
     await go(page, 'hr', 'emp');
     await expect(empRows(page)).toHaveCount(10);   // 誠馨: day care, home care and community center staff
     const ids = await empRows(page).evaluateAll(rs => rs.map(r => r.dataset.emp));
-    expect(ids.every(id => id.startsWith('E21'))).toBe(true);
+    expect(ids.every(id => id.startsWith('A'))).toBe(true);
     await expect(page.locator('#view tbody')).not.toContainText('誠芯');
     await expect(page.locator('#offSel')).toBeDisabled();
     await expect(page.locator('#view .note.q')).toContainText('隱藏了 18 位');
@@ -106,9 +106,9 @@ test.describe('Data scope', () => {
     await expect(page.locator('#view')).not.toContainText('誠芯');
 
     await page.click('[data-tab="leave"]');
-    await expect(requestRow(page, 'L241')).toHaveCount(1);   // E2103, O1
-    await expect(requestRow(page, 'L245')).toHaveCount(0);   // E2203, O2
-    await expect(requestRow(page, 'L234')).toHaveCount(0);   // E1005, HQ
+    await expect(requestRow(page, 'L241')).toHaveCount(1);   // A003, O1
+    await expect(requestRow(page, 'L245')).toHaveCount(0);   // B003, O2
+    await expect(requestRow(page, 'L234')).toHaveCount(0);   // ADM005, HQ
   });
 });
 
@@ -278,7 +278,7 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
     await page.click('[data-dq="slip"]');
     const months = await page.locator('#slipMonth option').evaluateAll(o => o.map(x => x.value));
     expect(months).toEqual(['2026-06', '2026-07', '2026-08']);
-    const net = await page.evaluate(() => calcPay('E2104', '2026-08').net);
+    const net = await page.evaluate(() => calcPay('A004', '2026-08').net);
     await expect(page.locator('#view')).toContainText('NT$' + net.toLocaleString('en-US'));
     await expect(page.locator('#view')).not.toContainText('雇主');
   });
@@ -295,8 +295,8 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
 
   test('who-is-out shows only colleagues’ names', async ({ page }) => {
     await setRole(page, 'employee');
-    await page.click('[data-pday="2026-09-18"]');                  // E2107 family-care leave (L243)
-    const name = await page.evaluate(() => empName('E2107'));
+    await page.click('[data-pday="2026-09-18"]');                  // A007 family-care leave (L243)
+    const name = await page.evaluate(() => empName('A007'));
     const box = page.locator('.peerbox', { hasText: '部門同事' });
     await expect(box).toContainText(name);
     for (const hidden of ['家庭照顧假', '照服員', '審核中', '請假 ·', '公出']) await expect(box).not.toContainText(hidden);
@@ -324,7 +324,7 @@ test.describe('Salary visibility', () => {
 
   test('hr sees monthly pay', async ({ page }) => {
     await setRole(page, 'hr');
-    const pay = page.locator('tr[data-emp="E2103"] td').last();
+    const pay = page.locator('tr[data-emp="A003"] td').last();
     await expect(pay).toHaveText('NT$58,000');
     await expect(page.locator('#view tbody .lock')).toHaveCount(0);
   });
@@ -332,7 +332,7 @@ test.describe('Salary visibility', () => {
   for (const role of ['admin', 'manager']) {
     test(`${role} sees the lock instead of pay`, async ({ page }) => {
       await setRole(page, role);
-      const pay = page.locator('tr[data-emp="E2103"] td').last();
+      const pay = page.locator('tr[data-emp="A003"] td').last();
       await expect(pay.locator('.lock')).toContainText('僅人資可見');
       await expect(page.locator('#view tbody')).not.toContainText('NT$');
     });
@@ -455,8 +455,8 @@ test.describe('My Hours', () => {
 
   test('rotating staff can request leave for evening shifts; there is no overnight shift', async ({ page }) => {
     await openPortal(page);
-    // No built role works rotating shifts, so point admin's persona at nurse E2203 (O2).
-    await page.evaluate(() => { ROLES.admin.persona = 'E2203'; render(); });
+    // No built role works rotating shifts, so point admin's persona at nurse B003 (O2).
+    await page.evaluate(() => { ROLES.admin.persona = 'B003'; render(); });
     await go(page, 'hr', 'mylog');
     await page.click('[data-mytab="leave"]');
     const f = page.locator('#leaveForm'), calc = page.locator('#leaveCalc');
@@ -512,7 +512,7 @@ test.describe('My Hours', () => {
   });
 
   test('balance tab reflects entitlement, used and pending hours', async ({ page }) => {
-    await openPortal(page);                              // admin = E1005, hired 2021-08-01
+    await openPortal(page);                              // admin = ADM005, hired 2021-08-01
     await go(page, 'hr', 'mylog');
     await page.click('[data-mytab="balance"]');
     const rows = page.locator('#view table').first().locator('tbody tr');
@@ -542,9 +542,9 @@ test.describe('Payroll night-shift allowance', () => {
   test.beforeEach(async ({ page }) => { await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'run'); });
 
   test('rotating nurse is paid per evening shift and OT base includes it', async ({ page }) => {
-    // E2203 in 2026-08: 5 evening shifts (no overnight shift), 3.5 h approved weekday overtime
+    // B003 in 2026-08: 5 evening shifts (no overnight shift), 3.5 h approved weekday overtime
     await page.selectOption('#payMonth', '2026-08');
-    await page.click('[data-payemp="E2203"]');
+    await page.click('[data-payemp="B003"]');
     const d = drawer(page);
     await expect(d.locator('tr', { hasText: '小夜班津貼' })).toContainText('5 班 × 200');
     await expect(d.locator('tr', { hasText: '小夜班津貼' })).toContainText('NT$1,000');
@@ -564,7 +564,7 @@ test.describe('Payroll night-shift allowance', () => {
   });
 
   test('day-shift staff get no allowance', async ({ page }) => {
-    await page.click('[data-payemp="E1003"]');
+    await page.click('[data-payemp="ADM003"]');
     const d = drawer(page);
     await expect(d.locator('tr', { hasText: '本薪（月薪）' })).toBeVisible();
     await expect(d.locator('tr', { hasText: '小夜班津貼' })).toHaveCount(0);
@@ -607,11 +607,11 @@ test.describe('Payroll night-shift allowance', () => {
   test('leave is counted against the evening or overnight shift worked that day', async ({ page }) => {
     await page.evaluate(() => { NIGHT_SHIFT = true; });   // overnight support stays ready for when one opens
     const r = await page.evaluate(() => ({
-      // E2203 works overnight (00:00–08:00) on 2026-08-27 and evening (16:00–24:00) on 2026-08-21
-      nightShift: leaveHours('2026-08-27', '00:00', '2026-08-27', '08:00', 'E2203'),
-      nightFullDay: leaveHours('2026-08-27', '08:00', '2026-08-27', '17:00', 'E2203'),
-      evePartial: leaveHours('2026-08-21', '13:00', '2026-08-21', '17:00', 'E2203'),
-      dayStaff: leaveHours('2026-08-27', '13:00', '2026-08-27', '17:00', 'E1003'),
+      // B003 works overnight (00:00–08:00) on 2026-08-27 and evening (16:00–24:00) on 2026-08-21
+      nightShift: leaveHours('2026-08-27', '00:00', '2026-08-27', '08:00', 'B003'),
+      nightFullDay: leaveHours('2026-08-27', '08:00', '2026-08-27', '17:00', 'B003'),
+      evePartial: leaveHours('2026-08-21', '13:00', '2026-08-21', '17:00', 'B003'),
+      dayStaff: leaveHours('2026-08-27', '13:00', '2026-08-27', '17:00', 'ADM003'),
     }));
     expect(r).toEqual({ nightShift: 8, nightFullDay: 8, evePartial: 1, dayStaff: 4 });
   });
@@ -619,12 +619,12 @@ test.describe('Payroll night-shift allowance', () => {
   test('partial leave on an overnight shift keeps the allowance', async ({ page }) => {
     await page.evaluate(() => { NIGHT_SHIFT = true; });
     const r = await page.evaluate(() => {
-      // 4 h off at the end of E2203's 2026-08-27 overnight shift
-      LEAVE.push(mkLeave('L900', 'E2203', 'personal', '2026-08-27', '04:00', '2026-08-27', '08:00', '2026-08-26', 'approved', { zh: '', en: '' }));
-      const day = attendance('E2203', 2026, 8).find(x => x.d === 27);
-      const inp = payInputs('E2203', '2026-08');
-      // L238 is 08:00–12:00 on E2206's 2026-08-21 overnight shift, outside the hours worked
-      const e2206 = payInputs('E2206', '2026-08');
+      // 4 h off at the end of B003's 2026-08-27 overnight shift
+      LEAVE.push(mkLeave('L900', 'B003', 'personal', '2026-08-27', '04:00', '2026-08-27', '08:00', '2026-08-26', 'approved', { zh: '', en: '' }));
+      const day = attendance('B003', 2026, 8).find(x => x.d === 27);
+      const inp = payInputs('B003', '2026-08');
+      // L238 is 08:00–12:00 on B006's 2026-08-21 overnight shift, outside the hours worked
+      const e2206 = payInputs('B006', '2026-08');
       return { shift: day.shift, lvH: day.lvH, nights: inp.shiftDates.night, e2206Nights: e2206.shiftDates.night };
     });
     expect(r.shift).toBe('night');
@@ -643,7 +643,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await expect(page.locator('.rail-foot')).toContainText('2026-10-07');
     await setRole(page, 'employee');
     await expect(page.locator('[data-dday="2026-10-07"]')).toHaveCount(1);          // the home calendar opens on the demo month
-    const status = await page.evaluate(() => [25, 28].map(d => attendance('E2104', 2026, 9)[d - 1].status));
+    const status = await page.evaluate(() => [25, 28].map(d => attendance('A004', 2026, 9)[d - 1].status));
     expect(status).toEqual(['off', 'off']);                                       // 中秋節、孔子誕辰紀念日
     expect(await page.evaluate(() => [HOLIDAYS['2026-09-25'], HOLIDAYS['2026-09-28']])).toEqual(['中秋節', '孔子誕辰紀念日']);
   });
@@ -725,7 +725,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await page.click('[data-dq="subperf"]');
     const tile = page.locator('.tile', { hasText: '期中考核' });
     await expect(tile).toContainText('0 / 6');
-    await page.locator('[data-perfemp="E2103"]').click();
+    await page.locator('[data-perfemp="A003"]').click();
     const form = page.locator('form[data-add="perf"]');
     await expect(form).toBeVisible();
     await form.locator('select[name="period"]').selectOption({ index: 0 });
@@ -734,7 +734,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await expect(page.locator('aside.drawer .drawer-b')).toContainText('期中考核（上半年）');
     await page.click('aside.drawer button.x');
     await expect(tile).toContainText('1 / 6');
-    await expect(page.locator('#view tr', { hasText: 'E2103' })).toContainText('已完成');
+    await expect(page.locator('#view tr', { hasText: 'A003' })).toContainText('已完成');
   });
 
   test('a walkthrough switches role and page and highlights each step', async ({ page }) => {
@@ -817,9 +817,9 @@ test.describe('Updates from the 9/30 meeting', () => {
   test('employment status: three kinds, shown in the table and counted', async ({ page }) => {
     await setRole(page, 'hr');
     await go(page, 'hr', 'emp');
-    await expect(page.locator('tr[data-emp="E2209"]')).toContainText('留職停薪');
-    await expect(page.locator('tr[data-emp="E2303"]')).toContainText('離職');
-    await expect(page.locator('tr[data-emp="E2104"]')).toContainText('在職');
+    await expect(page.locator('tr[data-emp="B009"]')).toContainText('留職停薪');
+    await expect(page.locator('tr[data-emp="C003"]')).toContainText('離職');
+    await expect(page.locator('tr[data-emp="A004"]')).toContainText('在職');
     await expect(page.locator('#view .tile', { hasText: '在職' }).first()).toContainText('留職停薪 1 · 離職 1');
   });
 
@@ -827,19 +827,19 @@ test.describe('Updates from the 9/30 meeting', () => {
     await setRole(page, 'hr');
     await go(page, 'pay', 'run');
     await page.selectOption('#payMonth', '2026-07');
-    await expect(page.locator('tr[data-payemp="E2209"]')).toHaveCount(1);
+    await expect(page.locator('tr[data-payemp="B009"]')).toHaveCount(1);
     await page.selectOption('#payMonth', '2026-08');
-    await expect(page.locator('tr[data-payemp="E2209"]')).toHaveCount(0);
-    await expect(page.locator('tr[data-payemp="E2303"]')).toHaveCount(1);
+    await expect(page.locator('tr[data-payemp="B009"]')).toHaveCount(0);
+    await expect(page.locator('tr[data-payemp="C003"]')).toHaveCount(1);
     await expect(page.locator('#view .note', { hasText: '不列入試算' })).toContainText('留職停薪');
     await page.selectOption('#payMonth', '2026-09');
-    await expect(page.locator('tr[data-payemp="E2303"]')).toHaveCount(0);
+    await expect(page.locator('tr[data-payemp="C003"]')).toHaveCount(0);
   });
 
   test('HR changes a status and the person leaves the roster', async ({ page }) => {
     await setRole(page, 'hr');
     await go(page, 'hr', 'emp');
-    await page.click('tr[data-emp="E2108"]');
+    await page.click('tr[data-emp="A008"]');
     await expect(drawer(page)).toBeVisible();
     await page.click('aside.drawer details.addbox summary >> nth=0');
     const form = page.locator('aside.drawer form[data-add="status"]');
@@ -850,16 +850,16 @@ test.describe('Updates from the 9/30 meeting', () => {
     await page.click('aside.drawer [data-sec="hist"]');
     await expect(page.locator('aside.drawer .drawer-b')).toContainText('2026-08-01');
     await page.click('aside.drawer button.x');
-    await expect(page.locator('tr[data-emp="E2108"]')).toContainText('離職');
+    await expect(page.locator('tr[data-emp="A008"]')).toContainText('離職');
     await go(page, 'pay', 'run');
     await page.selectOption('#payMonth', '2026-08');
-    await expect(page.locator('tr[data-payemp="E2108"]')).toHaveCount(0);
+    await expect(page.locator('tr[data-payemp="A008"]')).toHaveCount(0);
   });
 
   test('personnel file: two emergency contacts, license upload and training records', async ({ page }) => {
     await setRole(page, 'hr');
     await go(page, 'hr', 'emp');
-    await page.click('tr[data-emp="E2102"]');
+    await page.click('tr[data-emp="A002"]');
     await page.click('aside.drawer [data-sec="basic"]');
     await expect(page.locator('aside.drawer .drawer-b')).toContainText('第二位緊急聯絡人');
     await page.click('aside.drawer [data-sec="qual"]');
@@ -867,7 +867,7 @@ test.describe('Updates from the 9/30 meeting', () => {
     await expect(page.locator('aside.drawer form[data-add="lic"] input[type="file"]')).toHaveCount(1);
     await expect(page.locator('aside.drawer form[data-add="train"]')).toHaveCount(1);
     await page.click('aside.drawer button.x');
-    await page.click('tr[data-emp="E2103"]');                     // odd number: no second contact
+    await page.click('tr[data-emp="A003"]');                     // odd number: no second contact
     await page.click('aside.drawer [data-sec="basic"]');
     await expect(page.locator('aside.drawer .drawer-b')).not.toContainText('第二位緊急聯絡人');
   });
@@ -875,7 +875,7 @@ test.describe('Updates from the 9/30 meeting', () => {
   test('the first emergency contact is required when editing', async ({ page }) => {
     await setRole(page, 'hr');
     await go(page, 'hr', 'emp');
-    await page.click('tr[data-emp="E2103"]');
+    await page.click('tr[data-emp="A003"]');
     await page.click('aside.drawer [data-sec="basic"]');
     await page.click('aside.drawer [data-edit="basic"]');
     await expect(page.locator('input[name="emerName"]')).toHaveAttribute('required', '');
@@ -902,14 +902,14 @@ test.describe('Updates from the 9/30 meeting', () => {
     const buf = fs.readFileSync(await dl.path());
     expect(buf.subarray(0, 2).toString()).toBe('PK');                 // zip container
     const text = buf.toString('utf8');
-    for (const part of ['[Content_Types].xml', 'xl/workbook.xml', 'xl/worksheets/sheet1.xml', '員工編號', 'E2101']) expect(text).toContain(part);
+    for (const part of ['[Content_Types].xml', 'xl/workbook.xml', 'xl/worksheets/sheet1.xml', '員工編號', 'A001']) expect(text).toContain(part);
     // the zip is well formed: end-of-central-directory record counts 5 entries
     const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 5, 6]));
     expect(eocd).toBeGreaterThan(0);
     expect(buf.readUInt16LE(eocd + 10)).toBe(5);
     // employee numbers stay text and counts stay numbers
     const sheet = text.slice(text.indexOf('<sheetData>'));
-    expect(sheet).toMatch(/<c r="A2" t="inlineStr"><is><t[^>]*>E1001<\/t>/);
+    expect(sheet).toMatch(/<c r="A2" t="inlineStr"><is><t[^>]*>ADM001<\/t>/);
     expect(sheet).toMatch(/<c r="F2"><v>100<\/v><\/c>/);
   });
 
@@ -932,9 +932,9 @@ test.describe('Cash pay for staff without a bank account', () => {
   test('payroll run lists cash-paid staff with a receipt list to export', async ({ page }) => {
     await go(page, 'pay', 'run');
     await page.selectOption('#payMonth', '2026-08');
-    await expect(page.locator('tr[data-payemp="E2107"]')).toContainText('現金發放');
-    await expect(page.locator('tr[data-payemp="E2103"]')).toContainText('銀行轉帳');
-    const nets = await page.evaluate(() => ['E2107', 'E2206'].map(id => calcPay(id, '2026-08').net));
+    await expect(page.locator('tr[data-payemp="A007"]')).toContainText('現金發放');
+    await expect(page.locator('tr[data-payemp="A003"]')).toContainText('銀行轉帳');
+    const nets = await page.evaluate(() => ['A007', 'B006'].map(id => calcPay(id, '2026-08').net));
     const total = 'NT$' + (nets[0] + nets[1]).toLocaleString('en-US');
     await expect(page.locator('.tile', { hasText: '現金發放' })).toContainText(total);
     const list = page.locator('#cashList');
@@ -953,12 +953,12 @@ test.describe('Cash pay for staff without a bank account', () => {
     const head = lines[0].split(','), i = head.indexOf('發薪方式');
     expect(i).toBeGreaterThan(-1);
     expect(head).not.toContain('大夜班次');
-    expect(lines.find(l => l.startsWith('E2107,')).split(',')[i]).toBe('現金發放');
+    expect(lines.find(l => l.startsWith('A007,')).split(',')[i]).toBe('現金發放');
   });
 
   test('HR can switch an employee to cash in the personnel file', async ({ page }) => {
     await go(page, 'hr', 'emp');
-    await page.click('tr[data-emp="E2104"]');
+    await page.click('tr[data-emp="A004"]');
     await page.click('[data-sec="basic"]');
     await page.click('[data-edit="basic"]');
     await page.selectOption('form[data-save="basic"] select[name="payMethod"]', 'cash');
@@ -966,7 +966,7 @@ test.describe('Cash pay for staff without a bank account', () => {
     await expect(page.locator('aside.drawer .drawer-b')).toContainText('現金發放');
     await page.click('aside.drawer button.x');
     await go(page, 'pay', 'run');
-    await expect(page.locator('#cashList')).toContainText('E2104');
+    await expect(page.locator('#cashList')).toContainText('A004');
   });
 
   test('the employee’s payslip says how they are paid', async ({ page }) => {
@@ -974,7 +974,7 @@ test.describe('Cash pay for staff without a bank account', () => {
     await page.click('[data-tab="query"]');
     await page.click('[data-dq="slip"]');
     await expect(page.locator('#view')).toContainText('匯入薪資帳戶');
-    await page.evaluate(() => { empRecord('E2104').basic.payMethod = 'cash'; render(); });
+    await page.evaluate(() => { empRecord('A004').basic.payMethod = 'cash'; render(); });
     await expect(page.locator('#view')).toContainText('現金發放：發薪日至人資領取並簽收');
   });
 });
@@ -999,7 +999,7 @@ test.describe('Personnel file drawer', () => {
   const body = page => page.locator('aside.drawer .drawer-b');
 
   test('every section renders and the drawer closes', async ({ page }) => {
-    await openRecord(page, 'hr', 'E2103');
+    await openRecord(page, 'hr', 'A003');
     await expect(page.locator('[data-sec]')).toHaveCount(6);
     for (const [sec, text] of Object.entries(SECS)) {
       await openSec(page, sec);
@@ -1010,9 +1010,9 @@ test.describe('Personnel file drawer', () => {
   });
 
   test('hr sees full ID, pay, bank account and insurance grades', async ({ page }) => {
-    await openRecord(page, 'hr', 'E2103');
+    await openRecord(page, 'hr', 'A003');
     await expect(body(page)).toContainText('NT$58,000');
-    const idNo = await page.evaluate(() => empRecord('E2103').basic.idNo);
+    const idNo = await page.evaluate(() => empRecord('A003').basic.idNo);
     await openSec(page, 'basic');
     await expect(body(page)).toContainText(idNo);
     await expect(body(page).locator('.lock')).toHaveCount(0);
@@ -1023,9 +1023,9 @@ test.describe('Personnel file drawer', () => {
   });
 
   test('admin gets contact details but masked ID and locked pay', async ({ page }) => {
-    await openRecord(page, 'admin', 'E2103');
+    await openRecord(page, 'admin', 'A003');
     await expect(body(page)).toContainText('僅人資可見');
-    const { idNo, mobile } = await page.evaluate(() => empRecord('E2103').basic);
+    const { idNo, mobile } = await page.evaluate(() => empRecord('A003').basic);
     await openSec(page, 'basic');
     await expect(body(page)).not.toContainText(idNo);
     await expect(body(page)).toContainText('•'.repeat(idNo.length - 3) + idNo.slice(-3));
@@ -1039,8 +1039,8 @@ test.describe('Personnel file drawer', () => {
   });
 
   test('manager cannot see contact details or pay', async ({ page }) => {
-    await openRecord(page, 'manager', 'E2103');
-    const { mobile } = await page.evaluate(() => empRecord('E2103').basic);
+    await openRecord(page, 'manager', 'A003');
+    const { mobile } = await page.evaluate(() => empRecord('A003').basic);
     await openSec(page, 'basic');
     await expect(body(page)).not.toContainText(mobile);
     await expect(body(page).locator('.lock').first()).toContainText('受限');
@@ -1051,7 +1051,7 @@ test.describe('Personnel file drawer', () => {
     await openPortal(page);
     await setRole(page, 'manager');
     await go(page, 'ann', 'org');
-    await page.click('[data-node="E2201"]');              // 誠芯 day care supervisor (out of scope)
+    await page.click('[data-node="B001"]');              // 誠芯 day care supervisor (out of scope)
     await expect(drawer(page)).toBeVisible();
     await expect(body(page)).toContainText('不在您目前的資料範圍內');
     await expect(page.locator('[data-sec]')).toHaveCount(0);
@@ -1130,7 +1130,7 @@ test.describe('CSV exports', () => {
     const { lines } = await download(page, 'attendance');
     const ids = col(lines, '員工編號');
     expect(ids).toHaveLength(10);
-    expect(ids.every(id => id.startsWith('E21'))).toBe(true);
+    expect(ids.every(id => id.startsWith('A'))).toBe(true);
   });
 
   test('leave report reflects an approval made in the session', async ({ page }) => {
