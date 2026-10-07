@@ -2,7 +2,7 @@
  * End-to-end UI tests for the 誠馨日照 operations portal (ltc-portal.html).
  *
  * The page is a single-file prototype with in-memory data and a fixed demo
- * date of 2026-09-08. Built roles: admin (ADM005, HQ), hr (ADM003, HQ),
+ * date of 2026-09-08. Built roles: admin (H005, HQ), hr (H003, HQ),
  * manager (A001, director of O1 竹北日照中心) and employee (A004, care
  * attendant at O1, self-service 私人秘書 only).
  */
@@ -108,7 +108,7 @@ test.describe('Data scope', () => {
     await page.click('[data-tab="leave"]');
     await expect(requestRow(page, 'L241')).toHaveCount(1);   // A003, O1
     await expect(requestRow(page, 'L245')).toHaveCount(0);   // B003, O2
-    await expect(requestRow(page, 'L234')).toHaveCount(0);   // ADM005, HQ
+    await expect(requestRow(page, 'L234')).toHaveCount(0);   // H005, HQ
   });
 });
 
@@ -512,7 +512,7 @@ test.describe('My Hours', () => {
   });
 
   test('balance tab reflects entitlement, used and pending hours', async ({ page }) => {
-    await openPortal(page);                              // admin = ADM005, hired 2021-08-01
+    await openPortal(page);                              // admin = H005, hired 2021-08-01
     await go(page, 'hr', 'mylog');
     await page.click('[data-mytab="balance"]');
     const rows = page.locator('#view table').first().locator('tbody tr');
@@ -564,7 +564,7 @@ test.describe('Payroll night-shift allowance', () => {
   });
 
   test('day-shift staff get no allowance', async ({ page }) => {
-    await page.click('[data-payemp="ADM003"]');
+    await page.click('[data-payemp="H003"]');
     const d = drawer(page);
     await expect(d.locator('tr', { hasText: '本薪（月薪）' })).toBeVisible();
     await expect(d.locator('tr', { hasText: '小夜班津貼' })).toHaveCount(0);
@@ -611,7 +611,7 @@ test.describe('Payroll night-shift allowance', () => {
       nightShift: leaveHours('2026-08-27', '00:00', '2026-08-27', '08:00', 'B003'),
       nightFullDay: leaveHours('2026-08-27', '08:00', '2026-08-27', '17:00', 'B003'),
       evePartial: leaveHours('2026-08-21', '13:00', '2026-08-21', '17:00', 'B003'),
-      dayStaff: leaveHours('2026-08-27', '13:00', '2026-08-27', '17:00', 'ADM003'),
+      dayStaff: leaveHours('2026-08-27', '13:00', '2026-08-27', '17:00', 'H003'),
     }));
     expect(r).toEqual({ nightShift: 8, nightFullDay: 8, evePartial: 1, dayStaff: 4 });
   });
@@ -909,7 +909,7 @@ test.describe('Updates from the 9/30 meeting', () => {
     expect(buf.readUInt16LE(eocd + 10)).toBe(5);
     // employee numbers stay text and counts stay numbers
     const sheet = text.slice(text.indexOf('<sheetData>'));
-    expect(sheet).toMatch(/<c r="A2" t="inlineStr"><is><t[^>]*>ADM001<\/t>/);
+    expect(sheet).toMatch(/<c r="A2" t="inlineStr"><is><t[^>]*>H001<\/t>/);
     expect(sheet).toMatch(/<c r="F2"><v>100<\/v><\/c>/);
   });
 

@@ -36,7 +36,7 @@ a future expansion idea.
 
 | Unit | ID | Staff |
 |------|----|-------|
-| 共用行政 (shared admin) | HQ | 6 (ADM001–ADM006) |
+| 共用行政 (shared admin) | HQ | 6 (H001–H006) |
 | 誠馨 | O1 | 10 (A001–A010) |
 | 誠芯 | O2 | 9 (B001–B009) |
 | 牛津 | O3 | 3 (C001–C003) |
@@ -50,7 +50,7 @@ Switch roles with the **身分 / Role** selector (`#roleSel`) at the top of ever
 
 | | 系統管理員 System Admin (`admin`) | 人資 HR (`hr`) | 管理者（日照主管）Manager (`manager`) | 一般員工 Employee (`employee`) |
 |---|---|---|---|---|
-| Persona | ADM005, 共用行政 | ADM003, 共用行政 | A001, 日照主管 at 誠馨 | A004, 照服員 at 誠馨 |
+| Persona | H005, 共用行政 | H003, 共用行政 | A001, 日照主管 at 誠馨 | A004, 照服員 at 誠馨 |
 | Data scope | All companies | All companies | 誠馨 only (all if the assumption toggle is ON) | Own records only; announcements and directory for 誠馨 |
 | 私人秘書 My Desk (own calendar, forms, payslips) | ✅ | ✅ | ✅ | ✅ (lands here) |
 | Back office (人事、權限、文件、線上申請、業務資料整合、報表) | ✅ | ✅ | ✅ | Hidden |
@@ -174,7 +174,7 @@ leave unit 0.5 h.
 - [ ] Leave: the 上午 4h and 下午 4h quick picks each compute 4 h; submitting creates a pending request — *…half-day leave computes 4 h…*
 - [ ] Rotating staff (nurses and care attendants outside 共用行政) get start and end times from 00:00 to 24:00, the start date's shift, and 整班 / 前半班 / 後半班 quick picks that fill in that day's shift: on a day shift, 整班 = 08:00–17:00; on an evening day, 後半班 = 20:00–24:00 (4 h). 2026-08-27, formerly an overnight shift, is now a day shift. The test points admin's persona at B003 — *…rotating staff can request leave for evening shifts; there is no overnight shift*
 - [ ] Overtime: 17:00–19:00 = 2 h, 17:00–20:30 = 3.5 h, 22:00–02:00 = 4 h (crosses midnight) — *…overtime hours compute…*
-- [ ] Balance (admin, ADM005): annual leave 120 h entitlement, 4 h used, 116 h left; comp time 4 h; a pending 4 h request leaves 112 h — *…balance tab reflects entitlement…*
+- [ ] Balance (admin, H005): annual leave 120 h entitlement, 4 h used, 116 h left; comp time 4 h; a pending 4 h request leaves 112 h — *…balance tab reflects entitlement…*
 - [ ] Overtime over the 46 h monthly cap is refused — **manual**
 - [ ] 出勤異常 lists exceptions and links to 補打卡 or 補請假 — **manual**
 - [ ] 工作日誌 entries appear in the attendance and personnel CSVs — **manual**
@@ -188,7 +188,7 @@ leave unit 0.5 h.
 - [ ] 薪資試算 excludes requests that aren't approved yet and says how many — **manual**
 - [ ] Shift allowance: NT$200 per evening shift (NT$400 per overnight shift once one opens). For B003 in 2026-08 (5 evening shifts), the breakdown shows NT$1,000 and no 大夜 line, and the overtime hourly base becomes (58,500 + 1,000) ÷ 240 = 247.92 — *Payroll night-shift allowance › rotating nurse is paid per evening shift…*
 - [ ] No overnight shift appears in any month's roster, and the calculator hides the 大夜 fields — *…no overnight shifts are rostered…*
-- [ ] Day-shift staff (ADM003) get no allowance lines — *…day-shift staff get no allowance*
+- [ ] Day-shift staff (H003) get no allowance lines — *…day-shift staff get no allowance*
 - [ ] The calculator adds the allowance per shift, and the allowance can be excluded from the overtime base — *…calculator adds allowance per shift…*
 - [ ] For a part-time worker the allowance is also in the overtime rate: (160 h × 200 + 800) ÷ 160 h = 205 per hour — *…calculator includes a part-timer's allowance in their OT rate*
 - [ ] With `NIGHT_SHIFT` switched on, leave is counted against the shift worked that day: on B003's 2026-08-27 overnight shift, 00:00–08:00 or a full-day 08:00–17:00 request is 8 h; on the 2026-08-21 evening shift, 13:00–17:00 is 1 h — *…leave is counted against the evening or overnight shift…*
@@ -273,7 +273,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] **Open:** links for 仁寶 i 照護, 衛福部長照系統 and 誠馨雲端（NAS） (shown as URL pending in 系統設定)
 - [ ] **Open:** permissions for 老闆, 教育訓練專員 and 會計
 - [ ] **Open question:** must payroll calculation and review be done by different people?
-- [ ] **Open:** employee-number prefix (9/30 proposal: A/B/C letters); the prototype now demos the proposal (誠馨 A, 誠芯 B, 牛津 C, shared admin ADM as a placeholder)
+- [ ] **Open:** employee-number prefix (9/30 proposal: A/B/C letters); the prototype now demos the proposal (誠馨 A, 誠芯 B, 牛津 C, shared admin H)
 - [ ] **Open:** 仁寶 (9/20) vs 人保 (9/30) — same system?
 - [ ] **Open:** target size, 2,000 (9/30 minutes) vs 300+ (CLAUDE.md)
 - [ ] **Open:** roles for nurses, social workers and supervisors (permission lists due from the team before 10/7)
