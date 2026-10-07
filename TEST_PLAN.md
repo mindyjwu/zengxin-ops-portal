@@ -88,6 +88,7 @@ shown on 原型說明 › 角色與權限 but not built, and don't appear in the
 - [ ] The role selector offers only admin, hr, manager and employee — *…role selector offers only the built roles*
 - [ ] The **目前視角 / Viewing as** chip changes with the role — *…switching role updates the persona chip*
 - [ ] HR shows four tabs: 員工資料, 我的工時, 出勤管理, 請假審核 — *…HR module exposes its four tabs*
+- [ ] The top bar (身分, 公司, 假設 switch, 導覽, 使用指南, language) stays on one line at desktop widths in both languages: the other language folds away as the window narrows (all bilingual text below 1900 px, labels below 1450 px) — *…the top bar stays on a single line…*
 
 #### Test 1.1b: Settings & permission matrix
 - [ ] 系統設定 is in the nav for admin only (not hr, manager or employee) — *Settings & permission matrix › settings is in the nav for admin only*
