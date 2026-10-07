@@ -1057,7 +1057,7 @@ const MEETING_DECISIONS = [
    whereZh:'線上申請 › 簽核路徑預覽（依組織圖）；層級與金額規則待客戶提供', whereEn:'Online requests › Approval path preview (from the org chart); level and amount rules are due from the client', st:'part'},
   {src:'最新會議', zh:'請假、出差、補休等單據格式相近，數字自動扣抵假別餘額', en:'Leave, trip and comp-time forms look alike and numbers deduct from the leave balance automatically',
    whereZh:'私人秘書 › 表單；人事系統 › 我的工時 › 假別餘額', whereEn:'My Desk › Forms; HR › My Hours › Leave balance', st:'built'},
-  {src:'最新會議', zh:'意見反映功能與一體式系統相近，簽核流程細節待整理後會後上傳', en:'Feedback is similar to an all-in-one system; approval-flow details to be compiled and uploaded after the meeting',
+  {src:'最新會議', zh:'意見反映功能與仁寶系統相近，簽核流程細節待整理後會後上傳', en:'Feedback is similar to 仁寶; approval-flow details to be compiled and uploaded after the meeting',
    whereZh:'線上申請 › 申請項目與簽核流程（規則待確認）', whereEn:'Online requests › Request types and flows (rules pending)', st:'todo'},
   {src:'最新會議', zh:'員工編號依設定邏輯自動帶入，減少人工錯誤；目前邏輯是 placeholder，客戶可提供自訂格式', en:'Employee numbers are filled in by a configured rule to avoid typing errors; the rule is a placeholder and the client can supply its own format',
    whereZh:'人事系統 › 員工資料 › 新增員工（自動帶入編號）；系統設定 › 員工編號規則', whereEn:'HR › Employee records › Add employee (number filled in); Settings › Employee-number rule', st:'built'},
@@ -3383,7 +3383,7 @@ const MEETING_ITEMS = [
   {h:'既有系統整併與法規確認', items:['正式進行系統串接或資料整併前，須先確認個人資料保護、資訊安全及其他相關法規與管理要求。','在法規、資料範圍與資安機制尚未確認前，可先於入口網站設置連結，導向現有系統使用。','後續整併時，應同步確認資料存取權限、保存方式、傳輸安全及操作紀錄等需求。']}
 ];
 const MEETING_LATEST = [
-  {h:'仁寶系統整合', items:['仁寶系統不開放對外連接，改以按鈕連結方式導向原系統。','功能對接暫不進行，先專注內部行政與人事管理模組。','意見反映功能與一體式系統相近，簽核流程細節待整理後，會後上傳。','仁寶的名稱用字已確認：9/20 的寫法正確，9/30 的版本有誤。']},
+  {h:'仁寶系統整合', items:['仁寶系統不開放對外連接，改以按鈕連結方式導向原系統。','功能對接暫不進行，先專注內部行政與人事管理模組。','意見反映功能與仁寶系統相近，簽核流程細節待整理後，會後上傳。','仁寶的名稱用字已確認：9/20 的寫法正確，9/30 的版本有誤。']},
   {h:'不同身分的權限勾選', items:['系統支援依角色勾選權限項目（方框打勾的形式）。','目前的四個身分是 placeholder，需客戶確認是否正確，或需要增減。','一般員工下可設 subcategory（如製造、contractor、司機等）：大 category 為「一般員工」，subcategory 可自訂權限。','請客戶整理所有角色與對應的權限項目，以 Excel 格式提供；專案負責人將依此製作正式的權限表格。']},
   {h:'簽核／申請流程', items:['所有申請走統一的表單格式，按組織架構逐層簽核。','簽核層級依組織圖決定（行政組織圖，不是政府組織圖）；金額大小可影響需要簽核的層級數。','流程為自訂，需先定義組織架構與各層級規則。','請假、出差、補休等單據格式相近，數字自動扣抵假別餘額。','客戶需提供：組織架構圖、簽核路徑規則、表單欄位設計。']},
   {h:'員工編號與人事資料', items:['系統可依設定邏輯自動帶入員工編號，減少人工錯誤。','目前編號邏輯為 placeholder（A、B、C 對應三家公司，例如 A 誠馨、B 誠芯、C 牛津）；客戶可提供自訂的編號格式。']},
@@ -3393,10 +3393,10 @@ const MEETING_LATEST = [
 const LATEST_WORDING_OK = [
   ['A = 誠興、B = 第二誠心、C = 牛津','A 誠馨、B 誠芯、C 牛津'],
   ['青玉反映','意見反映'],
-  ['簽合','簽核']
+  ['簽合','簽核'],
+  ['一體式系統','仁寶（意見反映功能與仁寶系統相近）']
 ];
 const LATEST_WORDING = [
-  ['一體式系統','原文保留；指的是哪一套系統待確認'],
   ['一般員工子類別「製造」','原文保留；原型現有職稱沒有「製造」，請確認要設哪些子類別'],
   ['會議日期','紀錄沒有寫日期']
 ];
