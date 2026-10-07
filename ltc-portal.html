@@ -3389,11 +3389,13 @@ const MEETING_LATEST = [
   {h:'員工編號與人事資料', items:['系統可依設定邏輯自動帶入員工編號，減少人工錯誤。','目前編號邏輯為 placeholder（A、B、C 對應三家公司，例如 A 誠馨、B 誠芯、C 牛津）；客戶可提供自訂的編號格式。']},
   {h:'新功能與下次會議', items:['本週新增兩項功能：導覽（互動式引導）與使用指南（閱讀式手冊），入口在右上角，員工可自學操作流程。','手機打卡功能可行，但需購買 Cloud Storage 與 API Token 才能正式上線；手機與電腦介面的使用體驗優化留待後續討論。','下次會議聚焦：人事資料欄位、權限設定、員工編號、組織架構與申請流程。','建議先把整體架構（組織圖、權限、流程）定到八九成，再進行 UAT。']}
 ];
-/* 最新會議紀錄裡疑似語音轉文字誤差的用字：網站採用的讀法，請確認 */
+/* 最新會議紀錄裡疑似語音轉文字誤差的用字。已確認的讀法與仍待確認的分開列 */
+const LATEST_WORDING_OK = [
+  ['A = 誠興、B = 第二誠心、C = 牛津','A 誠馨、B 誠芯、C 牛津'],
+  ['青玉反映','意見反映'],
+  ['簽合','簽核']
+];
 const LATEST_WORDING = [
-  ['A = 誠興、B = 第二誠心、C = 牛津','網站用 A 誠馨、B 誠芯、C 牛津（與前面的會議及需求簡報一致）'],
-  ['青玉反映','網站當作「意見反映」（需求簡報第 11 頁有這個申請項目）'],
-  ['簽合','網站當作「簽核」'],
   ['一體式系統','原文保留；指的是哪一套系統待確認'],
   ['一般員工子類別「製造」','原文保留；原型現有職稱沒有「製造」，請確認要設哪些子類別'],
   ['會議日期','紀錄沒有寫日期']
@@ -3422,6 +3424,8 @@ function viewDocMeeting(){
       <div class="card-b"><div class="muted" style="font-size:12.5px;margin-bottom:10px">${esc(both('下列內容照最新會議紀錄整理；人名以職務表示。系統名稱一律寫「仁寶」。','Taken from the latest meeting notes; names are shown by role. The system is always called 仁寶.'))}</div>
         <div style="display:grid;gap:12px">${MEETING_LATEST.map((m,i)=>`<div><b>${i+1}. ${esc(m.h)}</b>
         <ul style="margin:6px 0 0;padding-left:20px;line-height:1.75">${m.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div>
+        <div class="note" style="margin-top:12px"><b>${esc(both('用字已確認','Wording confirmed'))}</b>
+          <ul style="margin:6px 0 0;padding-left:20px;line-height:1.7">${LATEST_WORDING_OK.map(w=>`<li>${esc('紀錄寫「'+w[0]+'」')}：${esc('正確寫法是「'+w[1]+'」')}</li>`).join('')}</ul></div>
         <div class="note q" style="margin-top:12px"><b>${esc(both('紀錄用字待確認','Wording to confirm'))}</b>
           <ul style="margin:6px 0 0;padding-left:20px;line-height:1.7">${LATEST_WORDING.map(w=>`<li>${esc(w[0])}：${esc(w[1])}</li>`).join('')}</ul></div></div>
     </section>
