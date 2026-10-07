@@ -65,8 +65,11 @@ button{font:inherit;color:inherit}
 .rail-foot{margin-top:auto;padding:12px 10px 0;border-top:1px solid rgba(255,255,255,.09);font-size:11px;color:var(--rail-ink-dim);line-height:1.5}
 
 .main{min-width:0;display:flex;flex-direction:column}
-.utility{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 22px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
-.ufield{display:flex;align-items:center;gap:6px}
+.utility{display:flex;flex-wrap:nowrap;align-items:center;gap:10px;padding:10px 22px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.ufield{display:flex;align-items:center;gap:6px;flex:0 1 auto;min-width:0}
+.ufield select{min-width:0;max-width:100%;text-overflow:ellipsis}
+.ufield{flex:0 0 auto}
+.utility .btn,.utility .seg,.utility .ulabel{flex:none;white-space:nowrap}
 .ulabel{font-size:11px;color:var(--ink-3);letter-spacing:.04em}
 select,input[type=search],input[type=text]{font:inherit;font-size:13px;color:var(--ink);background:var(--surface);border:1px solid var(--line-strong);border-radius:6px;padding:5px 8px}
 select[disabled]{background:var(--surface-2);color:var(--ink-3);cursor:not-allowed}
@@ -78,6 +81,8 @@ select[disabled]{background:var(--surface-2);color:var(--ink-3);cursor:not-allow
 
 /* assumption toggle */
 .assume{display:flex;align-items:center;gap:8px;border:1px dashed var(--warn-line);background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:4px 9px;cursor:pointer}
+.assume{flex:0 1 auto;min-width:0}
+.assume>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .assume b{font-weight:600;font-size:12px}
 .assume small{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
 .switch{width:30px;height:17px;border-radius:99px;background:var(--line-strong);position:relative;flex:none;transition:background .16s}
@@ -339,6 +344,11 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
   .content{padding:16px 14px 60px}
   .utility{padding:10px 14px}
 }
+/* 視窗變窄時，上方工具列先收起次要語言，再收起標籤，仍維持單行 */
+@media (max-width:1900px){ .utility .bar-alt{display:none} }
+@media (max-width:1450px){ .utility .ulabel{display:none} .assume small{display:none} }
+@media (max-width:1150px){ .ufield{flex:0 1 auto} .utility{gap:8px} }
+@media (max-width:760px){ .utility{flex-wrap:wrap} .ufield{flex:0 1 auto} .ufield select{max-width:none} .utility .ulabel{display:inline} .utility .bar-alt{display:inline} .assume small{display:inline} }
 </style>
 <!--#artifact-split-->
 </head>
@@ -722,6 +732,8 @@ const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&
 const bi = (zh,en) => `<span class="bi"><span>${esc(state.lang==='zh'?zh:en)}</span><span class="en">${esc(state.lang==='zh'?en:zh)}</span></span>`;
 const biO = o => bi(o.zh,o.en);
 const both = (zh,en) => state.lang==='zh' ? `${zh} / ${en}` : `${en} / ${zh}`;
+/* 上方工具列用：主要語言一定顯示，另一種語言在視窗較窄時收起來，讓整列維持單行 */
+const barBi = (zh,en) => state.lang==='zh' ? `${zh}<span class="bar-alt"> / ${en}</span>` : `${en}<span class="bar-alt"> / ${zh}</span>`;
 const nameOf = p => state.lang==='zh' ? p.zh : p.en;
 const nameFull = p => state.lang==='zh' ? `${p.zh}` : `${p.en}`;
 const money = n => 'NT$'+n.toLocaleString('en-US');
@@ -873,25 +885,25 @@ function renderShell(){
     <div class="main">
       <div class="utility">
         <div class="ufield">
-          <span class="ulabel">${both('身分','Role')}</span>
-          <select id="roleSel">${Object.values(ROLES).filter(r=>r.built).map(r=>`<option value="${r.id}" ${r.id===state.role?'selected':''}>${esc(both(r.zh,r.en))}</option>`).join('')}</select>
+          <span class="ulabel">${barBi('身分','Role')}</span>
+          <select id="roleSel" title="${esc(both(role().zh,role().en))}">${Object.values(ROLES).filter(r=>r.built).map(r=>`<option value="${r.id}" ${r.id===state.role?'selected':''}>${esc(state.lang==='zh'?r.zh:r.en)}</option>`).join('')}</select>
         </div>
         <div class="ufield">
-          <span class="ulabel">${both('公司','Company')}</span>
+          <span class="ulabel">${barBi('公司','Company')}</span>
           <select id="offSel" ${scopeLocked()?'disabled':''}>
             ${scopeLocked()
-              ? `<option>${esc(both(me().unit==='HQ'?HQ.zh:unit(me().unit).zh, unit(me().unit).en))}</option>`
-              : `<option value="ALL">${esc(both('全部公司','All companies'))}</option>`+
-                filterUnits().map(u=>`<option value="${u.id}" ${u.id===state.office?'selected':''}>${esc(both(u.zh,u.en))}</option>`).join('')}
+              ? `<option>${esc(state.lang==='zh'?(me().unit==='HQ'?HQ.zh:unit(me().unit).zh):unit(me().unit).en)}</option>`
+              : `<option value="ALL">${esc(state.lang==='zh'?'全部公司':'All companies')}</option>`+
+                filterUnits().map(u=>`<option value="${u.id}" ${u.id===state.office?'selected':''}>${esc(state.lang==='zh'?u.zh:u.en)}</option>`).join('')}
           </select>
         </div>
         ${role().selfOnly?'':`<button class="assume" id="assumeBtn" aria-pressed="${state.crossOffice}" title="${both('切換此假設以進行討論','Toggle this assumption for discussion')}">
           <span class="switch"></span>
-          <span><small>${both('假設','Assumption')}</small> <b>${both('管理者可跨公司查看','Managers see all companies')}</b></span>
+          <span><small>${barBi('假設','Assumption')}</small> <b>${barBi('管理者可跨公司查看','Managers see all companies')}</b></span>
         </button>`}
         <div class="spacer"></div>
-        <button class="btn ghost mini" id="tourBtn">${both('導覽','Walkthrough')}</button>
-        <a class="btn ghost mini" href="guide.html" target="_blank" rel="noopener">${both('使用指南','User guide')}</a>
+        <button class="btn ghost mini" id="tourBtn">${barBi('導覽','Walkthrough')}</button>
+        <a class="btn ghost mini" href="guide.html" target="_blank" rel="noopener">${barBi('使用指南','User guide')}</a>
         <div class="seg" role="group" aria-label="Language">
           <button data-lang="zh" aria-pressed="${state.lang==='zh'}">中文</button>
           <button data-lang="en" aria-pressed="${state.lang==='en'}">EN</button>

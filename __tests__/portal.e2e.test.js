@@ -53,6 +53,27 @@ test.describe('Shell & role switching', () => {
     await expect(chip).toContainText('日照主管');
   });
 
+  test('the top bar stays on a single line on desktop widths, in both languages', async ({ page }) => {
+    for (const w of [1920, 1440, 1280, 1100]) {
+      await page.setViewportSize({ width: w, height: 800 });
+      for (const lang of ['zh', 'en']) {
+        await page.click(`[data-lang="${lang}"]`);
+        for (const role of ['admin', 'hr', 'manager', 'employee']) {
+          await setRole(page, role);
+          const r = await page.evaluate(() => {
+            const u = document.querySelector('.utility'), kids = [...u.children].filter(k => k.getBoundingClientRect().width > 0);
+            const mids = kids.map(k => { const b = k.getBoundingClientRect(); return b.top + b.height / 2; });
+            return { h: u.getBoundingClientRect().height, spread: Math.max(...mids) - Math.min(...mids), over: u.scrollWidth > u.clientWidth + 1 };
+          });
+          expect(r.h, `${w} ${lang} ${role} height`).toBeLessThan(64);
+          expect(r.spread, `${w} ${lang} ${role} rows`).toBeLessThan(10);
+          expect(r.over, `${w} ${lang} ${role} overflow`).toBe(false);
+        }
+      }
+    }
+    await page.click('[data-lang="zh"]');
+  });
+
   test('HR module exposes its four tabs', async ({ page }) => {
     await go(page, 'hr');
     for (const t of ['emp', 'mylog', 'att', 'leave']) {
