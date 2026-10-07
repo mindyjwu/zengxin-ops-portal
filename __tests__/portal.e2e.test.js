@@ -942,7 +942,9 @@ test.describe('Updates from the latest meeting', () => {
     await expect(v).toContainText('紀錄用字待確認');
     await expect(v).toContainText('用字已確認');         // 誠興 → 誠馨, 青玉反映 → 意見反映, 簽合 → 簽核
     await expect(v).toContainText('正確寫法是「意見反映」');
-    await expect(v).toContainText('一體式系統');          // still to confirm
+    await expect(v).toContainText('一體式系統');          // quoted in the confirmed list
+    await expect(v).toContainText('意見反映功能與仁寶系統相近');
+    await expect(v.locator('.note.q')).not.toContainText('一體式系統');   // no longer to confirm
     await expect(v).toContainText('9/30 會議');         // earlier notes are kept
     await expect(v).not.toContainText('人保');
     expect(await page.evaluate(() => ANNOUNCEMENTS.some(a => a.id === 'A11'))).toBe(true);

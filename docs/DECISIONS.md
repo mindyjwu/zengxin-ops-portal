@@ -24,7 +24,7 @@ Format: `YYYY-MM-DD — decision — why / who decided`. Keep one line each.
 - 2026-10 (latest meeting) — Permissions are set by ticking boxes per role; the four current roles are placeholders for the client to confirm or change; Employee can have sub-categories (e.g. driver, contractor) with their own permissions.
 - 2026-10 (latest meeting) — All requests use one form, approved level by level along the administrative org chart; the amount can change the number of levels; leave, trip and comp-time forms look alike and deduct from leave balances automatically.
 - 2026-10 (latest meeting) — Employee numbers are filled in automatically from a configured rule; A/B/C is a placeholder and the client can supply a custom format.
-- 2026-10 — Wording confirmed by the owner: 誠興 / 第二誠心 → 誠馨 / 誠芯, 青玉反映 → 意見反映, 簽合 → 簽核 (the latest notes had them garbled).
+- 2026-10 — Wording confirmed by the owner: 誠興 / 第二誠心 → 誠馨 / 誠芯, 青玉反映 → 意見反映, 簽合 → 簽核, 一體式系統 → 仁寶 (the latest notes had them garbled).
 - 2026-10 (latest meeting) — Mobile clock-in is feasible but needs Cloud Storage and an API token to go live; mobile/desktop polish later. Settle the overall structure (org chart, permissions, flows) to 80–90% before UAT.
 - 2026-09-20 — Meeting decisions (one account per person by employee number; managers and shared admin can switch company; HR maintains data, employees only view; monthly / hourly / revenue-share pay; link out to existing systems) are listed on 原型說明 › 範圍與進展 — 9/20 meeting minutes.
 
@@ -49,7 +49,7 @@ Format: `YYYY-MM-DD — decision — why / who decided`. Keep one line each.
 18. **Org chart, approval-path rules, form fields** — due from the client; levels and amount thresholds for approvals depend on them. Feedback-form approval details are to be uploaded after the meeting.
 19. **Custom employee-number format** — the client may supply one; the portal's rule (Settings › Employee-number rule) is a placeholder.
 20. **Mobile clock-in** — who buys Cloud Storage and an API token, and when.
-21. **Wording in the latest notes** — still to confirm: 一體式系統 (which system?), the sub-category example 製造 (no such title in the prototype), and the missing meeting date.
+21. **Wording in the latest notes** — still to confirm: the sub-category example 製造 (no such title in the prototype) and the missing meeting date.
 
 ## Repo hygiene tasks
 - [ ] Set this repo to **private** (or stop publishing the real operator name via Pages) — owner action in GitHub settings.
