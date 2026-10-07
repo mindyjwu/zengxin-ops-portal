@@ -266,7 +266,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 ### Phase 11: Updates from the latest meeting
 
 - [ ] The site never says 人保: every module and tab, for every role, uses 仁寶 — *Grounded content › no page shows the removed, unsourced content*
-- [ ] 會議紀錄 shows the latest notes first (仁寶 link-out, permissions, approval flow, employee numbers, mobile clock-in, UAT after 80–90%), the wording-to-confirm list (誠興, 青玉反映, 簽合, 一體式系統, 製造, no date) and the next-meeting focus; announcement A11 exists — *Updates from the latest meeting › the minutes page holds…*
+- [ ] 會議紀錄 shows the latest notes first (仁寶 link-out, permissions, approval flow, employee numbers, mobile clock-in, UAT after 80–90%), the confirmed wording (誠興 → 誠馨, 青玉反映 → 意見反映, 簽合 → 簽核) and the wording still to confirm (一體式系統, 製造, no date) and the next-meeting focus; announcement A11 exists — *Updates from the latest meeting › the minutes page holds…*
 - [ ] 範圍與進展 has at least 12 rows from the latest meeting; follow-ups include the org chart, approval rules and form fields — *…decisions and follow-ups carry the latest items*
 - [ ] 業務資料整合 › 個案管理系統 says 仁寶 is not opened to outside connections and is reached by a button (URL pending); the other two pages say 暫緩; 系統設定 repeats the link-only note — *…仁寶 is linked by a button…*
 - [ ] 權限對照表 (system admin): sub-categories 司機 and 約聘人員（contractor） can be ticked, added and removed; the Excel worksheet downloads as `權限整理表_範本.xlsx` with the roles and sub-categories as columns; hr sees neither — *…permission matrix: roles are placeholders…*; *…the worksheet and sub-categories are for the system admin only*
