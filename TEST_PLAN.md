@@ -252,7 +252,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 
 ### Phase 10: Updates from the 9/30 meeting
 
-- [ ] 文件管理 › 會議紀錄 shows the 9/30 notes (statuses, tenure, 104, case system, storage), the next meeting on 10/7 11:30 and the follow-ups; the 9/20 notes are still there; 人保 vs 仁寶 is flagged as to-confirm; the calendar has a 10/7 event — *…the minutes page holds the 9/30 notes…*
+- [ ] 文件管理 › 會議紀錄 shows the 9/30 notes (statuses, tenure, 104, case system, storage), the next meeting on 10/7 11:30 and the follow-ups; the 9/20 notes are still there; the calendar has a 10/7 event — *…the minutes page holds the 9/30 notes…*
 - [ ] 原型說明 › 範圍與進展 lists the 9/30 decisions with their source, where they are in the prototype, and a status — *…decisions page lists the 9/30 decisions…*
 - [ ] 文件管理 › 104 功能對照 compares 104 functions item by item (in prototype / partly / not in prototype / not enabled in 104) and lists 104 job types against the prototype's titles, flagging the ones that differ — *…104 comparison tab…*
 - [ ] 員工資料 shows 在職狀態: B009 留職停薪 (from 2026-08-01), C003 離職 (from 2026-09-15), everyone else 在職; the tile counts them — *…employment status: three kinds…*
@@ -262,6 +262,18 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] `?tour=hr` highlights each of its three steps — *…the HR walkthrough finds its targets*
 - [ ] Banned-word scan: 院長 appears only on the minutes page and the roles page, where the 9/30 notes are quoted — *Grounded content › no page shows the removed, unsourced content*
 - [ ] Excel files open in a real spreadsheet program — **manual** (checked with openpyxl only)
+
+### Phase 11: Updates from the latest meeting
+
+- [ ] The site never says 人保: every module and tab, for every role, uses 仁寶 — *Grounded content › no page shows the removed, unsourced content*
+- [ ] 會議紀錄 shows the latest notes first (仁寶 link-out, permissions, approval flow, employee numbers, mobile clock-in, UAT after 80–90%), the wording-to-confirm list (誠興, 青玉反映, 簽合, 一體式系統, 製造, no date) and the next-meeting focus; announcement A11 exists — *Updates from the latest meeting › the minutes page holds…*
+- [ ] 範圍與進展 has at least 12 rows from the latest meeting; follow-ups include the org chart, approval rules and form fields — *…decisions and follow-ups carry the latest items*
+- [ ] 業務資料整合 › 個案管理系統 says 仁寶 is not opened to outside connections and is reached by a button (URL pending); the other two pages say 暫緩; 系統設定 repeats the link-only note — *…仁寶 is linked by a button…*
+- [ ] 權限對照表 (system admin): sub-categories 司機 and 約聘人員（contractor） can be ticked, added and removed; the Excel worksheet downloads as `權限整理表_範本.xlsx` with the roles and sub-categories as columns; hr sees neither — *…permission matrix: roles are placeholders…*; *…the worksheet and sub-categories are for the system admin only*
+- [ ] 線上申請 › 簽核路徑預覽: A004 → 日照主管 → 管理者 → 老闆, and the top person shows 最上層 — *…approval path preview follows the org chart…*
+- [ ] 新增員工 fills in the number by company (A011 for 誠馨, B010, C004, H007) and the next one follows (A012); the new person shows in the table, payroll, attendance and the personnel report without errors — *…add employee fills in the number…*; *…a new employee works in payroll…*
+- [ ] 系統設定 › 員工編號規則: changing a prefix changes the next number; 還原預設 puts it back — *…the employee-number rule is editable…*
+- [ ] 系統說明 explains mobile clock-in (Cloud Storage and API Token) — *…system info explains mobile clock-in*
 
 ---
 
@@ -274,7 +286,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] **Open:** permissions for 老闆, 教育訓練專員 and 會計
 - [ ] **Open question:** must payroll calculation and review be done by different people?
 - [ ] **Open:** employee-number prefix (9/30 proposal: A/B/C letters); the prototype now demos the proposal (誠馨 A, 誠芯 B, 牛津 C, shared admin H)
-- [ ] **Open:** 仁寶 (9/20) vs 人保 (9/30) — same system?
+- [x] **Decided:** the system is always called 仁寶, and it is linked by button, not integrated (latest meeting).
 - [ ] **Open:** target size, 2,000 (9/30 minutes) vs 300+ (CLAUDE.md)
 - [ ] **Open:** roles for nurses, social workers and supervisors (permission lists due from the team before 10/7)
 - [ ] **Open:** rehire after leaving restarts tenure (9/30); not modelled yet
