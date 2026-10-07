@@ -120,7 +120,9 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
     <a href="#admin">權限與系統設定</a>
     <a href="#reports">報表匯出</a>
     <a href="#cmp104">104 功能對照</a>
+    <a href="#perms">權限、子類別與簽核路徑</a>
     <b>參考</b>
+    <a href="#newlatest">最新會議後的更新</a>
     <a href="#new930">9/30 會議後的更新</a>
     <a href="#roles">身分與權限</a>
     <a href="#sources">資料來源與待確認</a>
@@ -311,6 +313,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
           <li>點一位員工開啟人事資料。<span class="ui">概要</span> 有年資與在職狀態；跨公司轉調時員工編號不變、年資不歸零，離職後回任才重新計算。</li>
           <li><span class="ui">變更在職狀態</span>：選狀態與生效日，按儲存。留職停薪與離職自生效月起不列入薪資試算與出勤統計；實際規則待人資確認。</li>
           <li><span class="ui">基本與金融資料</span> › 編輯：緊急聯絡人一位必填、一位選填；發薪方式可選銀行轉帳或現金。</li>
+          <li><span class="ui">新增員工</span>（員工資料右上角）：選公司、部門、職稱，輸入姓名與到職日；<b>員工編號由系統依規則自動帶入</b>，不用手動輸入。規則在 <span class="path">系統設定 › 員工編號規則</span>，前綴與位數都是 placeholder，客戶可以提供自訂格式。新增的人只存在本次瀏覽。</li>
           <li><span class="ui">資格與契約</span>：證照可以上傳檔案（原型只記錄檔名），也有教育訓練記錄；<span class="ui">勞健保資料</span> 有加保日期與勞退自提；<span class="ui">任職與薪資異動</span> 是職務歷程。</li>
         </ol>
         <p class="try"><a href="ltc-portal.html?tour=hr">在網站上跟著做 →</a></p>
@@ -341,9 +344,51 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
       </ul>
     </section>
 
+    <section id="perms">
+      <h2>權限、子類別與簽核路徑</h2>
+      <div class="task">
+        <div class="top"><span class="role">系統管理員</span><h3>勾選權限、設定一般員工的子類別</h3></div>
+        <ol class="steps">
+          <li><span class="path">權限與範圍 › 權限對照表</span>：用方框勾選各身分的權限。目前的四個身分（系統管理員、人資、管理者、一般員工）是 placeholder，需要客戶確認是否正確、要不要增減。</li>
+          <li>表格下方的 <span class="ui">一般員工的子類別</span>：大類別是「一般員工」，底下可以再分子類別（預設有「司機」和「約聘人員（contractor）」，可以新增或刪除），各自勾選權限，沒勾的項目沿用一般員工。這是示範，勾選還沒連到實際權限。</li>
+          <li>按 <span class="ui">下載權限整理表（Excel）</span> 得到範本：列是權限項目，欄是各身分與子類別。請客戶在每格填「可／不可／限本公司／僅本人」，也可以加欄或改欄名，再用 Excel 傳回，專案負責人依此製作正式權限表。</li>
+        </ol>
+        <p class="try"><a href="ltc-portal.html?tour=admin">在網站上跟著做 →</a></p>
+      </div>
+      <div class="task">
+        <div class="top"><span class="role">人資</span><h3>看申請的簽核路徑</h3></div>
+        <ol class="steps">
+          <li><span class="path">線上申請 › 申請項目與流程</span>：<span class="ui">簽核路徑預覽（依組織圖）</span> 選一位申請人，下面依直屬主管一路往上，排出逐層簽核的路徑。</li>
+          <li>最新會議的原則：所有申請走統一表單，按行政組織圖逐層簽核；金額大小可影響簽核層數。每層的金額門檻要等客戶提供簽核路徑規則；目前原型的請假、加班、補打卡仍是「直屬主管 → 人資複核」兩步。</li>
+        </ol>
+      </div>
+    </section>
+
     <section id="cmp104">
       <h2>104 功能對照</h2>
       <p><span class="path">文件管理 › 104 功能對照</span>：依你提供的 104 截圖，逐項比對 104 的功能和原型現在有什麼。分為「原型已有」「部分」「原型尚無」「104 未啟用」四種，另有 104 職務類別與原型職稱的對照。這是 9/30 會議待辦「評估 Portal 能否取代 104 差勤功能」的輸入資料，不是評估結論。</p>
+    </section>
+
+    <section id="newlatest">
+      <h2>最新會議後的更新</h2>
+      <p>完整紀錄在 <span class="path">文件管理 › 會議紀錄</span> 最上面（紀錄沒有寫日期）；每一條決議對應的位置在 <span class="path">原型說明 › 範圍與進展</span>，來源欄標「最新會議」。</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>會議內容</th><th>網站上的位置</th><th>狀態</th></tr></thead>
+        <tbody>
+          <tr><td>仁寶不開放對外連接，改以按鈕連結導向原系統；功能對接暫不進行，先專注內部行政與人事管理模組</td><td>系統設定 › 既有系統連結；業務資料整合</td><td><span class="chip">部分（網址待 IT 提供）</span></td></tr>
+          <tr><td>系統名稱一律寫「仁寶」</td><td>全站與本指南</td><td><span class="chip ok">已更正</span></td></tr>
+          <tr><td>依角色勾選權限；四個身分是 placeholder</td><td>權限與範圍 › 權限對照表</td><td><span class="chip">部分</span></td></tr>
+          <tr><td>一般員工下的子類別（如司機、contractor）</td><td>權限對照表下方</td><td><span class="chip">示範</span></td></tr>
+          <tr><td>客戶以 Excel 整理角色與權限項目</td><td>下載權限整理表（Excel）</td><td><span class="chip">範本已有</span></td></tr>
+          <tr><td>統一表單、按組織圖逐層簽核、金額影響層數</td><td>線上申請 › 簽核路徑預覽</td><td><span class="chip">部分（規則待客戶提供）</span></td></tr>
+          <tr><td>請假、出差、補休單據相近，自動扣抵假別餘額</td><td>私人秘書 › 表單、假別餘額</td><td><span class="chip ok">已有</span></td></tr>
+          <tr><td>員工編號依設定自動帶入</td><td>新增員工；系統設定 › 員工編號規則</td><td><span class="chip ok">已有（規則是 placeholder）</span></td></tr>
+          <tr><td>導覽與使用指南，入口在右上角</td><td>畫面右上角</td><td><span class="chip ok">已有</span></td></tr>
+          <tr><td>手機打卡可行，正式上線需 Cloud Storage 與 API Token</td><td>文件管理 › 系統說明</td><td><span class="chip todo">待採購</span></td></tr>
+          <tr><td>先把組織圖、權限、流程定到八九成，再進行 UAT</td><td>下次會議聚焦：人事資料欄位、權限設定、員工編號、組織架構與申請流程</td><td><span class="chip todo">待辦</span></td></tr>
+        </tbody>
+      </table></div>
+      <p><b>客戶需要提供：</b>確認四個身分、所有角色與權限項目（Excel）、組織架構圖、簽核路徑規則、表單欄位設計；也可以提供自訂的員工編號格式。意見反映的簽核流程細節，會後上傳。</p>
     </section>
 
     <section id="new930">
@@ -362,10 +407,10 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
           <tr><td>年資保留（轉調不歸零、離職後回任重算）</td><td>員工資料顯示年資</td><td><span class="chip">部分</span></td></tr>
           <tr><td>員工編號前綴統一為 A/B/C 等英文字母</td><td>系統設定 › 帳號原則</td><td><span class="chip todo">待討論</span></td></tr>
           <tr><td>護理師、社工、督導等職位的角色與權限清單</td><td>原型說明 › 角色與權限</td><td><span class="chip todo">待團隊提供</span></td></tr>
-          <tr><td>104 評估、人保系統 API 或 MCP、資料儲存（雲端、雙備份）</td><td>104 功能對照、業務資料整合、法規與資安</td><td><span class="chip todo">待辦</span></td></tr>
+          <tr><td>104 評估、資料儲存（雲端、雙備份）</td><td>104 功能對照、法規與資安</td><td><span class="chip todo">待辦</span></td></tr>
         </tbody>
       </table></div>
-      <p><b>下次會議：10/7（三）11:30。</b>會前待辦：團隊試用後回饋各角色需要的功能與按鈕；整理各職位的權限清單；提供 104 與人保的頁面截圖；提供組織架構圖。</p>
+      <p><b>下次會議：10/7（三）11:30。</b>會前待辦：團隊試用後回饋各角色需要的功能與按鈕；整理各職位的權限清單；提供 104 與仁寶的頁面截圖；提供組織架構圖。</p>
     </section>
 
     <section id="roles">
@@ -391,6 +436,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
       <ul>
         <li>9/20 入口網站建置第一次需求討論會議紀錄（V1.0）</li>
         <li>9/30 會議紀錄</li>
+        <li>最新一次會議紀錄（沒有寫日期）</li>
         <li>需求簡報「公司共用入口網站：系統需求與分期規劃」</li>
         <li>9/21 v2.0 開發規格</li>
         <li>專案負責人的確認：三家公司為誠馨、誠芯、牛津，皆在大新竹地區；品牌名稱為誠馨日照；沒有大夜班；員工只看得到請假同事的姓名；預先加班單只核准不計薪；可用現金發薪；展示日期 10/7</li>
@@ -406,8 +452,10 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
         <li>仁寶系統 API 或 Excel 匯入、衛福部 HTML 個案資料、異常事件通報（列在「業務資料整合」，尚未開發）。</li>
         <li>員工編號前綴怎麼統一（A/B/C 等英文字母），以及未來收購公司的彈性。</li>
         <li>護理師、社工、督導等職位的權限清單，和組織架構圖。</li>
-        <li>9/20 資料稱「仁寶」，9/30 紀錄稱「人保」：是否為同一套系統。</li>
-        <li>104 與人保是否提供 API 或 MCP 串接；先匯出 104 資料確認格式，再建立薪資計算邏輯。</li>
+        <li>客戶確認四個身分是否正確，並以 Excel 提供所有角色與權限項目；提供組織架構圖、簽核路徑規則、表單欄位設計。</li>
+        <li>先匯出 104 資料確認格式，再建立薪資計算邏輯。</li>
+        <li>手機打卡正式上線所需的 Cloud Storage 與 API Token。</li>
+        <li>最新會議紀錄有幾處疑似語音轉文字的用字（誠興／第二誠心、青玉反映、簽合、一體式系統、子類別「製造」），網站上列出了採用的讀法，請確認；紀錄也沒有寫日期。</li>
         <li>9/30 紀錄把現有管理角色寫成「系統管理員、經理、院長」，與原型的系統管理員、人資、管理者（日照主管）如何對應。</li>
         <li>長期目標人數：9/30 紀錄提到未來 2,000 名員工；專案說明文件寫的是 300 名以上，請確認以哪個為準。</li>
       </ul>
@@ -422,7 +470,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
       <h3>為什麼日期是 2026-10-07？</h3>
       <p>這是專案負責人指定的展示日期，讓月曆、假單與薪資月份有一致的情境。網址加上 <span class="mono">?demoDate=2026-09-29</span> 可以改成別的日期。</p>
       <h3>手機可以用嗎？</h3>
-      <p>可以用手機瀏覽器開啟，版面會自動調整。手機打卡是否要定位或裝置限制，仍是待確認事項。</p>
+      <p>可以用手機瀏覽器開啟，版面會自動調整。最新會議說手機打卡可行，但正式上線需要購買 Cloud Storage 與 API Token；手機與電腦介面的體驗優化留待後續討論。原型的打卡按鈕只記錄本次瀏覽，沒有定位也不會儲存。</p>
     </section>
   </main>
 </div>
