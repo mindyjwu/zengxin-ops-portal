@@ -242,7 +242,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] Opening the page without `demoDate` shows 2026-10-07; 9/25 中秋節 and 9/28 孔子誕辰紀念日 are days off with no punches — *Grounded content › without a demoDate the demo date is 2026-09-29…*
 - [ ] The company filter lists 誠馨, 誠芯 and 牛津; the 目前公司 chip follows the filter and shows 誠馨 for the manager — *…three companies in greater Hsinchu…*
 - [ ] No module or tab, in any role, shows removed unsourced content (竹北／竹東日照中心, 康禾, 營運長, 執行長, 評鑑準備, 流感疫苗, 仁仁, 院長, 住民) — *…no page shows the removed, unsourced content*
-- [ ] 文件管理 › 會議紀錄 shows the 9/20 minutes; 系統設定 links to https://pro.104.com.tw/ and lists 仁寶 i 照護; choosing 拆帳制 in the calculator shows the rules-pending note — *…meeting minutes, existing-system links and the revenue-share pay system*
+- [ ] 文件管理 › 會議紀錄 shows the 9/20 minutes; 系統設定 links to https://pro.104.com.tw/ and lists 居服個案管理系統（仁寶）; choosing 拆帳制 in the calculator shows the rules-pending note — *…meeting minutes, existing-system links and the revenue-share pay system*
 - [ ] Mid-year review: as manager, 私人秘書 › 查詢 › 部屬績效考核 shows 期中考核 0 / 6; 填寫期中考核 for A003 opens 績效與文件 with the add form; saving 期中考核（上半年） makes it 1 / 6 and marks A003 已完成 — *…a manager fills in a mid-year review…*
 - [ ] `?tour=leave` switches to the employee role and highlights the leave form; 下一步 walks every step and the last one closes the card — *…a walkthrough switches role and page…*
 - [ ] Every step of all 9 walkthroughs (clock, leave, slip, approve, perf, ann, pay, hr, admin) highlights exactly one element — *…every walkthrough step finds what it points at*
@@ -264,17 +264,18 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] Banned-word scan: 院長 appears only on the minutes page and the roles page, where the 9/30 notes are quoted — *Grounded content › no page shows the removed, unsourced content*
 - [ ] Excel files open in a real spreadsheet program — **manual** (checked with openpyxl only)
 
-### Phase 11: Updates from the latest meeting
+### Phase 11: Updates from the 7 Oct meeting (third meeting)
 
-- [ ] The site never says 人保: every module and tab, for every role, uses 仁寶 — *Grounded content › no page shows the removed, unsourced content*
-- [ ] 會議紀錄 shows the latest notes first (仁寶 link-out, permissions, approval flow, employee numbers, mobile clock-in, UAT after 80–90%), the confirmed wording (誠興 → 誠馨, 青玉反映 → 意見反映, 簽合 → 簽核, 一體式系統 → 仁寶) and the wording still to confirm (製造, no date) and the next-meeting focus; announcement A11 exists — *Updates from the latest meeting › the minutes page holds…*
-- [ ] 範圍與進展 has at least 12 rows from the latest meeting; follow-ups include the org chart, approval rules and form fields — *…decisions and follow-ups carry the latest items*
-- [ ] 業務資料整合 › 個案管理系統 says 仁寶 is not opened to outside connections and is reached by a button (URL pending); the other two pages say 暫緩; 系統設定 repeats the link-only note — *…仁寶 is linked by a button…*
-- [ ] 權限對照表 (system admin): sub-categories 司機 and 約聘人員（contractor） can be ticked, added and removed; the Excel worksheet downloads as `權限整理表_範本.xlsx` with the roles and sub-categories as columns; hr sees neither — *…permission matrix: roles are placeholders…*; *…the worksheet and sub-categories are for the system admin only*
-- [ ] 線上申請 › 簽核路徑預覽: A004 → 日照主管 → 管理者 → 老闆, and the top person shows 最上層 — *…approval path preview follows the org chart…*
-- [ ] 新增員工 fills in the number by company (A011 for 誠馨, B010, C004, H007) and the next one follows (A012); the new person shows in the table, payroll, attendance and the personnel report without errors — *…add employee fills in the number…*; *…a new employee works in payroll…*
-- [ ] 系統設定 › 員工編號規則: changing a prefix changes the next number; 還原預設 puts it back — *…the employee-number rule is editable…*
-- [ ] 系統說明 explains mobile clock-in (Cloud Storage and API Token) — *…system info explains mobile clock-in*
+- [ ] 會議紀錄 shows the official minutes of the third meeting first: name, 10/7 10:00–11:40, Teams, 4 attendees with names left out, the five decisions word for word, the five action items with their owners, and the next meeting (10/14 10:00, venue to confirm); the 9/30 and 9/20 notes are still there; no attendee name appears anywhere — *Updates from the 7 Oct meeting › the minutes page holds the official minutes…*
+- [ ] The recording summary of the same meeting is kept apart, with the confirmed wording (誠興 → 誠馨, 青玉反映 → 意見反映, 簽合 → 簽核, 一體式系統 → 仁寶) and the one wording still to confirm (製造) — *…the recording summary is kept apart…*
+- [ ] 範圍與進展 has the 10/7 decisions and action items (source column 10/7); the 9/30 follow-ups that the 10/7 items replace say so — *…decisions and follow-ups carry the 7 Oct items*
+- [ ] Wording is the same everywhere: 需求端 (never 客戶), 暫定 (never “placeholder” in Chinese text), 仁寶 for the system and 居服個案管理系統 for the portal's link, 10/7 會議 (never “最新會議”), and no 人保 — *…wording is cohesive…*; *Grounded content › no page shows the removed, unsourced content*
+- [ ] 業務資料整合 › 居服個案管理系統: the link's official name, 仁寶 connects to the MOHW system, link button with URL pending, the planned Excel flow (download from 仁寶 → import → summary analysis) tied to 10/7 action 5; no demo data; 系統設定 lists 居服個案管理系統（仁寶） — *…the link to 仁寶 is named 居服個案管理系統…*
+- [ ] 權限與範圍 › 職稱對照: item × 14 titles; the system administrator, HR, day care supervisor and care attendant columns are pre-filled from the four roles; other titles blank; the admin cycles a cell (blank → 可 → 不可); HR sees it read-only; the Excel template `職稱權限對照表_範本.xlsx` downloads; the old sub-category demo is gone — *…title matrix…*; *…read-only for HR…*
+- [ ] 線上申請 › 簽核路徑預覽: A004 → 日照主管 → 管理者 → 老闆; 自訂流程 lets HR or a manager remove nodes, add an approver and go back to the org chart; the system admin cannot change it — *…approval path follows the org chart…*; *…only roles that approve can change a flow*
+- [ ] Rejoining after leaving: C003 (離職 from 2026-09-15) set back to 在職 on 2026-10-01 restarts tenure from that date — *…rejoining after leaving restarts tenure…*
+- [ ] 新增員工 fills in the number by company (A011, B010, C004, H007; the next A012) and the new person works in payroll, attendance and reports; 系統設定 › 員工編號規則 changes the next number — *…add employee fills in the number…*; *…a new employee works in payroll…*; *…the employee-number rule is editable…*
+- [ ] 系統說明: mobile clock-in already works, only cloud storage is missing, API Token noted from the summary — *…system info says mobile clock-in works…*
 
 ---
 
@@ -283,14 +284,15 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] **Open question (Q1):** should managers see other companies? (the assumption toggle)
 - [ ] **Open:** the decisions listed on deck p.15 (權限與範圍 › 待決議題)
 - [ ] **Open:** the 拆帳制 (revenue-share) pay rules; the calculator shows a note and does not calculate
-- [ ] **Open:** links for 仁寶 i 照護, 衛福部長照系統 and 誠馨雲端（NAS） (shown as URL pending in 系統設定)
+- [ ] **Open:** links for 居服個案管理系統 (仁寶), 衛福部長照系統 and 誠馨雲端（NAS） (shown as URL pending in 系統設定)
 - [ ] **Open:** permissions for 老闆, 教育訓練專員 and 會計
 - [ ] **Open question:** must payroll calculation and review be done by different people?
 - [ ] **Open:** employee-number prefix (9/30 proposal: A/B/C letters); the prototype now demos the proposal (誠馨 A, 誠芯 B, 牛津 C, shared admin H)
-- [x] **Decided:** the system is always called 仁寶, and it is linked by button, not integrated (latest meeting).
+- [x] **Decided:** the system is always called 仁寶; the portal links to it as 居服個案管理系統, and 仁寶 Excel reports will be imported later (7 Oct meeting).
 - [ ] **Open:** target size, 2,000 (9/30 minutes) vs 300+ (CLAUDE.md)
-- [ ] **Open:** roles for nurses, social workers and supervisors (permission lists due from the team before 10/7)
-- [ ] **Open:** rehire after leaving restarts tenure (9/30); not modelled yet
+- [ ] **Open:** the title × item permission matrix (需求端／人事, due before the 14 Oct meeting) and the four provisional roles
+- [ ] **Open:** re-issuing the employee number on rehire (員編重編): tenure restarts, but the numbering principle is for HR and IT to set
+- [ ] **Open:** mobile clock-in needs cloud storage (spec, capacity, budget); the 仁寶 Excel import layout is being tested by IT; the org chart, approval rules and form fields are due from the requester side
 - [x] **Decided:** employees see only the names of colleagues who are out (同事今天請假或公出嗎？).
 - [x] **Decided:** 預先加班單 is approval only and does not pay; overtime is paid from the 加班單.
 - [x] **Decided:** there is no overnight shift at present (`NIGHT_SHIFT = false`).

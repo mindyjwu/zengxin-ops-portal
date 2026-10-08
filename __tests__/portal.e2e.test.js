@@ -731,7 +731,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await expect(page.locator('#view')).toContainText('拆帳制');
     await go(page, 'set');
     await expect(page.locator('#view a[href="https://pro.104.com.tw/"]')).toHaveCount(1);
-    await expect(page.locator('#view')).toContainText('仁寶 i 照護');
+    await expect(page.locator('#view')).toContainText('居服個案管理系統（仁寶）');
     await setRole(page, 'hr');
     await go(page, 'pay', 'calc');
     await page.selectOption('#calcForm [name=part]', 'split');
@@ -947,89 +947,138 @@ test.describe('Updates from the 9/30 meeting', () => {
 });
 
 /* ================================================================ */
-test.describe('Updates from the latest meeting', () => {
+test.describe('Updates from the 7 Oct meeting', () => {
   test.beforeEach(async ({ page }) => { await openPortal(page); });
 
-  test('the minutes page holds the latest notes, wording to confirm and the next focus', async ({ page }) => {
+  test('the minutes page holds the official minutes of the third meeting', async ({ page }) => {
     await go(page, 'doc', 'meeting');
     const v = page.locator('#view');
-    await expect(v).toContainText('最新一次會議');
-    await expect(v).toContainText('仁寶系統不開放對外連接，改以按鈕連結方式導向原系統');
-    await expect(v).toContainText('功能對接暫不進行，先專注內部行政與人事管理模組');
-    await expect(v).toContainText('一般員工下可設 subcategory');
-    await expect(v).toContainText('金額大小可影響需要簽核的層級數');
-    await expect(v).toContainText('Cloud Storage 與 API Token');
-    await expect(v).toContainText('八九成');
-    await expect(v).toContainText('紀錄用字待確認');
-    await expect(v).toContainText('用字已確認');         // 誠興 → 誠馨, 青玉反映 → 意見反映, 簽合 → 簽核
-    await expect(v).toContainText('正確寫法是「意見反映」');
-    await expect(v).toContainText('一體式系統');          // quoted in the confirmed list
-    await expect(v).toContainText('意見反映功能與仁寶系統相近');
-    await expect(v.locator('.note.q')).not.toContainText('一體式系統');   // no longer to confirm
-    await expect(v).toContainText('9/30 會議');         // earlier notes are kept
+    await expect(v).toContainText('入口網站建置第三次需求討論會議');
+    await expect(v).toContainText('10/7（三）10:00–11:40');
+    await expect(v).toContainText('4 人（姓名略）');
+    await expect(v).toContainText('該連結正式命名為「居服個案管理系統」');
+    await expect(v).toContainText('可直接連接衛福部系統之重大優勢');
+    await expect(v).toContainText('由仁寶系統下載 Excel 報表');
+    await expect(v).toContainText('復職年資重算，員編重編之原則');
+    await expect(v).toContainText('只差雲端儲存空間');
+    await expect(v).toContainText('新增「自訂流程」功能');
+    await expect(v).toContainText('確認職稱即可執行項目名稱');
+    await expect(v).toContainText('10/14（三）10:00');
+    await expect(v).toContainText('入口網站建置第一次需求討論會議');      // the first meeting is kept
+    await expect(v).toContainText('9/30 會議');                          // so is the second
     await expect(v).not.toContainText('人保');
+    // the attendees' names are not on the site
+    for (const n of ['吳培滋', '黃千育', '莊啟聖', '劉思慧']) await expect(v).not.toContainText(n);
+    const todo = await page.locator('#view table', { hasText: '負責單位／人員' }).locator('tbody tr').count();
+    expect(todo).toBe(5);
     expect(await page.evaluate(() => ANNOUNCEMENTS.some(a => a.id === 'A11'))).toBe(true);
+    expect(await page.evaluate(() => EVENTS.filter(e => e.d === '2026-10-14').length)).toBe(1);
   });
 
-  test('decisions and follow-ups carry the latest items', async ({ page }) => {
+  test('the recording summary is kept apart, with confirmed and pending wording', async ({ page }) => {
+    await go(page, 'doc', 'meeting');
+    const v = page.locator('#view');
+    await expect(v).toContainText('同一場會議的錄音摘要');
+    await expect(v).toContainText('用字已確認');
+    await expect(v).toContainText('正確寫法是「意見反映」');
+    await expect(v.locator('.note.q')).toContainText('製造');
+    await expect(v.locator('.note.q')).not.toContainText('一體式系統');
+  });
+
+  test('decisions and follow-ups carry the 7 Oct items', async ({ page }) => {
     await go(page, 'arch', 'scope');
-    const rows = page.locator('#view tbody tr', { hasText: '最新會議' });
-    expect(await rows.count()).toBeGreaterThanOrEqual(12);
-    await expect(page.locator('#view')).toContainText('系統名稱一律寫「仁寶」');
-    await expect(page.locator('#view')).toContainText('提供組織架構圖、簽核路徑規則、表單欄位設計');
-    await expect(page.locator('#view')).not.toContainText('人保');
+    const rows = page.locator('#view tbody tr').filter({ has: page.locator('td.mono', { hasText: /^10\/7$/ }) });
+    expect(await rows.count()).toBeGreaterThanOrEqual(20);          // 15 decisions + 8 follow-ups
+    const v = page.locator('#view');
+    await expect(v).toContainText('居服個案管理系統');
+    await expect(v).toContainText('確認職稱即可執行項目名稱');
+    await expect(v).toContainText('已併入 10/7 待辦 2');
+    await expect(v).not.toContainText('人保');
   });
 
-  test('仁寶 is linked by a button, not integrated; the other business pages are on hold', async ({ page }) => {
+  test('wording is cohesive: the same terms everywhere', async ({ page }) => {
+    // 需求端 (not 客戶), 暫定 (not placeholder in Chinese text), 居服個案管理系統 for the link, 仁寶 for the system
+    for (const role of ['admin', 'hr', 'manager', 'employee']) {
+      await setRole(page, role);
+      const mods = await page.locator('[data-mod]').evaluateAll(n => n.map(x => x.dataset.mod));
+      for (const m of mods) {
+        await page.click(`[data-mod="${m}"]`);
+        const tabs = await page.locator('[data-tab]').evaluateAll(n => n.map(x => x.dataset.tab));
+        for (const tab of tabs.length ? tabs : [null]) {
+          if (tab) await page.click(`[data-tab="${tab}"]`);
+          const text = await page.locator('#app').innerText();
+          for (const w of ['客戶', '最新會議', '最新一次', '一體式系統', 'Case-management']) {
+            if (w === '一體式系統' && m === 'doc' && tab === 'meeting') continue;    // quoted as the recording's wording
+            expect(text, `${role} ${m}:${tab} shows ${w}`).not.toContain(w);
+          }
+          expect(text, `${role} ${m}:${tab} has Chinese text with “placeholder”`).not.toMatch(/[\u4e00-\u9fff][^\n]{0,12}placeholder|placeholder[^\n]{0,12}[\u4e00-\u9fff]/);
+        }
+      }
+    }
+  });
+
+  test('the link to 仁寶 is named 居服個案管理系統; data comes in by Excel later', async ({ page }) => {
     await go(page, 'svc', 'case');
     const v = page.locator('#view');
-    await expect(v).toContainText('仁寶系統不開放對外連接');
+    await expect(page.locator('[data-tab="case"]')).toContainText('居服個案管理系統');
+    await expect(v).toContainText('正式名稱是「居服個案管理系統」');
+    await expect(v).toContainText('仁寶可以直接連接衛福部系統');
     await expect(v).toContainText('網址待 IT 提供');
-    await expect(v).toContainText('目前暫緩');
-    await page.click('[data-tab="contract"]');
-    await expect(v).toContainText('暫緩');
-    await page.click('[data-tab="assess"]');
-    await expect(v).toContainText('暫緩');
+    await expect(v).toContainText('在仁寶下載 Excel 報表');
+    await expect(v).toContainText('Portal 彙總分析');
+    await expect(v).toContainText('10/7 待辦 5');
+    await expect(v).not.toContainText('暫緩');
     await setRole(page, 'admin');
     await go(page, 'set');
-    await expect(page.locator('#view')).toContainText('仁寶不開放對外連接，入口網站只放按鈕連結');
+    await expect(page.locator('#view')).toContainText('居服個案管理系統（仁寶）');
+    await expect(page.locator('#view')).toContainText('仁寶可直接連接衛福部系統');
   });
 
-  test('permission matrix: roles are placeholders, employee sub-categories, Excel worksheet', async ({ page }) => {
+  test('title matrix: pre-filled from today’s roles, editable by the admin, Excel worksheet', async ({ page }) => {
     await go(page, 'arch', 'roles');
-    await expect(page.locator('#view')).toContainText('四個身分');
-    await expect(page.locator('#view')).toContainText('placeholder');
-    await go(page, 'perm', 'matrix');
-    const card = page.locator('#view section', { hasText: '一般員工的子類別' });
-    await expect(card).toContainText('司機');
-    await expect(card).toContainText('約聘人員（contractor）');
-    // a sub-category can be given a permission the parent does not have, and one can be added and removed
-    const box = card.locator('input[data-subperm="S1|mobile"]');
-    await expect(box).not.toBeChecked();
-    await box.check();
-    await expect(card.locator('input[data-subperm="S1|mobile"]')).toBeChecked();
-    await card.locator('#subAddForm input[name="name"]').fill('領班');
-    await card.locator('#subAddForm button[type="submit"]').click();
-    await expect(page.locator('#view section', { hasText: '一般員工的子類別' })).toContainText('領班');
-    await page.locator('[data-subdel]').last().click();
-    await expect(page.locator('#view section', { hasText: '一般員工的子類別' })).not.toContainText('領班');
+    await expect(page.locator('#view')).toContainText('職稱對照');
+    await go(page, 'perm', 'titles');
+    const tm = page.locator('#view table.titlematrix');
+    await expect(tm.locator('thead th')).toHaveCount(15);            // item column + 14 titles
+    expect(await tm.locator('tbody tr').count()).toBeGreaterThan(30);
+    // 照服員 (the employee persona) cannot open the HR module; 人資 can; other titles are blank
+    const row = name => tm.locator('tbody tr', { hasText: name }).first();
+    const col = t => Object.keys({}).length;                         // (placeholder to keep the helper local)
+    const cellOf = async (rowName, title) => {
+      const idx = await tm.locator('thead th').evaluateAll((ths, t) => ths.findIndex(h => h.textContent.includes(t)), title);
+      return row(rowName).locator('td').nth(idx);
+    };
+    await expect(await cellOf('人事系統 › 員工資料', '人資')).toContainText('可');
+    await expect(await cellOf('人事系統 › 員工資料', '照服員')).toContainText('不可');
+    await expect(await cellOf('私人秘書 › 首頁', '照服員')).toContainText('可');
+    await expect(await cellOf('人事系統 › 員工資料', '會計')).toContainText('—');
+    // the admin cycles a blank cell: blank → 可 → 不可 → blank
+    const cell = await cellOf('人事系統 › 員工資料', '會計');
+    await cell.locator('button').click();
+    await expect(await cellOf('人事系統 › 員工資料', '會計')).toContainText('可');
+    await (await cellOf('人事系統 › 員工資料', '會計')).locator('button').click();
+    await expect(await cellOf('人事系統 › 員工資料', '會計')).toContainText('不可');
     // the Excel worksheet
-    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-permxlsx]')]);
-    expect(dl.suggestedFilename()).toBe('權限整理表_範本.xlsx');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-titlexlsx]')]);
+    expect(dl.suggestedFilename()).toBe('職稱權限對照表_範本.xlsx');
     const buf = fs.readFileSync(await dl.path());
     expect(buf.subarray(0, 2).toString()).toBe('PK');
     const text = buf.toString('utf8');
-    for (const t of ['權限整理表（範本）', '權限項目', '人資', '管理者（日照主管）', '一般員工：司機', '一般員工：約聘人員（contractor）', '查看薪資與職等']) expect(text).toContain(t);
+    for (const t of ['職稱權限對照表（範本）', '項目名稱', '居家服務督導', '日照主管', '人事系統 › 員工資料', '私人秘書 › 首頁']) expect(text).toContain(t);
   });
 
-  test('the worksheet and sub-categories are for the system admin only', async ({ page }) => {
+  test('the title matrix is read-only for HR, and the old sub-category demo is gone', async ({ page }) => {
     await setRole(page, 'hr');
+    await go(page, 'perm', 'titles');
+    await expect(page.locator('[data-tcell]')).toHaveCount(0);
+    await expect(page.locator('[data-titlexlsx]')).toBeVisible();
+    await expect(page.locator('#view')).toContainText('只有系統管理員可以修改');
+    await setRole(page, 'admin');
     await go(page, 'perm', 'matrix');
-    await expect(page.locator('[data-permxlsx]')).toHaveCount(0);
     await expect(page.locator('#view')).not.toContainText('一般員工的子類別');
   });
 
-  test('approval path preview follows the org chart level by level', async ({ page }) => {
+  test('approval path follows the org chart and can be turned into a custom flow', async ({ page }) => {
     await setRole(page, 'hr');
     await go(page, 'fin', 'proc');
     await page.selectOption('#pathEmp', 'A004');
@@ -1040,9 +1089,42 @@ test.describe('Updates from the latest meeting', () => {
     await expect(chain).toContainText('管理者');
     await expect(chain).toContainText('第 3 層');
     await expect(chain).toContainText('老闆');
+    await expect(page.locator('#view')).toContainText('金額大小可影響');
+    // custom flow: remove the top level, add a different approver, then go back to the org chart
+    await page.check('#pathCustom');
+    await expect(page.locator('[data-pathdel]')).toHaveCount(3);
+    await page.locator('[data-pathdel]').last().click();
+    await expect(page.locator('#pathChain')).not.toContainText('第 3 層');
+    await page.selectOption('#pathAdd', 'H004');
+    await page.click('[data-pathadd]');
+    await expect(page.locator('#pathChain')).toContainText('第 3 層');
+    await expect(page.locator('#pathChain')).toContainText('會計');
+    await page.click('[data-pathreset]');
+    await expect(page.locator('#pathChain')).toContainText('老闆');
+    await expect(page.locator('#pathCustom')).not.toBeChecked();
     await page.selectOption('#pathEmp', 'H001');
     await expect(page.locator('#pathChain')).toContainText('最上層');
-    await expect(page.locator('#view')).toContainText('金額大小可影響');
+  });
+
+  test('only roles that approve can change a flow', async ({ page }) => {
+    await go(page, 'fin', 'proc');                       // system admin: cannot approve
+    await expect(page.locator('#pathCustom')).toBeDisabled();
+    await expect(page.locator('#view')).toContainText('只有能簽核的身分');
+  });
+
+  test('rejoining after leaving restarts tenure from the rejoin date', async ({ page }) => {
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'emp');
+    await page.click('tr[data-emp="C003"]');            // 離職 since 2026-09-15, hired 2024-02-01
+    await expect(drawer(page)).toContainText('2 年 7 個月');
+    await page.click('aside.drawer details.addbox summary >> nth=0');
+    const form = page.locator('aside.drawer form[data-add="status"]');
+    await form.locator('select[name="status"]').selectOption('active');
+    await form.locator('input[name="date"]').fill('2026-10-01');
+    await form.locator('button[type="submit"]').click();
+    await expect(drawer(page)).toContainText('離職後復職，年資從復職日 2026-10-01 重算');
+    await expect(drawer(page)).toContainText('0 年 0 個月');
+    await expect(drawer(page)).toContainText('在職');
   });
 
   test('add employee fills in the number automatically, per company', async ({ page }) => {
@@ -1103,9 +1185,10 @@ test.describe('Updates from the latest meeting', () => {
     await expect(next('O1')).toHaveText('A011');
   });
 
-  test('system info explains mobile clock-in', async ({ page }) => {
+  test('system info says mobile clock-in works and only cloud storage is missing', async ({ page }) => {
     await go(page, 'doc', 'sysinfo');
-    await expect(page.locator('#view')).toContainText('Cloud Storage');
+    await expect(page.locator('#view')).toContainText('已可執行手機打卡');
+    await expect(page.locator('#view')).toContainText('只差雲端儲存空間');
     await expect(page.locator('#view')).toContainText('API Token');
   });
 });

@@ -19,37 +19,41 @@ Format: `YYYY-MM-DD — decision — why / who decided`. Keep one line each.
 - 2026-09-30 — Time records in half-hour units; reports export as CSV or Excel — 9/30 meeting.
 - 2026-09-30 — Storage: cloud service for now, own hardware once the company grows, always double backup — 9/30 meeting.
 - 2026-09-30 — Owner: cost is not the main concern for replacing 104 (NT$1,500/month); the goal is a long-term system for a future 2,000 employees — 9/30 meeting.
-- 2026-10 (latest meeting, date not in the notes) — 仁寶 does not allow outside connections: the portal links to it with a button; function integration is on hold; focus stays on the internal admin and HR modules.
-- 2026-10 (latest meeting) — The system is always written 仁寶 (the 9/20 spelling is right; the 9/30 notes misspelt it).
-- 2026-10 (latest meeting) — Permissions are set by ticking boxes per role; the four current roles are placeholders for the client to confirm or change; Employee can have sub-categories (e.g. driver, contractor) with their own permissions.
-- 2026-10 (latest meeting) — All requests use one form, approved level by level along the administrative org chart; the amount can change the number of levels; leave, trip and comp-time forms look alike and deduct from leave balances automatically.
-- 2026-10 (latest meeting) — Employee numbers are filled in automatically from a configured rule; A/B/C is a placeholder and the client can supply a custom format.
-- 2026-10 — Wording confirmed by the owner: 誠興 / 第二誠心 → 誠馨 / 誠芯, 青玉反映 → 意見反映, 簽合 → 簽核, 一體式系統 → 仁寶 (the latest notes had them garbled).
-- 2026-10 (latest meeting) — Mobile clock-in is feasible but needs Cloud Storage and an API token to go live; mobile/desktop polish later. Settle the overall structure (org chart, permissions, flows) to 80–90% before UAT.
+- 2026-10-07 — Third meeting (10:00–11:40, Teams; official minutes V2.0 plus a recording summary). Next meeting: Wed 14 Oct, 10:00, venue to confirm.
+- 2026-10-07 — The portal gets an external link to 仁寶 officially named 「居服個案管理系統」. 仁寶 connects to the MOHW system directly; because of current integration limits the plan is to download Excel reports from 仁寶 and import them into the portal for summary analysis. The recording summary adds that 仁寶 does not allow outside connections, so there is no live integration for now.
+- 2026-10-07 — The system is always written 仁寶 (the 9/20 spelling is right; the 9/30 notes misspelt it).
+- 2026-10-07 — Employee numbers: the requester side compiles the 104 conversion, rehire tenure restart and re-numbering principles; the HR database is redesigned on that logic. The portal fills numbers in automatically from a configured rule; A/B/C prefixes are provisional and the requester side can supply a custom format.
+- 2026-10-07 — Mobile clock-in already works in the portal; only cloud storage is missing, and its purchase spec, capacity and budget need assessing (the recording summary also mentions an API token).
+- 2026-10-07 — Form approval follows the company org chart automatically; a new 「自訂流程」 lets managers adjust approval nodes by hand. Levels follow the administrative org chart and the amount can change the number of levels. Leave, trip and comp-time forms look alike and deduct from leave balances automatically.
+- 2026-10-07 — Permissions are simplified to “confirm the title and the items follow” (title × item matrix), with no per-employee setup. The four current roles are provisional.
+- 2026-10 — Wording confirmed by the owner for the recording summary: 誠興 / 第二誠心 → 誠馨 / 誠芯, 青玉反映 → 意見反映, 簽合 → 簽核, 一體式系統 → 仁寶.
+- 2026-10-07 — Settle the overall structure (org chart, permissions, flows) to 80–90% before UAT (recording summary).
 - 2026-09-20 — Meeting decisions (one account per person by employee number; managers and shared admin can switch company; HR maintains data, employees only view; monthly / hourly / revenue-share pay; link out to existing systems) are listed on 原型說明 › 範圍與進展 — 9/20 meeting minutes.
 
-## Open (resolve with the client before building on them)
+## Open (resolve with the requester side before building on them)
 1. ~~**Number of sites**~~ — answered: three companies (see Decided). The "7 offices" figure has no source and was removed.
 2. **104 usage:** which 104 modules are actually in use? (Drives Plan A "keep 104 + CSV import" vs Plan B "replace 104".)
-3. ~~**仁寶 integration:** API, webhook, or CSV export?~~ — answered by the latest meeting: no outside connection; link out by button (see Decided).
+3. ~~**仁寶 integration:** API, webhook, or CSV export?~~ — answered by the 7 Oct meeting: no outside connection; link out by button (see Decided).
 4. **Roles:** confirm the deck p.6 role matrix (老闆、管理者、人資、教育訓練專員、會計、系統管理員、一般人員) and data-scoping rules (can managers see other companies, payroll visibility, leave approval levels). Deck p.15 lists the other open decisions.
 5. **Hosting/data residency:** who owns infrastructure, where does production data live, how is 個資法 compliance handled?
 6. **ROI framing:** savings from retiring 104 are modest — define the business case on other value (hidden HR labor, reporting, integration).
 7. **Production path:** the prototype is static HTML. Choose stack, auth, database, and hosting for the 300+ employee build.
 8. **拆帳制 (revenue-share) pay rules** — not yet defined.
-9. **Links** for 仁寶 i 照護, 衛福部長照系統 and 誠馨雲端（NAS） — waiting on IT.
+9. **Links** for 居服個案管理系統 (仁寶), 衛福部長照系統 and 誠馨雲端（NAS） — waiting on IT.
 10. **Employee-number prefix** — proposal only (9/30): replace the per-company prefixes (e.g. CSHR, OXHR) with A/B/C-style letters, keeping room for acquisitions. Not decided; the prototype demos the proposal (誠馨 A, 誠芯 B, 牛津 C; shared admin uses H).
 11. ~~**Case-management system name**~~ — answered: it is 仁寶; the 9/30 notes misspelt it.
 12. **Target size** — the 9/30 notes say 2,000 employees long term; `CLAUDE.md` says 300+. Confirm which one to design for.
 13. **Management role names** — the 9/30 notes list the current roles as system administrator, manager and 院長; the prototype uses system administrator, HR and manager (day care supervisor).
-14. **Rehire rule** — tenure restarts on rehire after leaving (9/30); the prototype does not model rehire yet.
-15. **Role permission lists and org chart** — due from the team before the 10/7 meeting; needed to define the nurse, social-worker and supervisor roles.
+14. **Rehire rule** — tenure restarts on rehire after leaving (9/30, 10/7). The prototype restarts tenure from the rejoin date; whether the employee number is re-issued (員編重編) waits for the HR/IT principle.
+15. **Title × item permission matrix and org chart** — due from the requester side / HR before the next meeting (7 Oct action 2); needed to define the nurse, social-worker and supervisor titles. The portal has an Excel template.
 16. **104 export** — export 104 data first, review the format, then build the pay logic (9/30).
-17. **Four placeholder roles** — the client confirms or changes them and sends all roles and permission items as Excel (the portal has a worksheet template); the project lead builds the formal table.
-18. **Org chart, approval-path rules, form fields** — due from the client; levels and amount thresholds for approvals depend on them. Feedback-form approval details are to be uploaded after the meeting.
-19. **Custom employee-number format** — the client may supply one; the portal's rule (Settings › Employee-number rule) is a placeholder.
-20. **Mobile clock-in** — who buys Cloud Storage and an API token, and when.
-21. **Wording in the latest notes** — still to confirm: the sub-category example 製造 (no such title in the prototype) and the missing meeting date.
+17. **Four provisional roles** — the requester side confirms or changes them; the project lead builds the formal table from the filled title matrix.
+18. **Org chart, approval-path rules, form fields** — due from the requester side; levels and amount thresholds for approvals depend on them. Feedback-form approval details are to be uploaded after the meeting.
+19. **Group-wide employee-number principle** — HR/IT to define it and inventory existing numbers (7 Oct action 3); the portal's rule (Settings › Employee-number rule) is provisional.
+20. **Mobile clock-in** — purchase spec, capacity and budget of the cloud storage (and whether an API token is also needed).
+21. **Wording in the recording summary** — still to confirm: the sub-category example 製造 (no such title in the prototype).
+22. **仁寶 Excel import layout** — IT tests the layout and reports at the next meeting (7 Oct action 5); until then the portal shows no demo data for it.
+23. **Attendance scope** — IT assesses the scope, cost and rollout of attendance in the portal after the 104 inventory (7 Oct action 4).
 
 ## Repo hygiene tasks
 - [ ] Set this repo to **private** (or stop publishing the real operator name via Pages) — owner action in GitHub settings.

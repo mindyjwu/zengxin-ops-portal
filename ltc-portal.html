@@ -239,8 +239,9 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 .note{font-size:12px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-left:3px solid var(--line-strong);border-radius:6px;padding:9px 12px;line-height:1.6}
 .note.q{border-left-color:var(--warn);background:var(--warn-soft);color:var(--ink)}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--rail);color:#fff;padding:9px 16px;border-radius:99px;font-size:13px;z-index:60;box-shadow:var(--shadow)}
-.permtable td:first-child,.subperm td:first-child{white-space:normal}
-.permtable td,.subperm td{white-space:nowrap}
+.permtable td:first-child,.titlematrix td:first-child{white-space:normal}
+.permtable td,.titlematrix td{white-space:nowrap}
+.titlematrix td:first-child{min-width:190px}
 .yes{color:var(--ok);font-weight:600}
 .no{color:var(--ink-3)}
 .partial{color:var(--warn);font-weight:500}
@@ -444,7 +445,7 @@ const onRoster = (s, month) => s.status==='active' || !s.statusSince || month < 
 const empStatusChip = s => `<span class="chip ${EMP_STATUS[s.status].cls}">${EMP_STATUS[s.status].zh}</span>`;
 /* 年資：自到職日起算；離職者算到離職日。跨公司轉調員工編號不變、年資不歸零（9/30 會議）；離職後回任才重新計算 */
 function tenureOf(s){
-  const end = s.status==='left' && s.statusSince ? new Date(s.statusSince) : TODAY, h=new Date(s.hired);
+  const end = s.status==='left' && s.statusSince ? new Date(s.statusSince) : TODAY, h=new Date(s.rehired||s.hired);
   let m=(end.getFullYear()-h.getFullYear())*12+end.getMonth()-h.getMonth(); if(end.getDate()<h.getDate()) m--;
   m=Math.max(0,m); return {y:Math.floor(m/12), m:m%12};
 }
@@ -467,10 +468,10 @@ const ANN_CAT = {
 };
 const ANNOUNCEMENTS = [
  {id:'A11', date:'2026-10-07', cat:'policy', scope:'ALL', pin:true, author:'H002',
-  zh:'最新會議結論：仁寶連結、權限勾選、簽核流程、員工編號',
-  en:'Latest meeting: 仁寶 link-out, permission ticking, approval flow, employee numbers',
-  bodyZh:'1. 仁寶系統不開放對外連接，改以按鈕連結導向原系統；功能對接暫不進行，先專注內部行政與人事管理模組。\n2. 權限以勾選方式設定；目前四個身分是 placeholder，需客戶確認或增減。一般員工下可設子類別（例如司機、contractor）。\n3. 所有申請走統一表單，按行政組織圖逐層簽核；金額大小可影響簽核層數。\n4. 員工編號可依設定自動帶入；目前 A、B、C 前綴是 placeholder，客戶可提供自訂格式。\n5. 手機打卡可行，但正式上線需購買 Cloud Storage 與 API Token。\n完整紀錄見「文件管理 › 會議紀錄」。',
-  bodyEn:'1. 仁寶 does not allow outside connections, so the portal links to it with a button; function integration is on hold while the internal admin and HR modules come first.\n2. Permissions are set by ticking boxes; the four roles are placeholders for the client to confirm or change. Sub-categories (e.g. driver, contractor) can sit under Employee.\n3. All requests use one form and are approved level by level along the admin org chart; the amount can change the number of levels.\n4. Employee numbers can be filled in automatically; the A/B/C prefixes are placeholders and the client can supply its own format.\n5. Mobile clock-in is feasible but needs Cloud Storage and an API token to go live.\nFull notes: Documents › Meeting minutes.'},
+  zh:'第三次會議（10/7）結論：居服個案管理系統、手機打卡、簽核流程、職稱權限',
+  en:'Third meeting (7 Oct): home-care case system, mobile clock-in, approval flow, title permissions',
+  bodyZh:'1. Portal 建立引導至仁寶的外部連結，正式命名為「居服個案管理系統」；後續由仁寶下載 Excel 報表，再匯入 Portal 做彙總分析。\n2. 員工編號：需求端整理 104 的轉換、復職年資重算、員編重編的原則，作為人事資料庫改版依據。\n3. 手機打卡：Portal 已可執行，目前只差雲端儲存空間，需評估採購規格、容量與預算。\n4. 簽核流程依公司組織圖自動帶入關卡，另新增「自訂流程」，管理者可手動調整簽核節點。\n5. 操作權限簡化為「確認職稱即可執行項目名稱」。\n完整紀錄見「文件管理 › 會議紀錄」；下次會議 10/14（三）10:00。',
+  bodyEn:'1. The portal links out to 仁寶 under the name 居服個案管理系統; 仁寶 Excel reports are later imported into the portal for summary analysis.\n2. Employee numbers: the requester side compiles the 104 conversion, rehire tenure restart and re-numbering rules as the basis for redesigning the HR database.\n3. Mobile clock-in: the portal can already do it; only cloud storage is missing, so purchase spec, capacity and budget need assessing.\n4. Approvals follow the org chart automatically, and a new custom flow lets managers adjust approval nodes by hand.\n5. Permissions are simplified to “confirm the title and the items follow”.\nFull notes: Documents › Meeting minutes; next meeting Wed 14 Oct, 10:00.'},
  {id:'A10', date:'2026-09-30', cat:'facility', scope:'ALL', pin:false, author:'H002',
   zh:'下次會議：10/7（三）11:30，會前請完成的事項',
   en:'Next meeting: Wed 7 Oct, 11:30 — what to prepare',
@@ -529,7 +530,8 @@ const EVENTS = [
  {d:'2026-09-27', type:'audit', scope:'ALL', zh:'截止：員工資料表頭、共用帳號方案、104 資料匯出', en:'Due: employee fields, shared-account plan, 104 export'},
  {d:'2026-09-30', type:'hr',    scope:'ALL', zh:'第二次需求會議 11:30', en:'Requirements meeting #2, 11:30'},
  {d:'2026-09-30', type:'audit', scope:'ALL', zh:'截止：NAS 硬體清單與容量確認', en:'Due: NAS hardware and capacity list'},
- {d:'2026-10-07', type:'hr',    scope:'ALL', zh:'下次會議 11:30', en:'Next meeting, 11:30'},
+ {d:'2026-10-07', type:'hr',    scope:'ALL', zh:'第三次需求會議 10:00–11:40', en:'Third requirements meeting, 10:00–11:40'},
+ {d:'2026-10-14', type:'hr',    scope:'ALL', zh:'下次會議 10:00（地點待確認）', en:'Next meeting, 10:00 (venue to confirm)'},
  {d:'2026-10-15', type:'audit', scope:'ALL', zh:'截止：仁寶系統 API、衛福部介接要求確認', en:'Due: Renbao API and MOHW interface requirements'},
  {d:'2026-10-31', type:'train', scope:'ALL', zh:'第一期 MVP 目標上線', en:'Phase 1 MVP target'}
 ];
@@ -828,6 +830,7 @@ const MODULES = [
   ]},
   {id:'perm', zh:'權限與範圍', en:'Roles & scope', built:true, perm:'mgmt', tabs:[
     {id:'matrix', zh:'權限對照表', en:'Permission matrix'},
+    {id:'titles', zh:'職稱對照', en:'Title matrix'},
     {id:'open',   zh:'待決議題',   en:'Open questions'}
   ]},
   {id:'doc', zh:'文件管理', en:'Documents', built:true, perm:'mgmt', tabs:[
@@ -842,7 +845,7 @@ const MODULES = [
     {id:'petty',  zh:'待定義規則',     en:'Rules to define'}
   ]},
   {id:'svc', zh:'業務資料整合', en:'Business data (planned)', built:true, perm:'mgmt', tabs:[
-    {id:'case',  zh:'個案管理系統',      en:'Case-management system'},
+    {id:'case',  zh:'居服個案管理系統',  en:'Home-care case system'},
     {id:'contract',zh:'個案資料與契約', en:'Case data & contracts'},
     {id:'assess',zh:'異常事件通報',     en:'Incident reporting'}
   ]},
@@ -996,7 +999,7 @@ function render(){
     'desk:home':viewDeskHome, 'desk:forms':viewDeskForms, 'desk:query':viewDeskQuery, 'desk:course':viewDeskCourse,
     'ann:board':viewBoard, 'ann:cal':viewCalendar, 'ann:org':viewOrg, 'ann:dir':viewDirectory,
     'hr:emp':viewEmployees, 'hr:mylog':viewMyHours, 'hr:att':viewAttendance, 'hr:leave':viewLeave,
-    'perm:matrix':viewMatrix, 'perm:open':viewOpen,
+    'perm:matrix':viewMatrix, 'perm:titles':viewTitleMatrix, 'perm:open':viewOpen,
     'doc:comp':viewDocCompliance, 'doc:guide':viewDocGuides, 'doc:meeting':viewDocMeeting, 'doc:sysinfo':viewDocSysInfo, 'doc:cmp104':viewDocCmp104,
     'svc:case':viewSvcCase, 'svc:contract':viewSvcContract, 'svc:assess':viewSvcAssess,
     'fin:proc':viewFinProcurement, 'fin:petty':viewFinPettyCash,
@@ -1051,51 +1054,56 @@ const MEETING_DECISIONS = [
    whereZh:'報表匯出：可選 CSV 或 Excel（.xlsx）', whereEn:'Reports export: choose CSV or Excel (.xlsx)', st:'built'},
   {src:'9/30', zh:'104 月費 NT$1,500；完全取代的開發成本可能超過；老闆表示費用非主要考量，重點是能支撐未來 2,000 名員工的長期系統', en:'104 costs NT$1,500/month; replacing it fully may cost more; the owner says cost is not the main concern — the goal is a long-term system for 2,000 future employees',
    whereZh:'文件管理 › 104 功能對照', whereEn:'Documents › 104 comparison', st:'part'},
-  {src:'9/30', zh:'仁寶系統（個案管理）：服務員可在個案家打卡並記錄服務項目；確認 104 與仁寶是否提供 API 或 MCP 串接', en:'Case-management system: staff clock in at the client’s home and record services; confirm whether 104 and the case system offer API or MCP',
-   whereZh:'業務資料整合 › 個案管理系統；最新會議已確認仁寶不對外開放，改以按鈕連結', whereEn:'Business data › Case-management system; the latest meeting confirmed 仁寶 stays closed and is linked by button', st:'part'},
+  {src:'9/30', zh:'居服個案管理系統（仁寶）：服務員可在個案家打卡並記錄服務項目；確認 104 與仁寶是否提供 API 或 MCP 串接', en:'Home-care case system (仁寶): staff clock in at the client’s home and record services; confirm whether 104 and the case system offer API or MCP',
+   whereZh:'業務資料整合 › 居服個案管理系統；10/7 會議已確認仁寶不對外開放，改以按鈕連結', whereEn:'Business data › Home-care case system; the 7 Oct meeting confirmed 仁寶 stays closed and is linked by button', st:'part'},
   {src:'9/30', zh:'資料儲存：短期使用雲端服務；規模擴大後再投資自有硬體，並維持雙備份', en:'Storage: cloud for now; own hardware once the company grows, with double backup',
    whereZh:'文件管理 › 法規與資安', whereEn:'Documents › Regulations & security', st:'todo'},
-  {src:'最新會議', zh:'仁寶系統不開放對外連接，改以按鈕連結導向原系統；功能對接暫不進行，先專注內部行政與人事管理模組', en:'仁寶 does not allow outside connections: link out with a button; function integration is on hold, internal admin and HR modules come first',
-   whereZh:'系統設定 › 既有系統連結（按鈕；網址待 IT 提供）；業務資料整合 › 個案管理系統', whereEn:'Settings › Existing systems (button; URL pending from IT); Business data › Case-management system', st:'part'},
-  {src:'最新會議', zh:'系統名稱一律寫「仁寶」（9/20 的寫法正確，9/30 的版本有誤）', en:'The system is always called 仁寶 (the 20 Sept spelling is right, the 30 Sept version was wrong)',
-   whereZh:'全站、會議紀錄與使用指南都已統一', whereEn:'Corrected across the site, the minutes and the guide', st:'built'},
-  {src:'最新會議', zh:'依角色勾選權限項目（方框打勾）；目前四個身分是 placeholder，需客戶確認是否正確或增減', en:'Permissions are ticked per role; the four roles are placeholders for the client to confirm or change',
-   whereZh:'權限與範圍 › 權限對照表（系統管理員可勾選）', whereEn:'Roles & scope › Permission matrix (system admin can tick)', st:'part'},
-  {src:'最新會議', zh:'一般員工下可設子類別（如司機、contractor），子類別可自訂權限', en:'Sub-categories under Employee (e.g. driver, contractor) can have their own permissions',
-   whereZh:'權限對照表下方「一般員工的子類別」（示範；勾選尚未連到實際權限）', whereEn:'Below the permission matrix: Employee sub-categories (demo; ticks do not drive real permissions yet)', st:'demo'},
-  {src:'最新會議', zh:'客戶用 Excel 整理所有角色與權限項目；專案負責人依此製作正式權限表', en:'The client lists all roles and permission items in Excel; the project lead builds the formal permission table from it',
-   whereZh:'權限對照表 › 下載權限整理表（Excel 範本）；客戶填寫後提供', whereEn:'Permission matrix › Download the permission worksheet (Excel template); the client fills it in', st:'part'},
-  {src:'最新會議', zh:'所有申請走統一表單，按行政組織圖逐層簽核；金額大小可影響簽核層數；流程自訂', en:'All requests use one form, approved level by level along the admin org chart; the amount can change the levels; flows are custom',
-   whereZh:'線上申請 › 簽核路徑預覽（依組織圖）；層級與金額規則待客戶提供', whereEn:'Online requests › Approval path preview (from the org chart); level and amount rules are due from the client', st:'part'},
-  {src:'最新會議', zh:'請假、出差、補休等單據格式相近，數字自動扣抵假別餘額', en:'Leave, trip and comp-time forms look alike and numbers deduct from the leave balance automatically',
-   whereZh:'私人秘書 › 表單；人事系統 › 我的工時 › 假別餘額', whereEn:'My Desk › Forms; HR › My Hours › Leave balance', st:'built'},
-  {src:'最新會議', zh:'意見反映功能與仁寶系統相近，簽核流程細節待整理後會後上傳', en:'Feedback is similar to 仁寶; approval-flow details to be compiled and uploaded after the meeting',
-   whereZh:'線上申請 › 申請項目與簽核流程（規則待確認）', whereEn:'Online requests › Request types and flows (rules pending)', st:'todo'},
-  {src:'最新會議', zh:'員工編號依設定邏輯自動帶入，減少人工錯誤；目前邏輯是 placeholder，客戶可提供自訂格式', en:'Employee numbers are filled in by a configured rule to avoid typing errors; the rule is a placeholder and the client can supply its own format',
+  {src:'10/7', zh:'Portal 建立引導至仁寶的外部連結，正式命名為「居服個案管理系統」；仁寶可直接連接衛福部系統；後續由仁寶下載 Excel 報表，匯入 Portal 做彙總分析', en:'The portal links out to 仁寶 under the name 居服個案管理系統; 仁寶 connects to the MOHW system directly; later 仁寶 Excel reports are imported into the portal for summary analysis',
+   whereZh:'系統設定 › 既有系統連結（網址待 IT 提供）；業務資料整合 › 居服個案管理系統', whereEn:'Settings › Existing systems (URL pending from IT); Business data › Home-care case system', st:'part'},
+  {src:'10/7', zh:'系統名稱一律寫「仁寶」；Portal 裡的連結叫「居服個案管理系統」', en:'The system is always called 仁寶; the portal’s link is called 居服個案管理系統',
+   whereZh:'全站、會議紀錄與使用指南都已統一', whereEn:'Applied across the site, the minutes and the guide', st:'built'},
+  {src:'10/7', zh:'員工編號：需求端整理 104 的轉換、復職年資重算、員編重編的原則；全公司統一的編號原則待訂', en:'Employee numbers: the requester side compiles the 104 conversion, rehire tenure restart and re-numbering rules; the group-wide numbering rule is to be set',
+   whereZh:'人事系統：離職後復職，年資從復職日重算（員編重編的規則待訂）；系統設定 › 員工編號規則', whereEn:'HR: after leaving and rejoining, tenure restarts from the rejoin date (re-numbering rule pending); Settings › Employee-number rule', st:'part'},
+  {src:'10/7', zh:'員工編號依設定邏輯自動帶入，減少人工錯誤；目前邏輯暫定，需求端可提供自訂格式', en:'Employee numbers are filled in by a configured rule to avoid typing errors; the rule is provisional and the requester side can supply its own format',
    whereZh:'人事系統 › 員工資料 › 新增員工（自動帶入編號）；系統設定 › 員工編號規則', whereEn:'HR › Employee records › Add employee (number filled in); Settings › Employee-number rule', st:'built'},
-  {src:'最新會議', zh:'導覽與使用指南兩項新功能，入口在右上角，員工可自學操作流程', en:'Walkthroughs and the user guide, entry points at the top right, let employees learn on their own',
+  {src:'10/7', zh:'Portal 已可執行手機打卡；目前只差雲端儲存空間，需評估採購規格、儲存容量與預算', en:'The portal can already do mobile clock-in; only cloud storage is missing, so purchase spec, capacity and budget need assessing',
+   whereZh:'私人秘書 › 首頁打卡（網頁版，手機瀏覽器可開）；文件管理 › 系統說明', whereEn:'My Desk › Home clock-in (web page, opens in a phone browser); Documents › System info', st:'part'},
+  {src:'10/7', zh:'簽核流程依公司組織圖自動關聯、帶入關卡；新增「自訂流程」，管理者可手動調整簽核節點；金額大小可影響簽核層數', en:'Approvals follow the org chart automatically; a new custom flow lets managers adjust approval nodes by hand; the amount can change the number of levels',
+   whereZh:'線上申請 › 簽核路徑預覽（含自訂流程示範）；層級與金額規則待需求端提供', whereEn:'Online requests › Approval path preview (with a custom-flow demo); level and amount rules are due from the requester side', st:'part'},
+  {src:'10/7', zh:'操作權限簡化為「確認職稱即可執行項目名稱」，不用逐一對單一員工設定', en:'Permissions are simplified to “confirm the title and the items follow”, with no per-employee setup',
+   whereZh:'權限與範圍 › 職稱對照（職稱 × 項目名稱）；實際執行的仍是「權限對照表」的四個身分', whereEn:'Roles & scope › Title matrix (title × item); what actually runs is still the four roles in the permission matrix', st:'part'},
+  {src:'10/7', zh:'需求端整理各「職稱」與 Portal 各「項目名稱」的權限對照矩陣表（Excel）；專案負責人依此製作正式權限表', en:'The requester side fills in the title × item permission matrix (Excel); the project lead builds the formal table from it',
+   whereZh:'職稱對照 › 下載職稱權限對照表（Excel 範本）', whereEn:'Title matrix › Download the title permission worksheet (Excel template)', st:'part'},
+  {src:'10/7', zh:'目前的四個身分（系統管理員、人資、管理者、一般員工）是暫定，需確認是否正確、要不要增減', en:'The four roles are provisional and need confirming or changing',
+   whereZh:'權限與範圍 › 權限對照表；原型說明 › 角色與權限', whereEn:'Roles & scope › Permission matrix; Prototype info › Roles', st:'todo'},
+  {src:'10/7', zh:'持續整理 104 功能截圖與匯出表單；評估 Portal 建置差勤管理的功能範圍、成本與導入方式', en:'Keep compiling the 104 screenshots and exports; assess the scope, cost and rollout of attendance in the portal',
+   whereZh:'文件管理 › 104 功能對照（依 104 截圖逐項比對）', whereEn:'Documents › 104 comparison (item by item from the 104 screenshots)', st:'part'},
+  {src:'10/7', zh:'請假、出差、補休等單據格式相近，數字自動扣抵假別餘額', en:'Leave, trip and comp-time forms look alike and numbers deduct from the leave balance automatically',
+   whereZh:'私人秘書 › 表單；人事系統 › 我的工時 › 假別餘額', whereEn:'My Desk › Forms; HR › My Hours › Leave balance', st:'built'},
+  {src:'10/7', zh:'意見反映功能與仁寶相近，簽核流程細節待整理後會後上傳', en:'Feedback is similar to 仁寶; approval-flow details to be compiled and uploaded after the meeting',
+   whereZh:'線上申請 › 申請項目與簽核流程（規則待確認）', whereEn:'Online requests › Request types and flows (rules pending)', st:'todo'},
+  {src:'10/7', zh:'導覽與使用指南兩項新功能，入口在右上角，員工可自學操作流程', en:'Walkthroughs and the user guide, entry points at the top right, let employees learn on their own',
    whereZh:'畫面右上角「導覽」「使用指南」', whereEn:'Walkthrough and User guide buttons at the top right', st:'built'},
-  {src:'最新會議', zh:'手機打卡可行，但正式上線需購買 Cloud Storage 與 API Token；手機與電腦介面優化留待後續', en:'Mobile clock-in is feasible but needs Cloud Storage and an API token to go live; mobile and desktop polish later',
-   whereZh:'文件管理 › 系統說明；網站目前是網頁版，可用手機瀏覽器開啟', whereEn:'Documents › System info; the site is a web page that opens in a phone browser', st:'todo'},
-  {src:'最新會議', zh:'先把整體架構（組織圖、權限、流程）定到八九成，再進行 UAT', en:'Settle the overall structure (org chart, permissions, flows) to 80–90% before UAT',
-   whereZh:'下次會議聚焦：人事資料欄位、權限設定、員工編號、組織架構與申請流程', whereEn:'Next meeting focus: HR fields, permissions, employee numbers, org structure and request flow', st:'todo'}
+  {src:'10/7', zh:'先把整體架構（組織圖、權限、流程）定到八九成，再進行 UAT', en:'Settle the overall structure (org chart, permissions, flows) to 80–90% before UAT',
+   whereZh:'下次會議（10/14）聚焦：104 功能盤點、權限矩陣、員工編號規則、仁寶報表匯入', whereEn:'Next meeting (14 Oct) focus: 104 inventory, permission matrix, employee-number rule, 仁寶 report import', st:'todo'}
 ];
 const DECISION_ST = {built:{zh:'已建置',en:'Built',cls:'ok'}, part:{zh:'部分完成',en:'Partly done',cls:'info'}, demo:{zh:'示意',en:'Illustrated',cls:'warn'}, todo:{zh:'待辦',en:'To do',cls:''}};
 /* 後續追蹤事項（會議紀錄第三節）；負責人以職務表示，不列個人姓名 */
 const FOLLOW_UPS = [
-  {src:'最新會議', zh:'確認目前四個身分（placeholder）是否正確、是否需要增減', ownerZh:'客戶', whenZh:'下次會議前', st:'待辦'},
-  {src:'最新會議', zh:'整理所有角色與對應的權限項目，以 Excel 格式提供（可用權限對照表的 Excel 範本）', ownerZh:'客戶（提供給專案負責人）', whenZh:'下次會議前', st:'待辦'},
-  {src:'最新會議', zh:'依客戶提供的 Excel 製作正式權限表格', ownerZh:'專案負責人', whenZh:'收到 Excel 後', st:'待辦'},
-  {src:'最新會議', zh:'提供組織架構圖、簽核路徑規則、表單欄位設計', ownerZh:'客戶', whenZh:'下次會議前', st:'待辦'},
-  {src:'最新會議', zh:'提供自訂的員工編號格式（目前 A、B、C 是 placeholder）', ownerZh:'客戶', whenZh:'待確認', st:'待確認'},
-  {src:'最新會議', zh:'整理意見反映的簽核流程細節，會後上傳', ownerZh:'會議指定負責人', whenZh:'會後', st:'待辦'},
-  {src:'最新會議', zh:'手機打卡正式上線所需的 Cloud Storage 與 API Token 採購', ownerZh:'待確認', whenZh:'待確認', st:'待確認'},
+  {src:'10/7', zh:'持續整理現有 104 系統功能截圖及匯出表單，提供 IT 作為差勤功能建置參考', ownerZh:'行政／人事', whenZh:'下次會議前', st:'待辦'},
+  {src:'10/7', zh:'整理系統角色、頁面及各項操作權限清單，梳理各「職稱」與 Portal 各「項目名稱」的權限對照矩陣表', ownerZh:'需求端／人事', whenZh:'下次會議前', st:'Excel 範本已提供'},
+  {src:'10/7', zh:'擬定全公司統一的員工編號原則，並盤點既有員工編號；導入「復職年資重算、員編重編」的程式邏輯', ownerZh:'人事／IT', whenZh:'待訂', st:'年資重算已示範；員編重編待訂'},
+  {src:'10/7', zh:'評估 Portal 建置差勤管理的功能範圍、成本及導入方式', ownerZh:'IT', whenZh:'待訂', st:'待辦'},
+  {src:'10/7', zh:'規劃並執行 Portal「居服個案管理系統」連結建置，並測試仁寶 Excel 匯入 Portal 彙總分析的版型', ownerZh:'IT', whenZh:'下次會議說明初步結果', st:'待辦'},
+  {src:'10/7', zh:'評估雲端儲存空間的採購規格、儲存容量與預算（手機打卡正式上線用）', ownerZh:'待確認', whenZh:'待訂', st:'待確認'},
+  {src:'10/7', zh:'確認目前四個暫定身分是否正確；提供組織架構圖、簽核路徑規則、表單欄位設計（錄音摘要）', ownerZh:'需求端', whenZh:'下次會議前', st:'待辦'},
+  {src:'10/7', zh:'整理意見反映的簽核流程細節，會後上傳（錄音摘要）', ownerZh:'會議指定負責人', whenZh:'會後', st:'待辦'},
   {src:'9/30', zh:'傳送最新 Portal 網址至群組，讓團隊實際操作後，以 PM 角度回饋各角色需要哪些功能與按鈕', ownerZh:'專案負責人（傳送）／團隊（回饋）', whenZh:'10/7 會議前', st:'待辦'},
-  {src:'9/30', zh:'整理各角色權限清單：員工、護理師、社工、督導等各職位可查看的功能與資料範圍', ownerZh:'團隊（提供給專案負責人）', whenZh:'10/7 會議前', st:'待辦'},
-  {src:'9/30', zh:'截圖整理 104 與仁寶系統頁面，供評估 Portal 能否取代 104 差勤功能，並確認兩系統是否提供 API 串接', ownerZh:'團隊（提供給專案負責人）', whenZh:'10/7 會議前', st:'104 截圖已提供；仁寶不對外開放，API 串接暫不進行'},
+  {src:'9/30', zh:'整理各角色權限清單：員工、護理師、社工、督導等各職位可查看的功能與資料範圍', ownerZh:'團隊（提供給專案負責人）', whenZh:'10/7 會議前', st:'已併入 10/7 待辦 2'},
+  {src:'9/30', zh:'截圖整理 104 與仁寶系統頁面，供評估 Portal 能否取代 104 差勤功能，並確認兩系統是否提供 API 串接', ownerZh:'團隊（提供給專案負責人）', whenZh:'10/7 會議前', st:'104 截圖已提供，10/7 待辦 1 持續進行；仁寶改以 Excel 匯入（10/7 待辦 5）'},
   {src:'9/30', zh:'提供組織架構圖（Work Chart），供依職位設定對應權限與員工編號前綴規則', ownerZh:'團隊（提供給專案負責人）', whenZh:'10/7 會議前', st:'待辦'},
   {src:'9/30', zh:'先匯出 104 的資料，看過格式後建立薪資計算邏輯', ownerZh:'會議指定負責人（匯出）／專案負責人（建立計算邏輯）', whenZh:'待確認', st:'待確認'},
-  {src:'9/30', zh:'討論員工編號前綴統一為 A/B/C 等英文字母前綴，並保留未來收購公司的彈性（從 proposal 開始）', ownerZh:'專案負責人', whenZh:'10/7 會議', st:'待確認'},
+  {src:'9/30', zh:'討論員工編號前綴統一為 A/B/C 等英文字母前綴，並保留未來收購公司的彈性（從 proposal 開始）', ownerZh:'專案負責人', whenZh:'10/7 會議', st:'已併入 10/7 待辦 3'},
   {src:'9/20', zh:'評估入口網站能否完全取代 104 差勤系統，並比較功能、成本及限制', ownerZh:'IT／專案負責人', whenZh:'下次會議前', st:'待辦'},
   {src:'9/20', zh:'提供員工資料及相關文件，作為欄位規劃參考', ownerZh:'老闆', whenZh:'下次會議前', st:'待辦'},
   {src:'9/20', zh:'彙整現有員工表單、欄位及資料來源', ownerZh:'人事', whenZh:'下次會議前', st:'待辦'},
@@ -1105,7 +1113,7 @@ const FOLLOW_UPS = [
   {src:'9/20', zh:'盤點既有系統整併涉及的個資、資安及法規要求', ownerZh:'會議指定負責人', whenZh:'待確認', st:'待確認'},
   {src:'9/20', zh:'規劃入口網站連結至既有系統的暫行作法', ownerZh:'IT／專案負責人', whenZh:'待確認', st:'待確認'}
 ];
-const FOLLOW_UP_NOTE = '9/20 項目的完成情況，9/30 會議紀錄沒有說明，所以維持原本的狀態。';
+const FOLLOW_UP_NOTE = '9/20 項目的完成情況，9/30 與 10/7 的會議紀錄沒有說明，所以維持原本的狀態；已被 10/7 待辦取代的 9/30 項目，狀態欄有標示。';
 /* 分期規劃：需求簡報第 7 頁；時程取自 v2.0 規格 */
 const PHASES = [
   {zh:'短期：行政核心功能', whenZh:'第一期 MVP 目標 2026 年 10 月底', itemsZh:'人事資料、差勤、薪資計算、人事管理、線上申請', cls:'ok'},
@@ -1182,7 +1190,7 @@ function viewArchRoles(){
     <section class="card">
       <div class="card-h"><h2>${esc(both('9/30 會議：員工角色與待新增項目','30 Sept: employee role and what is still to add'))}</h2></div>
       <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.8">
-        <li>${esc(both('最新會議：目前的四個身分（系統管理員、人資、管理者、一般員工）是 placeholder，需客戶確認是否正確或需要增減；權限用勾選方式設定（見「權限對照表」）。','Latest meeting: the four roles are placeholders for the client to confirm or change; permissions are set by ticking boxes (see the permission matrix).'))}</li>
+        <li>${esc(both('10/7 會議：目前的四個身分（系統管理員、人資、管理者、一般員工）是暫定，需求端確認是否正確或需要增減；權限用勾選方式設定（見「權限對照表」）；同一天也決定把操作權限簡化為「確認職稱即可執行項目名稱」（見「職稱對照」）。','7 Oct meeting: the four roles are provisional and the requester side confirms or changes them; permissions are set by ticking boxes (see the permission matrix), and the same meeting simplified them to “confirm the title and the items follow” (see the title matrix).'))}</li>
         <li>${esc(both('新增「員工個別」角色：只能看自己的打卡記錄、請假申請與審核狀態、特休餘額。原型的「一般員工」身分就是這個角色，進入「私人秘書」。','New individual-employee role: own punch records, leave requests and status, leave balance. The prototype’s Employee role is this one and opens My Desk.'))}</li>
         <li>${esc(both('管理層與員工看到的是完全不同的系統介面，不是只少幾個功能。','Management and employees see completely different interfaces, not the same one with a few functions removed.'))}</li>
         <li>${esc(both('護理師等員工個別資訊尚未建立獨立角色，待新增。','Roles for nurses and similar positions are not yet built.'))}</li>
@@ -1515,7 +1523,7 @@ function viewEmployees(){
     </section>
   </div>`;
 }
-/* 員工編號規則（最新會議：依設定邏輯自動帶入，減少人工錯誤；目前是 placeholder，客戶可提供自訂格式） */
+/* 員工編號規則（10/7 會議：依設定邏輯自動帶入，減少人工錯誤；目前是暫定，需求端可提供自訂格式） */
 const NUM_RULES_DEFAULT = {HQ:{prefix:'H',digits:3}, O1:{prefix:'A',digits:3}, O2:{prefix:'B',digits:3}, O3:{prefix:'C',digits:3}};
 const numRules = () => state.numRules || (state.numRules=JSON.parse(JSON.stringify(NUM_RULES_DEFAULT)));
 function nextEmpNo(unitId){
@@ -1889,6 +1897,7 @@ function saveRec(id, kind, fd){
   if(kind==='lic'){ rec.lic.push({name:f('name'), no:f('no'), issued:f('issued'), exp:f('exp'), ce:+f('ceNeed')?{need:+f('ceNeed'),have:+f('ceHave')||0}:null, file:file()}); addDoc(file(),'license'); }
   if(kind==='train') rec.training.push({d:f('date'), zh:f('name'), en:f('name'), h:+f('hours')||0});
   if(kind==='status'){ const p=person(id), st=f('status'), d=f('date');
+    if(st==='active' && p.status==='left') p.rehired=d;                 // 離職後復職：年資從復職日重算（10/7 會議）
     p.status=st; p.statusSince=st==='active'?'':d;
     rec.hist.push({date:d, kind:st==='active'?'return':st==='loa'?'leave':'exit', title:p.title, unit:p.unit, band:p.band, salary:p.salary, note:f('note')}); }
   if(kind==='contract'){ if(f('kind')==='續約') rec.renewals.push({date:f('start'), note:f('note')||'續約'+(f('end')?'至 '+f('end'):'')});
@@ -1924,7 +1933,7 @@ function openPerson(id){
           <dt>${esc(both('直屬主管','Reports to'))}</dt><dd>${mgr?esc(nameOf(mgr)+' · '+L(TITLES[mgr.title])):esc(both('無','—'))}</dd>
           <dt>${esc(both('到職日','Hire date'))}</dt><dd class="mono">${visible?p.hired:'—'}</dd>
           ${visible?`<dt>${esc(both('年資','Tenure'))}</dt><dd>${esc(both(tenureOf(p).y+' 年 '+tenureOf(p).m+' 個月',tenureOf(p).y+' y '+tenureOf(p).m+' m'))}
-            <span class="muted" style="font-size:11.5px">${esc(both('跨公司轉調員工編號不變，年資不歸零；離職後回任才重新計算','Transfers keep the employee no. and tenure; rehire after leaving restarts it'))}</span></dd>
+            <span class="muted" style="font-size:11.5px">${esc(p.rehired?both('離職後復職，年資從復職日 '+p.rehired+' 重算','Rejoined after leaving; tenure restarts from '+p.rehired):both('跨公司轉調員工編號不變，年資不歸零；離職後復職才重新計算','Transfers keep the employee no. and tenure; rejoining after leaving restarts it'))}</span></dd>
           <dt>${esc(both('在職狀態','Status'))}</dt><dd>${empStatusChip(p)}${p.statusSince?` <span class="mono muted">${p.statusSince}</span>`:''}</dd>`:''}
           <dt>${esc(both('分機','Extension'))}</dt><dd class="mono">${p.ext}</dd>
           <dt>${esc(both('手機','Mobile'))}</dt><dd>${visible&&can('mobile')?`<span class="mono">${esc(rec.basic.mobile)}</span>`:lockTxt('受限','Restricted')}</dd>
@@ -1934,7 +1943,7 @@ function openPerson(id){
       </section>
       ${visible&&can('editEmp')?`<section>${addBox('status', both('變更在職狀態','Change employment status'), `<div class="row">
         ${sel('狀態','Status','status',EMP_STATUS)}${fld('生效日','Effective','date','date','required value="'+ymd(TODAY)+'"')}${fld('說明','Note','note')}</div>`)}
-        <div class="legend">${esc(both('留職停薪與離職自生效月起不列入計薪與出勤統計；實際規則待人資確認。','Unpaid leave and resignation drop out of payroll and attendance stats from the effective month; the rules are for HR to confirm.'))}</div></section>`:''}
+        <div class="legend">${esc(both('留職停薪與離職自生效月起不列入計薪與出勤統計；離職後復職，年資從復職日重算（員編是否重編，等人事／IT 擬定原則）。實際規則待人資確認。','Unpaid leave and resignation drop out of payroll and attendance stats from the effective month; rejoining after leaving restarts tenure from the rejoin date (whether the number is re-issued waits for HR and IT’s rule). The rules are for HR to confirm.'))}</div></section>`:''}
       ${visible?`
       <section>
         <div class="eyebrow" style="margin-bottom:8px">${esc(both('出勤摘要','Attendance summary'))} · <span class="mono">${state.attMonth}</span></div>
@@ -3394,25 +3403,51 @@ const MEETING_ITEMS = [
   {h:'核薪功能設計', items:['核薪功能須依不同薪資制度分別設計，包括月薪制、時薪制及拆帳制。','各制度的計薪規則、資料來源、例外調整及核准流程，待人事與相關單位進一步確認。']},
   {h:'既有系統整併與法規確認', items:['正式進行系統串接或資料整併前，須先確認個人資料保護、資訊安全及其他相關法規與管理要求。','在法規、資料範圍與資安機制尚未確認前，可先於入口網站設置連結，導向現有系統使用。','後續整併時，應同步確認資料存取權限、保存方式、傳輸安全及操作紀錄等需求。']}
 ];
-const MEETING_LATEST = [
-  {h:'仁寶系統整合', items:['仁寶系統不開放對外連接，改以按鈕連結方式導向原系統。','功能對接暫不進行，先專注內部行政與人事管理模組。','意見反映功能與仁寶系統相近，簽核流程細節待整理後，會後上傳。','仁寶的名稱用字已確認：9/20 的寫法正確，9/30 的版本有誤。']},
-  {h:'不同身分的權限勾選', items:['系統支援依角色勾選權限項目（方框打勾的形式）。','目前的四個身分是 placeholder，需客戶確認是否正確，或需要增減。','一般員工下可設 subcategory（如製造、contractor、司機等）：大 category 為「一般員工」，subcategory 可自訂權限。','請客戶整理所有角色與對應的權限項目，以 Excel 格式提供；專案負責人將依此製作正式的權限表格。']},
-  {h:'簽核／申請流程', items:['所有申請走統一的表單格式，按組織架構逐層簽核。','簽核層級依組織圖決定（行政組織圖，不是政府組織圖）；金額大小可影響需要簽核的層級數。','流程為自訂，需先定義組織架構與各層級規則。','請假、出差、補休等單據格式相近，數字自動扣抵假別餘額。','客戶需提供：組織架構圖、簽核路徑規則、表單欄位設計。']},
-  {h:'員工編號與人事資料', items:['系統可依設定邏輯自動帶入員工編號，減少人工錯誤。','目前編號邏輯為 placeholder（A、B、C 對應三家公司，例如 A 誠馨、B 誠芯、C 牛津）；客戶可提供自訂的編號格式。']},
-  {h:'新功能與下次會議', items:['本週新增兩項功能：導覽（互動式引導）與使用指南（閱讀式手冊），入口在右上角，員工可自學操作流程。','手機打卡功能可行，但需購買 Cloud Storage 與 API Token 才能正式上線；手機與電腦介面的使用體驗優化留待後續討論。','下次會議聚焦：人事資料欄位、權限設定、員工編號、組織架構與申請流程。','建議先把整體架構（組織圖、權限、流程）定到八九成，再進行 UAT。']}
+/* 第三次會議（10/7）正式紀錄 V2.0。主席、紀錄與出席者的姓名不放進網站 */
+const MEETING_3RD = {
+  name:'入口網站建置第三次需求討論會議', theme:'員工頁面、差勤管理及系統整合規劃', when:'10/7（三）10:00–11:40', where:'Teams', attendees:'4 人（姓名略）', ver:'V2.0',
+  purpose:'針對入口網站之員工頁面與資料欄位進行說明，並確認員工識別方式、差勤管理建置方向、系統角色與權限、員工編號統一、個資管理及仁寶系統串接等後續工作。',
+  items:[
+    {h:'仁寶系統串接與資料應用方式', items:['系統連結設定：於 Portal 中建立引導至仁寶系統的外部連結，該連結正式命名為「居服個案管理系統」。','經評估，仁寶系統具備可直接連接衛福部系統之重大優勢，能有效簡化第一線業務流程。考量現行串接技術與限制，後續規劃採取由仁寶系統下載 Excel 報表之方式，再將資料匯入回 Portal 系統中，進行整體的彙總分析報告。']},
+    {h:'員工編號規則', items:['由需求端整理現有 104 針對員工編號與人事資料轉換，員工復職年資重算，員編重編之原則，後續人事資料庫將以此邏輯進行邏輯架構設計與改版。']},
+    {h:'Portal 差勤打卡功能建置進度', items:['經 IT 評估，現階段 Portal 已可執行手機打卡功能。','目前功能推進只差雲端儲存空間，後續需針對雲端空間的採購規格、儲存容量與預算進行補強評估。']},
+    {h:'簽核流程與組織架構規劃', items:['系統表單簽核流程基本上依照公司組織圖進行自動關聯與關卡帶入。','為保持彈性，系統將新增「自訂流程」功能，允許特定情境或特殊表單可由管理者手動調整簽核節點。']},
+    {h:'Portal 操作權限彈性', items:['系統操作權限的控管邏輯進行簡化，未來調整為「確認職稱即可執行項目名稱」，無須逐一針對單一員工進行繁瑣設定，以提升權限維護效率。']}
+  ],
+  todo:[
+    {zh:'持續整理現有 104 系統功能截圖及匯出表單，提供 IT 作為差勤功能建置參考。', owner:'行政／人事', when:'下次會議前'},
+    {zh:'整理系統角色、頁面及各項操作權限清單，梳理各「職稱」與 Portal 各「項目名稱」之權限對照矩陣表。', owner:'需求端／人事', when:'下次會議前'},
+    {zh:'擬定全公司統一的員工編號原則，並盤點既有員工編號。導入「復職年資重算、員編重編」之程式邏輯。', owner:'人事／IT', when:'待訂'},
+    {zh:'評估 Portal 建置差勤管理的功能範圍、成本及導入方式。', owner:'IT', when:'待訂'},
+    {zh:'規劃並執行 Portal「居服個案管理系統」連結建置，並測試仁寶 Excel 匯入 Portal 彙總分析之版型。', owner:'IT', when:'下次會議說明初步結果'}
+  ],
+  nextFocus:['確認 104 系統功能盤點結果與 Portal 差勤管理的預計建置範圍。','確認員工角色及各身分別的權限矩陣。','確認全公司員工編號規則。','追蹤仁寶系統報表匯入 Portal 的分析功能開發進度。'],
+  next:'10/14（三）10:00；地點待確認'
+};
+/* 同一場會議的錄音摘要：正式紀錄沒有寫、但摘要有提到的項目 */
+const MEETING_3RD_SUMMARY = [
+  '目前的四個身分（系統管理員、人資、管理者、一般員工）是暫定，需求端要確認是否正確、需不需要增減。',
+  '系統支援依角色勾選權限項目（方框打勾）；一般員工下可設子類別（如司機、contractor、製造），子類別可自訂權限。這一點在正式紀錄裡改成以「職稱」設定。',
+  '請需求端整理所有角色與對應權限項目，以 Excel 提供；專案負責人依此製作正式權限表格。',
+  '所有申請走統一表單格式，按組織架構逐層簽核；簽核層級依行政組織圖（不是政府組織圖）決定，金額大小可影響簽核層級數；流程為自訂，需先定義組織架構與各層級規則。',
+  '請假、出差、補休等單據格式相近，數字自動扣抵假別餘額。需求端要提供組織架構圖、簽核路徑規則、表單欄位設計。',
+  '意見反映功能與仁寶系統相近，簽核流程細節待整理後，會後上傳。',
+  '系統可依設定邏輯自動帶入員工編號，減少人工錯誤；目前編號邏輯暫定（A、B、C 對應三家公司），需求端可提供自訂格式。',
+  '仁寶不開放對外連接，改以按鈕連結導向原系統；功能對接暫不進行，先專注內部行政與人事管理模組。',
+  '手機打卡可行，另提到除了雲端儲存空間，還需要 API Token 才能正式上線；手機與電腦介面的使用體驗優化留待後續討論。',
+  '本週新增兩項功能：導覽（互動式引導）與使用指南（閱讀式手冊），入口在右上角，員工可自學操作流程。',
+  '建議先把整體架構（組織圖、權限、流程）定到八九成，再進行 UAT。'
 ];
-/* 最新會議紀錄裡疑似語音轉文字誤差的用字。已確認的讀法與仍待確認的分開列 */
+/* 錄音摘要裡疑似語音轉文字誤差的用字 */
 const LATEST_WORDING_OK = [
   ['A = 誠興、B = 第二誠心、C = 牛津','A 誠馨、B 誠芯、C 牛津'],
   ['青玉反映','意見反映'],
   ['簽合','簽核'],
-  ['一體式系統','仁寶（意見反映功能與仁寶系統相近）']
+  ['一體式系統','仁寶']
 ];
 const LATEST_WORDING = [
-  ['一般員工子類別「製造」','原文保留；原型現有職稱沒有「製造」，請確認要設哪些子類別'],
-  ['會議日期','紀錄沒有寫日期']
+  ['一般員工子類別「製造」','原文保留；原型現有職稱沒有「製造」，請確認要不要設']
 ];
-const NEXT_LATEST = ['人事資料欄位','權限設定','員工編號','組織架構與申請流程','先把整體架構（組織圖、權限、流程）定到八九成，再進行 UAT'];
 const MEETING_930 = [
   {h:'系統架構與功能更新', items:['網站自上次會議後已更新，新增模組：文件管理、服務管理、財務採購（表單申請）。','新增出勤管理、工時記錄（打卡、補卡、請假、加班，以半小時為單位）。','新增報表匯出（CSV 或 Excel）。','三個據點員工統一使用同一個 centralized 系統。','員工個別資訊（護理師等）目前尚未建立獨立角色，待新增。']},
   {h:'員工資料與權限設計', items:['權限角色目前分三類：系統管理員、經理、院長，待新增「員工個別」角色。','員工個別可查看：自己的打卡記錄、請假申請與審核狀態、特休餘額。','管理層與員工看到的是完全不同的系統介面（非僅少幾個功能）。']},
@@ -3432,29 +3467,47 @@ function viewDocMeeting(){
   return `
   <div class="grid">
     <section class="card">
-      <div class="card-h"><h2>最新一次會議</h2><span class="en">${esc(both('日期待確認','Date to confirm'))}</span></div>
-      <div class="card-b"><div class="muted" style="font-size:12.5px;margin-bottom:10px">${esc(both('下列內容照最新會議紀錄整理；人名以職務表示。系統名稱一律寫「仁寶」。','Taken from the latest meeting notes; names are shown by role. The system is always called 仁寶.'))}</div>
-        <div style="display:grid;gap:12px">${MEETING_LATEST.map((m,i)=>`<div><b>${i+1}. ${esc(m.h)}</b>
-        <ul style="margin:6px 0 0;padding-left:20px;line-height:1.75">${m.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div>
-        <div class="note" style="margin-top:12px"><b>${esc(both('用字已確認','Wording confirmed'))}</b>
-          <ul style="margin:6px 0 0;padding-left:20px;line-height:1.7">${LATEST_WORDING_OK.map(w=>`<li>${esc('紀錄寫「'+w[0]+'」')}：${esc('正確寫法是「'+w[1]+'」')}</li>`).join('')}</ul></div>
-        <div class="note q" style="margin-top:12px"><b>${esc(both('紀錄用字待確認','Wording to confirm'))}</b>
-          <ul style="margin:6px 0 0;padding-left:20px;line-height:1.7">${LATEST_WORDING.map(w=>`<li>${esc(w[0])}：${esc(w[1])}</li>`).join('')}</ul></div></div>
+      <div class="card-h"><h2>${esc(MEETING_3RD.name)}</h2><span class="en">${esc(both('10/7 · 第三次 · '+MEETING_3RD.ver,'7 Oct · third · '+MEETING_3RD.ver))}</span></div>
+      <div class="card-b"><dl class="kv">
+        ${kvRow('會議主題','Theme',esc(MEETING_3RD.theme))}
+        ${kvRow('日期／時間','Date',esc(MEETING_3RD.when))}
+        ${kvRow('地點／方式','Format',esc(MEETING_3RD.where))}
+        ${kvRow('出席','Attendees',esc(MEETING_3RD.attendees))}
+        ${kvRow('會議目的','Purpose',esc(MEETING_3RD.purpose))}
+      </dl>
+      <div class="muted" style="font-size:12.5px;margin:10px 0">${esc(both('下列照正式紀錄（V2.0）整理，用字保持原樣；主席、紀錄與出席者的姓名不列。系統名稱一律寫「仁寶」；Portal 裡的連結名稱是「居服個案管理系統」。','Taken from the official minutes (V2.0) with their wording kept; names of the chair, recorder and attendees are left out. The system is always called 仁寶; the portal’s link is named 居服個案管理系統.'))}</div>
+      <div style="display:grid;gap:12px">${MEETING_3RD.items.map((m,i)=>`<div><b>${i+1}. ${esc(m.h)}</b>
+        <ul style="margin:6px 0 0;padding-left:20px;line-height:1.75">${m.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div></div>
     </section>
     <section class="card">
-      <div class="card-h"><h2>下次會議</h2><span class="en">${esc(both('日期待確認','Date to confirm'))}</span></div>
-      <div class="card-b"><div class="muted" style="font-size:12.5px;margin-bottom:6px">${esc(both('聚焦：','Focus: '))}</div><ol style="margin:0;padding-left:20px;line-height:1.8">${NEXT_LATEST.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>
+      <div class="card-h"><h2>${esc(both('後續待辦事項（10/7 會議）','Action items (7 Oct meeting)'))}</h2></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('項次','No.')}</th><th>${bi('待辦事項','Action')}</th><th>${bi('負責單位／人員','Owner')}</th><th>${bi('預計完成時間','When')}</th></tr></thead>
+        <tbody>${MEETING_3RD.todo.map((t,i)=>`<tr><td class="mono">${i+1}</td><td style="white-space:normal">${esc(t.zh)}</td><td style="white-space:normal">${esc(t.owner)}</td><td>${esc(t.when)}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('下次會議','Next meeting'))}</h2><span class="en">${esc(both(MEETING_3RD.next,'Wed 14 Oct, 10:00; venue to confirm'))}</span></div>
+      <div class="card-b"><div class="muted" style="font-size:12.5px;margin-bottom:6px">${esc(both('建議討論重點：','Suggested focus:'))}</div><ol style="margin:0;padding-left:20px;line-height:1.8">${MEETING_3RD.nextFocus.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('同一場會議的錄音摘要','Recording summary of the same meeting'))}</h2><span class="en">${esc(both('正式紀錄沒有寫的項目','Items not in the official minutes'))}</span></div>
+      <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.75">${MEETING_3RD_SUMMARY.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+        <div class="note" style="margin-top:12px"><b>${esc(both('用字已確認','Wording confirmed'))}</b>
+          <ul style="margin:6px 0 0;padding-left:20px;line-height:1.7">${LATEST_WORDING_OK.map(w=>`<li>${esc('摘要寫「'+w[0]+'」')}：${esc('正確寫法是「'+w[1]+'」')}</li>`).join('')}</ul></div>
+        <div class="note q" style="margin-top:12px"><b>${esc(both('摘要用字待確認','Wording to confirm'))}</b>
+          <ul style="margin:6px 0 0;padding-left:20px;line-height:1.7">${LATEST_WORDING.map(w=>`<li>${esc(w[0])}：${esc(w[1])}</li>`).join('')}</ul></div></div>
     </section>
     <section class="card">
       <div class="card-h"><h2>9/30 會議</h2><span class="en">${esc(both('9/30（三）11:30','Wed 30 Sept, 11:30'))}</span></div>
       <div class="card-b"><div class="muted" style="font-size:12.5px;margin-bottom:10px">${esc(both('下列內容照 9/30 會議紀錄整理，用字保持原樣；紀錄中的人名以職務表示。','Taken from the 30 Sept notes with their wording kept; names are shown by role.'))}</div>
         <div style="display:grid;gap:12px">${MEETING_930.map((m,i)=>`<div><b>${i+1}. ${esc(m.h)}</b>
         <ul style="margin:6px 0 0;padding-left:20px;line-height:1.75">${m.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div>
-        <div class="note" style="margin-top:12px">${esc(both('用字更正：9/30 紀錄裡這套系統的名稱寫錯了，最新會議已確認正確寫法是「仁寶」（9/20 的寫法正確），本頁已更正。',
-          'Wording corrected: the system’s name was misspelt in the 30 Sept notes; the latest meeting confirmed “仁寶” (as written on 20 Sept) is right, and this page is corrected.'))}</div></div>
+        <div class="note" style="margin-top:12px">${esc(both('用字更正：9/30 紀錄裡這套系統的名稱寫錯了，10/7 會議已確認正確寫法是「仁寶」（9/20 的寫法正確），本頁已更正。',
+          'Wording corrected: the system’s name was misspelt in the 30 Sept notes; the 7 Oct meeting confirmed “仁寶” (as written on 20 Sept) is right, and this page is corrected.'))}</div></div>
     </section>
     <section class="card">
-      <div class="card-h"><h2>9/30 會議訂定的下次會議</h2><span class="en">${esc(both('10/7（三）11:30','Wed 7 Oct, 11:30'))}</span></div>
+      <div class="card-h"><h2>9/30 會議預定的下次會議</h2><span class="en">${esc(both('原訂 10/7（三）11:30；實際 10:00–11:40','Planned Wed 7 Oct, 11:30; held 10:00–11:40'))}</span></div>
       <div class="card-b"><ol style="margin:0;padding-left:20px;line-height:1.8">${NEXT_MEETING.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>
     </section>
     <section class="card">
@@ -3635,9 +3688,9 @@ function viewDocCmp104(){
   </div>`;
 }
 function viewDocSysInfo(){
-  const built=[['文件管理','會議紀錄（9/20、9/30）、使用指南、法規與資安、104 功能對照、系統說明'],['公告欄','公告、行事曆、組織圖、通訊錄'],['私人秘書','員工自助：出勤月曆、打卡、表單、薪資袋、保險費、所得稅、人事資料'],
+  const built=[['文件管理','會議紀錄（9/20、9/30、10/7）、使用指南、法規與資安、104 功能對照、系統說明'],['公告欄','公告、行事曆、組織圖、通訊錄'],['私人秘書','員工自助：出勤月曆、打卡、表單、薪資袋、保險費、所得稅、人事資料'],
     ['人事系統','員工資料（含在職狀態、第二位緊急聯絡人、證照上傳、訓練記錄）、我的工時（0.5 小時為單位）、出勤管理、請假審核、績效考核（含期中考核）'],['薪資計算','月薪制、時薪制試算、薪資計算機、版本與覆核、現金發放簽收清冊；拆帳制待規則確認'],
-    ['線上申請','5 種申請的流程規劃（待規則確認後開放）'],['報表匯出','人事、出勤、差勤申請、財務；CSV 或 Excel；每份都有員工編號與姓名'],['權限與範圍','權限對照表、待決議題'],['系統設定','既有系統連結（104、仁寶、衛福部長照系統）']];
+    ['線上申請','5 種申請的流程規劃（待規則確認後開放）、簽核路徑預覽與自訂流程（示範）'],['報表匯出','人事、出勤、差勤申請、財務；CSV 或 Excel；每份都有員工編號與姓名'],['權限與範圍','權限對照表（四個身分）、職稱對照（職稱 × 項目名稱，含 Excel 範本）、待決議題'],['業務資料整合','居服個案管理系統（仁寶）的連結與規劃中的 Excel 匯入；個案資料、異常事件通報為規劃中'],['系統設定','既有系統連結（104、居服個案管理系統、衛福部長照系統）、帳號原則、員工編號規則']];
   return `
   <div class="grid">
     <section class="card">
@@ -3652,9 +3705,10 @@ function viewDocSysInfo(){
       </ul></div>
     </section>
     <section class="card">
-      <div class="card-h"><h2>${esc(both('手機打卡','Mobile clock-in'))}</h2><span class="en">${esc(both('最新會議','Latest meeting'))}</span></div>
+      <div class="card-h"><h2>${esc(both('手機打卡','Mobile clock-in'))}</h2><span class="en">${esc(both('10/7 會議','7 Oct meeting'))}</span></div>
       <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.8">
-        <li>${esc(both('手機打卡功能可行，但正式上線需要購買 Cloud Storage 與 API Token。','Mobile clock-in is feasible, but going live needs Cloud Storage and an API token.'))}</li>
+        <li>${esc(both('經 IT 評估，Portal 現階段已可執行手機打卡；目前功能推進只差雲端儲存空間。','IT assessed that the portal can already do mobile clock-in; only cloud storage is missing.'))}</li>
+        <li>${esc(both('後續要評估雲端空間的採購規格、儲存容量與預算。錄音摘要另提到正式上線還需要 API Token。','The purchase spec, capacity and budget of the cloud storage are still to be assessed. The recording summary also mentions an API token for going live.'))}</li>
         <li>${esc(both('手機與電腦介面的使用體驗優化，留待後續討論。','Polishing the mobile and desktop experience is left for later.'))}</li>
         <li>${esc(both('目前原型是網頁版，可以用手機瀏覽器開啟；打卡按鈕只記錄本次瀏覽，沒有定位也沒有儲存。','The prototype is a web page that opens in a phone browser; the clock buttons only record this browser session — no location, nothing stored.'))}</li>
       </ul></div>
@@ -3687,28 +3741,33 @@ const planCard=(title, src, steps, todo, note)=>`<div class="grid">
       ${note?`<div class="muted" style="font-size:12.5px;margin-top:8px">${esc(note)}</div>`:''}</div></section>
   </div>`;
 function viewSvcCase(){
-  const sys=EXISTING_SYSTEMS.find(x=>/仁寶/.test(x.zh));
+  const sys=EXISTING_SYSTEMS.find(x=>/居服個案管理系統/.test(x.zh));
+  const steps=['在仁寶下載 Excel 報表','匯入 Portal：欄位比對、驗證、錯誤清單、匯入紀錄','Portal 彙總分析，產出整體的分析報告'];
   return `
   <div class="grid">
-    <div class="note q">${esc(both('最新會議：仁寶系統不開放對外連接，所以入口網站只放按鈕連結，導向原系統；功能對接暫不進行，先專注內部行政與人事管理模組。',
-      'Latest meeting: 仁寶 does not allow outside connections, so the portal only links to it with a button; function integration is on hold while internal admin and HR modules come first.'))}</div>
+    <div class="note">${esc(both('Portal 裡引導到仁寶的外部連結，正式名稱是「居服個案管理系統」。仁寶可以直接連接衛福部系統，能簡化第一線業務流程；仁寶本身不開放對外連接，所以 Portal 只放按鈕連結，之後以 Excel 匯入做彙總分析。',
+      'The portal’s external link to 仁寶 is officially named 居服個案管理系統. 仁寶 connects to the MOHW system directly, which simplifies front-line work; 仁寶 itself is not open to outside connections, so the portal only has a link button and later imports Excel reports for summary analysis.'))}</div>
     <section class="card">
-      <div class="card-h"><h2>${esc(both('仁寶系統（個案管理）','仁寶 (case management)'))}</h2></div>
+      <div class="card-h"><h2>${esc(both('居服個案管理系統（仁寶）','Home-care case system (仁寶)'))}</h2></div>
       <div class="card-b" style="display:grid;gap:10px">
-        <div>${sys&&sys.url?`<a class="btn" href="${esc(sys.url)}" target="_blank" rel="noopener">${esc(both('開啟仁寶','Open 仁寶'))} ↗</a>`:`<span class="chip">${esc(both('按鈕連結：網址待 IT 提供','Link button: URL pending from IT'))}</span>`}
+        <div>${sys&&sys.url?`<a class="btn" href="${esc(sys.url)}" target="_blank" rel="noopener">${esc(both('開啟居服個案管理系統','Open the home-care case system'))} ↗</a>`:`<span class="chip">${esc(both('按鈕連結：網址待 IT 提供','Link button: URL pending from IT'))}</span>`}
           <span class="muted" style="font-size:12.5px;margin-left:8px">${esc(both('連結設定在「系統設定 › 既有系統連結」','Set under Settings › Existing systems'))}</span></div>
-        <div class="eyebrow">${esc(both('原先規劃，目前暫緩','Earlier plan, now on hold'))}</div>
-        <ul style="margin:0;padding-left:20px;line-height:1.8">${['評估 API 串接，或匯出 Excel 後匯入（需求簡報第 12 頁）','服務員可在個案家打卡並記錄服務項目（9/30 會議提出的需求）','入口網站資料層：欄位比對、驗證、錯誤清單、匯入紀錄','營運報表：依確認後的指標與權限產出'].map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
-        <div class="muted" style="font-size:12.5px">${esc(both('個案敏感資訊留在仁寶，入口網站不存放（v2.0 規格 2.2）。','Sensitive case information stays in 仁寶; the portal does not store it (spec 2.2).'))}</div>
+        <div class="eyebrow">${esc(both('規劃中的資料流程（尚未開發）','Planned data flow (not built)'))}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">${steps.map((x,i)=>`<span class="chip ${i===0?'acc':''}">${i+1}. ${esc(x)}</span>`).join(' → ')}</div>
+        <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('IT 正在規劃連結並測試匯入版型，下次會議說明初步結果（10/7 待辦 5）。版型還沒有提供，所以這裡不放示範資料。',
+          'IT is planning the link and testing the import layout and will report at the next meeting (7 Oct action 5). No layout has been supplied yet, so no demo data is shown here.'))}</div>
+        <div class="eyebrow">${esc(both('待確認','To confirm'))}</div>
+        <ul style="margin:0;padding-left:20px;line-height:1.8">${['Excel 報表的固定格式與欄位','資料更新頻率與歷史資料範圍','欄位異動、重複資料與匯入失敗的處理方式','哪一套系統是正式資料來源','服務員可否在個案家打卡並記錄服務項目（9/30 會議提出的需求）'].map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+        <div class="muted" style="font-size:12.5px">${esc(both('個案敏感資訊留在仁寶，Portal 不存放（v2.0 規格 2.2）。','Sensitive case information stays in 仁寶; the portal does not store it (spec 2.2).'))}</div>
       </div>
     </section>
   </div>`;
 }
-function viewSvcContract(){ return planCard('個案資料、契約與報表（暫緩）','第 13 頁；最新會議：功能對接暫不進行',
+function viewSvcContract(){ return planCard('個案資料、契約與報表（規劃中）','第 13 頁',
   ['HTML 匯入：上傳衛福部下載的檔案並辨識個案欄位','資料驗證：缺漏、格式、重複個案與異動比對','文件產出：依核准範本建立契約及相關表單','總表管理：在案、暫停、結案與歷程紀錄','報表輸出：依公司、部門與授權範圍統計'],
   ['HTML 版本是否固定，哪些欄位可直接帶入','入口網站與原始下載資料何者為正式來源','契約範本更新後，舊契約如何保留','跨公司、跨部門及敏感個案資料的檢視範圍'],
   '個案敏感資訊暫存於仁寶系統，入口網站以連結或摘要呈現（v2.0 規格 2.2）。'); }
-function viewSvcAssess(){ return planCard('異常事件通報與追蹤（暫緩）','第 14 頁；最新會議：先專注內部行政與人事管理模組',
+function viewSvcAssess(){ return planCard('異常事件通報與追蹤（規劃中）','第 14 頁',
   ['事件通報：時間、地點、對象、說明與附件','分類分級：事件類型、嚴重度與通知對象','指派處理：責任人、期限與即時措施','改善追蹤：原因分析、改善措施與佐證','審核結案：主管確認、留存與統計分析'],
   ['事件分類、嚴重度、通報期限、處理時限','跨公司通報及法定通報需求'],
   '權限與通知：通報人可追蹤進度；主管依公司與事件類型接收通知；敏感事件限制檢視與下載；逾期案件自動提醒。'); }
@@ -3725,7 +3784,7 @@ const APP_TYPES = [
   {zh:'人事異動申請', flow:['申請人／主管','人資審核','老闆確認','系統更新','結案']},
   {zh:'意見反映',     flow:['員工','人資／管理者回應','結案']}
 ];
-/* 簽核路徑預覽：最新會議「按組織架構逐層簽核」。這裡只依示範人員的直屬主管一路往上排出來，層級與金額規則待客戶提供 */
+/* 簽核路徑預覽：10/7 會議「按組織架構逐層簽核」。這裡只依示範人員的直屬主管一路往上排出來，層級與金額規則待需求端提供 */
 function approvalChain(id){
   const out=[], seen=new Set(); let p=person(id);
   while(p && p.mgr && !seen.has(p.id)){ seen.add(p.id); p=person(p.mgr); if(p) out.push(p); }
@@ -3734,20 +3793,30 @@ function approvalChain(id){
 function viewApprovalPath(){
   const list=scopedStaff(), sel=list.some(x=>x.id===state.pathEmp)?state.pathEmp:(list[0]||{}).id;
   if(!sel) return '';
-  const chain=approvalChain(sel), me0=person(sel);
+  const cp=state.customPath||(state.customPath={}), custom=Array.isArray(cp[sel]), canEdit=can('approve');
+  const chain=custom ? cp[sel].map(person).filter(Boolean) : approvalChain(sel), me0=person(sel);
+  const addable=list.filter(x=>x.id!==sel && !chain.some(c=>c.id===x.id));
   return `<section class="card">
-    <div class="card-h"><h2>${esc(both('簽核路徑預覽（依組織圖）','Approval path preview (from the org chart)'))}</h2><span class="en">${esc(both('最新會議；示範','Latest meeting; demo'))}</span></div>
+    <div class="card-h"><h2>${esc(both('簽核路徑預覽（依組織圖）','Approval path preview (from the org chart)'))}</h2><span class="en">${esc(both('10/7 會議；示範','7 Oct meeting; demo'))}</span></div>
     <div class="card-b" style="display:grid;gap:10px">
-      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('所有申請走統一表單，按組織架構逐層簽核；簽核層級依行政組織圖決定，金額大小可影響需要簽核的層級數。下面依示範人員的直屬主管一路往上排出路徑；每層的金額門檻與例外規則，等客戶提供簽核路徑規則後再定。',
-        'All requests use one form and are approved level by level along the admin org chart; the amount can change how many levels apply. The path below follows each demo person’s reporting line upwards; amount thresholds and exceptions are set once the client supplies the rules.'))}</div>
-      <div><label style="font-size:12px;color:var(--ink-3)">${esc(both('申請人','Requester'))}</label>
-        <select id="pathEmp">${list.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${x.id} ${esc(empName(x.id))} · ${esc(L(TITLES[x.title]))}</option>`).join('')}</select></div>
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('系統表單的簽核流程基本上依照公司組織圖，自動關聯並帶入關卡；簽核層級依行政組織圖決定，金額大小可影響需要簽核的層級數。下面依示範人員的直屬主管一路往上排出路徑。為了保持彈性，另有「自訂流程」：特定情境或特殊表單，可由管理者手動調整簽核節點。每層的金額門檻與例外規則，等需求端提供簽核路徑規則後再定。',
+        'Approvals basically follow the company org chart, with the steps linked in automatically; the levels follow the administrative org chart and the amount can change how many apply. The path below follows each demo person’s reporting line upwards. For flexibility there is also a custom flow: for special cases or forms, a manager can adjust the approval nodes by hand. Amount thresholds and exceptions are set once the requester side supplies the rules.'))}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:end">
+        <div><label style="font-size:12px;color:var(--ink-3)">${esc(both('申請人','Requester'))}</label>
+          <select id="pathEmp">${list.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${x.id} ${esc(empName(x.id))} · ${esc(L(TITLES[x.title]))}</option>`).join('')}</select></div>
+        <label style="display:inline-flex;gap:6px;align-items:center;font-size:13px;${canEdit?'':'opacity:.6'}"><input type="checkbox" id="pathCustom" ${custom?'checked':''} ${canEdit?'':'disabled'}>${esc(both('自訂流程（特殊表單）','Custom flow (special form)'))}</label>
+        ${custom?`<button class="btn ghost mini" data-pathreset>${esc(both('還原為組織圖','Back to the org chart'))}</button>`:''}
+      </div>
+      ${canEdit?'':`<div class="muted" style="font-size:12px">${esc(both('只有能簽核的身分（人資、管理者）可以調整簽核節點。','Only roles that can approve (HR, manager) can adjust approval nodes.'))}</div>`}
       <div id="pathChain" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
         <span class="chip acc">${esc(both('申請人','Requester'))}：${esc(empName(me0.id))}（${esc(L(TITLES[me0.title]))}）</span>
-        ${chain.map((x,i)=>`→ <span class="chip">${esc(both('第 '+(i+1)+' 層','Level '+(i+1)))}：${esc(empName(x.id))}（${esc(L(TITLES[x.title]))}）</span>`).join(' ')}
-        ${chain.length?'':`<span class="muted">${esc(both('（最上層，沒有上一層）','(top of the chart — nobody above)'))}</span>`}
+        ${chain.map((x,i)=>`→ <span class="chip">${esc(both('第 '+(i+1)+' 層','Level '+(i+1)))}：${esc(empName(x.id))}（${esc(L(TITLES[x.title]))}）${custom?` <button class="btn ghost mini" data-pathdel="${x.id}" aria-label="${esc(both('移除','Remove'))}">✕</button>`:''}</span>`).join(' ')}
+        ${chain.length?'':`<span class="muted">${esc(both(custom?'（沒有簽核節點）':'（最上層，沒有上一層）',custom?'(no approval nodes)':'(top of the chart — nobody above)'))}</span>`}
       </div>
-      <div class="muted" style="font-size:12.5px">${esc(both('目前原型的請假、加班、補打卡流程是：直屬主管 → 人資複核（兩層）；改成逐層簽核要等組織圖與規則確認。','Today the prototype’s leave, overtime and missed-punch flow is: direct manager → HR countersign (two steps); level-by-level approval waits for the org chart and rules.'))}</div>
+      ${custom?`<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap"><div><label style="font-size:12px;color:var(--ink-3)">${esc(both('加入簽核人','Add an approver'))}</label>
+        <select id="pathAdd">${addable.map(x=>`<option value="${x.id}">${x.id} ${esc(empName(x.id))} · ${esc(L(TITLES[x.title]))}</option>`).join('')}</select></div>
+        <button class="btn mini" data-pathadd ${addable.length?'':'disabled'}>${esc(both('加到最後一層','Add as the last level'))}</button></div>`:''}
+      <div class="muted" style="font-size:12.5px">${esc(both('目前原型的請假、加班、補打卡流程是：直屬主管 → 人資複核（兩層）；改成逐層簽核與自訂流程，要等組織圖與規則確認。這裡只是預覽，改動不會影響真正的簽核。','Today the prototype’s leave, overtime and missed-punch flow is: direct manager → HR countersign (two steps); level-by-level approval and custom flows wait for the org chart and rules. This is a preview; changes here do not affect real approvals.'))}</div>
     </div>
   </section>`;
 }
@@ -3784,6 +3853,14 @@ function viewFinPettyCash(){
 BINDERS['fin:proc']=function(){
   const sel=document.getElementById('pathEmp');
   if(sel) sel.onchange=e=>{ state.pathEmp=e.target.value; render(); };
+  const id=sel?sel.value:null, cp=state.customPath||(state.customPath={});
+  const cb=document.getElementById('pathCustom');
+  if(cb) cb.onchange=()=>{ if(cb.checked) cp[id]=approvalChain(id).map(x=>x.id); else delete cp[id]; render(); };
+  document.querySelectorAll('[data-pathdel]').forEach(b=>b.onclick=()=>{ cp[id]=(cp[id]||[]).filter(x=>x!==b.dataset.pathdel); render(); });
+  const add=document.querySelector('[data-pathadd]');
+  if(add) add.onclick=()=>{ const v=document.getElementById('pathAdd').value; if(v) (cp[id]=cp[id]||[]).push(v); render(); };
+  const rs=document.querySelector('[data-pathreset]');
+  if(rs) rs.onclick=()=>{ delete cp[id]; render(); };
 };
 BINDERS['fin:petty']=function(){};
 
@@ -3988,8 +4065,8 @@ function viewReports(){
    名稱取自使用者截圖的瀏覽器書籤；只有 104 的網址出現在截圖中，其餘網址待 IT 提供。 */
 const EXISTING_SYSTEMS = [
   {zh:'104 企業大師（差勤、薪資）', url:'https://pro.104.com.tw/', noteZh:'現行打卡、請假、加班與薪資作業；取代與否待 IT 評估'},
-  {zh:'仁寶 i 照護', url:'', noteZh:'居家服務個案、排班與服務紀錄；個案敏感資訊保留在原系統。仁寶不開放對外連接，入口網站只放按鈕連結（最新會議）'},
-  {zh:'衛福部長照系統', url:'', noteZh:'政府申報與個案資料'},
+  {zh:'居服個案管理系統（仁寶）', url:'', noteZh:'Portal 引導到仁寶的外部連結，正式名稱「居服個案管理系統」；居家服務個案與服務紀錄，個案敏感資訊留在仁寶。仁寶不開放對外連接，Portal 只放按鈕連結，之後以 Excel 匯入做彙總分析（10/7 會議）'},
+  {zh:'衛福部長照系統', url:'', noteZh:'政府申報與個案資料；仁寶可直接連接衛福部系統（10/7 會議）'},
   {zh:'誠馨雲端（NAS）', url:'', noteZh:'檔案儲存與備份'}
 ];
 function viewSettings(){
@@ -4020,9 +4097,9 @@ function viewSettings(){
       <div class="muted" style="font-size:12.5px;margin-top:8px">${esc(both('原型沒有真實登入，請用上方「身分」選單切換角色。','The prototype has no real login; use the Role selector to switch.'))}</div></div>
     </section>
     <section class="card">
-      <div class="card-h"><h2>${esc(both('員工編號規則','Employee-number rule'))}</h2><span class="en">${esc(both('最新會議；placeholder','Latest meeting; placeholder'))}</span></div>
-      <div class="card-b" style="padding-bottom:0"><div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('系統依這個規則自動帶入員工編號（在「人事系統 › 員工資料 › 新增員工」），減少人工輸入的錯誤。目前的前綴與位數只是 placeholder；客戶可以提供自訂格式，改動只影響之後新增的員工，現有員工的編號不變。',
-        'The system fills in employee numbers from this rule (HR › Employee records › Add employee) to avoid typing errors. The prefixes and length are placeholders; the client can supply a custom format. Changes only affect people added later; existing numbers stay.'))}</div></div>
+      <div class="card-h"><h2>${esc(both('員工編號規則','Employee-number rule'))}</h2><span class="en">${esc(both('10/7 會議；暫定','7 Oct meeting; provisional'))}</span></div>
+      <div class="card-b" style="padding-bottom:0"><div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('系統依這個規則自動帶入員工編號（在「人事系統 › 員工資料 › 新增員工」），減少人工輸入的錯誤。目前的前綴與位數只是暫定；需求端可以提供自訂格式，改動只影響之後新增的員工，現有員工的編號不變。',
+        'The system fills in employee numbers from this rule (HR › Employee records › Add employee) to avoid typing errors. The prefixes and length are provisional; the requester side can supply a custom format. Changes only affect people added later; existing numbers stay.'))}</div></div>
       <div class="tablewrap"><table>
         <thead><tr><th>${bi('公司','Company')}</th><th>${bi('前綴','Prefix')}</th><th>${bi('數字位數','Digits')}</th><th>${bi('下一個編號','Next number')}</th></tr></thead>
         <tbody>${ALL_UNITS.map(u=>{ const r=numRules()[u.id]; return `<tr><td><b>${esc(u.zh)}</b></td>
@@ -4675,34 +4752,56 @@ const CAPMARK={
   own:{zh:'限本公司',en:'Own facility',cls:'partial'}, assume:{zh:'預設不可（可調整）',en:'No by default (toggle)',cls:'partial'},
   self:{zh:'僅本人',en:'Self only',cls:'partial'}
 };
-/* 一般員工的子類別（最新會議：大類別為「一般員工」，子類別可自訂權限）。名稱與勾選都是示範，目前只存在這個畫面 */
-const SUBCAT_CAPS = () => CAPS.filter(c=>c.key && !c.derived && c.key!=='mgmt' && c.key!=='perms');
-function subcats(){ return state.subcats || (state.subcats=[{id:'S1', name:'司機', perms:{}}, {id:'S2', name:'約聘人員（contractor）', perms:{}}]); }
-const subPerm = (sc,key) => key in sc.perms ? sc.perms[key] : !!ROLES.employee.perms[key];
-function viewSubcats(){
-  const list=subcats(), caps=SUBCAT_CAPS();
-  return `<section class="card">
-    <div class="card-h"><h2>${esc(both('一般員工的子類別','Employee sub-categories'))}</h2><span class="en">${esc(both('最新會議；示範','Latest meeting; demo'))}</span></div>
-    <div class="card-b" style="padding-bottom:0"><div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('大類別是「一般員工」，底下可以再分子類別（例如司機、contractor），子類別各自勾選權限，沒勾選過的項目沿用「一般員工」。示範：勾選目前只存在這個畫面，還沒連到實際權限；子類別要設哪些，等客戶提供 Excel 後確定。',
-      'The big category is Employee; sub-categories (e.g. driver, contractor) can sit below it and tick their own permissions, inheriting Employee for anything not ticked. Demo: ticks live on this screen only and do not drive real permissions yet; the sub-categories to use are settled once the client sends the Excel.'))}</div></div>
-    <div class="tablewrap"><table class="subperm">
-      <thead><tr><th>${bi('權限項目','Capability')}</th><th style="text-align:center">${bi('一般員工（大類別）','Employee (parent)')}</th>
-        ${list.map(sc=>`<th style="text-align:center">${esc(sc.name)} <button class="btn ghost mini" data-subdel="${sc.id}" title="${esc(both('刪除子類別','Remove sub-category'))}">✕</button></th>`).join('')}</tr></thead>
-      <tbody>${caps.map(c=>`<tr><td>${bi(c.zh,c.en)}</td>
-        <td style="text-align:center">${ROLES.employee.perms[c.key]?`<span class="yes">${esc(both('可','Yes'))}</span>`:`<span class="no">${esc(both('不可','No'))}</span>`}</td>
-        ${list.map(sc=>`<td style="text-align:center"><input type="checkbox" data-subperm="${sc.id}|${c.key}" ${subPerm(sc,c.key)?'checked':''} aria-label="${esc(sc.name+' '+c.zh)}"></td>`).join('')}</tr>`).join('')}</tbody></table></div>
-    <form class="frm" id="subAddForm" style="padding:12px 14px"><div class="row">
-      <div><label>${esc(both('新增子類別','Add a sub-category'))}</label><input name="name" required maxlength="20" placeholder="${esc(both('例如：司機','e.g. driver'))}"></div>
-      <div><button class="btn mini" type="submit">${esc(both('新增','Add'))}</button></div></div></form>
-  </section>`;
+/* 職稱 × 項目名稱 權限對照（10/7 會議：操作權限改成「確認職稱即可執行項目名稱」）。
+   示範：只有四個示範人員對應的職稱（系統管理員、人資、日照主管、照服員）依現有「權限對照表」預先帶入，其餘留白等需求端填寫；
+   這張表目前不會改變實際的權限。 */
+const TITLE_ROLE = {it:'admin', hrd:'hr', dir:'manager', ca:'employee'};
+function permItems(){
+  return MODULES.flatMap(m=>m.tabs.length
+    ? m.tabs.map(t=>({key:m.id+':'+t.id, zh:m.zh+' › '+t.zh, en:m.en+' › '+t.en, mod:m}))
+    : [{key:m.id, zh:m.zh, en:m.en, mod:m}]);
 }
-function permWorksheetRows(){
-  const subs=subcats();
-  const head=['權限項目',...BUILT_ROLES.map(k=>ROLES[k].zh),...subs.map(sc=>'一般員工：'+sc.name)];
-  const rows=[['權限整理表（範本）'],['填寫方式：請在每一格填「可／不可／限本公司／僅本人」；需要增減的身分或子類別，請直接加欄或改欄名。這份表目前是示範用的 placeholder。'],[],head];
-  CAPS.forEach(c=>rows.push([c.zh,...BUILT_ROLES.map(k=>CAPMARK[capMark(c,k)].zh),...subs.map(sc=>c.key&&!c.derived&&c.key!=='mgmt'&&c.key!=='perms'?(subPerm(sc,c.key)?'可':'不可'):CAPMARK[capMark(c,'employee')].zh)]));
+function titleCell(it, tk){
+  const k=it.key+'|'+tk, tm=state.titleMatrix||(state.titleMatrix={});
+  if(k in tm) return tm[k];
+  const r=TITLE_ROLE[tk]; if(!r) return '';
+  return (!it.mod.perm || PERM_DEFAULTS[r][it.mod.perm]) ? '可' : '不可';
+}
+function titleWorksheetRows(){
+  const keys=Object.keys(TITLES), items=permItems();
+  const rows=[['職稱權限對照表（範本）'],['填寫方式：請在每一格填「可」或「不可」；空白代表還沒填。有四個職稱（系統管理員、人資、日照主管、照服員）先依目前的權限對照表帶入，請確認；其餘職稱請需求端／人事填寫，也可以直接加欄。這份表是示範，還沒有連到實際權限。'],[],['項目名稱',...keys.map(k=>TITLES[k].zh)]];
+  items.forEach(it=>rows.push([it.zh,...keys.map(k=>titleCell(it,k))]));
   return rows;
 }
+function viewTitleMatrix(){
+  const keys=Object.keys(TITLES), items=permItems(), edit=can('perms');
+  const filled=items.reduce((a,it)=>a+keys.filter(k=>titleCell(it,k)).length,0), total=items.length*keys.length;
+  return `<div class="grid">
+    <div class="note">${esc(both('10/7 會議把操作權限簡化為「確認職稱即可執行項目名稱」：每個職稱對哪些項目名稱（Portal 的頁面）可以操作，填一張矩陣就好，不必逐一對單一員工設定。需求端／人事要整理這張「職稱 × 項目名稱」權限對照矩陣表（10/7 待辦 2）。',
+      'The 7 Oct meeting simplified permissions to “confirm the title and the items follow”: one matrix says which items (portal pages) each title can use, with no per-employee setup. The requester side and HR compile this title × item matrix (7 Oct action 2).'))}</div>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('職稱 × 項目名稱','Title × item'))}</h2><span class="en">${esc(both(items.length+' 個項目 · '+keys.length+' 個職稱 · 已填 '+filled+' / '+total,items.length+' items · '+keys.length+' titles · '+filled+' / '+total+' filled'))}</span>
+        <div class="spacer" style="flex:1"></div>
+        <button class="btn mini" data-titlexlsx>${esc(both('下載職稱權限對照表（Excel）','Download the title permission worksheet (Excel)'))}</button></div>
+      <div class="tablewrap"><table class="titlematrix">
+        <thead><tr><th>${bi('項目名稱','Item')}</th>${keys.map(k=>`<th style="text-align:center">${bi(TITLES[k].zh,TITLES[k].en)}</th>`).join('')}</tr></thead>
+        <tbody>${items.map(it=>`<tr><td>${bi(it.zh,it.en)}</td>${keys.map(k=>{ const v=titleCell(it,k);
+          const label=v==='可'?`<span class="yes">${esc(both('可','Yes'))}</span>`:v==='不可'?`<span class="no">${esc(both('不可','No'))}</span>`:`<span class="muted">—</span>`;
+          return `<td style="text-align:center">${edit?`<button class="btn ghost mini" data-tcell="${it.key}|${k}" title="${esc(both('按一下切換：空白 → 可 → 不可','Click to cycle: blank → yes → no'))}">${label}</button>`:label}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
+      <div class="legend">${esc(both('示範：「系統管理員」「人資」「日照主管」「照服員」四欄先依目前的權限對照表帶入（它們對應四個示範身分）；其他職稱留白，等需求端填寫。'+(edit?'按格子可切換 可／不可／空白。':'只有系統管理員可以修改。')+'這張表還沒有連到實際權限；實際執行的仍是「權限對照表」的四個身分。',
+        'Demo: the System administrator, HR, Day care supervisor and Care attendant columns are pre-filled from today’s permission matrix (they map to the four demo roles); other titles stay blank for the requester side to fill in.'+(edit?' Click a cell to cycle yes / no / blank.':' Only the system admin can edit.')+' This matrix does not drive real permissions yet; what runs is still the four roles in the permission matrix.'))}</div>
+    </section>
+  </div>`;
+}
+BINDERS['perm:titles']=function(){
+  document.querySelectorAll('[data-tcell]').forEach(b=>b.onclick=()=>{
+    if(!can('perms')) return;
+    const [ik,tk]=b.dataset.tcell.split('|'), it=permItems().find(x=>x.key===ik), cur=titleCell(it,tk);
+    (state.titleMatrix||(state.titleMatrix={}))[ik+'|'+tk]=cur===''?'可':cur==='可'?'不可':'';
+    render(); });
+  const x=document.querySelector('[data-titlexlsx]');
+  if(x) x.onclick=()=>saveBlob(buildXlsx(titleWorksheetRows()), '職稱權限對照表_範本.xlsx');
+};
 function viewMatrix(){
   const admin=can('perms'), cols=admin?BUILT_ROLES:[state.role];
   const log=state.permLog||[];
@@ -4725,7 +4824,6 @@ function viewMatrix(){
       <div class="card-h"><h2>${esc(admin?both('權限對照表','Permission matrix'):both('我的權限','My permissions'))}</h2>
         <span class="en">${esc(both(cols.length+' 種身分 · '+CAPS.length+' 項權限',cols.length+' role(s) · '+CAPS.length+' capabilities'))}</span>
         <div class="spacer" style="flex:1"></div>
-        ${admin?`<button class="btn mini" data-permxlsx>${esc(both('下載權限整理表（Excel）','Download permission worksheet (Excel)'))}</button>`:''}
         ${admin&&changed?`<button class="btn ghost mini" data-permreset>${esc(both('還原預設','Restore defaults'))}</button>`:''}</div>
       <div class="tablewrap"><table class="permtable">
         <thead><tr><th>${bi('權限項目','Capability')}</th>
@@ -4738,7 +4836,6 @@ function viewMatrix(){
         '「限本公司」= 僅限使用者所屬公司；「僅本人」= 只看得到自己的資料；「預設不可（可調整）」= 由上方假設開關控制。資料範圍列由身分決定，不在此調整。',
         '"Own company" = limited to the user’s own site; "Self only" = the user’s own data; "No by default (toggle)" = controlled by the Assumption switch. Data-scope rows follow the role and are not edited here.'))}</div>
     </section>
-    ${admin?viewSubcats():''}
     ${admin&&log.length?`<section class="card">
       <div class="card-h"><h2>${esc(both('權限異動紀錄','Permission change log'))}</h2></div>
       <div class="tablewrap"><table><thead><tr><th>${bi('時間','Time')}</th><th>${bi('身分','Role')}</th><th>${bi('權限','Capability')}</th><th>${bi('異動','Change')}</th></tr></thead>
@@ -4771,15 +4868,6 @@ BINDERS['perm:matrix']=function(){
     toast(both(ROLES[k].zh+'：'+cap.zh+(on?' 已開啟':' 已移除'), ROLES[k].en+': '+cap.en+(on?' granted':' removed')));
     render();
   });
-  const x=document.querySelector('[data-permxlsx]');
-  if(x) x.onclick=()=>saveBlob(buildXlsx(permWorksheetRows()), '權限整理表_範本.xlsx');
-  document.querySelectorAll('[data-subperm]').forEach(cb=>cb.onchange=()=>{
-    const [id,key]=cb.dataset.subperm.split('|'), sc=subcats().find(z=>z.id===id); if(!sc||!can('perms')) return;
-    sc.perms[key]=cb.checked; toast(both(sc.name+'：已更新（示範）',sc.name+': updated (demo)')); });
-  document.querySelectorAll('[data-subdel]').forEach(b=>b.onclick=()=>{ state.subcats=subcats().filter(z=>z.id!==b.dataset.subdel); render(); });
-  const af=document.getElementById('subAddForm');
-  if(af) af.onsubmit=e=>{ e.preventDefault(); const n=new FormData(af).get('name').toString().trim(); if(!n) return;
-    const list=subcats(); list.push({id:'S'+(Date.now()%100000), name:n, perms:{}}); render(); };
   const r=document.querySelector('[data-permreset]');
   if(r) r.onclick=()=>{
     BUILT_ROLES.forEach(k=>Object.assign(ROLES[k].perms, PERM_DEFAULTS[k]));
@@ -4877,7 +4965,8 @@ const TOURS = [
  ]},
  {id:'admin', zh:'系統管理員：權限與既有系統連結', role:'admin', steps:[
    {go:{module:'perm',tab:'matrix'}, target:'.permtable', zh:'「權限與範圍 › 權限對照表」勾選或取消各身分的權限，立即生效（只在本次瀏覽）。'},
-   {go:{module:'set',tab:null}, target:'#view table', zh:'「系統設定」有既有系統連結（104、仁寶等）與帳號原則。過渡期間以連結導向現有系統。'}
+   {go:{tab:'titles'}, target:'.titlematrix', zh:'「職稱對照」是 10/7 會議的新做法：每個職稱對哪些項目名稱可以操作，填一張矩陣就好，不必逐一對單一員工設定。按格子切換可／不可，也能下載 Excel 範本給需求端填寫。'},
+   {go:{module:'set',tab:null}, target:'#view table', zh:'「系統設定」有既有系統連結（104、居服個案管理系統等）、帳號原則與員工編號規則。過渡期間以連結導向現有系統。'}
  ]}
 ];
 function startTour(id){
