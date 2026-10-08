@@ -981,8 +981,8 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(v).toContainText('同一場會議的錄音摘要');
     await expect(v).toContainText('用字已確認');
     await expect(v).toContainText('正確寫法是「意見反映」');
-    await expect(v.locator('.note.q')).toContainText('製造');
-    await expect(v.locator('.note.q')).not.toContainText('一體式系統');
+    await expect(v).toContainText('「製造」是「建立」的意思');
+    await expect(v.locator('.note.q')).toHaveCount(0);                // nothing left to confirm
   });
 
   test('decisions and follow-ups carry the 7 Oct items', async ({ page }) => {
@@ -1039,7 +1039,7 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(page.locator('#view')).toContainText('職稱對照');
     await go(page, 'perm', 'titles');
     const tm = page.locator('#view table.titlematrix');
-    await expect(tm.locator('thead th')).toHaveCount(15);            // item column + 14 titles
+    await expect(tm.locator('thead th')).toHaveCount(17);            // item column + 14 titles + 2 sub-categories
     expect(await tm.locator('tbody tr').count()).toBeGreaterThan(30);
     // 照服員 (the employee persona) cannot open the HR module; 人資 can; other titles are blank
     const row = name => tm.locator('tbody tr', { hasText: name }).first();
@@ -1064,10 +1064,30 @@ test.describe('Updates from the 7 Oct meeting', () => {
     const buf = fs.readFileSync(await dl.path());
     expect(buf.subarray(0, 2).toString()).toBe('PK');
     const text = buf.toString('utf8');
-    for (const t of ['職稱權限對照表（範本）', '項目名稱', '居家服務督導', '日照主管', '人事系統 › 員工資料', '私人秘書 › 首頁']) expect(text).toContain(t);
+    for (const t of ['職稱權限對照表（範本）', '項目名稱', '居家服務督導', '日照主管', '人事系統 › 員工資料', '私人秘書 › 首頁', '一般員工：司機', '一般員工：約聘人員（contractor）']) expect(text).toContain(t);
   });
 
-  test('the title matrix is read-only for HR, and the old sub-category demo is gone', async ({ page }) => {
+  test('the admin creates a sub-category under a role category and it becomes a column', async ({ page }) => {
+    await go(page, 'perm', 'titles');
+    const heads = page.locator('table.titlematrix thead th');
+    await expect(heads).toHaveCount(17);
+    await page.selectOption('#subAddForm select[name="parent"]', 'hr');
+    await page.fill('#subAddForm input[name="name"]', '實習生');
+    await page.click('#subAddForm button[type="submit"]');
+    await expect(heads).toHaveCount(18);
+    await expect(heads.last()).toContainText('人資：實習生');
+    // its cells start blank and the admin can set them
+    const idx = 17;
+    const cell = page.locator('table.titlematrix tbody tr', { hasText: '人事系統 › 員工資料' }).first().locator('td').nth(idx);
+    await expect(cell).toContainText('—');
+    await cell.locator('button').click();
+    await expect(page.locator('table.titlematrix tbody tr', { hasText: '人事系統 › 員工資料' }).first().locator('td').nth(idx)).toContainText('可');
+    // it can be removed again
+    await heads.last().locator('[data-subdel]').click();
+    await expect(heads).toHaveCount(17);
+  });
+
+  test('the title matrix and sub-categories are read-only for HR', async ({ page }) => {
     await setRole(page, 'hr');
     await go(page, 'perm', 'titles');
     await expect(page.locator('[data-tcell]')).toHaveCount(0);
@@ -1075,7 +1095,8 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(page.locator('#view')).toContainText('只有系統管理員可以修改');
     await setRole(page, 'admin');
     await go(page, 'perm', 'matrix');
-    await expect(page.locator('#view')).not.toContainText('一般員工的子類別');
+    await expect(page.locator('[data-subdel]')).toHaveCount(0);
+    await expect(page.locator('#subAddForm')).toHaveCount(0);
   });
 
   test('approval path follows the org chart and can be turned into a custom flow', async ({ page }) => {
