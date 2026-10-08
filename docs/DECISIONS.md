@@ -26,7 +26,7 @@ Format: `YYYY-MM-DD — decision — why / who decided`. Keep one line each.
 - 2026-10-07 — Mobile clock-in already works in the portal; only cloud storage is missing, and its purchase spec, capacity and budget need assessing (the recording summary also mentions an API token).
 - 2026-10-07 — Form approval follows the company org chart automatically; a new 「自訂流程」 lets managers adjust approval nodes by hand. Levels follow the administrative org chart and the amount can change the number of levels. Leave, trip and comp-time forms look alike and deduct from leave balances automatically.
 - 2026-10-07 — Permissions are simplified to “confirm the title and the items follow” (title × item matrix), with no per-employee setup. The four current roles are provisional.
-- 2026-10 — Wording confirmed by the owner for the recording summary: 誠興 / 第二誠心 → 誠馨 / 誠芯, 青玉反映 → 意見反映, 簽合 → 簽核, 一體式系統 → 仁寶.
+- 2026-10 — Wording confirmed by the owner for the recording summary: 誠興 / 第二誠心 → 誠馨 / 誠芯, 青玉反映 → 意見反映, 簽合 → 簽核, 一體式系統 → 仁寶, 製造 → “create a sub-category” (the system admin creates sub-categories under a role category such as Employee; not a job title).
 - 2026-10-07 — Settle the overall structure (org chart, permissions, flows) to 80–90% before UAT (recording summary).
 - 2026-09-20 — Meeting decisions (one account per person by employee number; managers and shared admin can switch company; HR maintains data, employees only view; monthly / hourly / revenue-share pay; link out to existing systems) are listed on 原型說明 › 範圍與進展 — 9/20 meeting minutes.
 
@@ -51,7 +51,7 @@ Format: `YYYY-MM-DD — decision — why / who decided`. Keep one line each.
 18. **Org chart, approval-path rules, form fields** — due from the requester side; levels and amount thresholds for approvals depend on them. Feedback-form approval details are to be uploaded after the meeting.
 19. **Group-wide employee-number principle** — HR/IT to define it and inventory existing numbers (7 Oct action 3); the portal's rule (Settings › Employee-number rule) is provisional.
 20. **Mobile clock-in** — purchase spec, capacity and budget of the cloud storage (and whether an API token is also needed).
-21. **Wording in the recording summary** — still to confirm: the sub-category example 製造 (no such title in the prototype).
+21. ~~**Wording in the recording summary**~~ — all confirmed; 「製造」 means “create”: the system admin can create sub-categories under a role category (e.g. under Employee).
 22. **仁寶 Excel import layout** — IT tests the layout and reports at the next meeting (7 Oct action 5); until then the portal shows no demo data for it.
 23. **Attendance scope** — IT assesses the scope, cost and rollout of attendance in the portal after the 104 inventory (7 Oct action 4).
 

@@ -1070,8 +1070,8 @@ const MEETING_DECISIONS = [
    whereZh:'私人秘書 › 首頁打卡（網頁版，手機瀏覽器可開）；文件管理 › 系統說明', whereEn:'My Desk › Home clock-in (web page, opens in a phone browser); Documents › System info', st:'part'},
   {src:'10/7', zh:'簽核流程依公司組織圖自動關聯、帶入關卡；新增「自訂流程」，管理者可手動調整簽核節點；金額大小可影響簽核層數', en:'Approvals follow the org chart automatically; a new custom flow lets managers adjust approval nodes by hand; the amount can change the number of levels',
    whereZh:'線上申請 › 簽核路徑預覽（含自訂流程示範）；層級與金額規則待需求端提供', whereEn:'Online requests › Approval path preview (with a custom-flow demo); level and amount rules are due from the requester side', st:'part'},
-  {src:'10/7', zh:'操作權限簡化為「確認職稱即可執行項目名稱」，不用逐一對單一員工設定', en:'Permissions are simplified to “confirm the title and the items follow”, with no per-employee setup',
-   whereZh:'權限與範圍 › 職稱對照（職稱 × 項目名稱）；實際執行的仍是「權限對照表」的四個身分', whereEn:'Roles & scope › Title matrix (title × item); what actually runs is still the four roles in the permission matrix', st:'part'},
+  {src:'10/7', zh:'操作權限簡化為「確認職稱即可執行項目名稱」，不用逐一對單一員工設定；系統管理員可在角色類別（如一般員工）底下建立子類別，各自設定權限', en:'Permissions are simplified to “confirm the title and the items follow”, with no per-employee setup',
+   whereZh:'權限與範圍 › 職稱對照（職稱 × 項目名稱，含「建立子類別」）；實際執行的仍是「權限對照表」的四個身分', whereEn:'Roles & scope › Title matrix (title × item); what actually runs is still the four roles in the permission matrix', st:'part'},
   {src:'10/7', zh:'需求端整理各「職稱」與 Portal 各「項目名稱」的權限對照矩陣表（Excel）；專案負責人依此製作正式權限表', en:'The requester side fills in the title × item permission matrix (Excel); the project lead builds the formal table from it',
    whereZh:'職稱對照 › 下載職稱權限對照表（Excel 範本）', whereEn:'Title matrix › Download the title permission worksheet (Excel template)', st:'part'},
   {src:'10/7', zh:'目前的四個身分（系統管理員、人資、管理者、一般員工）是暫定，需確認是否正確、要不要增減', en:'The four roles are provisional and need confirming or changing',
@@ -3427,7 +3427,7 @@ const MEETING_3RD = {
 /* 同一場會議的錄音摘要：正式紀錄沒有寫、但摘要有提到的項目 */
 const MEETING_3RD_SUMMARY = [
   '目前的四個身分（系統管理員、人資、管理者、一般員工）是暫定，需求端要確認是否正確、需不需要增減。',
-  '系統支援依角色勾選權限項目（方框打勾）；一般員工下可設子類別（如司機、contractor、製造），子類別可自訂權限。這一點在正式紀錄裡改成以「職稱」設定。',
+  '系統支援依角色勾選權限項目（方框打勾）；系統管理員可以在角色類別（例如一般員工）底下建立子類別（如司機、contractor），因為同一類別裡有很多種員工；子類別可自訂權限。正式紀錄裡權限改成以「職稱」設定。',
   '請需求端整理所有角色與對應權限項目，以 Excel 提供；專案負責人依此製作正式權限表格。',
   '所有申請走統一表單格式，按組織架構逐層簽核；簽核層級依行政組織圖（不是政府組織圖）決定，金額大小可影響簽核層級數；流程為自訂，需先定義組織架構與各層級規則。',
   '請假、出差、補休等單據格式相近，數字自動扣抵假別餘額。需求端要提供組織架構圖、簽核路徑規則、表單欄位設計。',
@@ -3440,14 +3440,13 @@ const MEETING_3RD_SUMMARY = [
 ];
 /* 錄音摘要裡疑似語音轉文字誤差的用字 */
 const LATEST_WORDING_OK = [
+  ['一般員工下可設 subcategory（如製造、contractor、司機）','「製造」是「建立」的意思：系統管理員可以在角色類別底下建立子類別（例如一般員工底下的司機、contractor）；不是職稱'],
   ['A = 誠興、B = 第二誠心、C = 牛津','A 誠馨、B 誠芯、C 牛津'],
   ['青玉反映','意見反映'],
   ['簽合','簽核'],
   ['一體式系統','仁寶']
 ];
-const LATEST_WORDING = [
-  ['一般員工子類別「製造」','原文保留；原型現有職稱沒有「製造」，請確認要不要設']
-];
+const LATEST_WORDING = [];
 const MEETING_930 = [
   {h:'系統架構與功能更新', items:['網站自上次會議後已更新，新增模組：文件管理、服務管理、財務採購（表單申請）。','新增出勤管理、工時記錄（打卡、補卡、請假、加班，以半小時為單位）。','新增報表匯出（CSV 或 Excel）。','三個據點員工統一使用同一個 centralized 系統。','員工個別資訊（護理師等）目前尚未建立獨立角色，待新增。']},
   {h:'員工資料與權限設計', items:['權限角色目前分三類：系統管理員、經理、院長，待新增「員工個別」角色。','員工個別可查看：自己的打卡記錄、請假申請與審核狀態、特休餘額。','管理層與員工看到的是完全不同的系統介面（非僅少幾個功能）。']},
@@ -3494,9 +3493,9 @@ function viewDocMeeting(){
       <div class="card-h"><h2>${esc(both('同一場會議的錄音摘要','Recording summary of the same meeting'))}</h2><span class="en">${esc(both('正式紀錄沒有寫的項目','Items not in the official minutes'))}</span></div>
       <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.75">${MEETING_3RD_SUMMARY.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
         <div class="note" style="margin-top:12px"><b>${esc(both('用字已確認','Wording confirmed'))}</b>
-          <ul style="margin:6px 0 0;padding-left:20px;line-height:1.7">${LATEST_WORDING_OK.map(w=>`<li>${esc('摘要寫「'+w[0]+'」')}：${esc('正確寫法是「'+w[1]+'」')}</li>`).join('')}</ul></div>
-        <div class="note q" style="margin-top:12px"><b>${esc(both('摘要用字待確認','Wording to confirm'))}</b>
-          <ul style="margin:6px 0 0;padding-left:20px;line-height:1.7">${LATEST_WORDING.map(w=>`<li>${esc(w[0])}：${esc(w[1])}</li>`).join('')}</ul></div></div>
+          <ul style="margin:6px 0 0;padding-left:20px;line-height:1.7">${LATEST_WORDING_OK.map(w=>`<li>${esc('摘要寫「'+w[0]+'」')}：${esc((w[1].length>12?'':'正確寫法是「')+w[1]+(w[1].length>12?'':'」'))}</li>`).join('')}</ul></div>
+        ${LATEST_WORDING.length?`<div class="note q" style="margin-top:12px"><b>${esc(both('摘要用字待確認','Wording to confirm'))}</b>
+          <ul style="margin:6px 0 0;padding-left:20px;line-height:1.7">${LATEST_WORDING.map(w=>`<li>${esc(w[0])}：${esc(w[1])}</li>`).join('')}</ul></div>`:''}</div>
     </section>
     <section class="card">
       <div class="card-h"><h2>9/30 會議</h2><span class="en">${esc(both('9/30（三）11:30','Wed 30 Sept, 11:30'))}</span></div>
@@ -4767,30 +4766,45 @@ function titleCell(it, tk){
   const r=TITLE_ROLE[tk]; if(!r) return '';
   return (!it.mod.perm || PERM_DEFAULTS[r][it.mod.perm]) ? '可' : '不可';
 }
+/* 系統管理員可以在角色類別（例如「一般員工」）底下「製造」（建立）子類別，子類別各自設定權限。
+   欄位 = 14 個職稱 + 子類別；子類別的格子預設留白，沒有預先帶入。示範：目前只存在這個畫面 */
+function subcats(){ return state.subcats || (state.subcats=[{id:'S1', parent:'employee', name:'司機'}, {id:'S2', parent:'employee', name:'約聘人員（contractor）'}]); }
+function matrixCols(){
+  return [...Object.keys(TITLES).map(k=>({k, zh:TITLES[k].zh, en:TITLES[k].en})),
+    ...subcats().map(sc=>({k:'sub:'+sc.id, sc, zh:ROLES[sc.parent].zh+'：'+sc.name, en:ROLES[sc.parent].en+': '+sc.name}))];
+}
 function titleWorksheetRows(){
-  const keys=Object.keys(TITLES), items=permItems();
-  const rows=[['職稱權限對照表（範本）'],['填寫方式：請在每一格填「可」或「不可」；空白代表還沒填。有四個職稱（系統管理員、人資、日照主管、照服員）先依目前的權限對照表帶入，請確認；其餘職稱請需求端／人事填寫，也可以直接加欄。這份表是示範，還沒有連到實際權限。'],[],['項目名稱',...keys.map(k=>TITLES[k].zh)]];
-  items.forEach(it=>rows.push([it.zh,...keys.map(k=>titleCell(it,k))]));
+  const cols=matrixCols(), items=permItems();
+  const rows=[['職稱權限對照表（範本）'],['填寫方式：請在每一格填「可」或「不可」；空白代表還沒填。有四個職稱（系統管理員、人資、日照主管、照服員）先依目前的權限對照表帶入，請確認；其餘職稱請需求端／人事填寫，也可以直接加欄。最後幾欄是系統管理員在角色類別底下建立的子類別（例如一般員工：司機）。這份表是示範，還沒有連到實際權限。'],[],['項目名稱',...cols.map(c=>c.zh)]];
+  items.forEach(it=>rows.push([it.zh,...cols.map(c=>titleCell(it,c.k))]));
   return rows;
 }
 function viewTitleMatrix(){
-  const keys=Object.keys(TITLES), items=permItems(), edit=can('perms');
-  const filled=items.reduce((a,it)=>a+keys.filter(k=>titleCell(it,k)).length,0), total=items.length*keys.length;
+  const cols=matrixCols(), items=permItems(), edit=can('perms');
+  const filled=items.reduce((a,it)=>a+cols.filter(c=>titleCell(it,c.k)).length,0), total=items.length*cols.length;
   return `<div class="grid">
-    <div class="note">${esc(both('10/7 會議把操作權限簡化為「確認職稱即可執行項目名稱」：每個職稱對哪些項目名稱（Portal 的頁面）可以操作，填一張矩陣就好，不必逐一對單一員工設定。需求端／人事要整理這張「職稱 × 項目名稱」權限對照矩陣表（10/7 待辦 2）。',
-      'The 7 Oct meeting simplified permissions to “confirm the title and the items follow”: one matrix says which items (portal pages) each title can use, with no per-employee setup. The requester side and HR compile this title × item matrix (7 Oct action 2).'))}</div>
+    <div class="note">${esc(both('10/7 會議把操作權限簡化為「確認職稱即可執行項目名稱」：每個職稱對哪些項目名稱（Portal 的頁面）可以操作，填一張矩陣就好，不必逐一對單一員工設定。需求端／人事要整理這張「職稱 × 項目名稱」權限對照矩陣表（10/7 待辦 2）。另外，系統管理員可以在角色類別（例如「一般員工」）底下建立子類別，同一類別裡有很多種員工，各自設定權限。',
+      'The 7 Oct meeting simplified permissions to “confirm the title and the items follow”: one matrix says which items (portal pages) each title can use, with no per-employee setup. The requester side and HR compile this title × item matrix (7 Oct action 2). The system admin can also create sub-categories under a role category (e.g. Employee), since one category holds many kinds of staff, each with its own permissions.'))}</div>
     <section class="card">
-      <div class="card-h"><h2>${esc(both('職稱 × 項目名稱','Title × item'))}</h2><span class="en">${esc(both(items.length+' 個項目 · '+keys.length+' 個職稱 · 已填 '+filled+' / '+total,items.length+' items · '+keys.length+' titles · '+filled+' / '+total+' filled'))}</span>
+      <div class="card-h"><h2>${esc(both('職稱 × 項目名稱','Title × item'))}</h2><span class="en">${esc(both(items.length+' 個項目 · '+cols.length+' 欄 · 已填 '+filled+' / '+total,items.length+' items · '+cols.length+' columns · '+filled+' / '+total+' filled'))}</span>
         <div class="spacer" style="flex:1"></div>
         <button class="btn mini" data-titlexlsx>${esc(both('下載職稱權限對照表（Excel）','Download the title permission worksheet (Excel)'))}</button></div>
       <div class="tablewrap"><table class="titlematrix">
-        <thead><tr><th>${bi('項目名稱','Item')}</th>${keys.map(k=>`<th style="text-align:center">${bi(TITLES[k].zh,TITLES[k].en)}</th>`).join('')}</tr></thead>
-        <tbody>${items.map(it=>`<tr><td>${bi(it.zh,it.en)}</td>${keys.map(k=>{ const v=titleCell(it,k);
+        <thead><tr><th>${bi('項目名稱','Item')}</th>${cols.map(c=>`<th style="text-align:center">${bi(c.zh,c.en)}${edit&&c.sc?` <button class="btn ghost mini" data-subdel="${c.sc.id}" title="${esc(both('刪除子類別','Remove sub-category'))}">✕</button>`:''}</th>`).join('')}</tr></thead>
+        <tbody>${items.map(it=>`<tr><td>${bi(it.zh,it.en)}</td>${cols.map(c=>{ const v=titleCell(it,c.k);
           const label=v==='可'?`<span class="yes">${esc(both('可','Yes'))}</span>`:v==='不可'?`<span class="no">${esc(both('不可','No'))}</span>`:`<span class="muted">—</span>`;
-          return `<td style="text-align:center">${edit?`<button class="btn ghost mini" data-tcell="${it.key}|${k}" title="${esc(both('按一下切換：空白 → 可 → 不可','Click to cycle: blank → yes → no'))}">${label}</button>`:label}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
-      <div class="legend">${esc(both('示範：「系統管理員」「人資」「日照主管」「照服員」四欄先依目前的權限對照表帶入（它們對應四個示範身分）；其他職稱留白，等需求端填寫。'+(edit?'按格子可切換 可／不可／空白。':'只有系統管理員可以修改。')+'這張表還沒有連到實際權限；實際執行的仍是「權限對照表」的四個身分。',
-        'Demo: the System administrator, HR, Day care supervisor and Care attendant columns are pre-filled from today’s permission matrix (they map to the four demo roles); other titles stay blank for the requester side to fill in.'+(edit?' Click a cell to cycle yes / no / blank.':' Only the system admin can edit.')+' This matrix does not drive real permissions yet; what runs is still the four roles in the permission matrix.'))}</div>
+          return `<td style="text-align:center">${edit?`<button class="btn ghost mini" data-tcell="${it.key}|${c.k}" title="${esc(both('按一下切換：空白 → 可 → 不可','Click to cycle: blank → yes → no'))}">${label}</button>`:label}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
+      <div class="legend">${esc(both('示範：「系統管理員」「人資」「日照主管」「照服員」四欄先依目前的權限對照表帶入（它們對應四個示範身分）；其他職稱和子類別留白，等需求端填寫。'+(edit?'按格子可切換 可／不可／空白。':'只有系統管理員可以修改。')+'這張表還沒有連到實際權限；實際執行的仍是「權限對照表」的四個身分。',
+        'Demo: the System administrator, HR, Day care supervisor and Care attendant columns are pre-filled from today’s permission matrix (they map to the four demo roles); other titles and sub-categories stay blank for the requester side to fill in.'+(edit?' Click a cell to cycle yes / no / blank.':' Only the system admin can edit.')+' This matrix does not drive real permissions yet; what runs is still the four roles in the permission matrix.'))}</div>
     </section>
+    ${edit?`<section class="card">
+      <div class="card-h"><h2>${esc(both('建立子類別','Create a sub-category'))}</h2><span class="en">${esc(both('10/7 錄音摘要；示範','7 Oct recording summary; demo'))}</span></div>
+      <form class="frm" id="subAddForm" style="padding:12px 14px"><div class="muted" style="font-size:12.5px;line-height:1.7;margin-bottom:10px">${esc(both('在角色類別底下建立子類別：例如「一般員工」底下有很多種員工（司機、約聘人員 contractor 等），建立後會在上面的矩陣多一欄，可以各自設定權限。',
+        'Create a sub-category under a role category: e.g. Employee holds many kinds of staff (driver, contractor…). It adds a column to the matrix above with its own permissions.'))}</div>
+        <div class="row"><div><label>${esc(both('角色類別','Role category'))}</label><select name="parent">${BUILT_ROLES.map(k=>`<option value="${k}" ${k==='employee'?'selected':''}>${esc(both(ROLES[k].zh,ROLES[k].en))}</option>`).join('')}</select></div>
+          <div><label>${esc(both('子類別名稱','Sub-category name'))}</label><input name="name" required maxlength="20" placeholder="${esc(both('例如：實習生','e.g. intern'))}"></div>
+          <div><button class="btn mini" type="submit">${esc(both('建立','Create'))}</button></div></div></form>
+    </section>`:''}
   </div>`;
 }
 BINDERS['perm:titles']=function(){
@@ -4799,6 +4813,11 @@ BINDERS['perm:titles']=function(){
     const [ik,tk]=b.dataset.tcell.split('|'), it=permItems().find(x=>x.key===ik), cur=titleCell(it,tk);
     (state.titleMatrix||(state.titleMatrix={}))[ik+'|'+tk]=cur===''?'可':cur==='可'?'不可':'';
     render(); });
+  document.querySelectorAll('[data-subdel]').forEach(b=>b.onclick=()=>{ state.subcats=subcats().filter(z=>z.id!==b.dataset.subdel); render(); });
+  const af=document.getElementById('subAddForm');
+  if(af) af.onsubmit=e=>{ e.preventDefault(); const fd=new FormData(af), n=fd.get('name').toString().trim(); if(!n) return;
+    subcats().push({id:'S'+(Date.now()%100000), parent:fd.get('parent'), name:n});
+    toast(both('已建立子類別：'+ROLES[fd.get('parent')].zh+'：'+n,'Sub-category created: '+ROLES[fd.get('parent')].en+': '+n)); render(); };
   const x=document.querySelector('[data-titlexlsx]');
   if(x) x.onclick=()=>saveBlob(buildXlsx(titleWorksheetRows()), '職稱權限對照表_範本.xlsx');
 };
