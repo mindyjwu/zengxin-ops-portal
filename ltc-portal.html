@@ -1617,6 +1617,8 @@ const LICENSES = {
   dir:[{zh:'長照服務人員認證證明（小卡）',renew:6,ce:120}],
   drv:[{zh:'職業駕駛執照',renew:3}]
 };
+/* 使用者提供的真實姓名（老闆、管理者、系統管理員）；其餘人員為示範姓名 */
+const REAL_NAMES={H001:'吳培滋 Steven Wu', H002:'黃千育 Drew', H005:'劉思慧'};
 const SURN='陳林黃張李王吳劉蔡楊許鄭謝郭洪曾邱廖賴徐', GIVEN=['怡君','雅婷','志明','淑芬','家豪','佩珊','俊傑','美玲','冠宇','欣怡','建宏','宜蓁','承翰','思妤','宗翰','筱涵','文雄','惠如','柏宇','詩涵'];
 const addYears = (d,n) => { const x=new Date(d); x.setFullYear(x.getFullYear()+n); return ymd(x); };
 const daysUntil = d => Math.round((new Date(d)-TODAY)/86400000);
@@ -1660,7 +1662,7 @@ function empRecord(id){
     {name:'新進員工體檢報告.pdf', cat:'health', date:p.hired}
   ].concat(lic.map(l=>({name:l.name+'.pdf', cat:'license', date:l.issued})));
   state.empRecords[id] = {
-    basic:{ name:SURN[Math.floor(r('s')*SURN.length)]+GIVEN[Math.floor(r('g')*GIVEN.length)], idNo:'J2'+String(20000000+Math.floor(r('id')*79999999)),
+    basic:{ name:REAL_NAMES[id]||SURN[Math.floor(r('s')*SURN.length)]+GIVEN[Math.floor(r('g')*GIVEN.length)], idNo:'J2'+String(20000000+Math.floor(r('id')*79999999)),
       birth:(1968+Math.floor(r('b')*32))+'-'+String(1+Math.floor(r('bm')*12)).padStart(2,'0')+'-'+String(1+Math.floor(r('bd')*28)).padStart(2,'0'),
       mobile:p.mobile, phone:'03-5'+String(100000+Math.floor(r('ph')*899999)), email:id.toLowerCase()+'@zengxin-daycare.example',
       address:'新竹縣'+['竹北市光明六路','竹東鎮東林路','竹北市縣政九路','竹東鎮長春路'][n%4]+(10+n%190)+'號',
