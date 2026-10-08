@@ -1430,4 +1430,14 @@ test.describe('CSV exports', () => {
     const { lines } = await download(page, 'leave');
     expect(lines.find(l => l.startsWith('L241,'))).toContain('待人資複核');
   });
+
+  test('org chart shows the real names for the owner, manager and system administrator', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'ann', 'org');
+    const view = page.locator('#view');
+    await expect(view).toContainText('吳培滋 Steven Wu');
+    await expect(view).toContainText('黃千育 Drew');
+    await expect(view).toContainText('劉思慧');
+    await expect(view).not.toContainText('徐宗翰');
+  });
 });
