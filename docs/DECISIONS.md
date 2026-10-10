@@ -60,3 +60,10 @@ Format: `YYYY-MM-DD — decision — why / who decided`. Keep one line each.
 - [ ] Port the fictional-operator public build (`make-public.py`) from the archived predecessor, then publish only that build.
 - [ ] Fix/confirm the GitHub Pages deploy workflow (failures were reported around Sept 22).
 - [ ] Export existing Word deliverables from past chats into `docs/deliverables/`.
+
+## 權限連動（使用者指定以 Excel 為準）
+- 四個身分各對應 Excel 的一欄：系統管理員→系統管理員、人資→人資主管、管理者→管理者、一般員工→一般員工：照服員。看得到哪些頁面由該欄決定（可／可檢視／可編輯 = 看得到；不可／空白 = 看不到）。
+- 系統管理員永遠保有「權限與範圍」，避免鎖死自己。
+- 資料範圍（本公司／全部）、薪資欄位、簽核仍照原「權限對照表」；Excel 沒有規定這些。
+- 原型的「管理者」身分原本標示為「管理者（日照主管）」，Excel 把「管理者」和「日照主管」分成兩欄；目前對應「管理者」欄，「日照主管」欄尚無身分可切換。待確認。
+- 其餘職稱欄位（老闆、日照主管、居服主管等）還沒有可切換的身分。

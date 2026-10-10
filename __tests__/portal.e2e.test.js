@@ -177,7 +177,6 @@ test.describe('Settings & permission matrix', () => {
     await expect(page.locator('#view')).toContainText('權限異動紀錄');
 
     await setRole(page, 'manager');
-    await expect(page.locator('[data-mod="pay"]')).toBeVisible();
     await go(page, 'hr', 'emp');
     await expect(empRows(page).first()).toContainText('NT$');
 
@@ -186,7 +185,8 @@ test.describe('Settings & permission matrix', () => {
     await page.click('[data-permreset]');
     await expect(page.locator('[data-perm="manager|salary"]')).not.toBeChecked();
     await setRole(page, 'manager');
-    await expect(page.locator('[data-mod="pay"]')).toHaveCount(0);
+    await go(page, 'hr', 'emp');
+    await expect(page.locator('#view tbody')).not.toContainText('NT$');
   });
 });
 
@@ -201,9 +201,42 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
     await expect(page.locator('[data-mod="desk"]')).toHaveAttribute('aria-current', 'true');
     await expect(page.locator('[data-tab="home"]')).toHaveAttribute('aria-selected', 'true');
     const mods = await page.locator('[data-mod]').evaluateAll(n => n.map(x => x.dataset.mod));
-    expect(mods).toEqual(['arch', 'desk', 'ann']);
+    expect(mods).toEqual(['desk', 'ann', 'fin']);   // 職稱對照 Excel：一般員工：照服員 只開放私人秘書、公告欄、線上申請
     await expect(page.locator('#assumeBtn')).toHaveCount(0);
     await expect(page.locator('.pagehead .chip.acc')).toContainText('照服員');
+  });
+
+  test('page access follows the title matrix Excel and updates when the admin edits a cell', async ({ page }) => {
+    const mods = async () => page.locator('[data-mod]').evaluateAll(n => n.map(x => x.dataset.mod));
+    // admin (系統管理員): everything except payroll
+    expect(await mods()).toEqual(['arch', 'desk', 'ann', 'hr', 'perm', 'doc', 'fin', 'svc', 'rpt', 'set']);
+    // HR (人資主管): no case-system pages, no system settings, payroll yes
+    await setRole(page, 'hr');
+    await expect(page.locator('[data-mod="pay"]')).toBeVisible();
+    await expect(page.locator('[data-mod="set"]')).toHaveCount(0);
+    await go(page, 'svc');
+    await expect(page.locator('[data-tab="case"]')).toHaveCount(0);
+    await expect(page.locator('[data-tab="assess"]')).toBeVisible();
+    // manager (管理者): payroll is view-only in the Excel, so the module is there; no system settings
+    await setRole(page, 'manager');
+    await expect(page.locator('[data-mod="pay"]')).toBeVisible();
+    await expect(page.locator('[data-mod="set"]')).toHaveCount(0);
+    // the admin switches a cell off and the employee loses that tab
+    await setRole(page, 'admin');
+    await go(page, 'perm', 'titles');
+    const tm = page.locator('table.titlematrix');
+    const idx = await tm.locator('thead th').evaluateAll(ths => ths.findIndex(h => h.textContent.includes('一般員工：照服員')));
+    const row = tm.locator('tbody tr', { hasText: '私人秘書 › 課程' }).first();
+    await row.locator('td').nth(idx).locator('button').click();     // 可 → 不可
+    await setRole(page, 'employee');
+    await expect(page.locator('[data-tab="course"]')).toHaveCount(0);
+    await expect(page.locator('[data-tab="home"]')).toBeVisible();
+    // the admin cannot lock themselves out of the matrix
+    await setRole(page, 'admin');
+    await go(page, 'perm', 'titles');
+    const adminIdx = await tm.locator('thead th').evaluateAll(ths => ths.findIndex(h => h.textContent.includes('系統管理員')));
+    await tm.locator('tbody tr', { hasText: '權限與範圍 › 職稱對照' }).first().locator('td').nth(adminIdx).locator('button').click();
+    await expect(page.locator('[data-mod="perm"]')).toBeVisible();
   });
 
   test('home calendar shows each day’s status and punch times', async ({ page }) => {

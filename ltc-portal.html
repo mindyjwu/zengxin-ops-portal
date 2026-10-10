@@ -858,10 +858,33 @@ const MODULES = [
   {id:'set', zh:'系統設定', en:'Settings', built:true, perm:'perms', tabs:[]}
 ];
 const NOT_BUILT = [];
-const modVisible = m => !m.perm || can(m.perm);
+/* 權限連動（使用者指定：以需求端 Excel 為準）：四個身分各對應「職稱對照」的一欄，哪些項目名稱（頁面）看得到由那一欄決定。
+   「可」「可檢視」「可編輯」看得到；「不可」與空白看不到。系統管理員永遠保留「權限與範圍」，避免把自己鎖在外面。
+   對應欄被刪除（例如一般員工：照服員）時，退回原型原本的權限判斷。 */
+const ROLE_COL = {admin:'it', hr:'hrd', manager:'mgr', employee:'sub:S1'};
+function roleColLive(){ const k=ROLE_COL[state.role]; return k && matrixCols().some(c=>c.k===k) ? k : null; }
+function itemAllowed(modId, tabId){
+  const col=roleColLive(), m=MODULES.find(x=>x.id===modId);
+  if(!col) return !m.perm || can(m.perm);
+  if(modId==='perm' && can('perms')) return true;
+  const it=permItems().find(x=>x.key===(tabId?modId+':'+tabId:modId));
+  return !!it && ['可','可檢視','可編輯'].includes(titleCell(it,col));
+}
+const tabAllowed = (m,t) => itemAllowed(m.id,t.id);
+const modVisible = m => m.tabs.length ? m.tabs.some(t=>tabAllowed(m,t)) : itemAllowed(m.id);
+/* 目前的頁面若不在權限內，改到第一個看得到的頁面 */
+function ensureAccess(){
+  let m=MODULES.find(x=>x.id===state.module);
+  if(!m || !modVisible(m)){
+    m=MODULES.find(x=>x.id===(role().selfOnly?'desk':'arch') && modVisible(x)) || MODULES.find(modVisible) || MODULES[0];
+    state.module=m.id; state.tab=null;
+  }
+  if(m.tabs.length && !(state.tab && m.tabs.some(t=>t.id===state.tab && tabAllowed(m,t)))) state.tab=(m.tabs.find(t=>tabAllowed(m,t))||m.tabs[0]).id;
+}
 
 /* ---------- shell ---------- */
 function renderShell(){
+  ensureAccess();
   const mod = MODULES.find(m=>m.id===state.module);
   document.getElementById('app').innerHTML = `
   <div class="app">
@@ -923,7 +946,7 @@ function renderShell(){
           <span class="chip acc">${both('目前視角','Viewing as')}: ${esc(nameOf(me()))} · ${esc(L(TITLES[me().title]))}</span>
         </div>
         <div class="tabs" role="tablist">
-          ${mod.tabs.map(t=>`<button role="tab" data-tab="${t.id}" aria-selected="${t.id===state.tab}">
+          ${mod.tabs.filter(t=>tabAllowed(mod,t)).map(t=>`<button role="tab" data-tab="${t.id}" aria-selected="${t.id===state.tab}">
              ${esc(state.lang==='zh'?t.zh:t.en)}<span class="ten">${esc(state.lang==='zh'?t.en:t.zh)}</span></button>`).join('')}
         </div>
         ${scopeBanner()}
@@ -933,14 +956,13 @@ function renderShell(){
   </div>`;
 
   document.querySelectorAll('[data-mod]').forEach(b=>b.onclick=()=>{
-    state.module=b.dataset.mod; state.tab=MODULES.find(m=>m.id===state.module).tabs[0]?.id||null; render();
+    state.module=b.dataset.mod; state.tab=null; render();   // ensureAccess 會選第一個看得到的分頁
   });
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; render(); });
   document.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{ state.lang=b.dataset.lang; render(); });
   document.getElementById('roleSel').onchange = e=>{
     state.role=e.target.value; state.office='ALL'; state.empId=null; state.nodeId=null;
     if(role().selfOnly){ state.module='desk'; state.tab='home'; }   // 員工登入即進入私人秘書
-    else if(!modVisible(MODULES.find(m=>m.id===state.module))){ state.module='arch'; state.tab='scope'; }
     render();
     toast(both('已切換視角：'+ROLES[state.role].zh, 'Now viewing as '+ROLES[state.role].en));
   };
@@ -1071,7 +1093,7 @@ const MEETING_DECISIONS = [
   {src:'10/7', zh:'簽核流程依公司組織圖自動關聯、帶入關卡；新增「自訂流程」，管理者可手動調整簽核節點；金額大小可影響簽核層數', en:'Approvals follow the org chart automatically; a new custom flow lets managers adjust approval nodes by hand; the amount can change the number of levels',
    whereZh:'線上申請 › 簽核路徑預覽（含自訂流程示範）；層級與金額規則待需求端提供', whereEn:'Online requests › Approval path preview (with a custom-flow demo); level and amount rules are due from the requester side', st:'part'},
   {src:'10/7', zh:'操作權限簡化為「確認職稱即可執行項目名稱」，不用逐一對單一員工設定；系統管理員可在角色類別（如一般員工）底下建立子類別，各自設定權限', en:'Permissions are simplified to “confirm the title and the items follow”, with no per-employee setup',
-   whereZh:'權限與範圍 › 職稱對照（職稱 × 項目名稱，含「建立子類別」）；實際執行的仍是「權限對照表」的四個身分', whereEn:'Roles & scope › Title matrix (title × item); what actually runs is still the four roles in the permission matrix', st:'part'},
+   whereZh:'權限與範圍 › 職稱對照（職稱 × 項目名稱，含「建立子類別」）；四個身分看得到哪些頁面已連動，以這張表為準', whereEn:'Roles & scope › Title matrix (title × item); which pages the four roles can open now follows this matrix', st:'part'},
   {src:'10/7', zh:'需求端整理各「職稱」與 Portal 各「項目名稱」的權限對照矩陣表（Excel）；專案負責人依此製作正式權限表（已收到 Excel，內容已帶入「職稱對照」，與原型差異另列）', en:'The requester side fills in the title × item permission matrix (Excel); the project lead builds the formal table from it',
    whereZh:'職稱對照 › 下載職稱權限對照表（Excel）', whereEn:'Title matrix › Download the title permission worksheet (Excel)', st:'part'},
   {src:'10/7', zh:'目前的四個身分（系統管理員、人資、管理者、一般員工）是暫定，需確認是否正確、要不要增減', en:'The four roles are provisional and need confirming or changing',
@@ -4779,7 +4801,8 @@ const CAPMARK={
 /* 職稱 × 項目名稱 權限對照（10/7 會議：操作權限改成「確認職稱即可執行項目名稱」）。
    欄位與內容取自使用者提供的 Excel「職稱權限對照表」（12 個職稱＋一般員工底下 3 個子類別）；原型沒有改寫任何一格。
    「A個管主管」「A個管」的「A」代表什麼，表格沒有說明，原文保留，待確認。
-   這張表目前只是顯示與下載，不會改變實際的權限；實際執行的仍是「權限對照表」的四個身分。 */
+   權限已連動（使用者指定以 Excel 為準）：系統管理員、人資、管理者、一般員工四個身分各對應一欄（見 ROLE_COL），看得到哪些頁面由那一欄決定；
+   資料範圍（本公司／全部）、薪資欄位、簽核等仍照「權限對照表」的設定。其餘職稱欄位還沒有對應的身分可切換。 */
 const MATRIX_TITLES = [
   {k:'boss', zh:'老闆',            en:'Owner'},                       {k:'mgr',  zh:'管理者',          en:'Manager'},
   {k:'hrd',  zh:'人資主管',        en:'HR lead'},                     {k:'trn',  zh:'教育訓練專員',    en:'Training officer'},
@@ -4845,12 +4868,12 @@ function matrixCols(){
 }
 function titleWorksheetRows(){
   const cols=matrixCols(), items=permItems();
-  const rows=[['職稱權限對照表（需求端提供）'],['填寫方式：每一格填「可」或「不可」；薪資計算另有「可檢視」「可編輯」；空白代表還沒填。欄位取自需求端提供的 Excel；「A個管主管」「A個管」的「A」代表什麼待確認。最後幾欄是系統管理員在角色類別底下建立的子類別（例如一般員工：司機）。這份表還沒有連到實際權限。'],[],['項目名稱',...cols.map(c=>c.zh)]];
+  const rows=[['職稱權限對照表（需求端提供）'],['填寫方式：每一格填「可」或「不可」；薪資計算另有「可檢視」「可編輯」；空白代表還沒填。欄位取自需求端提供的 Excel；「A個管主管」「A個管」的「A」代表什麼待確認。最後幾欄是系統管理員在角色類別底下建立的子類別（例如一般員工：司機）。四個身分（系統管理員、人資主管、管理者、一般員工：照服員）看得到哪些頁面已依這份表連動。'],[],['項目名稱',...cols.map(c=>c.zh)]];
   items.forEach(it=>rows.push([it.zh,...cols.map(c=>titleCell(it,c.k))]));
   return rows;
 }
 /* 與目前原型「權限對照表」四個身分的差異：只比對對應得上的四欄（系統管理員、人資主管、日照主管、一般員工：照服員）；可檢視／可編輯都算「可」 */
-const TITLE_TO_ROLE = [['it','admin'],['hrd','hr'],['dir','manager'],['sub:S1','employee']];
+const TITLE_TO_ROLE = [['it','admin'],['hrd','hr'],['mgr','manager'],['sub:S1','employee']];
 function titleDiffs(){
   const items=permItems();
   return TITLE_TO_ROLE.map(([ck,role])=>({ck, role, diffs:items.filter(it=>{
@@ -4862,8 +4885,8 @@ function titleDiffCard(){
   const cols=matrixCols(), rows=titleDiffs().filter(d=>cols.some(c=>c.k===d.ck)), n=rows.reduce((a,d)=>a+d.diffs.length,0);
   return `<section class="card">
     <div class="card-h"><h2>${esc(both('與目前原型權限的差異','Differences from the prototype’s current permissions'))}</h2><span class="en">${esc(both(n+' 處差異',n+' differences'))}</span></div>
-    <div class="card-b"><div class="muted" style="font-size:12.5px;line-height:1.7;margin-bottom:8px">${esc(both('只比對對得上的四欄：系統管理員、人資主管、日照主管、一般員工：照服員，分別對應原型的系統管理員、人資、管理者、一般員工。差異處以需求端的 Excel 為準，10/14 會議確認後再決定要不要改原型的實際權限。',
-      'Only the four columns that map to a prototype role are compared: System administrator, HR lead, Day care supervisor and Employee: Care attendant ↔ the prototype’s admin, HR, manager and employee. Where they differ, the requester’s Excel wins; the 14 Oct meeting decides whether the prototype’s real permissions change.'))}</div>
+    <div class="card-b"><div class="muted" style="font-size:12.5px;line-height:1.7;margin-bottom:8px">${esc(both('只比對對得上的四欄：系統管理員、人資主管、管理者、一般員工：照服員，分別對應原型的系統管理員、人資、管理者、一般員工。權限已連動，這四個身分實際看得到的頁面以需求端的 Excel 為準；這裡列的是和原型原本設定不同的地方。',
+      'Only the four columns that map to a prototype role are compared: System administrator, HR lead, Manager and Employee: Care attendant ↔ the prototype’s admin, HR, manager and employee. Permissions are now linked: the pages these four roles can open follow the requester’s Excel; this lists where it differs from the prototype’s original settings.'))}</div>
     ${rows.map(d=>{ const c=cols.find(x=>x.k===d.ck);
       return `<div style="margin:8px 0"><b>${esc(both(c.zh,c.en))}</b> <span class="muted">${esc(both('對應原型：'+ROLES[d.role].zh,'maps to prototype: '+ROLES[d.role].en))}</span>
       ${d.diffs.length?`<ul style="margin:4px 0 0;padding-left:20px;line-height:1.7">${d.diffs.map(x=>`<li>${esc(x.it.zh)}：${esc(both('Excel 為「'+x.sheet+'」，原型為「'+x.proto+'」','Excel “'+x.sheet+'”, prototype “'+x.proto+'”'))}</li>`).join('')}</ul>`
@@ -4885,8 +4908,8 @@ function viewTitleMatrix(){
         <tbody>${items.map(it=>`<tr><td>${bi(it.zh,it.en)}</td>${cols.map(c=>{ const v=titleCell(it,c.k);
           const label=v==='可'||v==='可編輯'?`<span class="yes">${esc(v==='可'?both('可','Yes'):both('可編輯','Edit'))}</span>`:v==='可檢視'?`<span class="partial">${esc(both('可檢視','View'))}</span>`:v==='不可'?`<span class="no">${esc(both('不可','No'))}</span>`:`<span class="muted">—</span>`;
           return `<td style="text-align:center">${edit?`<button class="btn ghost mini" data-tcell="${it.key}|${c.k}" title="${esc(both('按一下切換','Click to cycle'))}">${label}</button>`:label}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
-      <div class="legend">${esc(both('內容取自需求端提供的 Excel（12 個職稱＋一般員工底下 3 個子類別）。「A個管主管」「A個管」的「A」代表什麼，表格沒有說明，原文保留，待確認。薪資計算的格子另有「可檢視」「可編輯」。'+(edit?'按格子可切換。':'只有系統管理員可以修改。')+'這張表還沒有連到實際權限；實際執行的仍是「權限對照表」的四個身分。',
-        'Loaded from the Excel the requester side supplied (12 titles plus 3 sub-categories under Employee). The sheet does not say what the “A” in “A case-management lead / A case manager” stands for, so the wording is kept as is and marked to confirm. Payroll cells can also be View or Edit.'+(edit?' Click a cell to cycle.':' Only the system admin can edit.')+' This matrix does not drive real permissions yet; what runs is still the four roles in the permission matrix.'))}</div>
+      <div class="legend">${esc(both('內容取自需求端提供的 Excel（12 個職稱＋一般員工底下 3 個子類別）。「A個管主管」「A個管」的「A」代表什麼，表格沒有說明，原文保留，待確認。薪資計算的格子另有「可檢視」「可編輯」。'+(edit?'按格子可切換。':'只有系統管理員可以修改。')+'權限已連動：系統管理員、人資主管、管理者、一般員工：照服員四欄決定該身分看得到哪些頁面；其他欄位目前沒有對應的身分可切換。改格子後切換身分就會看到結果；系統管理員一定保有「權限與範圍」。',
+        'Loaded from the Excel the requester side supplied (12 titles plus 3 sub-categories under Employee). The sheet does not say what the “A” in “A case-management lead / A case manager” stands for, so the wording is kept as is and marked to confirm. Payroll cells can also be View or Edit.'+(edit?' Click a cell to cycle.':' Only the system admin can edit.')+' Permissions are linked: the System administrator, HR lead, Manager and Employee: Care attendant columns decide which pages that role can open; the other columns have no role to switch to yet. Edit a cell and switch role to see it; the system admin always keeps Roles & scope.'))}</div>
     </section>
     ${titleDiffCard()}
     ${edit?`<section class="card">
