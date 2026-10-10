@@ -4843,13 +4843,6 @@ function matrixCols(){
   return [...MATRIX_TITLES,
     ...subcats().map(sc=>({k:'sub:'+sc.id, sc, zh:ROLES[sc.parent].zh+'：'+sc.name, en:ROLES[sc.parent].en+': '+sc.name}))];
 }
-/* 系統管理員可以在角色類別（例如「一般員工」）底下「製造」（建立）子類別，子類別各自設定權限。
-   欄位 = 14 個職稱 + 子類別；子類別的格子預設留白，沒有預先帶入。示範：目前只存在這個畫面 */
-function subcats(){ return state.subcats || (state.subcats=[{id:'S1', parent:'employee', name:'司機'}, {id:'S2', parent:'employee', name:'約聘人員（contractor）'}]); }
-function matrixCols(){
-  return [...Object.keys(TITLES).map(k=>({k, zh:TITLES[k].zh, en:TITLES[k].en})),
-    ...subcats().map(sc=>({k:'sub:'+sc.id, sc, zh:ROLES[sc.parent].zh+'：'+sc.name, en:ROLES[sc.parent].en+': '+sc.name}))];
-}
 function titleWorksheetRows(){
   const cols=matrixCols(), items=permItems();
   const rows=[['職稱權限對照表（需求端提供）'],['填寫方式：每一格填「可」或「不可」；薪資計算另有「可檢視」「可編輯」；空白代表還沒填。欄位取自需求端提供的 Excel；「A個管主管」「A個管」的「A」代表什麼待確認。最後幾欄是系統管理員在角色類別底下建立的子類別（例如一般員工：司機）。這份表還沒有連到實際權限。'],[],['項目名稱',...cols.map(c=>c.zh)]];
