@@ -693,10 +693,30 @@ const ROLES = {
     perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false,
             annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } },
 
-  /* --- 需求簡報第 6 頁的其他角色：權限待逐項確認，原型尚未建置 --- */
-  boss:{ id:'boss', zh:'老闆', en:'Owner', built:false },
-  training:{ id:'training', zh:'教育訓練專員', en:'Training officer', built:false },
-  accountant:{ id:'accountant', zh:'會計', en:'Accountant', built:false }
+  /* --- 其餘職稱（職稱對照 Excel 的其他欄位）：可切換，頁面權限由「職稱對照」決定；
+         資料範圍與下列細項是依職稱推定的暫定值，Excel 沒有規定，待確認。老闆、教育訓練專員、會計跨三家公司依簡報第 6 頁 --- */
+  boss:{ id:'boss', zh:'老闆', en:'Owner', persona:'H001', allOffices:true, built:true, provisional:true,
+    perms:{ salary:true, editEmp:false, mobile:true, approve:true, finalize:false, annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
+  training:{ id:'training', zh:'教育訓練專員', en:'Training officer', persona:'H006', allOffices:true, built:true, provisional:true,
+    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
+  accountant:{ id:'accountant', zh:'會計', en:'Accountant', persona:'H004', allOffices:true, built:true, provisional:true,
+    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:true, mgmt:true } },
+  daydir:{ id:'daydir', zh:'日照主管', en:'Day care supervisor', persona:'B001', allOffices:false, built:true, provisional:true,
+    perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
+  daysw:{ id:'daysw', zh:'日照社工/護理師', en:'Day care social worker / nurse', persona:'A005', allOffices:false, built:true, provisional:true,
+    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
+  homelead:{ id:'homelead', zh:'居服主管', en:'Home care lead', persona:'C001', chipTitle:{zh:'居服主管',en:'Home care lead'}, allOffices:false, built:true, provisional:true,
+    perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
+  homesup:{ id:'homesup', zh:'居家服務督導', en:'Home care supervisor', persona:'A009', allOffices:false, built:true, provisional:true,
+    perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
+  cmlead:{ id:'cmlead', zh:'A個管主管', en:'A case-management lead', persona:'B002', chipTitle:{zh:'A個管主管',en:'A case-management lead'}, allOffices:false, built:true, provisional:true,
+    perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
+  cm:{ id:'cm', zh:'A個管', en:'A case manager', persona:'A006', chipTitle:{zh:'A個管',en:'A case manager'}, allOffices:false, built:true, provisional:true,
+    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
+  driver:{ id:'driver', zh:'一般員工：司機', en:'Employee: driver', persona:'A008', allOffices:false, selfOnly:true, built:true, provisional:true,
+    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } },
+  hca:{ id:'hca', zh:'一般員工：居服員', en:'Employee: home care worker', persona:'A010', allOffices:false, selfOnly:true, built:true, provisional:true,
+    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } }
 };
 
 /* ---------- state ---------- */
@@ -709,6 +729,7 @@ const state = {
 };
 const role = () => ROLES[state.role];
 const me = () => person(role().persona);
+const personaTitle = r => r.chipTitle || TITLES[person(r.persona).title];   // 示範人員的職稱；借用示範人員時以身分的職稱為準
 const can = k => role().perms[k];
 /* offices this role may read right now */
 function scopeUnits(){
@@ -861,8 +882,15 @@ const NOT_BUILT = [];
 /* 權限連動（使用者指定：以需求端 Excel 為準）：四個身分各對應「職稱對照」的一欄，哪些項目名稱（頁面）看得到由那一欄決定。
    「可」「可檢視」「可編輯」看得到；「不可」與空白看不到。系統管理員永遠保留「權限與範圍」，避免把自己鎖在外面。
    對應欄被刪除（例如一般員工：照服員）時，退回原型原本的權限判斷。 */
-const ROLE_COL = {admin:'it', hr:'hrd', manager:'mgr', employee:'sub:S1'};
+const ROLE_COL = {admin:'it', hr:'hrd', manager:'mgr', employee:'sub:S1', boss:'boss', training:'trn', accountant:'acc', daydir:'dir', daysw:'dsn',
+  homelead:'hsv', homesup:'sup', cmlead:'cml', cm:'cm', driver:'sub:S2', hca:'sub:S3'};
 function roleColLive(){ const k=ROLE_COL[state.role]; return k && matrixCols().some(c=>c.k===k) ? k : null; }
+/* 薪資計算能不能動：對應欄在「薪資試算」那格是「可編輯」才行；沒有對應欄時退回原型的 salary 權限 */
+function payEdit(){
+  const col=roleColLive(); if(!col) return !!can('salary');
+  const it=permItems().find(x=>x.key==='pay:run');
+  return it ? titleCell(it,col)==='可編輯' : false;
+}
 function itemAllowed(modId, tabId){
   const col=roleColLive(), m=MODULES.find(x=>x.id===modId);
   if(!col) return !m.perm || can(m.perm);
@@ -943,7 +971,7 @@ function renderShell(){
           </div>
           <div class="spacer"></div>
           <span class="chip warn" title="${esc(both('目前操作中的公司範圍','Company currently in view'))}">${both('目前公司','Company')}: ${esc(currentCompanyLabel())}</span>
-          <span class="chip acc">${both('目前視角','Viewing as')}: ${esc(nameOf(me()))} · ${esc(L(TITLES[me().title]))}</span>
+          <span class="chip acc">${both('目前視角','Viewing as')}: ${esc(nameOf(me()))} · ${esc(L(personaTitle(role())))}</span>
         </div>
         <div class="tabs" role="tablist">
           ${mod.tabs.filter(t=>tabAllowed(mod,t)).map(t=>`<button role="tab" data-tab="${t.id}" aria-selected="${t.id===state.tab}">
@@ -992,8 +1020,8 @@ function scopeBanner(){
     </div></div>`;
   const scopeTxt = r.allOffices
     ? both('此身分可跨三家公司查看','This role reads across all three companies')
-    : (open ? both('假設開啟中：管理者目前可跨三家公司查看','Assumption ON: this manager currently reads all three companies')
-            : both('預設：管理者僅能查看所屬公司（'+unit(me().unit).zh+'）','Default: this manager reads only '+unit(me().unit).en));
+    : (open ? both('假設開啟中：此身分目前可跨三家公司查看','Assumption ON: this role currently reads all three companies')
+            : both('預設：此身分僅能查看所屬公司（'+unit(me().unit).zh+'）','Default: this role reads only '+unit(me().unit).en));
   return `<div class="scopebar ${open&&!r.allOffices?'is-open':''}">
     <div>
       <b>${both('資料範圍','Data scope')}</b> — ${esc(scopeTxt)}
@@ -1030,6 +1058,10 @@ function render(){
   }[key];
   v.innerHTML = fn ? fn() : '';
   (BINDERS[key]||function(){})();
+  if(state.module==='pay' && !payEdit()){   // 職稱對照寫「可檢視」：看得到，不能儲存版本或覆核
+    v.insertAdjacentHTML('afterbegin',`<div class="note q">${esc(both('此身分在職稱對照裡對薪資計算只有「可檢視」：可以看，不能儲存版本、送出或覆核。','This role has View-only access to payroll in the title matrix: you can look, but not save versions, submit or review.'))}</div>`);
+    v.querySelectorAll('[data-savever],[data-vact]').forEach(b=>{ b.disabled=true; b.title='可檢視'; });
+  }
   if(typeof drawTour==='function') drawTour();
 }
 const BINDERS={};
@@ -1188,11 +1220,11 @@ function viewArchScope(){
 
 /* 角色權限初步矩陣（需求簡報第 6 頁原文；會議起始版本，實際權限仍需逐項確認） */
 const ROLE_MATRIX = [
-  {zh:'老闆',        scope:'三家公司彙總及授權明細', hrData:'檢視',            att:'檢視',                  pay:'管理報表檢視',         built:null},
+  {zh:'老闆',        scope:'三家公司彙總及授權明細', hrData:'檢視',            att:'檢視',                  pay:'管理報表檢視',         built:'boss'},
   {zh:'管理者',      scope:'授權公司與部門',         hrData:'檢視／部分編輯',   att:'審核與異常確認',         pay:'依授權檢視',           built:'manager'},
   {zh:'人資',        scope:'三家公司行政資料',       hrData:'新增、修改與管理', att:'管理與月底確認',         pay:'薪資計算、級距與投保', built:'hr'},
-  {zh:'教育訓練專員', scope:'三家公司訓練資料',      hrData:'必要欄位檢視',     att:'提出申請',               pay:'證照與訓練管理',       built:null},
-  {zh:'會計',        scope:'三家公司核准資料',       hrData:'必要欄位檢視',     att:'提出／承辦申請',         pay:'核准後款項與報表',     built:null},
+  {zh:'教育訓練專員', scope:'三家公司訓練資料',      hrData:'必要欄位檢視',     att:'提出申請',               pay:'證照與訓練管理',       built:'training'},
+  {zh:'會計',        scope:'三家公司核准資料',       hrData:'必要欄位檢視',     att:'提出／承辦申請',         pay:'核准後款項與報表',     built:'accountant'},
   {zh:'各業務職位',  scope:'本人及職務授權資料',     hrData:'檢視本人資料',     att:'打卡、請假、加班與申請', pay:'無薪資計算功能',       built:'employee'}
 ];
 function viewArchRoles(){
@@ -1225,7 +1257,7 @@ function viewArchRoles(){
       <div class="tablewrap"><table>
         <thead><tr><th>${bi('身分','Role')}</th><th>${bi('示範人員','Persona')}</th><th>${bi('資料範圍','Scope')}</th></tr></thead>
         <tbody>${Object.values(ROLES).filter(r=>r.built).map(r=>{ const p=person(r.persona); return `<tr><td><b>${esc(both(r.zh,r.en))}</b></td>
-          <td>${esc(L(TITLES[p.title]))} · ${esc(unit(p.unit).zh)} <span class="muted mono">${p.id}</span></td>
+          <td>${esc(L(personaTitle(r)))} · ${esc(unit(p.unit).zh)} <span class="muted mono">${p.id}</span>${r.chipTitle?` <span class="muted">${esc(both('（借用的示範人員）','(borrowed demo person)'))}</span>`:''}</td>
           <td>${esc(r.allOffices?both('三家公司','All three companies'):r.selfOnly?both('本人','Self only'):both('所屬公司（'+unit(p.unit).zh+'）','Own company ('+unit(p.unit).zh+')'))}</td></tr>`; }).join('')}</tbody>
       </table></div>
     </section>
@@ -4790,7 +4822,8 @@ const CAPS=[
 const BUILT_ROLES = ['admin','hr','manager','employee'];
 const PERM_DEFAULTS = Object.fromEntries(BUILT_ROLES.map(k=>[k,{...ROLES[k].perms}]));
 function capMark(c, k){
-  if(!c.key) return c[k];
+  if(!c.key){ if(k in c) return c[k]; const r=ROLES[k];   // 新增的職稱身分：依資料範圍推定
+    return c.zh.startsWith('查看所有公司') ? (r.allOffices?'yes':'no') : c.zh.startsWith('私人秘書') ? 'self' : (r.allOffices?'yes':r.selfOnly?'self':'own'); }
   const r=ROLES[k]; return r.perms[c.key] ? (r.allOffices || c.key==='mgmt' ? 'yes' : 'own') : 'no';
 }
 const CAPMARK={
@@ -4802,7 +4835,7 @@ const CAPMARK={
    欄位與內容取自使用者提供的 Excel「職稱權限對照表」（12 個職稱＋一般員工底下 3 個子類別）；原型沒有改寫任何一格。
    「A個管主管」「A個管」的「A」代表什麼，表格沒有說明，原文保留，待確認。
    權限已連動（使用者指定以 Excel 為準）：系統管理員、人資、管理者、一般員工四個身分各對應一欄（見 ROLE_COL），看得到哪些頁面由那一欄決定；
-   資料範圍（本公司／全部）、薪資欄位、簽核等仍照「權限對照表」的設定。其餘職稱欄位還沒有對應的身分可切換。 */
+   資料範圍（本公司／全部）、薪資欄位、簽核等仍照「權限對照表」的設定。其餘職稱欄位（老闆、教育訓練專員、會計、日照主管…）也各有一個可切換的身分，其資料範圍與細項權限是依職稱推定的暫定值。 */
 const MATRIX_TITLES = [
   {k:'boss', zh:'老闆',            en:'Owner'},                       {k:'mgr',  zh:'管理者',          en:'Manager'},
   {k:'hrd',  zh:'人資主管',        en:'HR lead'},                     {k:'trn',  zh:'教育訓練專員',    en:'Training officer'},
@@ -4908,8 +4941,8 @@ function viewTitleMatrix(){
         <tbody>${items.map(it=>`<tr><td>${bi(it.zh,it.en)}</td>${cols.map(c=>{ const v=titleCell(it,c.k);
           const label=v==='可'||v==='可編輯'?`<span class="yes">${esc(v==='可'?both('可','Yes'):both('可編輯','Edit'))}</span>`:v==='可檢視'?`<span class="partial">${esc(both('可檢視','View'))}</span>`:v==='不可'?`<span class="no">${esc(both('不可','No'))}</span>`:`<span class="muted">—</span>`;
           return `<td style="text-align:center">${edit?`<button class="btn ghost mini" data-tcell="${it.key}|${c.k}" title="${esc(both('按一下切換','Click to cycle'))}">${label}</button>`:label}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
-      <div class="legend">${esc(both('內容取自需求端提供的 Excel（12 個職稱＋一般員工底下 3 個子類別）。「A個管主管」「A個管」的「A」代表什麼，表格沒有說明，原文保留，待確認。薪資計算的格子另有「可檢視」「可編輯」。'+(edit?'按格子可切換。':'只有系統管理員可以修改。')+'權限已連動：系統管理員、人資主管、管理者、一般員工：照服員四欄決定該身分看得到哪些頁面；其他欄位目前沒有對應的身分可切換。改格子後切換身分就會看到結果；系統管理員一定保有「權限與範圍」。',
-        'Loaded from the Excel the requester side supplied (12 titles plus 3 sub-categories under Employee). The sheet does not say what the “A” in “A case-management lead / A case manager” stands for, so the wording is kept as is and marked to confirm. Payroll cells can also be View or Edit.'+(edit?' Click a cell to cycle.':' Only the system admin can edit.')+' Permissions are linked: the System administrator, HR lead, Manager and Employee: Care attendant columns decide which pages that role can open; the other columns have no role to switch to yet. Edit a cell and switch role to see it; the system admin always keeps Roles & scope.'))}</div>
+      <div class="legend">${esc(both('內容取自需求端提供的 Excel（12 個職稱＋一般員工底下 3 個子類別）。「A個管主管」「A個管」的「A」代表什麼，表格沒有說明，原文保留，待確認。薪資計算的格子另有「可檢視」「可編輯」。'+(edit?'按格子可切換。':'只有系統管理員可以修改。')+'權限已連動：每一欄都有對應的可切換身分（共 15 個），該欄決定這個身分看得到哪些頁面；其他職稱欄位也各有可切換的身分，改格子後切換身分就會看到結果；系統管理員一定保有「權限與範圍」。',
+        'Loaded from the Excel the requester side supplied (12 titles plus 3 sub-categories under Employee). The sheet does not say what the “A” in “A case-management lead / A case manager” stands for, so the wording is kept as is and marked to confirm. Payroll cells can also be View or Edit.'+(edit?' Click a cell to cycle.':' Only the system admin can edit.')+' Permissions are linked: every column has a role to switch to (15 in all) and decides which pages that role can open; every other column also has a role to switch to. Edit a cell and switch role to see it; the system admin always keeps Roles & scope.'))}</div>
     </section>
     ${titleDiffCard()}
     ${edit?`<section class="card">
