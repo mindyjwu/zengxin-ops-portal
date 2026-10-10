@@ -1034,57 +1034,66 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(page.locator('#view')).toContainText('仁寶可直接連接衛福部系統');
   });
 
-  test('title matrix: pre-filled from today’s roles, editable by the admin, Excel worksheet', async ({ page }) => {
+  test('title matrix: loaded from the requester Excel, editable by the admin, Excel worksheet', async ({ page }) => {
     await go(page, 'arch', 'roles');
     await expect(page.locator('#view')).toContainText('職稱對照');
     await go(page, 'perm', 'titles');
     const tm = page.locator('#view table.titlematrix');
-    await expect(tm.locator('thead th')).toHaveCount(17);            // item column + 14 titles + 2 sub-categories
-    expect(await tm.locator('tbody tr').count()).toBeGreaterThan(30);
-    // 照服員 (the employee persona) cannot open the HR module; 人資 can; other titles are blank
+    await expect(tm.locator('thead th')).toHaveCount(16);            // item column + 12 titles + 3 sub-categories
+    await expect(page.locator('#view')).toContainText('已填 480 / 480');
     const row = name => tm.locator('tbody tr', { hasText: name }).first();
-    const col = t => Object.keys({}).length;                         // (placeholder to keep the helper local)
     const cellOf = async (rowName, title) => {
       const idx = await tm.locator('thead th').evaluateAll((ths, t) => ths.findIndex(h => h.textContent.includes(t)), title);
       return row(rowName).locator('td').nth(idx);
     };
-    await expect(await cellOf('人事系統 › 員工資料', '人資')).toContainText('可');
-    await expect(await cellOf('人事系統 › 員工資料', '照服員')).toContainText('不可');
-    await expect(await cellOf('私人秘書 › 首頁', '照服員')).toContainText('可');
-    await expect(await cellOf('人事系統 › 員工資料', '會計')).toContainText('—');
-    // the admin cycles a blank cell: blank → 可 → 不可 → blank
+    await expect(await cellOf('人事系統 › 員工資料', '人資主管')).toContainText('可');
+    await expect(await cellOf('人事系統 › 員工資料', '會計')).toContainText('不可');
+    await expect(await cellOf('私人秘書 › 首頁', '一般員工：司機')).toContainText('可');
+    await expect(await cellOf('薪資計算 › 薪資試算', '人資主管')).toContainText('可編輯');
+    await expect(await cellOf('薪資計算 › 薪資試算', '老闆')).toContainText('可檢視');
+    await expect(await cellOf('系統設定', '系統管理員')).toContainText('可');
+    // the admin cycles a cell: 不可 → blank → 可 → 不可
     const cell = await cellOf('人事系統 › 員工資料', '會計');
     await cell.locator('button').click();
-    await expect(await cellOf('人事系統 › 員工資料', '會計')).toContainText('可');
+    await expect(await cellOf('人事系統 › 員工資料', '會計')).toContainText('—');
     await (await cellOf('人事系統 › 員工資料', '會計')).locator('button').click();
-    await expect(await cellOf('人事系統 › 員工資料', '會計')).toContainText('不可');
+    await expect(await cellOf('人事系統 › 員工資料', '會計')).toContainText('可');
+    // differences from the prototype's four roles are listed
+    await expect(page.locator('#view')).toContainText('與目前原型權限的差異');
     // the Excel worksheet
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-titlexlsx]')]);
-    expect(dl.suggestedFilename()).toBe('職稱權限對照表_範本.xlsx');
+    expect(dl.suggestedFilename()).toBe('職稱權限對照表.xlsx');
     const buf = fs.readFileSync(await dl.path());
     expect(buf.subarray(0, 2).toString()).toBe('PK');
     const text = buf.toString('utf8');
-    for (const t of ['職稱權限對照表（範本）', '項目名稱', '居家服務督導', '日照主管', '人事系統 › 員工資料', '私人秘書 › 首頁', '一般員工：司機', '一般員工：約聘人員（contractor）']) expect(text).toContain(t);
+    for (const t of ['職稱權限對照表（需求端提供）', '項目名稱', '居家服務督導', 'A個管主管', '日照社工/護理師', '人事系統 › 員工資料', '私人秘書 › 首頁', '一般員工：司機', '一般員工：居服員']) expect(text).toContain(t);
+  });
+
+  test('org chart tab shows the title structure from the requester Excel', async ({ page }) => {
+    await go(page, 'ann', 'org');
+    const v = page.locator('#view');
+    await expect(v).toContainText('職稱架構（需求端提供）');
+    for (const t of ['人資主管', '日照社工/護理師', '居服主管', 'A個管主管', '照服員', '司機', '居服員']) await expect(v).toContainText(t);
   });
 
   test('the admin creates a sub-category under a role category and it becomes a column', async ({ page }) => {
     await go(page, 'perm', 'titles');
     const heads = page.locator('table.titlematrix thead th');
-    await expect(heads).toHaveCount(17);
+    await expect(heads).toHaveCount(16);
     await page.selectOption('#subAddForm select[name="parent"]', 'hr');
     await page.fill('#subAddForm input[name="name"]', '實習生');
     await page.click('#subAddForm button[type="submit"]');
-    await expect(heads).toHaveCount(18);
+    await expect(heads).toHaveCount(17);
     await expect(heads.last()).toContainText('人資：實習生');
     // its cells start blank and the admin can set them
-    const idx = 17;
+    const idx = 16;
     const cell = page.locator('table.titlematrix tbody tr', { hasText: '人事系統 › 員工資料' }).first().locator('td').nth(idx);
     await expect(cell).toContainText('—');
     await cell.locator('button').click();
     await expect(page.locator('table.titlematrix tbody tr', { hasText: '人事系統 › 員工資料' }).first().locator('td').nth(idx)).toContainText('可');
     // it can be removed again
     await heads.last().locator('[data-subdel]').click();
-    await expect(heads).toHaveCount(17);
+    await expect(heads).toHaveCount(16);
   });
 
   test('the title matrix and sub-categories are read-only for HR', async ({ page }) => {

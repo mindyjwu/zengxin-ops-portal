@@ -1072,8 +1072,8 @@ const MEETING_DECISIONS = [
    whereZh:'線上申請 › 簽核路徑預覽（含自訂流程示範）；層級與金額規則待需求端提供', whereEn:'Online requests › Approval path preview (with a custom-flow demo); level and amount rules are due from the requester side', st:'part'},
   {src:'10/7', zh:'操作權限簡化為「確認職稱即可執行項目名稱」，不用逐一對單一員工設定；系統管理員可在角色類別（如一般員工）底下建立子類別，各自設定權限', en:'Permissions are simplified to “confirm the title and the items follow”, with no per-employee setup',
    whereZh:'權限與範圍 › 職稱對照（職稱 × 項目名稱，含「建立子類別」）；實際執行的仍是「權限對照表」的四個身分', whereEn:'Roles & scope › Title matrix (title × item); what actually runs is still the four roles in the permission matrix', st:'part'},
-  {src:'10/7', zh:'需求端整理各「職稱」與 Portal 各「項目名稱」的權限對照矩陣表（Excel）；專案負責人依此製作正式權限表', en:'The requester side fills in the title × item permission matrix (Excel); the project lead builds the formal table from it',
-   whereZh:'職稱對照 › 下載職稱權限對照表（Excel 範本）', whereEn:'Title matrix › Download the title permission worksheet (Excel template)', st:'part'},
+  {src:'10/7', zh:'需求端整理各「職稱」與 Portal 各「項目名稱」的權限對照矩陣表（Excel）；專案負責人依此製作正式權限表（已收到 Excel，內容已帶入「職稱對照」，與原型差異另列）', en:'The requester side fills in the title × item permission matrix (Excel); the project lead builds the formal table from it',
+   whereZh:'職稱對照 › 下載職稱權限對照表（Excel）', whereEn:'Title matrix › Download the title permission worksheet (Excel)', st:'part'},
   {src:'10/7', zh:'目前的四個身分（系統管理員、人資、管理者、一般員工）是暫定，需確認是否正確、要不要增減', en:'The four roles are provisional and need confirming or changing',
    whereZh:'權限與範圍 › 權限對照表；原型說明 › 角色與權限', whereEn:'Roles & scope › Permission matrix; Prototype info › Roles', st:'todo'},
   {src:'10/7', zh:'持續整理 104 功能截圖與匯出表單；評估 Portal 建置差勤管理的功能範圍、成本與導入方式', en:'Keep compiling the 104 screenshots and exports; assess the scope, cost and rollout of attendance in the portal',
@@ -1408,6 +1408,29 @@ function viewOrg(){
     <div class="legend">${esc(both(
       '公司與部門依需求簡報第 3 頁；人員與姓名為示範資料。組織結構全公司可見，個人明細依身分範圍限制。',
       'Companies and departments follow deck p.3; staff and names are demo data. The structure is visible to all; personal detail follows role scope.'))}</div>
+  </section>
+  ${titleStructureCard()}`;
+}
+/* 職稱架構：需求端 Excel 的職稱欄位順序，依名稱歸成幾組；組別與隸屬關係是依欄位名稱整理，不是 Excel 寫明的，待確認 */
+const TITLE_GROUPS = [
+  {zh:'共用行政／決策', en:'Shared administration / decision-makers', ks:['boss','mgr','hrd','trn','acc','it']},
+  {zh:'日照',           en:'Day care',                                ks:['dir','dsn']},
+  {zh:'居服',           en:'Home care',                               ks:['hsv','sup']},
+  {zh:'個案管理',       en:'Case management',                         ks:['cml','cm']},
+  {zh:'一般員工',       en:'Employee (sub-categories)',               ks:['sub:S1','sub:S2','sub:S3']}
+];
+function titleStructureCard(){
+  const cols=matrixCols(), byK=Object.fromEntries(cols.map(c=>[c.k,c]));
+  const extra=cols.filter(c=>c.sc && !['sub:S1','sub:S2','sub:S3'].includes(c.k));
+  return `<section class="card">
+    <div class="card-h"><h2>${esc(both('職稱架構（需求端提供）','Title structure (from the requester side)'))}</h2><span class="en">${esc(both(cols.length+' 個職稱／子類別',cols.length+' titles / sub-categories'))}</span></div>
+    <div class="card-b"><div class="orgrow" style="--n:${TITLE_GROUPS.length}">
+      ${TITLE_GROUPS.map(g=>{ const ks=g.ks.filter(k=>byK[k]).concat(g.zh==='一般員工'?extra.map(c=>c.k):[]);
+        return `<div class="orgcol"><div class="node" style="cursor:default"><span class="n">${esc(both(g.zh,g.en))}</span></div>
+          <div class="kids">${ks.map(k=>`<span class="leaf" style="cursor:default">${esc(g.zh==='一般員工'?byK[k].sc.name:L(byK[k]))}</span>`).join('')}</div></div>`; }).join('')}
+    </div></div>
+    <div class="legend">${esc(both('職稱取自需求端提供的「職稱權限對照表」Excel；分組是依職稱名稱整理，不是 Excel 寫明的，隸屬關係待確認。「A個管主管」「A個管」的「A」代表什麼待確認。每個職稱可以操作哪些項目名稱，請看「權限與範圍 › 職稱對照」。上方組織圖的人員仍是示範資料。',
+      'Titles come from the “title permission matrix” Excel supplied by the requester side. The grouping is organised from the title names, not stated in the Excel; reporting lines are to be confirmed, as is what the “A” in “A case-management lead / A case manager” means. What each title may use is under Permissions › Title matrix. The people in the chart above are still demo data.'))}</div>
   </section>`;
 }
 BINDERS['ann:org']=function(){ document.querySelectorAll('[data-node]').forEach(b=>b.onclick=()=>openPerson(b.dataset.node)); };
@@ -4754,39 +4777,105 @@ const CAPMARK={
   self:{zh:'僅本人',en:'Self only',cls:'partial'}
 };
 /* 職稱 × 項目名稱 權限對照（10/7 會議：操作權限改成「確認職稱即可執行項目名稱」）。
-   示範：只有四個示範人員對應的職稱（系統管理員、人資、日照主管、照服員）依現有「權限對照表」預先帶入，其餘留白等需求端填寫；
-   這張表目前不會改變實際的權限。 */
-const TITLE_ROLE = {it:'admin', hrd:'hr', dir:'manager', ca:'employee'};
+   欄位與內容取自使用者提供的 Excel「職稱權限對照表」（12 個職稱＋一般員工底下 3 個子類別）；原型沒有改寫任何一格。
+   「A個管主管」「A個管」的「A」代表什麼，表格沒有說明，原文保留，待確認。
+   這張表目前只是顯示與下載，不會改變實際的權限；實際執行的仍是「權限對照表」的四個身分。 */
+const MATRIX_TITLES = [
+  {k:'boss', zh:'老闆',            en:'Owner'},                       {k:'mgr',  zh:'管理者',          en:'Manager'},
+  {k:'hrd',  zh:'人資主管',        en:'HR lead'},                     {k:'trn',  zh:'教育訓練專員',    en:'Training officer'},
+  {k:'acc',  zh:'會計',            en:'Accountant'},                  {k:'it',   zh:'系統管理員',      en:'System administrator'},
+  {k:'dir',  zh:'日照主管',        en:'Day care supervisor'},         {k:'dsn',  zh:'日照社工/護理師', en:'Day care social worker / nurse'},
+  {k:'hsv',  zh:'居服主管',        en:'Home care lead'},              {k:'sup',  zh:'居家服務督導',    en:'Home care supervisor'},
+  {k:'cml',  zh:'A個管主管',       en:'A case-management lead'},      {k:'cm',   zh:'A個管',           en:'A case manager'}
+];
+const MATRIX_SUBS = [{id:'S1', parent:'employee', name:'照服員'}, {id:'S2', parent:'employee', name:'司機'}, {id:'S3', parent:'employee', name:'居服員'}];
+/* 欄位順序 = MATRIX_TITLES 12 欄 + MATRIX_SUBS 3 欄；Y=可、N=不可、V=可檢視、E=可編輯 */
+const TITLE_SHEET = {
+  '原型說明 › 範圍與進展':'YYYNNYNNNNNNNNN',
+  '原型說明 › 角色與權限':'YYYNNYNNNNNNNNN',
+  '私人秘書 › 首頁':'YYYYYYYYYYYYYYY',
+  '私人秘書 › 表單':'YYYYYYYYYYYYYYY',
+  '私人秘書 › 查詢':'YYYYYYYYYYYYYYY',
+  '私人秘書 › 課程':'YYYYYYYYYYYYYYY',
+  '公告欄 › 公告':'YYYYYYYYYYYYYYY',
+  '公告欄 › 公司行事曆':'YYYYYYYYYYYYYYY',
+  '公告欄 › 組織圖':'YYYYYYYYYYYYYYY',
+  '公告欄 › 內部通訊錄':'YYYYYYYYYYYYYYY',
+  '人事系統 › 員工資料':'YYYNNYNNNNNNNNN',
+  '人事系統 › 我的工時':'YYYNNYNNNNNNNNN',
+  '人事系統 › 出勤管理':'YYYNNYNNNNNNNNN',
+  '人事系統 › 請假審核':'YYYNNYNNNNNNNNN',
+  '權限與範圍 › 權限對照表':'YYYNNYNNNNNNNNN',
+  '權限與範圍 › 職稱對照':'YYYNNYNNNNNNNNN',
+  '權限與範圍 › 待決議題':'YYYNNYNNNNNNNNN',
+  '文件管理 › 會議紀錄':'YYYYYYYYYYYYNNN',
+  '文件管理 › 使用指南':'YYYYYYYYYYYYNNN',
+  '文件管理 › 法規與資安':'YYYYYYYYYYYYNNN',
+  '文件管理 › 104 功能對照':'YYYYYYYYYYYYNNN',
+  '文件管理 › 系統說明':'YYYYYYYYYYYYNNN',
+  '線上申請 › 申請項目與流程':'YYYYYYYYYYYYYYY',
+  '線上申請 › 待定義規則':'YYYYYYYYYYYYYYY',
+  '業務資料整合 › 居服個案管理系統':'YYNNNYNNYYNNNNN',
+  '業務資料整合 › 個案資料與契約':'YYNNNYNNYYNNNNN',
+  '業務資料整合 › 異常事件通報':'YYYYYYYYYYYYNNN',
+  '薪資計算 › 薪資試算':'VVENNNNNNNNNNNN',
+  '薪資計算 › 薪資計算機':'VVENNNNNNNNNNNN',
+  '薪資計算 › 版本與覆核':'VVENNNNNNNNNNNN',
+  '報表匯出':'YYYNYYYYYYYYNNN',
+  '系統設定':'NNNNNYNNNNNNNNN'
+};
+const SHEET_CODE = {Y:'可', N:'不可', V:'可檢視', E:'可編輯'};
 function permItems(){
   return MODULES.flatMap(m=>m.tabs.length
     ? m.tabs.map(t=>({key:m.id+':'+t.id, zh:m.zh+' › '+t.zh, en:m.en+' › '+t.en, mod:m}))
     : [{key:m.id, zh:m.zh, en:m.en, mod:m}]);
 }
-function titleCell(it, tk){
-  const k=it.key+'|'+tk, tm=state.titleMatrix||(state.titleMatrix={});
+function titleCell(it, ck){
+  const k=it.key+'|'+ck, tm=state.titleMatrix||(state.titleMatrix={});
   if(k in tm) return tm[k];
-  const r=TITLE_ROLE[tk]; if(!r) return '';
-  return (!it.mod.perm || PERM_DEFAULTS[r][it.mod.perm]) ? '可' : '不可';
+  const row=TITLE_SHEET[it.zh], i=[...MATRIX_TITLES.map(t=>t.k), ...MATRIX_SUBS.map(s=>'sub:'+s.id)].indexOf(ck);
+  return row && i>=0 ? SHEET_CODE[row[i]] : '';
 }
-/* 系統管理員可以在角色類別（例如「一般員工」）底下「製造」（建立）子類別，子類別各自設定權限。
-   欄位 = 14 個職稱 + 子類別；子類別的格子預設留白，沒有預先帶入。示範：目前只存在這個畫面 */
-function subcats(){ return state.subcats || (state.subcats=[{id:'S1', parent:'employee', name:'司機'}, {id:'S2', parent:'employee', name:'約聘人員（contractor）'}]); }
+/* 系統管理員可以在角色類別（例如「一般員工」）底下「建立」子類別，子類別各自設定權限。
+   預設的三個子類別（照服員、司機、居服員）取自 Excel；新建的子類別格子預設留白。示範：目前只存在這個畫面 */
+function subcats(){ return state.subcats || (state.subcats=MATRIX_SUBS.map(s=>({...s}))); }
 function matrixCols(){
-  return [...Object.keys(TITLES).map(k=>({k, zh:TITLES[k].zh, en:TITLES[k].en})),
+  return [...MATRIX_TITLES,
     ...subcats().map(sc=>({k:'sub:'+sc.id, sc, zh:ROLES[sc.parent].zh+'：'+sc.name, en:ROLES[sc.parent].en+': '+sc.name}))];
 }
 function titleWorksheetRows(){
   const cols=matrixCols(), items=permItems();
-  const rows=[['職稱權限對照表（範本）'],['填寫方式：請在每一格填「可」或「不可」；空白代表還沒填。有四個職稱（系統管理員、人資、日照主管、照服員）先依目前的權限對照表帶入，請確認；其餘職稱請需求端／人事填寫，也可以直接加欄。最後幾欄是系統管理員在角色類別底下建立的子類別（例如一般員工：司機）。這份表是示範，還沒有連到實際權限。'],[],['項目名稱',...cols.map(c=>c.zh)]];
+  const rows=[['職稱權限對照表（需求端提供）'],['填寫方式：每一格填「可」或「不可」；薪資計算另有「可檢視」「可編輯」；空白代表還沒填。欄位取自需求端提供的 Excel；「A個管主管」「A個管」的「A」代表什麼待確認。最後幾欄是系統管理員在角色類別底下建立的子類別（例如一般員工：司機）。這份表還沒有連到實際權限。'],[],['項目名稱',...cols.map(c=>c.zh)]];
   items.forEach(it=>rows.push([it.zh,...cols.map(c=>titleCell(it,c.k))]));
   return rows;
+}
+/* 與目前原型「權限對照表」四個身分的差異：只比對對應得上的四欄（系統管理員、人資主管、日照主管、一般員工：照服員）；可檢視／可編輯都算「可」 */
+const TITLE_TO_ROLE = [['it','admin'],['hrd','hr'],['dir','manager'],['sub:S1','employee']];
+function titleDiffs(){
+  const items=permItems();
+  return TITLE_TO_ROLE.map(([ck,role])=>({ck, role, diffs:items.filter(it=>{
+    const sheet=titleCell(it,ck); if(!sheet) return false;
+    const proto=(!it.mod.perm || PERM_DEFAULTS[role][it.mod.perm]) ? '可' : '不可';
+    return (sheet==='不可'?'不可':'可')!==proto; }).map(it=>({it, sheet:titleCell(it,ck), proto:(!it.mod.perm || PERM_DEFAULTS[role][it.mod.perm]) ? '可' : '不可'}))}));
+}
+function titleDiffCard(){
+  const cols=matrixCols(), rows=titleDiffs().filter(d=>cols.some(c=>c.k===d.ck)), n=rows.reduce((a,d)=>a+d.diffs.length,0);
+  return `<section class="card">
+    <div class="card-h"><h2>${esc(both('與目前原型權限的差異','Differences from the prototype’s current permissions'))}</h2><span class="en">${esc(both(n+' 處差異',n+' differences'))}</span></div>
+    <div class="card-b"><div class="muted" style="font-size:12.5px;line-height:1.7;margin-bottom:8px">${esc(both('只比對對得上的四欄：系統管理員、人資主管、日照主管、一般員工：照服員，分別對應原型的系統管理員、人資、管理者、一般員工。差異處以需求端的 Excel 為準，10/14 會議確認後再決定要不要改原型的實際權限。',
+      'Only the four columns that map to a prototype role are compared: System administrator, HR lead, Day care supervisor and Employee: Care attendant ↔ the prototype’s admin, HR, manager and employee. Where they differ, the requester’s Excel wins; the 14 Oct meeting decides whether the prototype’s real permissions change.'))}</div>
+    ${rows.map(d=>{ const c=cols.find(x=>x.k===d.ck);
+      return `<div style="margin:8px 0"><b>${esc(both(c.zh,c.en))}</b> <span class="muted">${esc(both('對應原型：'+ROLES[d.role].zh,'maps to prototype: '+ROLES[d.role].en))}</span>
+      ${d.diffs.length?`<ul style="margin:4px 0 0;padding-left:20px;line-height:1.7">${d.diffs.map(x=>`<li>${esc(x.it.zh)}：${esc(both('Excel 為「'+x.sheet+'」，原型為「'+x.proto+'」','Excel “'+x.sheet+'”, prototype “'+x.proto+'”'))}</li>`).join('')}</ul>`
+      : `<div class="muted" style="font-size:12.5px">${esc(both('沒有差異','No differences'))}</div>`}</div>`; }).join('')}
+  </div></section>`;
 }
 function viewTitleMatrix(){
   const cols=matrixCols(), items=permItems(), edit=can('perms');
   const filled=items.reduce((a,it)=>a+cols.filter(c=>titleCell(it,c.k)).length,0), total=items.length*cols.length;
   return `<div class="grid">
-    <div class="note">${esc(both('10/7 會議把操作權限簡化為「確認職稱即可執行項目名稱」：每個職稱對哪些項目名稱（Portal 的頁面）可以操作，填一張矩陣就好，不必逐一對單一員工設定。需求端／人事要整理這張「職稱 × 項目名稱」權限對照矩陣表（10/7 待辦 2）。另外，系統管理員可以在角色類別（例如「一般員工」）底下建立子類別，同一類別裡有很多種員工，各自設定權限。',
-      'The 7 Oct meeting simplified permissions to “confirm the title and the items follow”: one matrix says which items (portal pages) each title can use, with no per-employee setup. The requester side and HR compile this title × item matrix (7 Oct action 2). The system admin can also create sub-categories under a role category (e.g. Employee), since one category holds many kinds of staff, each with its own permissions.'))}</div>
+    <div class="note">${esc(both('10/7 會議把操作權限簡化為「確認職稱即可執行項目名稱」：每個職稱對哪些項目名稱（Portal 的頁面）可以操作，填一張矩陣就好，不必逐一對單一員工設定。這張「職稱 × 項目名稱」權限對照矩陣表（10/7 待辦 2）已由需求端提供，下面是依該 Excel 帶入的內容。另外，系統管理員可以在角色類別（例如「一般員工」）底下建立子類別，同一類別裡有很多種員工，各自設定權限。',
+      'The 7 Oct meeting simplified permissions to “confirm the title and the items follow”: one matrix says which items (portal pages) each title can use, with no per-employee setup. The requester side supplied this title × item matrix (7 Oct action 2); the table below is loaded from their Excel. The system admin can also create sub-categories under a role category (e.g. Employee), since one category holds many kinds of staff, each with its own permissions.'))}</div>
     <section class="card">
       <div class="card-h"><h2>${esc(both('職稱 × 項目名稱','Title × item'))}</h2><span class="en">${esc(both(items.length+' 個項目 · '+cols.length+' 欄 · 已填 '+filled+' / '+total,items.length+' items · '+cols.length+' columns · '+filled+' / '+total+' filled'))}</span>
         <div class="spacer" style="flex:1"></div>
@@ -4794,11 +4883,12 @@ function viewTitleMatrix(){
       <div class="tablewrap"><table class="titlematrix">
         <thead><tr><th>${bi('項目名稱','Item')}</th>${cols.map(c=>`<th style="text-align:center">${bi(c.zh,c.en)}${edit&&c.sc?` <button class="btn ghost mini" data-subdel="${c.sc.id}" title="${esc(both('刪除子類別','Remove sub-category'))}">✕</button>`:''}</th>`).join('')}</tr></thead>
         <tbody>${items.map(it=>`<tr><td>${bi(it.zh,it.en)}</td>${cols.map(c=>{ const v=titleCell(it,c.k);
-          const label=v==='可'?`<span class="yes">${esc(both('可','Yes'))}</span>`:v==='不可'?`<span class="no">${esc(both('不可','No'))}</span>`:`<span class="muted">—</span>`;
-          return `<td style="text-align:center">${edit?`<button class="btn ghost mini" data-tcell="${it.key}|${c.k}" title="${esc(both('按一下切換：空白 → 可 → 不可','Click to cycle: blank → yes → no'))}">${label}</button>`:label}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
-      <div class="legend">${esc(both('示範：「系統管理員」「人資」「日照主管」「照服員」四欄先依目前的權限對照表帶入（它們對應四個示範身分）；其他職稱和子類別留白，等需求端填寫。'+(edit?'按格子可切換 可／不可／空白。':'只有系統管理員可以修改。')+'這張表還沒有連到實際權限；實際執行的仍是「權限對照表」的四個身分。',
-        'Demo: the System administrator, HR, Day care supervisor and Care attendant columns are pre-filled from today’s permission matrix (they map to the four demo roles); other titles and sub-categories stay blank for the requester side to fill in.'+(edit?' Click a cell to cycle yes / no / blank.':' Only the system admin can edit.')+' This matrix does not drive real permissions yet; what runs is still the four roles in the permission matrix.'))}</div>
+          const label=v==='可'||v==='可編輯'?`<span class="yes">${esc(v==='可'?both('可','Yes'):both('可編輯','Edit'))}</span>`:v==='可檢視'?`<span class="partial">${esc(both('可檢視','View'))}</span>`:v==='不可'?`<span class="no">${esc(both('不可','No'))}</span>`:`<span class="muted">—</span>`;
+          return `<td style="text-align:center">${edit?`<button class="btn ghost mini" data-tcell="${it.key}|${c.k}" title="${esc(both('按一下切換','Click to cycle'))}">${label}</button>`:label}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
+      <div class="legend">${esc(both('內容取自需求端提供的 Excel（12 個職稱＋一般員工底下 3 個子類別）。「A個管主管」「A個管」的「A」代表什麼，表格沒有說明，原文保留，待確認。薪資計算的格子另有「可檢視」「可編輯」。'+(edit?'按格子可切換。':'只有系統管理員可以修改。')+'這張表還沒有連到實際權限；實際執行的仍是「權限對照表」的四個身分。',
+        'Loaded from the Excel the requester side supplied (12 titles plus 3 sub-categories under Employee). The sheet does not say what the “A” in “A case-management lead / A case manager” stands for, so the wording is kept as is and marked to confirm. Payroll cells can also be View or Edit.'+(edit?' Click a cell to cycle.':' Only the system admin can edit.')+' This matrix does not drive real permissions yet; what runs is still the four roles in the permission matrix.'))}</div>
     </section>
+    ${titleDiffCard()}
     ${edit?`<section class="card">
       <div class="card-h"><h2>${esc(both('建立子類別','Create a sub-category'))}</h2><span class="en">${esc(both('10/7 錄音摘要；示範','7 Oct recording summary; demo'))}</span></div>
       <form class="frm" id="subAddForm" style="padding:12px 14px"><div class="muted" style="font-size:12.5px;line-height:1.7;margin-bottom:10px">${esc(both('在角色類別底下建立子類別：例如「一般員工」底下有很多種員工（司機、約聘人員 contractor 等），建立後會在上面的矩陣多一欄，可以各自設定權限。',
@@ -4813,7 +4903,8 @@ BINDERS['perm:titles']=function(){
   document.querySelectorAll('[data-tcell]').forEach(b=>b.onclick=()=>{
     if(!can('perms')) return;
     const [ik,tk]=b.dataset.tcell.split('|'), it=permItems().find(x=>x.key===ik), cur=titleCell(it,tk);
-    (state.titleMatrix||(state.titleMatrix={}))[ik+'|'+tk]=cur===''?'可':cur==='可'?'不可':'';
+    const cyc=it.mod.id==='pay'?['','可檢視','可編輯','不可']:['','可','不可'], at=cyc.indexOf(cur);
+    (state.titleMatrix||(state.titleMatrix={}))[ik+'|'+tk]=cyc[(at+1)%cyc.length];
     render(); });
   document.querySelectorAll('[data-subdel]').forEach(b=>b.onclick=()=>{ state.subcats=subcats().filter(z=>z.id!==b.dataset.subdel); render(); });
   const af=document.getElementById('subAddForm');
@@ -4821,7 +4912,7 @@ BINDERS['perm:titles']=function(){
     subcats().push({id:'S'+(Date.now()%100000), parent:fd.get('parent'), name:n});
     toast(both('已建立子類別：'+ROLES[fd.get('parent')].zh+'：'+n,'Sub-category created: '+ROLES[fd.get('parent')].en+': '+n)); render(); };
   const x=document.querySelector('[data-titlexlsx]');
-  if(x) x.onclick=()=>saveBlob(buildXlsx(titleWorksheetRows()), '職稱權限對照表_範本.xlsx');
+  if(x) x.onclick=()=>saveBlob(buildXlsx(titleWorksheetRows()), '職稱權限對照表.xlsx');
 };
 function viewMatrix(){
   const admin=can('perms'), cols=admin?BUILT_ROLES:[state.role];
@@ -4986,7 +5077,7 @@ const TOURS = [
  ]},
  {id:'admin', zh:'系統管理員：權限與既有系統連結', role:'admin', steps:[
    {go:{module:'perm',tab:'matrix'}, target:'.permtable', zh:'「權限與範圍 › 權限對照表」勾選或取消各身分的權限，立即生效（只在本次瀏覽）。'},
-   {go:{tab:'titles'}, target:'.titlematrix', zh:'「職稱對照」是 10/7 會議的新做法：每個職稱對哪些項目名稱可以操作，填一張矩陣就好，不必逐一對單一員工設定。按格子切換可／不可，也能下載 Excel 範本給需求端填寫。'},
+   {go:{tab:'titles'}, target:'.titlematrix', zh:'「職稱對照」是 10/7 會議的新做法：每個職稱對哪些項目名稱可以操作，填一張矩陣就好，不必逐一對單一員工設定。內容取自需求端提供的 Excel；按格子可切換，也能下載 Excel，最下面列出和目前原型權限的差異。'},
    {go:{module:'set',tab:null}, target:'#view table', zh:'「系統設定」有既有系統連結（104、居服個案管理系統等）、帳號原則與員工編號規則。過渡期間以連結導向現有系統。'}
  ]}
 ];
