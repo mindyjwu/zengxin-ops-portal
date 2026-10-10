@@ -42,7 +42,8 @@ test.describe('Shell & role switching', () => {
 
   test('role selector offers only the built roles', async ({ page }) => {
     const values = await page.locator('#roleSel option').evaluateAll(os => os.map(o => o.value));
-    expect(values).toEqual(['admin', 'hr', 'manager', 'employee']);
+    expect(values).toEqual(['admin', 'hr', 'manager', 'employee', 'boss', 'training', 'accountant', 'daydir', 'daysw',
+      'homelead', 'homesup', 'cmlead', 'cm', 'driver', 'hca']);   // 4 original + 11 from the title matrix columns
   });
 
   test('switching role updates the persona chip', async ({ page }) => {
@@ -237,6 +238,44 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
     const adminIdx = await tm.locator('thead th').evaluateAll(ths => ths.findIndex(h => h.textContent.includes('系統管理員')));
     await tm.locator('tbody tr', { hasText: '權限與範圍 › 職稱對照' }).first().locator('td').nth(adminIdx).locator('button').click();
     await expect(page.locator('[data-mod="perm"]')).toBeVisible();
+  });
+
+  test('every title column in the matrix has a role to switch to, and its pages follow the Excel', async ({ page }) => {
+    const expected = await page.evaluate(() => Object.keys(ROLE_COL).map(r => {
+      const col = ROLE_COL[r];
+      const mods = MODULES.filter(m => m.tabs.length ? m.tabs.some(t => ['可', '可檢視', '可編輯'].includes(titleCell(permItems().find(i => i.key === m.id + ':' + t.id), col)))
+        : ['可', '可檢視', '可編輯'].includes(titleCell(permItems().find(i => i.key === m.id), col))).map(m => m.id);
+      return { r, mods };
+    }));
+    expect(expected).toHaveLength(15);
+    for (const { r, mods } of expected) {
+      await setRole(page, r);
+      const shown = await page.locator('[data-mod]').evaluateAll(n => n.map(x => x.dataset.mod));
+      const want = r === 'admin' ? [...new Set([...mods, 'perm'])] : mods;
+      expect(shown.sort(), r).toEqual(want.sort());
+    }
+    // the Excel columns without a role before this change
+    await setRole(page, 'boss');
+    await expect(page.locator('.pagehead .chip.acc')).toContainText('老闆');
+    await expect(page.locator('[data-mod="set"]')).toHaveCount(0);        // 系統設定：老闆不可
+    await expect(page.locator('[data-mod="pay"]')).toBeVisible();          // 薪資計算：可檢視
+    await go(page, 'pay', 'ver');
+    await expect(page.locator('#view')).toContainText('只有「可檢視」');
+    await expect(page.locator('[data-savever]')).toHaveCount(0);           // not on this tab; the run tab holds the button
+    await page.click('[data-tab="run"]');
+    await expect(page.locator('[data-savever]')).toBeDisabled();
+    await setRole(page, 'hr');
+    await go(page, 'pay', 'run');
+    await expect(page.locator('[data-savever]')).toBeEnabled();
+    // borrowed demo persons show the role's own title
+    await setRole(page, 'homelead');
+    await expect(page.locator('.pagehead .chip.acc')).toContainText('居服主管');
+    await setRole(page, 'cmlead');
+    await expect(page.locator('.pagehead .chip.acc')).toContainText('A個管主管');
+    // sub-category employees land on 私人秘書 and see only their own data
+    await setRole(page, 'driver');
+    await expect(page.locator('[data-mod="desk"]')).toHaveAttribute('aria-current', 'true');
+    await expect(page.locator('#assumeBtn')).toHaveCount(0);
   });
 
   test('home calendar shows each day’s status and punch times', async ({ page }) => {
