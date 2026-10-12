@@ -154,11 +154,11 @@ test.describe('Settings & permission matrix', () => {
 
   test('admin sees the full matrix with editable permission cells', async ({ page }) => {
     await go(page, 'perm', 'matrix');
-    await expect(page.locator('.permtable thead th')).toHaveCount(5);
-    await expect(page.locator('[data-perm]')).toHaveCount(36);
+    await expect(page.locator('.permtable thead th')).toHaveCount(16);   // capability column + 15 roles
+    await expect(page.locator('[data-perm]')).toHaveCount(135);          // 9 editable capabilities × 15 roles
     await expect(page.locator('[data-perm="admin|perms"]')).toBeDisabled();
     await expect(page.locator('[data-perm="admin|mgmt"]')).toBeDisabled();
-    await expect(page.locator('[data-perm="employee|mgmt"]')).not.toBeChecked();
+    await expect(page.locator('[data-perm="employee|mgmt"]')).toHaveAttribute('aria-pressed', 'false');
   });
 
   for (const r of ['hr', 'manager']) {
@@ -174,7 +174,7 @@ test.describe('Settings & permission matrix', () => {
 
   test('a change made by admin takes effect for that role and can be restored', async ({ page }) => {
     await go(page, 'perm', 'matrix');
-    await page.check('[data-perm="manager|salary"]');
+    await page.click('[data-perm="manager|salary"]');
     await expect(page.locator('#view')).toContainText('權限異動紀錄');
 
     await setRole(page, 'manager');
@@ -184,7 +184,7 @@ test.describe('Settings & permission matrix', () => {
     await setRole(page, 'admin');
     await go(page, 'perm', 'matrix');
     await page.click('[data-permreset]');
-    await expect(page.locator('[data-perm="manager|salary"]')).not.toBeChecked();
+    await expect(page.locator('[data-perm="manager|salary"]')).toHaveAttribute('aria-pressed', 'false');
     await setRole(page, 'manager');
     await go(page, 'hr', 'emp');
     await expect(page.locator('#view tbody')).not.toContainText('NT$');
@@ -1530,8 +1530,25 @@ test.describe('CSV exports', () => {
     expect(await rm.locator('tbody tr').count()).toBe(32);
     const idx = await rm.locator('thead th').evaluateAll(ths => ths.findIndex(h => h.textContent.includes('老闆')));
     await expect(rm.locator('tbody tr', { hasText: '薪資計算 › 薪資試算' }).first().locator('td').nth(idx)).toContainText('可檢視');
-    await expect(page.locator('.permtable thead th')).toHaveCount(5); // the finer table keeps the four original roles
+    await expect(page.locator('.permtable thead th')).toHaveCount(16); // the finer table now covers all 15 roles
     await setRole(page, 'hr');
     await expect(page.locator('table.rolematrix thead th')).toHaveCount(2);   // others only see their own column
+  });
+
+  test('finer permissions use the Excel Yes/No format for all 15 roles and download as Excel', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'perm', 'matrix');
+    const cell = page.locator('[data-perm="daydir|approve"]');
+    await expect(cell).toContainText('可');
+    await expect(cell).toHaveAttribute('aria-pressed', 'true');
+    await cell.click();
+    await expect(page.locator('[data-perm="daydir|approve"]')).toContainText('不可');
+    await expect(page.locator('#view')).toContainText('日照主管');
+    await page.click('[data-permreset]');
+    await expect(page.locator('[data-perm="daydir|approve"]')).toContainText('可');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-capxlsx]')]);
+    expect(dl.suggestedFilename()).toBe('細項權限對照表.xlsx');
+    const text = fs.readFileSync(await dl.path()).toString('utf8');
+    for (const s of ['細項權限對照表', '簽核部屬請假', '一般員工：司機', '老闆']) expect(text).toContain(s);
   });
 });

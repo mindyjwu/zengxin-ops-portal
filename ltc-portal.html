@@ -4820,17 +4820,8 @@ const CAPS=[
  {key:'salary', derived:true, zh:'薪資計算與覆核', en:'Run and review payroll', note:{zh:'與「查看薪資」同一權限',en:'Same permission as "View pay"'}}
 ];
 const BUILT_ROLES = ['admin','hr','manager','employee'];
-const PERM_DEFAULTS = Object.fromEntries(BUILT_ROLES.map(k=>[k,{...ROLES[k].perms}]));
-function capMark(c, k){
-  if(!c.key){ if(k in c) return c[k]; const r=ROLES[k];   // 新增的職稱身分：依資料範圍推定
-    return c.zh.startsWith('查看所有公司') ? (r.allOffices?'yes':'no') : c.zh.startsWith('私人秘書') ? 'self' : (r.allOffices?'yes':r.selfOnly?'self':'own'); }
-  const r=ROLES[k]; return r.perms[c.key] ? (r.allOffices || c.key==='mgmt' ? 'yes' : 'own') : 'no';
-}
-const CAPMARK={
-  yes:{zh:'可',en:'Yes',cls:'yes'}, no:{zh:'不可',en:'No',cls:'no'},
-  own:{zh:'限本公司',en:'Own facility',cls:'partial'}, assume:{zh:'預設不可（可調整）',en:'No by default (toggle)',cls:'partial'},
-  self:{zh:'僅本人',en:'Self only',cls:'partial'}
-};
+const ALL_ROLE_KEYS = Object.keys(ROLE_COL);
+const PERM_DEFAULTS = Object.fromEntries(ALL_ROLE_KEYS.map(k=>[k,{...ROLES[k].perms}]));
 /* 職稱 × 項目名稱 權限對照（10/7 會議：操作權限改成「確認職稱即可執行項目名稱」）。
    欄位與內容取自使用者提供的 Excel「職稱權限對照表」（12 個職稱＋一般員工底下 3 個子類別）；原型沒有改寫任何一格。
    「A個管主管」「A個管」的「A」代表什麼，表格沒有說明，原文保留，待確認。
@@ -4970,24 +4961,39 @@ BINDERS['perm:titles']=function(){
   const x=document.querySelector('[data-titlexlsx]');
   if(x) x.onclick=()=>saveBlob(buildXlsx(titleWorksheetRows()), '職稱權限對照表.xlsx');
 };
+/* 細項權限也用 Excel 的「可／不可」格式：key 列可點選切換（存在 ROLES[k].perms），資料範圍列由身分決定、只顯示 */
+function capValue(c,k){
+  const r=ROLES[k];
+  if(c.key) return !!r.perms[c.key];
+  if(c.zh.startsWith('查看所有公司')) return !!r.allOffices;
+  return true;                                            // 私人秘書、查看人事資料、查看出勤明細：每個身分都可，範圍不同
+}
+function capScope(c,k){
+  if(c.key || c.zh.startsWith('查看所有公司') || c.zh.startsWith('私人秘書')) return '';
+  const r=ROLES[k]; return r.allOffices?['三家公司','All three companies']:r.selfOnly?['僅本人','Self only']:['限本公司','Own company'];
+}
+function capRows(){
+  return [['細項權限對照表（資料範圍、薪資、簽核）'],['可＝可以；不可＝不行。資料範圍列由身分決定。除了原本四個身分，其他 11 個身分的細項權限是依職稱推定的暫定值，待確認。'],[],
+    ['權限項目',...ALL_ROLE_KEYS.map(k=>ROLES[k].zh)],
+    ...CAPS.map(c=>[c.zh,...ALL_ROLE_KEYS.map(k=>(capValue(c,k)?'可':'不可')+(capScope(c,k)?'（'+capScope(c,k)[0]+'）':''))])];
+}
 function viewMatrix(){
-  const admin=can('perms'), cols=admin?BUILT_ROLES:[state.role];
+  const admin=can('perms'), cols=admin?ALL_ROLE_KEYS:[state.role];
   const log=state.permLog||[];
-  const changed=BUILT_ROLES.some(k=>Object.keys(PERM_DEFAULTS[k]).some(p=>ROLES[k].perms[p]!==PERM_DEFAULTS[k][p]));
-  const cell=(c,k)=>{ const v=CAPMARK[capMark(c,k)];
-    const label=`<span class="${v.cls}">${esc(both(v.zh,v.en))}</span>`;
+  const changed=ALL_ROLE_KEYS.some(k=>Object.keys(PERM_DEFAULTS[k]).some(p=>ROLES[k].perms[p]!==PERM_DEFAULTS[k][p]));
+  const cell=(c,k)=>{ const v=capValue(c,k), sc=capScope(c,k);
+    const label=`<span class="${v?'yes':'no'}">${esc(v?both('可','Yes'):both('不可','No'))}</span>${sc?`<div class="muted" style="font-size:11px">${esc(both(sc[0],sc[1]))}</div>`:''}`;
     if(!admin||!c.key||c.derived) return `<td style="text-align:center">${label}</td>`;
-    const on=!!ROLES[k].perms[c.key], self=k===state.role&&(c.key==='perms'||c.key==='mgmt');
-    return `<td style="text-align:center"><label style="display:inline-flex;gap:6px;align-items:center;cursor:${self?'not-allowed':'pointer'}">
-      <input type="checkbox" data-perm="${k}|${c.key}" ${on?'checked':''} ${self?'disabled title="'+esc(both('不可移除自己的管理權限','You cannot remove your own admin permission'))+'"':''}>${label}</label></td>`;
+    const self=k===state.role&&(c.key==='perms'||c.key==='mgmt');
+    return `<td style="text-align:center"><button class="btn ghost mini" data-perm="${k}|${c.key}" aria-pressed="${v}" ${self?'disabled title="'+esc(both('不可移除自己的管理權限','You cannot remove your own admin permission'))+'"':'title="'+esc(both('按一下切換可／不可','Click to toggle'))+'"'}>${label}</button></td>`;
   };
   const pageRoles=admin?Object.keys(ROLE_COL):[state.role], pages=permItems();
   const pageChip=v=>v==='可'||v==='可編輯'?`<span class="yes">${esc(v==='可'?both('可','Yes'):both('可編輯','Edit'))}</span>`:v==='可檢視'?`<span class="partial">${esc(both('可檢視','View'))}</span>`:v==='不可'?`<span class="no">${esc(both('不可','No'))}</span>`:`<span class="muted">—</span>`;
   return `
   <div class="grid">
     <div class="note">${admin ? esc(both(
-      '上表（項目名稱 × 身分）是各身分看得到哪些頁面，內容取自需求端的職稱權限 Excel，已連動；要修改請到「職稱對照」。下表是資料範圍、薪資、簽核等細項權限：勾選或取消即時生效（僅限本次瀏覽），可切換上方「身分」驗證畫面差異。',
-      'The top table (item × role) shows which pages each role can open, loaded from the requester’s title permission Excel and already linked; edit it under Title matrix. The table below holds the finer permissions (data scope, pay, approvals): ticking a box takes effect immediately (this browser session only); switch the Role selector above to check each view.'))
+      '上表（項目名稱 × 身分）是各身分看得到哪些頁面，內容取自需求端的職稱權限 Excel，已連動；要修改請到「職稱對照」。下表是資料範圍、薪資、簽核等細項權限，也是可／不可格式：按格子切換即時生效（僅限本次瀏覽），可切換上方「身分」驗證畫面差異。',
+      'The top table (item × role) shows which pages each role can open, loaded from the requester’s title permission Excel and already linked; edit it under Title matrix. The table below holds the finer permissions (data scope, pay, approvals) in the same Yes/No format: clicking a cell takes effect immediately (this browser session only); switch the Role selector above to check each view.'))
       : esc(both('完整權限對照表僅系統管理員可檢視與調整；以下為您目前身分的權限。',
       'Only the system administrator can view and change the full matrix; below are the permissions for your current role.'))}</div>
     <section class="card">
@@ -5003,17 +5009,18 @@ function viewMatrix(){
       <div class="card-h"><h2>${esc(admin?both('細項權限（資料範圍、薪資、簽核）','Finer permissions (scope, pay, approvals)'):both('我的權限','My permissions'))}</h2>
         <span class="en">${esc(both(cols.length+' 種身分 · '+CAPS.length+' 項權限',cols.length+' role(s) · '+CAPS.length+' capabilities'))}</span>
         <div class="spacer" style="flex:1"></div>
+        <button class="btn mini" data-capxlsx>${esc(both('下載（Excel）','Download (Excel)'))}</button>
         ${admin&&changed?`<button class="btn ghost mini" data-permreset>${esc(both('還原預設','Restore defaults'))}</button>`:''}</div>
       <div class="tablewrap"><table class="permtable">
         <thead><tr><th>${bi('權限項目','Capability')}</th>
-          ${cols.map(k=>`<th style="text-align:center">${bi(ROLES[k].zh,ROLES[k].en)}</th>`).join('')}</tr></thead>
+          ${cols.map(k=>`<th style="text-align:center">${bi(ROLES[k].zh,ROLES[k].en)}${ROLES[k].provisional?`<div class="muted" style="font-size:10.5px;font-weight:400">${esc(both('暫定','provisional'))}</div>`:''}</th>`).join('')}</tr></thead>
         <tbody>${CAPS.map(c=>`<tr>
           <td>${bi(c.zh,c.en)}${c.note?`<div class="muted" style="font-size:11px">${esc(both(c.note.zh,c.note.en))}</div>`:''}</td>
           ${cols.map(k=>cell(c,k)).join('')}
         </tr>`).join('')}</tbody></table></div>
       <div class="legend">${esc(both(
-        '「限本公司」= 僅限使用者所屬公司；「僅本人」= 只看得到自己的資料；「預設不可（可調整）」= 由上方假設開關控制。資料範圍列由身分決定，不在此調整。',
-        '"Own company" = limited to the user’s own site; "Self only" = the user’s own data; "No by default (toggle)" = controlled by the Assumption switch. Data-scope rows follow the role and are not edited here.'))}</div>
+        '格式同 Excel：可／不可。'+(admin?'按格子可切換。':'')+'「限本公司」= 僅限使用者所屬公司；「僅本人」= 只看得到自己的資料；資料範圍列由身分決定，不在此調整（管理者可否跨公司由上方「假設」開關控制）。除了原本四個身分，其他 11 個身分是依職稱推定的暫定值，待確認。',
+        'Same format as the Excel: Yes / No.'+(admin?' Click a cell to toggle.':'')+' "Own company" = limited to the user’s own site; "Self only" = the user’s own data. Data-scope rows follow the role and are not edited here (whether managers cross companies is the Assumption switch above). Besides the original four roles, the other 11 are provisional values inferred from the title, to be confirmed.'))}</div>
     </section>
     ${admin&&log.length?`<section class="card">
       <div class="card-h"><h2>${esc(both('權限異動紀錄','Permission change log'))}</h2></div>
@@ -5036,11 +5043,11 @@ function viewMatrix(){
   </div>`;
 }
 BINDERS['perm:matrix']=function(){
-  document.querySelectorAll('[data-perm]').forEach(cb=>cb.onchange=()=>{
+  document.querySelectorAll('[data-perm]').forEach(cb=>cb.onclick=()=>{
     if(!can('perms')) return;
     const [k,p]=cb.dataset.perm.split('|');
     if(k===state.role && (p==='perms'||p==='mgmt')) return;
-    const on=cb.checked;
+    const on=!ROLES[k].perms[p];
     ROLES[k].perms[p]=on;
     const cap=CAPS.find(c=>c.key===p);
     (state.permLog=state.permLog||[]).push({at:ymd(TODAY)+' '+nowHM(), role:k, cap:both(cap.zh,cap.en), on});
@@ -5049,10 +5056,11 @@ BINDERS['perm:matrix']=function(){
   });
   const r=document.querySelector('[data-permreset]');
   if(r) r.onclick=()=>{
-    BUILT_ROLES.forEach(k=>Object.assign(ROLES[k].perms, PERM_DEFAULTS[k]));
+    ALL_ROLE_KEYS.forEach(k=>Object.assign(ROLES[k].perms, PERM_DEFAULTS[k]));
     (state.permLog=state.permLog||[]).push({at:ymd(TODAY)+' '+nowHM(), role:state.role, cap:both('全部還原預設','All restored to defaults'), on:true});
     toast(both('權限已還原預設','Permissions restored to defaults')); render();
   };
+  const x=document.querySelector('[data-capxlsx]'); if(x) x.onclick=()=>saveBlob(buildXlsx(capRows()), '細項權限對照表.xlsx');
 };
 
 /* =============================== 待決議題 Open questions =============================== */
