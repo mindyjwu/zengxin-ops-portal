@@ -1521,4 +1521,17 @@ test.describe('CSV exports', () => {
     await expect(view).toContainText('劉思慧');
     await expect(view).not.toContainText('徐宗翰');
   });
+
+  test('the permission matrix tab shows the Excel format: items × all 15 roles', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'perm', 'matrix');
+    const rm = page.locator('table.rolematrix');
+    await expect(rm.locator('thead th')).toHaveCount(16);            // item column + 15 roles
+    expect(await rm.locator('tbody tr').count()).toBe(32);
+    const idx = await rm.locator('thead th').evaluateAll(ths => ths.findIndex(h => h.textContent.includes('老闆')));
+    await expect(rm.locator('tbody tr', { hasText: '薪資計算 › 薪資試算' }).first().locator('td').nth(idx)).toContainText('可檢視');
+    await expect(page.locator('.permtable thead th')).toHaveCount(5); // the finer table keeps the four original roles
+    await setRole(page, 'hr');
+    await expect(page.locator('table.rolematrix thead th')).toHaveCount(2);   // others only see their own column
+  });
 });

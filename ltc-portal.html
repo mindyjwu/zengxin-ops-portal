@@ -4981,15 +4981,26 @@ function viewMatrix(){
     return `<td style="text-align:center"><label style="display:inline-flex;gap:6px;align-items:center;cursor:${self?'not-allowed':'pointer'}">
       <input type="checkbox" data-perm="${k}|${c.key}" ${on?'checked':''} ${self?'disabled title="'+esc(both('不可移除自己的管理權限','You cannot remove your own admin permission'))+'"':''}>${label}</label></td>`;
   };
+  const pageRoles=admin?Object.keys(ROLE_COL):[state.role], pages=permItems();
+  const pageChip=v=>v==='可'||v==='可編輯'?`<span class="yes">${esc(v==='可'?both('可','Yes'):both('可編輯','Edit'))}</span>`:v==='可檢視'?`<span class="partial">${esc(both('可檢視','View'))}</span>`:v==='不可'?`<span class="no">${esc(both('不可','No'))}</span>`:`<span class="muted">—</span>`;
   return `
   <div class="grid">
     <div class="note">${admin ? esc(both(
-      '本表即原型實際使用的權限設定。勾選或取消即時生效（僅限本次瀏覽），可切換上方「身分」驗證畫面差異。',
-      'This matrix is the permission set the prototype actually runs on. Ticking a box takes effect immediately (this browser session only); switch the Role selector above to check each view.'))
+      '上表（項目名稱 × 身分）是各身分看得到哪些頁面，內容取自需求端的職稱權限 Excel，已連動；要修改請到「職稱對照」。下表是資料範圍、薪資、簽核等細項權限：勾選或取消即時生效（僅限本次瀏覽），可切換上方「身分」驗證畫面差異。',
+      'The top table (item × role) shows which pages each role can open, loaded from the requester’s title permission Excel and already linked; edit it under Title matrix. The table below holds the finer permissions (data scope, pay, approvals): ticking a box takes effect immediately (this browser session only); switch the Role selector above to check each view.'))
       : esc(both('完整權限對照表僅系統管理員可檢視與調整；以下為您目前身分的權限。',
       'Only the system administrator can view and change the full matrix; below are the permissions for your current role.'))}</div>
     <section class="card">
-      <div class="card-h"><h2>${esc(admin?both('權限對照表','Permission matrix'):both('我的權限','My permissions'))}</h2>
+      <div class="card-h"><h2>${esc(admin?both('項目名稱 × 身分','Item × role'):both('我可以開啟的頁面','Pages I can open'))}</h2>
+        <span class="en">${esc(both(pages.length+' 個項目 · '+pageRoles.length+' 種身分',pages.length+' items · '+pageRoles.length+' role(s)'))}</span></div>
+      <div class="tablewrap"><table class="titlematrix rolematrix">
+        <thead><tr><th>${bi('項目名稱','Item')}</th>${pageRoles.map(k=>`<th style="text-align:center">${bi(ROLES[k].zh,ROLES[k].en)}</th>`).join('')}</tr></thead>
+        <tbody>${pages.map(it=>`<tr><td>${bi(it.zh,it.en)}</td>${pageRoles.map(k=>`<td style="text-align:center">${pageChip(titleCell(it,ROLE_COL[k]))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+      <div class="legend">${esc(both('「可檢視」「可編輯」目前只用在薪資計算。除了原本四個身分，其他 11 個身分的資料範圍與細項權限是依職稱推定的暫定值，待確認。',
+        '“View” and “Edit” are only used for payroll so far. Besides the original four roles, the data scope and finer permissions of the other 11 roles are provisional values inferred from the title, to be confirmed.'))}</div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(admin?both('細項權限（資料範圍、薪資、簽核）','Finer permissions (scope, pay, approvals)'):both('我的權限','My permissions'))}</h2>
         <span class="en">${esc(both(cols.length+' 種身分 · '+CAPS.length+' 項權限',cols.length+' role(s) · '+CAPS.length+' capabilities'))}</span>
         <div class="spacer" style="flex:1"></div>
         ${admin&&changed?`<button class="btn ghost mini" data-permreset>${esc(both('還原預設','Restore defaults'))}</button>`:''}</div>
