@@ -1244,7 +1244,7 @@ function viewArchRoles(){
     <section class="card">
       <div class="card-h"><h2>${esc(both('9/30 會議：員工角色與待新增項目','30 Sept: employee role and what is still to add'))}</h2></div>
       <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.8">
-        <li>${esc(both('10/7 會議：目前的四個身分（系統管理員、人資、管理者、一般員工）是暫定，需求端確認是否正確或需要增減；權限用勾選方式設定（見「權限對照表」）；同一天也決定把操作權限簡化為「確認職稱即可執行項目名稱」（見「職稱對照」）。','7 Oct meeting: the four roles are provisional and the requester side confirms or changes them; permissions are set by ticking boxes (see the permission matrix), and the same meeting simplified them to “confirm the title and the items follow” (see the title matrix).'))}</li>
+        <li>${esc(both('10/7 會議：目前的四個身分（系統管理員、人資、管理者、一般員工）是暫定，需求端確認是否正確或需要增減；權限用可／不可的格式設定（見「權限對照表」）；同一天也決定把操作權限簡化為「確認職稱即可執行項目名稱」（見「職稱對照」）。','7 Oct meeting: the four roles are provisional and the requester side confirms or changes them; permissions are set by ticking boxes (see the permission matrix), and the same meeting simplified them to “confirm the title and the items follow” (see the title matrix).'))}</li>
         <li>${esc(both('新增「員工個別」角色：只能看自己的打卡記錄、請假申請與審核狀態、特休餘額。原型的「一般員工」身分就是這個角色，進入「私人秘書」。','New individual-employee role: own punch records, leave requests and status, leave balance. The prototype’s Employee role is this one and opens My Desk.'))}</li>
         <li>${esc(both('管理層與員工看到的是完全不同的系統介面，不是只少幾個功能。','Management and employees see completely different interfaces, not the same one with a few functions removed.'))}</li>
         <li>${esc(both('護理師等員工個別資訊尚未建立獨立角色，待新增。','Roles for nurses and similar positions are not yet built.'))}</li>
@@ -5151,7 +5151,7 @@ const TOURS = [
    {go:{module:'rpt',tab:null}, target:'#reportFmt', zh:'「報表匯出」先選月份與格式（CSV 或 Excel），再下載報表；每份報表都同時列出員工編號與中文姓名。'}
  ]},
  {id:'admin', zh:'系統管理員：權限與既有系統連結', role:'admin', steps:[
-   {go:{module:'perm',tab:'matrix'}, target:'.permtable', zh:'「權限與範圍 › 權限對照表」勾選或取消各身分的權限，立即生效（只在本次瀏覽）。'},
+   {go:{module:'perm',tab:'matrix'}, target:'.permtable', zh:'「權限與範圍 › 權限對照表」：上表是各身分看得到哪些頁面（來自 Excel），下表的細項權限按格子切換可／不可，立即生效（只在本次瀏覽）。'},
    {go:{tab:'titles'}, target:'.titlematrix', zh:'「職稱對照」是 10/7 會議的新做法：每個職稱對哪些項目名稱可以操作，填一張矩陣就好，不必逐一對單一員工設定。內容取自需求端提供的 Excel；按格子可切換，也能下載 Excel，最下面列出和目前原型權限的差異。'},
    {go:{module:'set',tab:null}, target:'#view table', zh:'「系統設定」有既有系統連結（104、居服個案管理系統等）、帳號原則與員工編號規則。過渡期間以連結導向現有系統。'}
  ]}
