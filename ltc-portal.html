@@ -5287,6 +5287,11 @@ const TOURS = [
    {go:{module:'perm',tab:'matrix'}, target:'.permtable', zh:'「權限與範圍 › 權限對照表」：上表是各身分看得到哪些頁面（來自 Excel），下表的細項權限按格子切換可／不可，立即生效（只在本次瀏覽）。'},
    {go:{tab:'titles'}, target:'.titlematrix', zh:'「職稱對照」是 10/7 會議的新做法：每個職稱對哪些項目名稱可以操作，填一張矩陣就好，不必逐一對單一員工設定。內容取自需求端提供的 Excel；按格子可切換，也能下載 Excel，最下面列出和目前原型權限的差異。'},
    {go:{module:'set',tab:null}, target:'#view table', zh:'「系統設定」有既有系統連結（104、居服個案管理系統等）、帳號原則與員工編號規則。過渡期間以連結導向現有系統。'}
+ ]},
+ {id:'storage', zh:'系統管理員：估算手機打卡的雲端儲存空間', role:'admin', steps:[
+   {go:{module:'doc',tab:'sysinfo'}, target:'#stForm', zh:'「文件管理 › 系統說明 › 雲端儲存空間估算」：輸入員工數、每月出勤日、每日打卡次數、每筆大小、是否存照片、員工附件、備份份數與保存年限。預設值是假設，不是會議決定。'},
+   {target:'[data-stpreset]', zh:'四個按鈕套用常見情境：300 或 2,000 人，只存文字紀錄或每次打卡拍照，可以直接看差距。'},
+   {target:'#stOut', zh:'下方的結果列出每年打卡筆數、每年容量、員工附件與含備份的總容量；拿這個容量向雲端廠商報價。'}
  ]}
 ];
 function startTour(id){
