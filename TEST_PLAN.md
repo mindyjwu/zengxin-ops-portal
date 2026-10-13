@@ -271,7 +271,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] 範圍與進展 has the 10/7 decisions and action items (source column 10/7); the 9/30 follow-ups that the 10/7 items replace say so — *…decisions and follow-ups carry the 7 Oct items*
 - [ ] Wording is the same everywhere: 需求端 (never 客戶), 暫定 (never “placeholder” in Chinese text), 仁寶 for the system and 居服個案管理系統 for the portal's link, 10/7 會議 (never “最新會議”), and no 人保 — *…wording is cohesive…*; *Grounded content › no page shows the removed, unsourced content*
 - [ ] 業務資料整合 › 居服個案管理系統: the link's official name, 仁寶 connects to the MOHW system, link button with URL pending, the planned Excel flow (download from 仁寶 → import → summary analysis) tied to 10/7 action 5; no demo data; 系統設定 lists 居服個案管理系統（仁寶） — *…the link to 仁寶 is named 居服個案管理系統…*
-- [ ] 權限與範圍 › 職稱對照: item × 12 titles + 3 sub-categories loaded from the requester's Excel (fully filled; payroll rows show 可檢視/可編輯); the admin can cycle cells and create/delete sub-categories; a differences card lists where the Excel differs from the four prototype roles; 組織圖 tab shows a 職稱架構 card
+- [ ] 權限與範圍 › 職稱對照: item × 12 titles + 3 sub-categories loaded from the requester's Excel (fully filled; payroll rows show 可檢視/可編輯); the admin can cycle cells and create/delete sub-categories; a differences card lists where the Excel differs from the four prototype roles; 組織圖 tab shows the 10/13 組織架構 tree (4 entities, facilities, units, titles, cross-unit supervisors) and notes that the org is still being adjusted
 - [ ] 線上申請 › 簽核路徑預覽: A004 → 日照主管 → 管理者 → 老闆; 自訂流程 lets HR or a manager remove nodes, add an approver and go back to the org chart; the system admin cannot change it — *…approval path follows the org chart…*; *…only roles that approve can change a flow*
 - [ ] Rejoining after leaving: C003 (離職 from 2026-09-15) set back to 在職 on 2026-10-01 restarts tenure from that date — *…rejoining after leaving restarts tenure…*
 - [ ] 新增員工 fills in the number by company (A011, B010, C004, H007; the next A012) and the new person works in payroll, attendance and reports; 系統設定 › 員工編號規則 changes the next number — *…add employee fills in the number…*; *…a new employee works in payroll…*; *…the employee-number rule is editable…*
@@ -317,3 +317,4 @@ This flow is **manual** end to end; its individual steps are covered by the test
 | Role | Module | Feature | Expected | Actual | Severity |
 |------|--------|---------|----------|--------|----------|
 |      |        |         |          |        |          |
+- [ ] 文件管理 › 104 功能對照: a 104 員工資料匯出欄位 card lists the export categories and fields (no personal data); 線上申請 › 簽核路徑預覽 shows the 10/13 note that some approval flows differ from the org chart
