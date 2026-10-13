@@ -454,9 +454,9 @@ STAFF.forEach(s=>{ const d=STATUS_DEMO[s.id]; s.status=d?d.status:'active'; s.st
 /* 當月是否仍在名冊（計薪與出勤統計用）：留職停薪、離職自生效月起不列入；規則待人資確認 */
 const onRoster = (s, month) => s.status==='active' || !s.statusSince || month < s.statusSince.slice(0,7);
 const empStatusChip = s => `<span class="chip ${EMP_STATUS[s.status].cls}">${EMP_STATUS[s.status].zh}</span>`;
-/* 年資：自到職日起算；離職者算到離職日。跨公司轉調員工編號不變、年資不歸零（9/30 會議）；離職後回任才重新計算 */
+/* 年資：自到職日起算；離職者算到離職日。跨公司轉調員工編號不變、年資不歸零（9/30 會議）；離職後回任以新進人員重新編號、年資重新計算，不沿用舊員編（10/13 需求端確認） */
 function tenureOf(s){
-  const end = s.status==='left' && s.statusSince ? new Date(s.statusSince) : TODAY, h=new Date(s.rehired||s.hired);
+  const end = s.status==='left' && s.statusSince ? new Date(s.statusSince) : TODAY, h=new Date(s.hired);
   let m=(end.getFullYear()-h.getFullYear())*12+end.getMonth()-h.getMonth(); if(end.getDate()<h.getDate()) m--;
   m=Math.max(0,m); return {y:Math.floor(m/12), m:m%12};
 }
@@ -1108,7 +1108,7 @@ const MEETING_DECISIONS = [
   {src:'9/30', zh:'在職狀態三種：在職、留職停薪、離職', en:'Three employment statuses: active, unpaid leave, resigned',
    whereZh:'人事系統 › 員工資料的「在職狀態」；人資可在員工資料中變更；留職停薪與離職自生效月起不列入計薪與出勤統計', whereEn:'HR › Employee records › Status; HR can change it; unpaid leave and resignation drop out of payroll and attendance from the effective month', st:'built'},
   {src:'9/30', zh:'年資保留：跨單位轉調員工編號不變，年資不歸零；離職後重新回任才重新計算', en:'Tenure carries over: a transfer keeps the employee number and tenure; rehire after leaving restarts it',
-   whereZh:'員工資料與私人秘書顯示年資（自到職日起算）；回任重新計算的規則尚未做', whereEn:'Tenure is shown from the hire date; the rehire restart rule is not built', st:'part'},
+   whereZh:'員工資料與私人秘書顯示年資（自到職日起算）；離職後回任以新進人員重新編號（新增員工時可填前員編供對照）', whereEn:'Tenure is shown from the hire date; a rejoin is a new hire with a new number (the previous number can be noted when adding)', st:'part'},
   {src:'9/30', zh:'薪資：月薪、時薪、拆帳制，各職位標準不同；先匯出 104 資料，看過格式後再建立計算邏輯', en:'Pay: monthly, hourly, revenue-share, standards differ by position; export 104 data first, then build the logic',
    whereZh:'薪資計算機；拆帳制規則待提供；104 資料匯出待辦', whereEn:'Pay calculator; revenue-share rules pending; the 104 export is still to do', st:'part'},
   {src:'9/30', zh:'員工資料欄位：緊急聯絡人（一位必填、一位選填）、勞健保加保日期、退休金自提、銀行帳號（含現金領取）、職務歷程、教育訓練記錄、證照上傳', en:'Employee fields: emergency contacts (one required, one optional), insurance enrolment date, voluntary pension, bank account (incl. cash), job history, training records, license upload',
@@ -1128,7 +1128,7 @@ const MEETING_DECISIONS = [
   {src:'10/7', zh:'系統名稱一律寫「仁寶」；Portal 裡的連結叫「居服個案管理系統」', en:'The system is always called 仁寶; the portal’s link is called 居服個案管理系統',
    whereZh:'全站、會議紀錄與使用指南都已統一', whereEn:'Applied across the site, the minutes and the guide', st:'built'},
   {src:'10/7', zh:'員工編號：需求端整理 104 的轉換、復職年資重算、員編重編的原則；全公司統一的編號原則待訂', en:'Employee numbers: the requester side compiles the 104 conversion, rehire tenure restart and re-numbering rules; the group-wide numbering rule is to be set',
-   whereZh:'人事系統：離職後復職，年資從復職日重算（員編重編的規則待訂）；系統設定 › 員工編號規則', whereEn:'HR: after leaving and rejoining, tenure restarts from the rejoin date (re-numbering rule pending); Settings › Employee-number rule', st:'part'},
+   whereZh:'人事系統：離職後回任以新進人員重新編號、年資重算（10/13 已確認）；全公司編號原則待訂；系統設定 › 員工編號規則', whereEn:'HR: a rejoin after leaving is a new hire with a new number and restarted tenure (confirmed 13 Oct); group-wide numbering rule pending; Settings › Employee-number rule', st:'part'},
   {src:'10/7', zh:'員工編號依設定邏輯自動帶入，減少人工錯誤；目前邏輯暫定，需求端可提供自訂格式', en:'Employee numbers are filled in by a configured rule to avoid typing errors; the rule is provisional and the requester side can supply its own format',
    whereZh:'人事系統 › 員工資料 › 新增員工（自動帶入編號）；系統設定 › 員工編號規則', whereEn:'HR › Employee records › Add employee (number filled in); Settings › Employee-number rule', st:'built'},
   {src:'10/7', zh:'Portal 已可執行手機打卡；目前只差雲端儲存空間，需評估採購規格、儲存容量與預算', en:'The portal can already do mobile clock-in; only cloud storage is missing, so purchase spec, capacity and budget need assessing',
@@ -1157,7 +1157,7 @@ const DECISION_ST = {built:{zh:'已建置',en:'Built',cls:'ok'}, part:{zh:'部�
 const FOLLOW_UPS = [
   {src:'10/7', zh:'持續整理現有 104 系統功能截圖及匯出表單，提供 IT 作為差勤功能建置參考', ownerZh:'行政／人事', whenZh:'下次會議前', st:'待辦'},
   {src:'10/7', zh:'整理系統角色、頁面及各項操作權限清單，梳理各「職稱」與 Portal 各「項目名稱」的權限對照矩陣表', ownerZh:'需求端／人事', whenZh:'下次會議前', st:'Excel 範本已提供'},
-  {src:'10/7', zh:'擬定全公司統一的員工編號原則，並盤點既有員工編號；導入「復職年資重算、員編重編」的程式邏輯', ownerZh:'人事／IT', whenZh:'待訂', st:'年資重算已示範；員編重編待訂'},
+  {src:'10/7', zh:'擬定全公司統一的員工編號原則，並盤點既有員工編號；導入「復職年資重算、員編重編」的程式邏輯', ownerZh:'人事／IT', whenZh:'待訂', st:'回任重新編號已確認並示範；全公司編號原則預計 10/14 會議前提出'},
   {src:'10/7', zh:'評估 Portal 建置差勤管理的功能範圍、成本及導入方式', ownerZh:'IT', whenZh:'待訂', st:'待辦'},
   {src:'10/7', zh:'規劃並執行 Portal「居服個案管理系統」連結建置，並測試仁寶 Excel 匯入 Portal 彙總分析的版型', ownerZh:'IT', whenZh:'下次會議說明初步結果', st:'待辦'},
   {src:'10/7', zh:'評估雲端儲存空間的採購規格、儲存容量與預算（手機打卡正式上線用）', ownerZh:'待確認', whenZh:'待訂', st:'待確認'},
@@ -1683,6 +1683,7 @@ function openAddEmp(){
           <div><label>${esc(both('到職日','Hire date'))}</label><input name="hired" type="date" required value="${ymd(TODAY)}"></div>
           ${can('salary')?`<div><label>${esc(both('月薪','Monthly pay'))}</label><input name="salary" type="number" min="0" step="100" value="36000"></div>`:''}
         </div>
+        <div><label>${esc(both('前員工編號（離職後回任者才填，僅供對照）','Previous employee no. (only for a rejoin; reference only)'))}</label><input name="prevNo" class="mono" maxlength="12" placeholder="${esc(both('例如 C003；新員工仍使用上方新編號','e.g. C003; the new number above is still used'))}"></div>
         ${can('salary')?'':`<div class="muted" style="font-size:12.5px">${esc(both('薪資欄位只有人資能填，這位新同仁的月薪先留 0。','Only HR can enter pay; this person’s monthly pay stays 0 for now.'))}</div>`}
         <div><button class="btn" type="submit">${esc(both('新增並自動編號','Add and number automatically'))}</button></div>
         <div class="legend">${esc(both('原型說明：新增的員工只存在本次瀏覽，重新整理就還原。','Prototype: the new person lives in this browser session only and disappears on reload.'))}</div>
@@ -1697,7 +1698,7 @@ function openAddEmp(){
     LEGACY_NO[id]='E'+(9000+STAFF.length);              // 示範資料的亂數種子
     const lead=STAFF.find(x=>x.unit===unitId&&(x.title==='dir'||x.title==='sup'));
     STAFF.push({id, zh:TITLES[tk].zh, en:TITLES[tk].en, unit:unitId, title:tk, titleKey:tk, dept:fd.get('dept'), hired:fd.get('hired'),
-      ext:'—', band:'G1', salary:can('salary')?(+fd.get('salary')||0):0, type:'full', mgr:lead?lead.id:'H002', mobile:'', status:'active', statusSince:''});
+      ext:'—', band:'G1', salary:can('salary')?(+fd.get('salary')||0):0, type:'full', mgr:lead?lead.id:'H002', mobile:'', status:'active', statusSince:'', prevNo:(fd.get('prevNo')||'').toString().trim()});
     empRecord(id).basic.name=fd.get('name').toString().trim();
     closeOverlay(); state.q=''; toast(both('已新增 '+id+'（編號自動帶入）',id+' added (number filled in automatically)'));
     render(); openPerson(id);
@@ -2027,7 +2028,6 @@ function saveRec(id, kind, fd){
   if(kind==='lic'){ rec.lic.push({name:f('name'), no:f('no'), issued:f('issued'), exp:f('exp'), ce:+f('ceNeed')?{need:+f('ceNeed'),have:+f('ceHave')||0}:null, file:file()}); addDoc(file(),'license'); }
   if(kind==='train') rec.training.push({d:f('date'), zh:f('name'), en:f('name'), h:+f('hours')||0});
   if(kind==='status'){ const p=person(id), st=f('status'), d=f('date');
-    if(st==='active' && p.status==='left') p.rehired=d;                 // 離職後復職：年資從復職日重算（10/7 會議）
     p.status=st; p.statusSince=st==='active'?'':d;
     rec.hist.push({date:d, kind:st==='active'?'return':st==='loa'?'leave':'exit', title:p.title, unit:p.unit, band:p.band, salary:p.salary, note:f('note')}); }
   if(kind==='contract'){ if(f('kind')==='續約') rec.renewals.push({date:f('start'), note:f('note')||'續約'+(f('end')?'至 '+f('end'):'')});
@@ -2063,7 +2063,7 @@ function openPerson(id){
           <dt>${esc(both('直屬主管','Reports to'))}</dt><dd>${mgr?esc(nameOf(mgr)+' · '+L(TITLES[mgr.title])):esc(both('無','—'))}</dd>
           <dt>${esc(both('到職日','Hire date'))}</dt><dd class="mono">${visible?p.hired:'—'}</dd>
           ${visible?`<dt>${esc(both('年資','Tenure'))}</dt><dd>${esc(both(tenureOf(p).y+' 年 '+tenureOf(p).m+' 個月',tenureOf(p).y+' y '+tenureOf(p).m+' m'))}
-            <span class="muted" style="font-size:11.5px">${esc(p.rehired?both('離職後復職，年資從復職日 '+p.rehired+' 重算','Rejoined after leaving; tenure restarts from '+p.rehired):both('跨公司轉調員工編號不變，年資不歸零；離職後復職才重新計算','Transfers keep the employee no. and tenure; rejoining after leaving restarts it'))}</span></dd>
+            <span class="muted" style="font-size:11.5px">${esc(p.prevNo?both('離職後回任：以新進人員重新編號，前員編 '+p.prevNo+'（不沿用）','Rejoined after leaving: renumbered as a new hire, previous no. '+p.prevNo+' (not reused)'):both('跨公司轉調員工編號不變，年資不歸零；離職後回任以新進人員重新編號','Transfers keep the employee no. and tenure; rejoining after leaving is renumbered as a new hire'))}</span></dd>
           <dt>${esc(both('在職狀態','Status'))}</dt><dd>${empStatusChip(p)}${p.statusSince?` <span class="mono muted">${p.statusSince}</span>`:''}</dd>`:''}
           <dt>${esc(both('分機','Extension'))}</dt><dd class="mono">${p.ext}</dd>
           <dt>${esc(both('手機','Mobile'))}</dt><dd>${visible&&can('mobile')?`<span class="mono">${esc(rec.basic.mobile)}</span>`:lockTxt('受限','Restricted')}</dd>
@@ -2072,8 +2072,8 @@ function openPerson(id){
         </dl>
       </section>
       ${visible&&can('editEmp')?`<section>${addBox('status', both('變更在職狀態','Change employment status'), `<div class="row">
-        ${sel('狀態','Status','status',EMP_STATUS)}${fld('生效日','Effective','date','date','required value="'+ymd(TODAY)+'"')}${fld('說明','Note','note')}</div>`)}
-        <div class="legend">${esc(both('留職停薪與離職自生效月起不列入計薪與出勤統計；離職後復職，年資從復職日重算（員編是否重編，等人事／IT 擬定原則）。實際規則待人資確認。','Unpaid leave and resignation drop out of payroll and attendance stats from the effective month; rejoining after leaving restarts tenure from the rejoin date (whether the number is re-issued waits for HR and IT’s rule). The rules are for HR to confirm.'))}</div></section>`:''}
+        ${sel('狀態','Status','status',p.status==='left'?{loa:EMP_STATUS.loa,left:EMP_STATUS.left}:EMP_STATUS)}${fld('生效日','Effective','date','date','required value="'+ymd(TODAY)+'"')}${fld('說明','Note','note')}</div>${p.status==='left'?`<div class="muted" style="font-size:12.5px;margin-top:6px">${esc(both('已離職的同仁不能改回「在職」：回任要以新進人員重新建檔（用上方「新增員工」，新員工編號，不沿用舊員編）。','A person who has left cannot be set back to Active: a rejoin is a new hire with a new employee number (use Add employee above); the old number is not reused.'))}</div>`:''}`)}
+        <div class="legend">${esc(both('留職停薪與離職自生效月起不列入計薪與出勤統計；離職後回任以新進人員重新編號（10/13 需求端確認，不沿用舊員編），年資重新計算。編號的全公司原則待人事／IT 擬定。','Unpaid leave and resignation drop out of payroll and attendance stats from the effective month; rejoining after leaving is renumbered as a new hire (confirmed 13 Oct; the old number is not reused) and tenure restarts. The group-wide numbering rule is for HR and IT to define.'))}</div></section>`:''}
       ${visible?`
       <section>
         <div class="eyebrow" style="margin-bottom:8px">${esc(both('出勤摘要','Attendance summary'))} · <span class="mono">${state.attMonth}</span></div>
@@ -3870,6 +3870,27 @@ function viewDocSysInfo(){
       </ul></div>
     </section>
     <section class="card">
+      <div class="card-h"><h2>${esc(both('雲端儲存空間估算','Cloud storage estimate'))}</h2><span class="en">${esc(both('10/13 需求端詢問；預設值是假設','Asked 13 Oct; defaults are assumptions'))}</span></div>
+      <div class="card-b" style="display:grid;gap:10px">
+        <div class="note">${esc(both('怎麼估：容量 ≈ 員工數 × 每月出勤日 × 每日打卡次數 × 12 × 每筆大小 × 保存年限，再加上員工附件，最後乘上備份份數。打卡「筆數」本身很小（每筆只是時間與文字），真正決定容量的是打卡時要不要存照片或定位，以及要保存幾年。下面的預設值是我的假設，不是會議決定，請 IT 用實際設計替換。',
+          'How to estimate: capacity ≈ staff × workdays per month × punches per day × 12 × size per record × years kept, plus employee attachments, times the number of backup copies. The record count itself is small (each is just a time and some text); what drives capacity is whether each punch stores a photo or location and how many years are kept. The defaults below are my assumptions, not meeting decisions; IT should replace them with the real design.'))}</div>
+        <div>${Object.entries(STORAGE_PRESETS).map(([k,x])=>`<button class="btn ghost mini" type="button" data-stpreset="${k}">${esc(x.label)}</button>`).join(' ')}</div>
+        <form id="stForm" class="frm" onsubmit="return false"><div class="row">
+          <div><label>${esc(both('員工數（300 或 2,000？待確認）','Staff (300 or 2,000? to confirm)'))}</label><input name="n" type="number" min="1" value="${STORAGE_DEF.n}"></div>
+          <div><label>${esc(both('每月出勤日','Workdays per month'))}</label><input name="days" type="number" min="1" max="31" value="${STORAGE_DEF.days}"></div>
+          <div><label>${esc(both('每日打卡次數','Punches per day'))}</label><input name="punches" type="number" min="1" value="${STORAGE_DEF.punches}"></div>
+          <div><label>${esc(both('每筆文字紀錄 KB','KB per text record'))}</label><input name="recKB" type="number" min="0" step="0.5" value="${STORAGE_DEF.recKB}"></div></div>
+          <div class="row">
+          <div><label><input name="photo" type="checkbox"> ${esc(both('每次打卡存照片','Store a photo with each punch'))}</label></div>
+          <div><label>${esc(both('每張照片 KB','KB per photo'))}</label><input name="photoKB" type="number" min="0" value="${STORAGE_DEF.photoKB}"></div>
+          <div><label>${esc(both('每位員工附件 MB','MB of attachments per employee'))}</label><input name="attMB" type="number" min="0" value="${STORAGE_DEF.attMB}"></div>
+          <div><label>${esc(both('額外備份份數（9/30：雙備份）','Extra backup copies (30 Sept: double backup)'))}</label><input name="backups" type="number" min="0" value="${STORAGE_DEF.backups}"></div>
+          <div><label>${esc(both('保存年限','Years kept'))}</label><input name="years" type="number" min="1" value="${STORAGE_DEF.years}"></div></div></form>
+        <div id="stOut" class="tablewrap">${storageHTML(STORAGE_DEF)}</div>
+        <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('請 IT 先確認：打卡要不要存照片或定位、保存幾年、員工附件的實際大小、「雙備份」是指額外兩份或總共兩份、以及要設計 300 人或 2,000 人。預算再依這個容量向雲端廠商報價。','For IT to confirm first: whether punches store a photo or location, how many years to keep, the real size of employee attachments, whether “double backup” means two extra copies or two in total, and whether to design for 300 or 2,000 people. The budget then comes from quotes for this capacity.'))}</div>
+      </div>
+    </section>
+    <section class="card">
       <div class="card-h"><h2>${esc(both('原型限制','Prototype limits'))}</h2></div>
       <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.8">
         <li>${esc(both('沒有真實登入：用上方「身分」切換角色。','No real login: switch roles with the Role selector.'))}</li>
@@ -3883,7 +3904,36 @@ function viewDocSysInfo(){
 BINDERS['doc:comp']=function(){};
 BINDERS['doc:guide']=function(){ document.querySelectorAll('[data-tour]').forEach(b=>b.onclick=()=>startTour(b.dataset.tour)); };
 BINDERS['doc:meeting']=function(){};
-BINDERS['doc:sysinfo']=function(){};
+/* 手機打卡雲端空間估算：公式與預設值是工程上的假設，不是會議決定；真正的規格要看「打卡要存什麼」（只存文字紀錄，或還存照片、定位）與保存年限 */
+const STORAGE_DEF = {n:300, days:22, punches:2, recKB:1, photo:false, photoKB:300, attMB:6, backups:2, years:5};
+const STORAGE_PRESETS = {
+  s300:{label:'300 人、只存文字紀錄', v:{n:300, photo:false}}, p300:{label:'300 人、每次打卡拍照', v:{n:300, photo:true}},
+  s2000:{label:'2,000 人、只存文字紀錄', v:{n:2000, photo:false}}, p2000:{label:'2,000 人、每次打卡拍照', v:{n:2000, photo:true}}
+};
+function storageCalc(v){
+  const recYear=v.n*v.days*v.punches*12, punchMBYear=recYear*v.recKB/1024, photoMBYear=v.photo?recYear*v.photoKB/1024:0, attMB=v.n*v.attMB;
+  const oneCopyMB=(punchMBYear+photoMBYear)*v.years+attMB, copies=1+v.backups;
+  return {recYear, punchMBYear, photoMBYear, attMB, oneCopyMB, totalMB:oneCopyMB*copies, copies};
+}
+const fmtSize = mb => mb>=1024 ? (mb/1024).toFixed(1)+' GB' : mb.toFixed(1)+' MB';
+function storageHTML(v){
+  const r=storageCalc(v);
+  return `<table><tbody>
+    <tr><td>${esc(both('每年打卡筆數','Punch records per year'))}</td><td class="num mono">${r.recYear.toLocaleString()}</td></tr>
+    <tr><td>${esc(both('打卡文字紀錄，每年','Punch text records per year'))}</td><td class="num mono">${fmtSize(r.punchMBYear)}</td></tr>
+    <tr><td>${esc(both('打卡照片，每年','Punch photos per year'))}</td><td class="num mono">${v.photo?fmtSize(r.photoMBYear):'—'}</td></tr>
+    <tr><td>${esc(both('員工附件（證照、證明文件等，一次性）','Employee attachments (one-off)'))}</td><td class="num mono">${fmtSize(r.attMB)}</td></tr>
+    <tr><td>${esc(both('保存 '+v.years+' 年，單份','Kept '+v.years+' years, one copy'))}</td><td class="num mono">${fmtSize(r.oneCopyMB)}</td></tr>
+    <tr><td><b>${esc(both('含備份共 '+r.copies+' 份','With backups, '+r.copies+' copies in all'))}</b></td><td class="num mono"><b id="stTotal">${fmtSize(r.totalMB)}</b></td></tr>
+  </tbody></table>`;
+}
+BINDERS['doc:sysinfo']=function(){
+  const f=document.getElementById('stForm'); if(!f) return;
+  const read=()=>({n:+f.n.value||0, days:+f.days.value||0, punches:+f.punches.value||0, recKB:+f.recKB.value||0, photo:f.photo.checked, photoKB:+f.photoKB.value||0, attMB:+f.attMB.value||0, backups:+f.backups.value||0, years:+f.years.value||0});
+  const draw=()=>{ document.getElementById('stOut').innerHTML=storageHTML(read()); };
+  f.oninput=draw; f.onchange=draw;
+  document.querySelectorAll('[data-stpreset]').forEach(b=>b.onclick=()=>{ const v={...STORAGE_DEF,...STORAGE_PRESETS[b.dataset.stpreset].v}; Object.keys(v).forEach(k=>{ if(f[k]) { if(f[k].type==='checkbox') f[k].checked=v[k]; else f[k].value=v[k]; } }); draw(); });
+};
 BINDERS['doc:cmp104']=function(){};
 
 /* =============================== 業務資料整合（中期規劃）=============================== */
@@ -3912,6 +3962,10 @@ function viewSvcCase(){
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">${steps.map((x,i)=>`<span class="chip ${i===0?'acc':''}">${i+1}. ${esc(x)}</span>`).join(' → ')}</div>
         <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('IT 正在規劃連結並測試匯入版型，下次會議說明初步結果（10/7 待辦 5）。版型還沒有提供，所以這裡不放示範資料。',
           'IT is planning the link and testing the import layout and will report at the next meeting (7 Oct action 5). No layout has been supplied yet, so no demo data is shown here.'))}</div>
+        <div class="eyebrow">${esc(both('期待匯入後在 Portal 看到什麼（需求端 10/13）','What the requester side expects to see after import (13 Oct)'))}</div>
+        <ul style="margin:0;padding-left:20px;line-height:1.8">${[['目前服務的個案數','Number of cases currently served'],['每個服務項目的使用比例','Share of use per service item'],['每位居服員的日工時、週工時、累積工時','Per home-care worker: daily, weekly and cumulative hours']].map(x=>`<li>${esc(both(x[0],x[1]))}</li>`).join('')}</ul>
+        <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('需求端說會提供一份仁寶匯出的服務紀錄供參，但這次還沒收到檔案；收到後才能對欄位、做匯入與驗證，所以這裡仍不放示範資料。居服員的工時要靠員工編號或姓名對到 Portal 的員工資料，這點也要在樣本裡確認。Portal 只存彙總，個案敏感資訊留在仁寶。',
+          'The requester side will supply a service-record export from 仁寶 for reference, but the file has not arrived; the columns, import and validation can only be built once it does, so no demo data is shown. Home-care workers’ hours must be matched to the portal’s employee records by number or name, which the sample must confirm. The portal stores only summaries; sensitive case information stays in 仁寶.'))}</div>
         <div class="eyebrow">${esc(both('待確認','To confirm'))}</div>
         <ul style="margin:0;padding-left:20px;line-height:1.8">${['Excel 報表的固定格式與欄位','資料更新頻率與歷史資料範圍','欄位異動、重複資料與匯入失敗的處理方式','哪一套系統是正式資料來源','服務員可否在個案家打卡並記錄服務項目（9/30 會議提出的需求）'].map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
         <div class="muted" style="font-size:12.5px">${esc(both('個案敏感資訊留在仁寶，Portal 不存放（v2.0 規格 2.2）。','Sensitive case information stays in 仁寶; the portal does not store it (spec 2.2).'))}</div>

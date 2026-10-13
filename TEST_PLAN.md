@@ -318,3 +318,5 @@ This flow is **manual** end to end; its individual steps are covered by the test
 |------|--------|---------|----------|--------|----------|
 |      |        |         |          |        |          |
 - [ ] 文件管理 › 104 功能對照: a 104 員工資料匯出欄位 card lists the export categories and fields (no personal data); 線上申請 › 簽核路徑預覽 shows the 10/13 note that some approval flows differ from the org chart
+- [ ] 人事系統 › 員工資料: a 離職 person cannot be set back to 在職 (the status form hides it and points to 新增員工); adding an employee accepts an optional 前員工編號 and shows 前員編 … （不沿用）
+- [ ] 文件管理 › 系統說明: 雲端儲存空間估算 recalculates from its inputs and presets; 業務資料整合 › 居服個案管理系統 lists the three metrics expected from the 仁寶 import

@@ -1229,21 +1229,27 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(page.locator('#view')).toContainText('只有能簽核的身分');
   });
 
-  test('rejoining after leaving restarts tenure from the rejoin date', async ({ page }) => {
+  test('rejoining after leaving is a new hire with a new number; the old number is not reused', async ({ page }) => {
     await setRole(page, 'hr');
     await go(page, 'hr', 'emp');
     await page.click('tr[data-emp="C003"]');            // 離職 since 2026-09-15, hired 2024-02-01
     await expect(drawer(page)).toContainText('2 年 7 個月');
     await page.click('aside.drawer details.addbox summary >> nth=0');
     const form = page.locator('aside.drawer form[data-add="status"]');
-    await form.locator('select[name="status"]').selectOption('active');
-    await form.locator('input[name="date"]').fill('2026-10-01');
-    await form.locator('button[type="submit"]').click();
-    await expect(drawer(page)).toContainText('離職後復職，年資從復職日 2026-10-01 重算');
+    await expect(form.locator('select[name="status"] option[value="active"]')).toHaveCount(0);   // cannot be set back to 在職
+    await expect(drawer(page)).toContainText('回任要以新進人員重新建檔');
+    await page.click('aside.drawer button.x');
+    // the rejoin is entered as a new hire, with the old number noted for reference only
+    await page.click('[data-newemp]');
+    await page.selectOption('#neUnit', 'O3');
+    await expect(page.locator('#neNo')).toHaveValue('C004');
+    await page.fill('#newEmpForm input[name="name"]', '回任示範');
+    await page.fill('#newEmpForm input[name="prevNo"]', 'C003');
+    await page.click('#newEmpForm button[type="submit"]');
+    await expect(drawer(page)).toContainText('C004');
+    await expect(drawer(page)).toContainText('前員編 C003（不沿用）');
     await expect(drawer(page)).toContainText('0 年 0 個月');
-    await expect(drawer(page)).toContainText('在職');
   });
-
   test('add employee fills in the number automatically, per company', async ({ page }) => {
     await setRole(page, 'hr');
     await go(page, 'hr', 'emp');
@@ -1579,5 +1585,30 @@ test.describe('CSV exports', () => {
     await expect(v).not.toContainText('@gmail.com');
     await go(page, 'fin', 'proc');
     await expect(page.locator('#view')).toContainText('部分與組織圖不一樣');
+  });
+
+  test('the cloud storage estimator computes from the assumptions and has presets', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'doc', 'sysinfo');
+    const v = page.locator('#view');
+    await expect(v).toContainText('雲端儲存空間估算');
+    await expect(v).toContainText('不是會議決定');
+    // 300 × 22 × 2 × 12 = 158,400 records a year; 1 KB each; 5 years ≈ 773 MB; + 1.8 GB attachments; × 3 copies = 7.5 GB
+    await expect(page.locator('#stOut')).toContainText('158,400');
+    const text = async () => (await page.locator('#stTotal').textContent()).trim();
+    expect(await text()).toBe('7.5 GB');
+    await page.click('[data-stpreset="p300"]');                 // every punch stores a photo
+    expect(await text()).toBe('687.3 GB');
+    await page.click('[data-stpreset="s2000"]');
+    expect(await text()).toBe('50.3 GB');
+    await page.fill('#stForm input[name="years"]', '1');
+    await expect(page.locator('#stOut')).toContainText('保存 1 年');
+  });
+
+  test('the case-system page records what the requester side expects from the 仁寶 import', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'svc', 'case');
+    const v = page.locator('#view');
+    for (const s of ['目前服務的個案數', '每個服務項目的使用比例', '每位居服員的日工時、週工時、累積工時', '還沒收到檔案']) await expect(v).toContainText(s);
   });
 });
