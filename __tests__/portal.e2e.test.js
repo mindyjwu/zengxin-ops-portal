@@ -1576,7 +1576,7 @@ test.describe('CSV exports', () => {
     await expect(v).toContainText('104 員工資料匯出欄位');
     for (const f of ['公司統編', '員工編號', '身分證字號', '復職日期', '工作技能（104 上選填）', '職能（104 上選填）']) await expect(v).toContainText(f);
     await expect(v).toContainText('CSCT');
-    await expect(v).not.toContainText('girlcatwork');
+    await expect(v).not.toContainText('@gmail.com');
     await go(page, 'fin', 'proc');
     await expect(page.locator('#view')).toContainText('部分與組織圖不一樣');
   });
