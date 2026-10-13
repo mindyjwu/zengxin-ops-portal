@@ -94,3 +94,4 @@ PW_CHROMIUM_PATH=/path/to/chrome npx playwright test # Playwright 端對端測�
 ---
 
 v2.1 · 2026 年 9 月
+- 使用指南「MVP 定案前待同事補齊」：依優先順序列出要請需求端、人事、IT 補的資料，附可直接傳給同事的訊息

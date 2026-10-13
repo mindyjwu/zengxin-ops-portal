@@ -857,6 +857,16 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     }
   });
 
+  test('the user guide has the pre-MVP checklist and the follow-up message', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    const sec = page.locator('#confirm');
+    await expect(sec.locator('h2')).toContainText('MVP 定案前待同事補齊');
+    await expect(sec.locator('tbody tr')).toHaveCount(5);
+    await expect(sec).toContainText('「A個管主管」「A個管」的「A」');
+    await expect(sec).toContainText('可以直接傳給同事的訊息');
+    await expect(page.locator('.toc a[href="#confirm"]')).toBeVisible();
+  });
+
   test('the user guide links only to walkthroughs that exist', async ({ page }) => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     await expect(page.locator('h1')).toContainText('使用指南');
