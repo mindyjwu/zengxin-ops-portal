@@ -1611,4 +1611,21 @@ test.describe('CSV exports', () => {
     const v = page.locator('#view');
     for (const s of ['目前服務的個案數', '每個服務項目的使用比例', '每位居服員的日工時、週工時、累積工時', '還沒收到檔案']) await expect(v).toContainText(s);
   });
+
+  test('the user guide explains how to estimate cloud storage, with numbers that match the estimator', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    const sec = page.locator('#storage');
+    await expect(sec.locator('h2')).toContainText('雲端儲存空間怎麼估');
+    await expect(sec).toContainText('筆數只是一部分');
+    await expect(sec).toContainText('這些數字是假設，不是會議決定');
+    await expect(sec.locator('tbody tr')).toHaveCount(4);
+    await expect(page.locator('.toc a[href="#storage"]')).toBeVisible();
+    // the table in the guide uses the same defaults as the estimator page
+    await page.goto(PORTAL);
+    const totals = await page.evaluate(() => ['s300', 'p300', 's2000', 'p2000'].map(k => {
+      const r = storageCalc({ ...STORAGE_DEF, ...STORAGE_PRESETS[k].v }); return fmtSize(r.totalMB); }));
+    expect(totals).toEqual(['7.5 GB', '687.3 GB', '50.3 GB', '4582.1 GB']);
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const v of ['7.5 GB', '687', '50 GB', '4.5 TB']) await expect(sec).toContainText(v);
+  });
 });

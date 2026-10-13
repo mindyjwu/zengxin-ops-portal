@@ -125,6 +125,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
     <a href="#newlatest">10/7 會議後的更新</a>
     <a href="#new930">9/30 會議後的更新</a>
     <a href="#roles">身分與權限</a>
+    <a href="#storage">雲端儲存空間怎麼估</a>
     <a href="#terms">用語對照</a>
     <a href="#sources">資料來源與待確認</a>
     <a href="#confirm">MVP 定案前待同事補齊</a>
@@ -433,6 +434,42 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
       <p>系統管理員依 v2.0 規格負責帳號管理、權限設定、稽核日誌與系統監控。一般人員只能看本人資料，不能看其他員工的薪資帳戶、投保或績效。</p>
     </section>
 
+    <section id="storage">
+      <h2>雲端儲存空間怎麼估</h2>
+      <p>10/13 需求端問：手機打卡需要多少雲端空間，要怎麼估算？是不是看打卡的紀錄筆數？答案是：<b>筆數只是一部分，而且很小</b>；真正決定容量的，是打卡時要存什麼、要保存多久。</p>
+      <div class="task">
+        <div class="top"><span class="role">IT／專案負責人</span><h3>估算公式</h3></div>
+        <p style="margin:0">容量 ≈（員工數 × 每月出勤日 × 每日打卡次數 × 12 × 每筆大小 × 保存年限 ＋ 員工附件）× 備份份數</p>
+        <ul style="margin:0;padding-left:20px;line-height:1.8">
+          <li><b>每筆大小</b>：只存文字（時間、位置座標、裝置資訊）大約 1 KB；如果每次打卡還存照片，一張約 300 KB，差了 300 倍。</li>
+          <li><b>員工附件</b>：證照、證明文件等，一次性，每人約 6 MB（假設）；跟打卡次數無關。</li>
+          <li><b>備份份數</b>：9/30 會議決議雙備份。「雙備份」是額外兩份（總共三份）還是總共兩份，要確認；下面的數字用額外兩份計算。</li>
+        </ul>
+      </div>
+      <h3>用假設算出來的四種情境（每月 22 天、每天 2 次、保存 5 年、額外兩份備份）</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>情境</th><th>每年打卡筆數</th><th>打卡資料，每年</th><th>含備份總容量</th></tr></thead>
+        <tbody>
+          <tr><td>300 人，只存文字紀錄</td><td>158,400</td><td>約 0.15 GB</td><td><b>約 7.5 GB</b></td></tr>
+          <tr><td>300 人，每次打卡拍照</td><td>158,400</td><td>約 45 GB</td><td><b>約 687 GB</b></td></tr>
+          <tr><td>2,000 人，只存文字紀錄</td><td>1,056,000</td><td>約 1 GB</td><td><b>約 50 GB</b></td></tr>
+          <tr><td>2,000 人，每次打卡拍照</td><td>1,056,000</td><td>約 303 GB</td><td><b>約 4.5 TB</b></td></tr>
+        </tbody>
+      </table></div>
+      <div class="note warn"><b>這些數字是假設，不是會議決定。</b>每筆 1 KB、每張照片 300 KB、每人附件 6 MB、保存 5 年、員工數 300 或 2,000，都是我的估計，請 IT 用實際設計替換。只存文字的話，容量主要來自員工附件；一旦每次存照片，容量會暴增上百倍。</div>
+      <div class="task">
+        <div class="top"><span class="role">IT</span><h3>先決定這四件事，再向廠商報價</h3></div>
+        <ol class="steps">
+          <li>打卡要不要存照片或定位？（9/20、10/7 都還沒決定，待確認。）</li>
+          <li>打卡與附件要保存幾年？</li>
+          <li>要設計給 300 人還是 2,000 人？（9/30 紀錄寫 2,000，專案說明寫 300 以上。）</li>
+          <li>「雙備份」是額外兩份，還是總共兩份？</li>
+        </ol>
+        <p style="margin:0">四件事定了以後，到網站 <span class="path">文件管理 › 系統說明</span> 的 <span class="ui">雲端儲存空間估算</span> 輸入，或按上面的四個情境按鈕，算出容量，再拿這個容量向雲端廠商詢價。錄音摘要另提到正式上線可能還需要 API Token，是否需要也請 IT 一併確認。</p>
+        <p class="try"><a href="ltc-portal.html?tour=storage">在網站上跟著做 →</a></p>
+      </div>
+    </section>
+
     <section id="terms">
       <h2>用語對照</h2>
       <p>網站和這份指南用同一套說法：</p>
@@ -512,7 +549,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
       <h3>為什麼日期是 2026-10-07？</h3>
       <p>這是專案負責人指定的展示日期，讓月曆、假單與薪資月份有一致的情境。網址加上 <span class="mono">?demoDate=2026-09-29</span> 可以改成別的日期。</p>
       <h3>手機可以用嗎？</h3>
-      <p>可以用手機瀏覽器開啟，版面會自動調整。10/7 會議的評估是 Portal 已可執行手機打卡，目前只差雲端儲存空間，採購規格、容量與預算還要評估；手機與電腦介面的體驗優化留待後續討論。原型的打卡按鈕只記錄本次瀏覽，沒有定位也不會儲存。</p>
+      <p>可以用手機瀏覽器開啟，版面會自動調整。10/7 會議的評估是 Portal 已可執行手機打卡，目前只差雲端儲存空間，採購規格、容量與預算還要評估；手機與電腦介面的體驗優化留待後續討論。容量怎麼估請看〈雲端儲存空間怎麼估〉。原型的打卡按鈕只記錄本次瀏覽，沒有定位也不會儲存。</p>
     </section>
   </main>
 </div>
