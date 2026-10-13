@@ -44,7 +44,7 @@ Format: `YYYY-MM-DD — decision — why / who decided`. Keep one line each.
 11. ~~**Case-management system name**~~ — answered: it is 仁寶; the 9/30 notes misspelt it.
 12. **Target size** — the 9/30 notes say 2,000 employees long term; `CLAUDE.md` says 300+. Confirm which one to design for.
 13. **Management role names** — the 9/30 notes list the current roles as system administrator, manager and 院長; the prototype uses system administrator, HR and manager (day care supervisor).
-14. **Rehire rule** — tenure restarts on rehire after leaving (9/30, 10/7). The prototype restarts tenure from the rejoin date; whether the employee number is re-issued (員編重編) waits for the HR/IT principle.
+14. ~~**Rehire rule**~~ — answered 13 Oct: a rejoin after leaving is a new hire with a new employee number (the old number is not reused) and tenure restarts.
 15. **Title × item permission matrix and org chart** — due from the requester side / HR before the next meeting (7 Oct action 2); needed to define the nurse, social-worker and supervisor titles. The portal has an Excel template.
 16. **104 export** — export 104 data first, review the format, then build the pay logic (9/30).
 17. **Four provisional roles** — the requester side confirms or changes them; the project lead builds the formal table from the filled title matrix.
@@ -78,3 +78,10 @@ Format: `YYYY-MM-DD — decision — why / who decided`. Keep one line each.
 - 網站已放入組織架構樹（公告欄 › 組織圖）；示範資料新增第 4 個主體「誠馨健康」（員工編號前綴 D、2 位示範人員）。資料範圍與前綴的對應是暫定：A＝協會、B＝誠芯、C＝牛津、D＝誠馨健康，待確認；系統管理員未出現在圖上，仍放共用行政。
 - 組織圖上「管理者」在 4 個主體之上；原型的「管理者」身分目前只看所屬單位（示範人員是日照主管），要不要改成跨單位待確認。
 - 104 員工資料匯出範例（1 筆）與畫面截圖已收到：欄位已整理在「文件管理 › 104 功能對照」，不含人員資料；104 員工編號是各單位自己的前綴（例如 CSCT 開頭），全部在職同仁的完整匯出仍待提供。
+
+## 10/13 需求端回覆（對 10/7 待補清單）
+- 權限對照表：已提供（職稱權限對照表 Excel），已帶入；細項權限表（暫定）仍待需求端確認。
+- 組織圖：已提供（見上）；簽核流程要再討論確認，需求端再想怎麼呈現。
+- 員工資料：104 匯出範例已提供；**離職後回任以新進人員重新編號，不沿用舊員編**（已確認）；全公司員編原則預計 10/14 會議前提出。原型：已離職的人不能改回在職，回任要「新增員工」建新編號，前員編只供對照。
+- 手機打卡雲端空間：需求端請我們協助估算方法（打卡筆數只是一部分）。網站新增「雲端儲存空間估算」，預設值是假設；關鍵變數是是否存照片或定位、保存年限、300 或 2,000 人、雙備份的定義。
+- 仁寶服務紀錄：需求端期待用 Excel 匯入，在 Portal 直接呈現「目前服務個案數」「每個服務項目的使用比例」「每位居服員的日工時、週工時、累積工時」；樣本檔案這次沒收到，待收到後才做欄位對照與匯入。Portal 只存彙總，個案敏感資訊留在仁寶（v2.0 規格 2.2）。
