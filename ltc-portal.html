@@ -191,6 +191,11 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 .node.scoped{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .node.dim{opacity:.42}
 .vline{width:1px;height:16px;background:var(--line-strong)}
+.orgtree,.orgtree ul{list-style:none;margin:0;padding-left:18px;border-left:1px solid var(--line-strong)}
+.orgtree{padding-left:0;border-left:0}
+.orgtree li{margin:6px 0;position:relative}
+.orgbox{display:inline-block;border:1px solid var(--line-strong);border-radius:6px;padding:5px 10px;background:var(--surface);font-size:13px;line-height:1.5}
+.orgbox.top{background:var(--accent-soft)}.orgbox.ent{background:var(--surface-2);border-color:var(--accent)}.orgbox.unit{background:var(--warn-soft)}
 .orgrow{display:flex;gap:12px;align-items:flex-start;justify-content:center;position:relative;padding-top:16px}
 .orgrow::before{content:"";position:absolute;top:0;left:9%;right:9%;height:1px;background:var(--line-strong)}
 .orgcol{display:flex;flex-direction:column;align-items:center;position:relative}
@@ -364,19 +369,22 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
    All data below is FICTIONAL and generated in-memory. No auth, no database.
    ========================================================================= */
 
-/* ---------- 組織（依 9/20 會議紀錄、需求簡報第 3 頁與使用者確認）----------
-   三家公司：誠馨、誠芯、牛津，皆在大新竹地區，功能相同、欄位相近（簡報以公司 A／B／C 表示）。
-   部門：日照（誠馨、誠芯）、居服（三家）、社區整合型中心（誠馨、誠芯）；人資、教育訓練、會計為三家共用行政。
+/* ---------- 組織（依 9/20 會議紀錄、需求簡報第 3 頁、使用者確認與 10/13 需求端提供的組織圖）----------
+   10/13 需求端更新：主體單位 4 個（1 家協會＋3 家公司），皆在大新竹地區；各主體底下有附設機構。目前仍因業務需求動態調整，
+   之後會逐步收斂各業務、與部分機構整合，屆時組織圖與職稱可能再統一調整。
+   原型的資料範圍以「主體單位」為單位。對應（暫定）：A＝社團法人中華民國誠馨照顧協會（附設綜合式服務類機構，含日照、居服、社區整合型）、
+   B＝誠芯樂活事業股份有限公司、C＝牛津樂活事業股份有限公司、D＝誠馨健康股份有限公司（誠馨二館，日照）。
    人員、姓名與數字皆為示範資料。 */
 const OFFICES = [
-  {id:'O1', zh:'誠馨', en:'Company A', code:'A', depts:['day','home','comm']},
-  {id:'O2', zh:'誠芯', en:'Company B', code:'B', depts:['day','home','comm']},
-  {id:'O3', zh:'牛津', en:'Company C', code:'C', depts:['home']}
+  {id:'O1', zh:'誠馨協會', en:'Association A', code:'A', depts:['day','home','comm'], legal:'社團法人中華民國誠馨照顧協會'},
+  {id:'O2', zh:'誠芯',     en:'Company B',     code:'B', depts:['day','home','comm'], legal:'誠芯樂活事業股份有限公司'},
+  {id:'O3', zh:'牛津',     en:'Company C',     code:'C', depts:['home'],              legal:'牛津樂活事業股份有限公司'},
+  {id:'O4', zh:'誠馨健康', en:'Company D',     code:'D', depts:['day'],               legal:'誠馨健康股份有限公司'}
 ];
 const HQ = {id:'HQ', zh:'共用行政', en:'Shared administration', code:'H', depts:['exec','adm','it']};
 const ALL_UNITS = [HQ].concat(OFFICES);
 const unit = id => ALL_UNITS.find(o=>o.id===id) || HQ;
-const COMPANIES = OFFICES;   // 一家公司 = 一個資料範圍單位
+const COMPANIES = OFFICES;   // 一個主體單位 = 一個資料範圍單位
 
 /* ---------- 職稱（需求簡報第 3、6 頁；v2.0 規格角色表）---------- */
 const TITLES = {
@@ -427,9 +435,12 @@ const RAW = [
 
  ['C001','居家服務督導','O3','sup','home','2019-04-01','401','P3',56000,'full','H002'],
  ['C002','居服員','O3','hca','home','2021-06-15','402','G2',36000,'full','C001'],
- ['C003','居服員','O3','hca','home','2024-02-01','403','G2',30000,'part','C001']
+ ['C003','居服員','O3','hca','home','2024-02-01','403','G2',30000,'part','C001'],
+
+ ['D001','日照主管','O4','dir','day','2022-08-15','501','M3',118000,'full','H002'],
+ ['D002','社工','O4','sw','day','2023-04-10','502','P2',51000,'full','D001']
 ];
-const LEGACY_NO = {H001:'E1001', H002:'E1002', H003:'E1003', H004:'E1004', H005:'E1005', H006:'E1006', A001:'E2101', A002:'E2102', A003:'E2103', A004:'E2104', A005:'E2105', A006:'E2106', A007:'E2107', A008:'E2108', A009:'E2109', A010:'E2110', B001:'E2201', B002:'E2202', B003:'E2203', B004:'E2204', B005:'E2205', B006:'E2206', B007:'E2207', B008:'E2208', B009:'E2209', C001:'E2301', C002:'E2302', C003:'E2303'};   // 新編號 → 舊編號：示範資料（姓名、出勤、手機）的亂數種子沿用舊編號，換前綴不會改變內容
+const LEGACY_NO = {H001:'E1001', H002:'E1002', H003:'E1003', H004:'E1004', H005:'E1005', H006:'E1006', A001:'E2101', A002:'E2102', A003:'E2103', A004:'E2104', A005:'E2105', A006:'E2106', A007:'E2107', A008:'E2108', A009:'E2109', A010:'E2110', B001:'E2201', B002:'E2202', B003:'E2203', B004:'E2204', B005:'E2205', B006:'E2206', B007:'E2207', B008:'E2208', B009:'E2209', C001:'E2301', C002:'E2302', C003:'E2303', D001:'E4101', D002:'E4102'};   // 新編號 → 舊編號：示範資料（姓名、出勤、手機）的亂數種子沿用舊編號，換前綴不會改變內容
 const STAFF = RAW.map(r=>({
   id:r[0], zh:r[1], en:TITLES[r[3]].en, unit:r[2], title:r[3], titleKey:r[3], dept:r[4],
   hired:r[5], ext:r[6], band:r[7], salary:r[8], type:r[9], mgr:r[10],
@@ -709,9 +720,9 @@ const ROLES = {
     perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
   homesup:{ id:'homesup', zh:'居家服務督導', en:'Home care supervisor', persona:'A009', allOffices:false, built:true, provisional:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
-  cmlead:{ id:'cmlead', zh:'A個管主管', en:'A case-management lead', persona:'B002', chipTitle:{zh:'A個管主管',en:'A case-management lead'}, allOffices:false, built:true, provisional:true,
+  cmlead:{ id:'cmlead', zh:'A個管主管', en:'A-unit case-management lead', persona:'B002', chipTitle:{zh:'A個管主管',en:'A-unit case-management lead'}, allOffices:false, built:true, provisional:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
-  cm:{ id:'cm', zh:'A個管', en:'A case manager', persona:'A006', chipTitle:{zh:'A個管',en:'A case manager'}, allOffices:false, built:true, provisional:true,
+  cm:{ id:'cm', zh:'A個管', en:'A-unit case manager', persona:'A006', chipTitle:{zh:'A個管',en:'A-unit case manager'}, allOffices:false, built:true, provisional:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
   driver:{ id:'driver', zh:'一般員工：司機', en:'Employee: driver', persona:'A008', allOffices:false, selfOnly:true, built:true, provisional:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } },
@@ -1000,7 +1011,7 @@ function renderShell(){
   if(ab) ab.onclick = ()=>{
     state.crossOffice=!state.crossOffice; state.office='ALL'; render();
     toast(state.crossOffice
-      ? both('假設已開啟：主管可查看三家公司','Assumption ON: managers can see all three companies')
+      ? both('假設已開啟：主管可查看所有單位','Assumption ON: managers can see all units')
       : both('假設已關閉：主管僅限本公司資料','Assumption OFF: managers are limited to their own company'));
   };
 }
@@ -1019,14 +1030,14 @@ function scopeBanner(){
         'Employee: attendance, leave, pay and personnel data are limited to yourself; announcements and the directory to '+unit(me().unit).en+'.'))}
     </div></div>`;
   const scopeTxt = r.allOffices
-    ? both('此身分可跨三家公司查看','This role reads across all three companies')
-    : (open ? both('假設開啟中：此身分目前可跨三家公司查看','Assumption ON: this role currently reads all three companies')
+    ? both('此身分可跨所有單位查看','This role reads across all units')
+    : (open ? both('假設開啟中：此身分目前可跨所有單位查看','Assumption ON: this role currently reads all units')
             : both('預設：此身分僅能查看所屬公司（'+unit(me().unit).zh+'）','Default: this role reads only '+unit(me().unit).en));
   return `<div class="scopebar ${open&&!r.allOffices?'is-open':''}">
     <div>
       <b>${both('資料範圍','Data scope')}</b> — ${esc(scopeTxt)}
       <span class="q">${esc(both(
-        '待決議題：管理者應看到三家公司的人事與出勤資料，還是僅限所屬公司？請用上方「假設」開關比較兩種情境。',
+        '待決議題：管理者應看到所有單位的人事與出勤資料，還是僅限所屬單位？請用上方「假設」開關比較兩種情境。',
         'Open question: should managers see HR and attendance data for all three companies, or only their own? Use the Assumption switch above to compare both.'))}</span>
     </div>
   </div>`;
@@ -1085,7 +1096,7 @@ const MEETING_DECISIONS = [
   {src:'9/20', zh:'整併前先確認個資、資安與法規；過渡期間以連結導向既有系統', en:'Confirm privacy, security and regulations before integrating; link out meanwhile',
    whereZh:'系統設定 › 既有系統連結；文件管理 › 法規與資安', whereEn:'Settings › Existing systems; Documents › Regulations & security', st:'part'},
   {src:'9/30', zh:'三個據點員工統一使用同一個 centralized 系統', en:'Staff at all three sites use one centralized system',
-   whereZh:'三家公司同一個入口，上方「公司」選單切換', whereEn:'One portal for all three companies; switch with the Company selector', st:'built'},
+   whereZh:'各主體單位同一個入口，上方「公司」選單切換', whereEn:'One portal for all units; switch with the Company selector', st:'built'},
   {src:'9/30', zh:'新增「員工個別」角色：只看自己的打卡記錄、請假申請與審核狀態、特休餘額；管理層與員工是完全不同的介面', en:'Individual-employee role: own punch records, leave requests and status, leave balance; a completely different interface from management',
    whereZh:'切換成「一般員工」直接進入「私人秘書」，導覽列與管理層不同', whereEn:'The Employee role opens My Desk, with its own navigation', st:'built'},
   {src:'9/30', zh:'護理師等職位的個別角色尚未建立，待新增', en:'Roles for nurses and other positions are not yet defined',
@@ -1206,12 +1217,12 @@ function viewArchScope(){
           '薪資 depends on correct attendance; reports depend on stable imports; incident tracking depends on roles, organisation and notifications.'))}</div></div>
     </section>
     <section class="card">
-      <div class="card-h"><h2>${esc(both('公司與部門','Companies and departments'))}</h2><span class="en">${esc(both('需求簡報第 3 頁；三家公司皆在大新竹地區','Deck p.3; all three in greater Hsinchu'))}</span></div>
+      <div class="card-h"><h2>${esc(both('公司與部門','Companies and departments'))}</h2><span class="en">${esc(both('需求簡報第 3 頁；10/13 需求端更新為 4 個主體單位，皆在大新竹地區','Deck p.3; updated 13 Oct to 4 entities, all in greater Hsinchu'))}</span></div>
       <div class="tablewrap"><table>
-        <thead><tr><th>${bi('公司','Company')}</th>${['day','home','comm'].map(k=>`<th>${bi(DEPTS[k].zh,DEPTS[k].en)}</th>`).join('')}</tr></thead>
-        <tbody>${OFFICES.map(o=>`<tr><td><b>${esc(o.zh)}</b> <span class="muted">${esc(o.en)}</span></td>
+        <thead><tr><th>${bi('主體單位','Entity')}</th>${['day','home','comm'].map(k=>`<th>${bi(DEPTS[k].zh,DEPTS[k].en)}</th>`).join('')}</tr></thead>
+        <tbody>${OFFICES.map(o=>`<tr><td><b>${esc(o.zh)}</b> <span class="muted">${esc(o.en)} · ${esc(o.legal)}</span></td>
           ${['day','home','comm'].map(k=>`<td>${o.depts.includes(k)?'✓':'—'}</td>`).join('')}</tr>`).join('')}
-          <tr><td><b>${esc(HQ.zh)}</b></td><td colspan="3" class="muted" style="white-space:normal">${esc(both('人資、教育訓練專員、會計為三家公司共用；老闆、管理者為跨公司決策角色','HR, training and accounting are shared by all three companies; the owner and managers decide across companies'))}</td></tr></tbody>
+          <tr><td><b>${esc(HQ.zh)}</b></td><td colspan="3" class="muted" style="white-space:normal">${esc(both('人資、教育訓練專員、會計為各單位共用；老闆、管理者為跨單位決策角色','HR, training and accounting are shared by all units; the owner and managers decide across units'))}</td></tr></tbody>
       </table></div>
       <div class="legend">${esc(both('簡報註記：三家公司不一定有完全相同的部門配置，待各公司確認實際組織。未來擴展構想：彰化、台中（使用者提出，供規劃參考）。','Deck note: the three companies may not have identical departments; each company will confirm its actual structure. Future expansion ideas: Changhua and Taichung (raised by the project owner).'))}</div>
     </section>
@@ -1258,7 +1269,7 @@ function viewArchRoles(){
         <thead><tr><th>${bi('身分','Role')}</th><th>${bi('示範人員','Persona')}</th><th>${bi('資料範圍','Scope')}</th></tr></thead>
         <tbody>${Object.values(ROLES).filter(r=>r.built).map(r=>{ const p=person(r.persona); return `<tr><td><b>${esc(both(r.zh,r.en))}</b></td>
           <td>${esc(L(personaTitle(r)))} · ${esc(unit(p.unit).zh)} <span class="muted mono">${p.id}</span>${r.chipTitle?` <span class="muted">${esc(both('（借用的示範人員）','(borrowed demo person)'))}</span>`:''}</td>
-          <td>${esc(r.allOffices?both('三家公司','All three companies'):r.selfOnly?both('本人','Self only'):both('所屬公司（'+unit(p.unit).zh+'）','Own company ('+unit(p.unit).zh+')'))}</td></tr>`; }).join('')}</tbody>
+          <td>${esc(r.allOffices?both('所有單位','All units'):r.selfOnly?both('本人','Self only'):both('所屬公司（'+unit(p.unit).zh+'）','Own company ('+unit(p.unit).zh+')'))}</td></tr>`; }).join('')}</tbody>
       </table></div>
     </section>
   </div>`;
@@ -1428,7 +1439,7 @@ function viewOrg(){
   <section class="card">
     <div class="card-h">
       <h2>${esc(both('組織圖','Org chart'))}</h2>
-      <span class="en">${esc(both(STAFF.length+' 人 · 三家公司＋共用行政（示範人員）',STAFF.length+' people · three companies + shared admin (demo staff)'))}</span>
+      <span class="en">${esc(both(STAFF.length+' 人 · '+OFFICES.length+' 個主體單位＋共用行政（示範人員）',STAFF.length+' people · '+OFFICES.length+' entities + shared admin (demo staff)'))}</span>
       <div class="spacer"></div>
       <span class="chip ${scopeLocked()?'warn':'acc'}">${esc(scopeLocked()
         ? both('灰階部分超出您的資料範圍','Dimmed parts are outside your data scope')
@@ -1442,7 +1453,7 @@ function viewOrg(){
         <div class="orgrow" style="--n:${OFFICES.length+1}">
           <div class="orgcol">
             <div class="node" style="cursor:default"><span class="n">${esc(both('共用行政','Shared administration'))}</span>
-              <span class="r">${esc(both('三家公司共用','Shared by all three'))}</span></div>
+              <span class="r">${esc(both('各單位共用','Shared by all units'))}</span></div>
             <div class="kids">${shared.map(leaf).join('')}</div>
           </div>
           ${OFFICES.map(o=>{
@@ -1465,26 +1476,66 @@ function viewOrg(){
   </section>
   ${titleStructureCard()}`;
 }
-/* 職稱架構：需求端 Excel 的職稱欄位順序，依名稱歸成幾組；組別與隸屬關係是依欄位名稱整理，不是 Excel 寫明的，待確認 */
-const TITLE_GROUPS = [
-  {zh:'共用行政／決策', en:'Shared administration / decision-makers', ks:['boss','mgr','hrd','trn','acc','it']},
-  {zh:'日照',           en:'Day care',                                ks:['dir','dsn']},
-  {zh:'居服',           en:'Home care',                               ks:['hsv','sup']},
-  {zh:'個案管理',       en:'Case management',                         ks:['cml','cm']},
-  {zh:'一般員工',       en:'Employee (sub-categories)',               ks:['sub:S1','sub:S2','sub:S3']}
-];
+/* 組織架構（需求端 10/13 提供的組織圖 PDF）：4 個主體單位（1 協會＋3 公司）、各附設機構、業務負責人、單位與職稱。
+   目前仍因業務需求動態調整，之後會逐步收斂各業務、與部分機構整合，屆時組織圖與職稱可能再統一調整；簽核流程有部分與組織圖不同，需求端再想怎麼呈現。
+   「A個管」是政府的命名（Ａ單位個管師）。圖上的兩個浮動主管（日照主管、A個管主管）以虛線箭頭連到各單位。 */
+const ORG_TREE = {
+  top:[{zh:'老闆',en:'Owner'},{zh:'管理者',en:'Manager'}],
+  staff:[{zh:'HR（人資主管）',en:'HR (HR lead)',kids:[{zh:'教育訓練專員',en:'Training officer'}]},{zh:'會計',en:'Accountant'}],
+  entities:[
+    {oid:'O1', zh:'社團法人中華民國誠馨照顧協會', en:'Zengxin Care Association', kids:[
+      {zh:'社區整合型服務中心（北區Ａ單位）', en:'Community integrated service center (North A unit)', kind:'unit'},
+      {zh:'附設新竹縣私立誠馨綜合式服務類長期照顧服務機構', en:'Affiliated comprehensive long-term care facility (Hsinchu County)', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
+        {zh:'社區整合型服務中心（南區Ａ單位）', en:'Community integrated service center (South A unit)', kind:'unit', roles:['A個管']},
+        {zh:'居家服務', en:'Home care', kind:'unit', roles:['居家服務督導','居服員']},
+        {zh:'日照服務', en:'Day care', kind:'unit', roles:['日照社工','照服員、司機']}]}]},
+    {oid:'O4', zh:'誠馨健康股份有限公司', en:'Zengxin Health Co.', kids:[
+      {zh:'附設私立誠馨二館社區長照機構', en:'Affiliated Zengxin No. 2 community care facility', head:'業務負責人（日照主管）', headEn:'Head of operations (day care supervisor)', kids:[
+        {zh:'日照服務', en:'Day care', kind:'unit', roles:['日照社工']}]}]},
+    {oid:'O2', zh:'誠芯樂活事業股份有限公司', en:'Chengxin Leshuo Co.', kids:[
+      {zh:'附設新竹市私立誠芯居家長照機構', en:'Affiliated home care facility (Hsinchu City)', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
+        {zh:'社區整合型服務中心', en:'Community integrated service center', kind:'unit', roles:['A個管']},
+        {zh:'居家服務', en:'Home care', kind:'unit', roles:['居家服務督導','居服員']}]},
+      {zh:'附設私立誠芯三館綜合長照機構', en:'Affiliated Chengxin No. 3 comprehensive care facility', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
+        {zh:'居家服務', en:'Home care', kind:'unit', roles:['居家服務督導','居服員']},
+        {zh:'日照服務', en:'Day care', kind:'unit', roles:['日照社工','照服員、司機']}]}]},
+    {oid:'O3', zh:'牛津樂活事業股份有限公司', en:'Oxford Leshuo Co.', kids:[
+      {zh:'附設新竹縣私立牛津居家長照機構', en:'Affiliated home care facility (Hsinchu County)', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
+        {zh:'居家服務', en:'Home care', kind:'unit', roles:['居家服務督導','居服員']}]}]}
+  ],
+  floating:[
+    {zh:'日照主管', en:'Day care supervisor', zhTo:['誠馨協會綜合式機構的日照服務','誠馨二館的日照服務'], enTo:['day care at the association’s comprehensive facility','day care at Zengxin No. 2']},
+    {zh:'A個管主管', en:'A-unit case-management lead', zhTo:['北區Ａ單位','南區Ａ單位（A個管）'], enTo:['North A unit','South A unit (A case manager)']}
+  ]
+};
+function orgNodeHTML(n){
+  const roles=(n.roles||[]).map(r=>`<span class="chip">${esc(r)}</span>`).join(' ');
+  return `<li><div class="orgbox ${n.kind==='unit'?'unit':''}"><b>${esc(state.lang==='zh'?n.zh:n.en)}</b>${state.lang==='zh'?'':` <span class="muted">${esc(n.zh)}</span>`}
+      ${n.head?`<div class="muted" style="font-size:12px">${esc(state.lang==='zh'?n.head:n.headEn)}</div>`:''}${roles?`<div style="margin-top:4px">${roles}</div>`:''}</div>
+    ${n.kids?`<ul>${n.kids.map(orgNodeHTML).join('')}</ul>`:''}</li>`;
+}
 function titleStructureCard(){
-  const cols=matrixCols(), byK=Object.fromEntries(cols.map(c=>[c.k,c]));
-  const extra=cols.filter(c=>c.sc && !['sub:S1','sub:S2','sub:S3'].includes(c.k));
+  const T=ORG_TREE, one=n=>`<li><div class="orgbox top"><b>${esc(state.lang==='zh'?n.zh:n.en)}</b></div>${n.kids?`<ul>${n.kids.map(one).join('')}</ul>`:''}</li>`;
   return `<section class="card">
-    <div class="card-h"><h2>${esc(both('職稱架構（需求端提供）','Title structure (from the requester side)'))}</h2><span class="en">${esc(both(cols.length+' 個職稱／子類別',cols.length+' titles / sub-categories'))}</span></div>
-    <div class="card-b"><div class="orgrow" style="--n:${TITLE_GROUPS.length}">
-      ${TITLE_GROUPS.map(g=>{ const ks=g.ks.filter(k=>byK[k]).concat(g.zh==='一般員工'?extra.map(c=>c.k):[]);
-        return `<div class="orgcol"><div class="node" style="cursor:default"><span class="n">${esc(both(g.zh,g.en))}</span></div>
-          <div class="kids">${ks.map(k=>`<span class="leaf" style="cursor:default">${esc(g.zh==='一般員工'?byK[k].sc.name:L(byK[k]))}</span>`).join('')}</div></div>`; }).join('')}
-    </div></div>
-    <div class="legend">${esc(both('職稱取自需求端提供的「職稱權限對照表」Excel；分組是依職稱名稱整理，不是 Excel 寫明的，隸屬關係待確認。「A個管主管」「A個管」的「A」代表什麼待確認。每個職稱可以操作哪些項目名稱，請看「權限與範圍 › 職稱對照」。上方組織圖的人員仍是示範資料。',
-      'Titles come from the “title permission matrix” Excel supplied by the requester side. The grouping is organised from the title names, not stated in the Excel; reporting lines are to be confirmed, as is what the “A” in “A case-management lead / A case manager” means. What each title may use is under Permissions › Title matrix. The people in the chart above are still demo data.'))}</div>
+    <div class="card-h"><h2>${esc(both('組織架構（需求端 10/13 提供）','Organisation structure (from the requester side, 13 Oct)'))}</h2>
+      <span class="en">${esc(both(T.entities.length+' 個主體單位（1 協會＋3 公司）',T.entities.length+' entities (1 association + 3 companies)'))}</span></div>
+    <div class="card-b">
+      <div class="note q">${esc(both('目前主體單位有 4 家（1 家協會、3 家公司），組織圖仍因業務需求而動態調整；之後會逐步收斂各業務、與部分機構整合，屆時組織圖與職稱可能都會再統一調整。目前的簽核流程有部分與組織圖不一樣，需求端會再想怎麼呈現。',
+        'There are 4 entities (1 association and 3 companies). The chart still changes with business needs; the requester side will gradually consolidate businesses and merge some facilities, after which the chart and titles may be unified again. Some current approval flows differ from this chart; the requester side will think about how to present them.'))}</div>
+      <ul class="orgtree">
+        ${T.top.map(n=>`<li><div class="orgbox top"><b>${esc(state.lang==='zh'?n.zh:n.en)}</b></div>`).join('<span class="vline"></span>')}
+        <li><div class="muted" style="font-size:12px;margin:6px 0 2px">${esc(both('管理者底下','Under the manager'))}</div>
+          <ul>${T.staff.map(one).join('')}
+            ${T.entities.map(e=>`<li><div class="orgbox ent"><b>${esc(state.lang==='zh'?e.zh:e.en)}</b>${state.lang==='zh'?'':` <span class="muted">${esc(e.zh)}</span>`}
+              <div class="muted" style="font-size:12px">${esc(both('資料範圍：'+unit(e.oid).zh+'（員工編號 '+unit(e.oid).code+'）','Data scope: '+unit(e.oid).en+' (employee no. '+unit(e.oid).code+')'))}</div></div>
+              <ul>${e.kids.map(orgNodeHTML).join('')}</ul></li>`).join('')}
+          </ul></li>
+      </ul>
+      <h3 style="margin:14px 0 6px;font-size:14px">${esc(both('跨單位主管（圖上以虛線箭頭表示）','Cross-unit supervisors (dashed arrows on the chart)'))}</h3>
+      <ul style="margin:0;padding-left:20px;line-height:1.8">${T.floating.map(f=>`<li><b>${esc(both(f.zh,f.en))}</b>：${esc(both(f.zhTo.join('、'),f.enTo.join(', ')))}</li>`).join('')}</ul>
+    </div>
+    <div class="legend">${esc(both('依需求端 10/13 提供的組織圖整理。「A個管」是政府的命名（Ａ單位個管師）。資料範圍與員工編號前綴的對應（A 協會、B 誠芯、C 牛津、D 誠馨健康）是原型暫定，待確認；系統管理員未出現在圖上，原型放在共用行政。上方組織圖的人員仍是示範資料。',
+      'Built from the org chart the requester side supplied on 13 Oct. “A個管” is the government’s title (A-unit case manager). The mapping of data scope and employee-number prefix (A association, B Chengxin, C Oxford, D Zengxin Health) is a provisional prototype choice; the system administrator is not on the chart and sits under shared admin in the prototype. The people in the chart above are still demo data.'))}</div>
   </section>`;
 }
 BINDERS['ann:org']=function(){ document.querySelectorAll('[data-node]').forEach(b=>b.onclick=()=>openPerson(b.dataset.node)); };
@@ -1601,7 +1652,7 @@ function viewEmployees(){
   </div>`;
 }
 /* 員工編號規則（10/7 會議：依設定邏輯自動帶入，減少人工錯誤；目前是暫定，需求端可提供自訂格式） */
-const NUM_RULES_DEFAULT = {HQ:{prefix:'H',digits:3}, O1:{prefix:'A',digits:3}, O2:{prefix:'B',digits:3}, O3:{prefix:'C',digits:3}};
+const NUM_RULES_DEFAULT = {HQ:{prefix:'H',digits:3}, O1:{prefix:'A',digits:3}, O2:{prefix:'B',digits:3}, O3:{prefix:'C',digits:3}, O4:{prefix:'D',digits:3}};
 const numRules = () => state.numRules || (state.numRules=JSON.parse(JSON.stringify(NUM_RULES_DEFAULT)));
 function nextEmpNo(unitId){
   const r=numRules()[unitId]||{prefix:'N',digits:3}; let max=0;
@@ -3728,6 +3779,32 @@ const JOBS_104 = [
   ['總務','','原型沒有此職稱'], ['行政人員','','原型沒有此職稱']
 ];
 const PORTAL_ONLY_TITLES = ['系統管理員','日照主管','司機'];
+/* 104 員工資料匯出欄位（需求端 10/13 提供的 104 匯出範例與畫面截圖；只列欄位名稱，不含任何人員資料） */
+const EXPORT104 = [
+  {g:'基本資料', e:'Basic', f:['公司統編','公司名稱','員工編號','姓名','身分證字號（外籍員工顯示護照／居留證號）','生日','英文姓名','性別','國籍','婚姻狀況','身份族群','身心障礙類別','兵役狀況']},
+  {g:'聯絡資料', e:'Contact', f:['公司電話','行動電話','公司 email','通訊地址','聯絡人姓名／關係','聯絡人電話','個人 email','戶籍地址']},
+  {g:'職務', e:'Job', f:['到職日期','試滿日期','部門','員工類型','職務類別','職位','責任區分','直／間接人員','編制狀態','在職狀態','留停／離職日期','復職日期']},
+  {g:'年資', e:'Tenure', f:['工作年資']},
+  {g:'家庭關係', e:'Family', f:['成員']},
+  {g:'學歷經歷', e:'Education & experience', f:['學歷','學校','科系','就學期間','（學歷）狀態','經歷']},
+  {g:'技能專長', e:'Skills', f:['語言能力','擅長工具','工作技能（104 上選填）','證照','職能（104 上選填）']}
+];
+function export104Card(){
+  const n=EXPORT104.reduce((a,g)=>a+g.f.length,0);
+  return `<section class="card">
+    <div class="card-h"><h2>${esc(both('104 員工資料匯出欄位','104 employee data export fields'))}</h2><span class="en">${esc(both('需求端 10/13 提供的匯出範例；'+n+' 欄＋更新日期','Export sample supplied 13 Oct; '+n+' fields + update date'))}</span></div>
+    <div class="card-b">
+      <div class="note">${esc(both('需求端提供了 104 員工資料匯出的範例（1 筆）與匯出畫面截圖。這裡只整理欄位名稱，不放任何人員資料。匯出時可選同仁（依在職狀態、部門、職務篩選，或用姓名／編號搜尋），再勾選要匯出的類別與欄位；預設一定會匯出公司統編、公司名稱、員工編號、姓名、身分證字號、留停／離職日期、更新日期。',
+        'The requester side supplied a 104 employee export sample (1 record) and screenshots of the export screen. Only field names are listed here, no personal data. You pick staff (filter by status, department, job, or search by name/number), then tick the categories and fields; company tax ID, company name, employee number, name, ID number, leave/resignation date and update date are always exported.'))}</div>
+      <div class="tablewrap"><table><thead><tr><th>${bi('類別','Category')}</th><th>${bi('欄位','Fields')}</th></tr></thead>
+        <tbody>${EXPORT104.map(g=>`<tr><td><b>${esc(both(g.g,g.e))}</b></td><td style="white-space:normal">${g.f.map(x=>`<span class="chip">${esc(x)}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table></div>
+      <ul style="margin:10px 0 0;padding-left:20px;line-height:1.8">
+        <li>${esc(both('104 的員工編號仍是各單位自己的前綴格式（範例是 CSCT 開頭加三位數），與原型提案的 A／B／C／D 不同；轉換原則待人事／IT 定義。','104 employee numbers still use each unit’s own prefix format (the sample starts with CSCT plus three digits), unlike the prototype’s A/B/C/D proposal; the conversion rule is for HR/IT to define.'))}</li>
+        <li>${esc(both('104 有「在職狀態」「留停／離職日期」「復職日期」欄位，和 9/30 會議的在職、留職停薪、離職三種狀態與復職年資重算可以對得上。','104 has employment status, leave/resignation date and rejoin date fields, which line up with the three statuses and the rejoin tenure rule from 30 Sept.'))}</li>
+        <li>${esc(both('尚未逐欄對照 Portal 的員工資料欄位；要先匯出全部在職同仁的完整資料，才能確認格式與缺漏。','These fields are not yet mapped one by one to the portal’s employee record; a full export of all active staff is needed to confirm the format and gaps.'))}</li>
+      </ul>
+    </div></section>`;
+}
 function viewDocCmp104(){
   const all=CMP104.flatMap(g=>g.rows), cnt=k=>all.filter(r=>r[1]===k).length;
   return `
@@ -3737,6 +3814,7 @@ function viewDocCmp104(){
     <div class="tiles">
       ${['have','part','none','off'].map(k=>`<div class="tile"><span class="k">${esc(both(CMP104_ST[k].zh,CMP104_ST[k].en))}</span><span class="v">${cnt(k)}</span><span class="d">${esc(both('項','items'))}</span></div>`).join('')}
     </div>
+    ${export104Card()}
     <section class="card">
       <div class="card-h"><h2>${esc(both('104 功能與原型對照','104 functions vs the prototype'))}</h2><span class="en">${esc(both('104 企業大師','104 企業大師'))}</span></div>
       <div class="tablewrap"><table>
@@ -3877,6 +3955,7 @@ function viewApprovalPath(){
   return `<section class="card">
     <div class="card-h"><h2>${esc(both('簽核路徑預覽（依組織圖）','Approval path preview (from the org chart)'))}</h2><span class="en">${esc(both('10/7 會議；示範','7 Oct meeting; demo'))}</span></div>
     <div class="card-b" style="display:grid;gap:10px">
+      <div class="note q">${esc(both('10/13 需求端提醒：目前的簽核流程有部分與組織圖不一樣，需求端會再想怎麼呈現會比較容易懂。下面是依組織上下隸屬自動推出的路徑，僅供示範。','13 Oct, from the requester side: some current approval flows differ from the org chart, and they will think about how to present them more clearly. The path below is derived automatically from the reporting lines and is for demonstration only.'))}</div>
       <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('系統表單的簽核流程基本上依照公司組織圖，自動關聯並帶入關卡；簽核層級依行政組織圖決定，金額大小可影響需要簽核的層級數。下面依示範人員的直屬主管一路往上排出路徑。為了保持彈性，另有「自訂流程」：特定情境或特殊表單，可由管理者手動調整簽核節點。每層的金額門檻與例外規則，等需求端提供簽核路徑規則後再定。',
         'Approvals basically follow the company org chart, with the steps linked in automatically; the levels follow the administrative org chart and the amount can change how many apply. The path below follows each demo person’s reporting line upwards. For flexibility there is also a custom flow: for special cases or forms, a manager can adjust the approval nodes by hand. Amount thresholds and exceptions are set once the requester side supplies the rules.'))}</div>
       <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:end">
@@ -4824,7 +4903,7 @@ const ALL_ROLE_KEYS = Object.keys(ROLE_COL);
 const PERM_DEFAULTS = Object.fromEntries(ALL_ROLE_KEYS.map(k=>[k,{...ROLES[k].perms}]));
 /* 職稱 × 項目名稱 權限對照（10/7 會議：操作權限改成「確認職稱即可執行項目名稱」）。
    欄位與內容取自使用者提供的 Excel「職稱權限對照表」（12 個職稱＋一般員工底下 3 個子類別）；原型沒有改寫任何一格。
-   「A個管主管」「A個管」的「A」代表什麼，表格沒有說明，原文保留，待確認。
+   「A個管」是政府的命名（Ａ單位個管師）；「A個管主管」是跨單位的 A 個管主管（10/13 組織圖）。
    權限已連動（使用者指定以 Excel 為準）：系統管理員、人資、管理者、一般員工四個身分各對應一欄（見 ROLE_COL），看得到哪些頁面由那一欄決定；
    資料範圍（本公司／全部）、薪資欄位、簽核等仍照「權限對照表」的設定。其餘職稱欄位（老闆、教育訓練專員、會計、日照主管…）也各有一個可切換的身分，其資料範圍與細項權限是依職稱推定的暫定值。 */
 const MATRIX_TITLES = [
@@ -4833,7 +4912,7 @@ const MATRIX_TITLES = [
   {k:'acc',  zh:'會計',            en:'Accountant'},                  {k:'it',   zh:'系統管理員',      en:'System administrator'},
   {k:'dir',  zh:'日照主管',        en:'Day care supervisor'},         {k:'dsn',  zh:'日照社工/護理師', en:'Day care social worker / nurse'},
   {k:'hsv',  zh:'居服主管',        en:'Home care lead'},              {k:'sup',  zh:'居家服務督導',    en:'Home care supervisor'},
-  {k:'cml',  zh:'A個管主管',       en:'A case-management lead'},      {k:'cm',   zh:'A個管',           en:'A case manager'}
+  {k:'cml',  zh:'A個管主管',       en:'A-unit case-management lead'},      {k:'cm',   zh:'A個管',           en:'A-unit case manager'}
 ];
 const MATRIX_SUBS = [{id:'S1', parent:'employee', name:'照服員'}, {id:'S2', parent:'employee', name:'司機'}, {id:'S3', parent:'employee', name:'居服員'}];
 /* 欄位順序 = MATRIX_TITLES 12 欄 + MATRIX_SUBS 3 欄；Y=可、N=不可、V=可檢視、E=可編輯 */
@@ -4892,7 +4971,7 @@ function matrixCols(){
 }
 function titleWorksheetRows(){
   const cols=matrixCols(), items=permItems();
-  const rows=[['職稱權限對照表（需求端提供）'],['填寫方式：每一格填「可」或「不可」；薪資計算另有「可檢視」「可編輯」；空白代表還沒填。欄位取自需求端提供的 Excel；「A個管主管」「A個管」的「A」代表什麼待確認。最後幾欄是系統管理員在角色類別底下建立的子類別（例如一般員工：司機）。四個身分（系統管理員、人資主管、管理者、一般員工：照服員）看得到哪些頁面已依這份表連動。'],[],['項目名稱',...cols.map(c=>c.zh)]];
+  const rows=[['職稱權限對照表（需求端提供）'],['填寫方式：每一格填「可」或「不可」；薪資計算另有「可檢視」「可編輯」；空白代表還沒填。欄位取自需求端提供的 Excel；「A個管」是政府的命名（Ａ單位個管師）。最後幾欄是系統管理員在角色類別底下建立的子類別（例如一般員工：司機）。四個身分（系統管理員、人資主管、管理者、一般員工：照服員）看得到哪些頁面已依這份表連動。'],[],['項目名稱',...cols.map(c=>c.zh)]];
   items.forEach(it=>rows.push([it.zh,...cols.map(c=>titleCell(it,c.k))]));
   return rows;
 }
@@ -4932,8 +5011,8 @@ function viewTitleMatrix(){
         <tbody>${items.map(it=>`<tr><td>${bi(it.zh,it.en)}</td>${cols.map(c=>{ const v=titleCell(it,c.k);
           const label=v==='可'||v==='可編輯'?`<span class="yes">${esc(v==='可'?both('可','Yes'):both('可編輯','Edit'))}</span>`:v==='可檢視'?`<span class="partial">${esc(both('可檢視','View'))}</span>`:v==='不可'?`<span class="no">${esc(both('不可','No'))}</span>`:`<span class="muted">—</span>`;
           return `<td style="text-align:center">${edit?`<button class="btn ghost mini" data-tcell="${it.key}|${c.k}" title="${esc(both('按一下切換','Click to cycle'))}">${label}</button>`:label}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>
-      <div class="legend">${esc(both('內容取自需求端提供的 Excel（12 個職稱＋一般員工底下 3 個子類別）。「A個管主管」「A個管」的「A」代表什麼，表格沒有說明，原文保留，待確認。薪資計算的格子另有「可檢視」「可編輯」。'+(edit?'按格子可切換。':'只有系統管理員可以修改。')+'權限已連動：每一欄都有對應的可切換身分（共 15 個），該欄決定這個身分看得到哪些頁面；其他職稱欄位也各有可切換的身分，改格子後切換身分就會看到結果；系統管理員一定保有「權限與範圍」。',
-        'Loaded from the Excel the requester side supplied (12 titles plus 3 sub-categories under Employee). The sheet does not say what the “A” in “A case-management lead / A case manager” stands for, so the wording is kept as is and marked to confirm. Payroll cells can also be View or Edit.'+(edit?' Click a cell to cycle.':' Only the system admin can edit.')+' Permissions are linked: every column has a role to switch to (15 in all) and decides which pages that role can open; every other column also has a role to switch to. Edit a cell and switch role to see it; the system admin always keeps Roles & scope.'))}</div>
+      <div class="legend">${esc(both('內容取自需求端提供的 Excel（12 個職稱＋一般員工底下 3 個子類別）。「A個管」是政府的命名（Ａ單位個管師）。薪資計算的格子另有「可檢視」「可編輯」。'+(edit?'按格子可切換。':'只有系統管理員可以修改。')+'權限已連動：每一欄都有對應的可切換身分（共 15 個），該欄決定這個身分看得到哪些頁面；其他職稱欄位也各有可切換的身分，改格子後切換身分就會看到結果；系統管理員一定保有「權限與範圍」。',
+        'Loaded from the Excel the requester side supplied (12 titles plus 3 sub-categories under Employee). “A個管” is the government’s title (A-unit case manager). Payroll cells can also be View or Edit.'+(edit?' Click a cell to cycle.':' Only the system admin can edit.')+' Permissions are linked: every column has a role to switch to (15 in all) and decides which pages that role can open; every other column also has a role to switch to. Edit a cell and switch role to see it; the system admin always keeps Roles & scope.'))}</div>
     </section>
     ${titleDiffCard()}
     ${edit?`<section class="card">
@@ -4970,7 +5049,7 @@ function capValue(c,k){
 }
 function capScope(c,k){
   if(c.key || c.zh.startsWith('查看所有公司') || c.zh.startsWith('私人秘書')) return '';
-  const r=ROLES[k]; return r.allOffices?['三家公司','All three companies']:r.selfOnly?['僅本人','Self only']:['限本公司','Own company'];
+  const r=ROLES[k]; return r.allOffices?['所有單位','All units']:r.selfOnly?['僅本人','Self only']:['限本公司','Own company'];
 }
 function capRows(){
   return [['細項權限對照表（資料範圍、薪資、簽核）'],['可＝可以；不可＝不行。資料範圍列由身分決定。除了原本四個身分，其他 11 個身分的細項權限是依職稱推定的暫定值，待確認。'],[],
@@ -5080,7 +5159,7 @@ function viewOpen(){
   <div class="grid">
     <section class="card">
       <div class="card-h"><span class="chip acc mono">Q1</span>
-        <div><h2>${esc(both('管理者應看到三家公司的資料，還是僅限所屬公司？','Should managers see all three companies, or only their own?'))}</h2></div></div>
+        <div><h2>${esc(both('管理者應看到所有單位的資料，還是僅限所屬單位？','Should managers see all units, or only their own?'))}</h2></div></div>
       <div class="card-b" style="display:grid;gap:10px">
         <div><div class="eyebrow">${esc(both('原型預設','Prototype default'))}</div>
           <div>${esc(both('僅限所屬公司。日照主管只看得到所屬公司的員工、出勤與請假；公告看得到全公司與所屬公司的公告。',

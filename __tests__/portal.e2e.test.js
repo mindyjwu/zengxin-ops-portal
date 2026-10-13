@@ -88,11 +88,11 @@ test.describe('Shell & role switching', () => {
 test.describe('Data scope', () => {
   test.beforeEach(async ({ page }) => { await openPortal(page); });
 
-  test('admin and hr see all 28 employees', async ({ page }) => {
+  test('admin and hr see all 30 employees', async ({ page }) => {
     await go(page, 'hr', 'emp');
-    await expect(empRows(page)).toHaveCount(28);
+    await expect(empRows(page)).toHaveCount(30);
     await setRole(page, 'hr');
-    await expect(empRows(page)).toHaveCount(28);
+    await expect(empRows(page)).toHaveCount(30);
   });
 
   test('manager sees only O1 staff and the office filter is locked', async ({ page }) => {
@@ -103,7 +103,7 @@ test.describe('Data scope', () => {
     expect(ids.every(id => id.startsWith('A'))).toBe(true);
     await expect(page.locator('#view tbody')).not.toContainText('誠芯');
     await expect(page.locator('#offSel')).toBeDisabled();
-    await expect(page.locator('#view .note.q')).toContainText('隱藏了 18 位');
+    await expect(page.locator('#view .note.q')).toContainText('隱藏了 20 位');
   });
 
   test('assumption toggle opens the manager to every facility', async ({ page }) => {
@@ -111,7 +111,7 @@ test.describe('Data scope', () => {
     await go(page, 'hr', 'emp');
     await page.click('#assumeBtn');
     await expect(page.locator('#assumeBtn')).toHaveAttribute('aria-pressed', 'true');
-    await expect(empRows(page)).toHaveCount(28);
+    await expect(empRows(page)).toHaveCount(30);
     await expect(page.locator('#offSel')).toBeEnabled();
   });
 
@@ -862,7 +862,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     const sec = page.locator('#confirm');
     await expect(sec.locator('h2')).toContainText('MVP 定案前待同事補齊');
     await expect(sec.locator('tbody tr')).toHaveCount(5);
-    await expect(sec).toContainText('「A個管主管」「A個管」的「A」');
+    await expect(sec).toContainText('組織圖 10/13 版已收到');
     await expect(sec).toContainText('可以直接傳給同事的訊息');
     await expect(page.locator('.toc a[href="#confirm"]')).toBeVisible();
   });
@@ -1151,11 +1151,16 @@ test.describe('Updates from the 7 Oct meeting', () => {
     for (const t of ['職稱權限對照表（需求端提供）', '項目名稱', '居家服務督導', 'A個管主管', '日照社工/護理師', '人事系統 › 員工資料', '私人秘書 › 首頁', '一般員工：司機', '一般員工：居服員']) expect(text).toContain(t);
   });
 
-  test('org chart tab shows the title structure from the requester Excel', async ({ page }) => {
+  test('org chart tab shows the 13 Oct organisation structure: 4 entities, facilities, units and titles', async ({ page }) => {
     await go(page, 'ann', 'org');
     const v = page.locator('#view');
-    await expect(v).toContainText('職稱架構（需求端提供）');
-    for (const t of ['人資主管', '日照社工/護理師', '居服主管', 'A個管主管', '照服員', '司機', '居服員']) await expect(v).toContainText(t);
+    await expect(v).toContainText('組織架構（需求端 10/13 提供）');
+    for (const s of ['社團法人中華民國誠馨照顧協會', '誠馨健康股份有限公司', '誠芯樂活事業股份有限公司', '牛津樂活事業股份有限公司',
+      '附設私立誠馨二館社區長照機構', '附設私立誠芯三館綜合長照機構', '社區整合型服務中心（北區Ａ單位）', '業務負責人（居服主管）', '業務負責人（日照主管）',
+      'A個管', '日照社工', '居家服務督導', '照服員、司機', '跨單位主管', 'A個管主管', '政府的命名（Ａ單位個管師）',
+      '動態調整', '簽核流程有部分與組織圖不一樣']) await expect(v).toContainText(s);
+    await expect(page.locator('.orgtree .orgbox.ent')).toHaveCount(4);
+    await expect(page.locator('#view .orgcol')).toHaveCount(5);    // shared admin + 4 entities in the staff chart
   });
 
   test('the admin creates a sub-category under a role category and it becomes a column', async ({ page }) => {
@@ -1250,6 +1255,8 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(page.locator('#neNo')).toHaveValue('B010');        // 誠芯 has B001–B009
     await page.selectOption('#neUnit', 'O3');
     await expect(page.locator('#neNo')).toHaveValue('C004');
+    await page.selectOption('#neUnit', 'O4');
+    await expect(page.locator('#neNo')).toHaveValue('D003');        // 誠馨健康 has D001–D002
     await page.selectOption('#neUnit', 'HQ');
     await expect(page.locator('#neNo')).toHaveValue('H007');
     await page.selectOption('#neUnit', 'O1');
@@ -1259,7 +1266,7 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(drawer(page)).toContainText('示範新人');
     await expect(drawer(page)).toContainText('A011');
     await page.click('aside.drawer button.x');
-    await expect(empRows(page)).toHaveCount(29);
+    await expect(empRows(page)).toHaveCount(31);
     await expect(page.locator('tr[data-emp="A011"]')).toHaveCount(1);
     // the next one gets the next number
     await page.click('[data-newemp]');
@@ -1560,5 +1567,17 @@ test.describe('CSV exports', () => {
     expect(dl.suggestedFilename()).toBe('細項權限對照表.xlsx');
     const text = fs.readFileSync(await dl.path()).toString('utf8');
     for (const s of ['細項權限對照表', '簽核部屬請假', '一般員工：司機', '老闆']) expect(text).toContain(s);
+  });
+
+  test('104 export fields are listed without personal data, and the approval path notes the org-chart difference', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'doc', 'cmp104');
+    const v = page.locator('#view');
+    await expect(v).toContainText('104 員工資料匯出欄位');
+    for (const f of ['公司統編', '員工編號', '身分證字號', '復職日期', '工作技能（104 上選填）', '職能（104 上選填）']) await expect(v).toContainText(f);
+    await expect(v).toContainText('CSCT');
+    await expect(v).not.toContainText('girlcatwork');
+    await go(page, 'fin', 'proc');
+    await expect(page.locator('#view')).toContainText('部分與組織圖不一樣');
   });
 });
