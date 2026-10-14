@@ -98,6 +98,8 @@ select[disabled]{background:var(--surface-2);color:var(--ink-3);cursor:not-allow
 .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-top:2px;overflow-x:auto}
 .tabs button{background:none;border:0;padding:8px 12px;cursor:pointer;color:var(--ink-2);font-size:13.5px;border-bottom:2px solid transparent;white-space:nowrap}
 .tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+.navitem .en,.tabs .ten,.bi .en,.card-h .en,.page-head .sub,.sub{display:none !important}
+.tabs .more{margin-left:auto;color:var(--ink-3);font-size:12.5px}
 .tabs .ten{font-family:var(--mono);font-size:10.5px;color:var(--ink-3);margin-left:5px}
 
 /* ---------- scope banner ---------- */
@@ -742,6 +744,7 @@ const ROLES = {
 
 /* ---------- state ---------- */
 const state = {
+  more:false,
   svcImp:null, svcMsg:'', svcDay:'',
   lang:'zh', role:'admin', module:'arch', tab:'scope',
   crossOffice:false,          // ASSUMPTION TOGGLE: managers see all offices?
@@ -776,9 +779,9 @@ const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&
 /* bilingual block: primary line + secondary line, always both languages */
 const bi = (zh,en) => `<span class="bi"><span>${esc(state.lang==='zh'?zh:en)}</span><span class="en">${esc(state.lang==='zh'?en:zh)}</span></span>`;
 const biO = o => bi(o.zh,o.en);
-const both = (zh,en) => state.lang==='zh' ? `${zh} / ${en}` : `${en} / ${zh}`;
+const both = (zh,en) => state.lang==='zh' ? zh : en;   // 單語顯示；右上角 EN 切換整站英文
 /* 上方工具列用：主要語言一定顯示，另一種語言在視窗較窄時收起來，讓整列維持單行 */
-const barBi = (zh,en) => state.lang==='zh' ? `${zh}<span class="bar-alt"> / ${en}</span>` : `${en}<span class="bar-alt"> / ${zh}</span>`;
+const barBi = (zh,en) => state.lang==='zh' ? zh : en;
 const nameOf = p => state.lang==='zh' ? p.zh : p.en;
 const nameFull = p => state.lang==='zh' ? `${p.zh}` : `${p.en}`;
 const money = n => 'NT$'+n.toLocaleString('en-US');
@@ -850,7 +853,7 @@ function attSummary(empId, y, m){
 const MODULES = [
   {id:'arch', zh:'原型說明', en:'Prototype Info', built:true, tabs:[
     {id:'scope',  zh:'範圍與進展', en:'Scope & Status'},
-    {id:'roles',  zh:'角色與權限', en:'Roles & Permissions'}
+    {more:true, id:'roles',  zh:'角色與權限', en:'Roles & Permissions'}
   ]},
   /* 員工自助頁面，對應 104「私人秘書」：首頁（出勤月曆）、表單、查詢、課程 */
   {id:'desk', zh:'私人秘書', en:'My Desk', built:true, tabs:[
@@ -875,23 +878,23 @@ const MODULES = [
     {id:'titles', zh:'職稱對照', en:'Title matrix'},
     {id:'dir',    zh:'內部通訊錄', en:'Directory'},
     {id:'orgfn',  zh:'組織圖（功能版）', en:'Org chart (working view)'},
-    {id:'open',   zh:'待決議題',   en:'Open questions'}
+    {more:true, id:'open',   zh:'待決議題',   en:'Open questions'}
   ]},
   {id:'doc', zh:'文件管理', en:'Documents', built:true, perm:'mgmt', tabs:[
     {id:'meeting',zh:'會議紀錄',   en:'Meeting minutes'},
     {id:'guide',  zh:'使用指南',   en:'User guide'},
-    {id:'comp',   zh:'法規與資安', en:'Regulations & security'},
-    {id:'cmp104', zh:'104 功能對照', en:'104 comparison'},
-    {id:'sysinfo',zh:'系統說明',   en:'System info'}
+    {more:true, id:'comp',   zh:'法規與資安', en:'Regulations & security'},
+    {more:true, id:'cmp104', zh:'104 功能對照', en:'104 comparison'},
+    {more:true, id:'sysinfo',zh:'系統說明',   en:'System info'}
   ]},
   {id:'fin', zh:'線上申請', en:'Online requests', built:true, perm:'mgmt', tabs:[
     {id:'proc',   zh:'申請項目與流程', en:'Request types & flows'},
-    {id:'petty',  zh:'待定義規則',     en:'Rules to define'}
+    {more:true, id:'petty',  zh:'待定義規則',     en:'Rules to define'}
   ]},
   {id:'svc', zh:'業務資料整合', en:'Business data (planned)', built:true, perm:'mgmt', tabs:[
     {id:'case',  zh:'居服個案管理系統',  en:'Home-care case system'},
-    {id:'contract',zh:'個案資料與契約', en:'Case data & contracts'},
-    {id:'assess',zh:'異常事件通報',     en:'Incident reporting'}
+    {more:true, id:'contract',zh:'個案資料與契約', en:'Case data & contracts'},
+    {more:true, id:'assess',zh:'異常事件通報',     en:'Incident reporting'}
   ]},
   {id:'pay', zh:'薪資計算', en:'Payroll', built:true, perm:'salary', tabs:[
     {id:'run',  zh:'薪資試算',   en:'Payroll run'},
@@ -933,6 +936,7 @@ function ensureAccess(){
     m=MODULES.find(x=>x.id===(role().selfOnly?'desk':'arch') && modVisible(x)) || MODULES.find(modVisible) || MODULES[0];
     state.module=m.id; state.tab=null;
   }
+  if(state.tab && m.tabs.some(t=>t.id===state.tab && t.more && tabAllowed(m,t))) state.more=true;   // 連結直接指到「更多頁面」時自動展開
   if(m.tabs.length && !(state.tab && m.tabs.some(t=>t.id===state.tab && tabAllowed(m,t)))) state.tab=(m.tabs.find(t=>tabAllowed(m,t))||m.tabs[0]).id;
 }
 
@@ -1000,8 +1004,9 @@ function renderShell(){
           <span class="chip acc">${both('目前視角','Viewing as')}: ${esc(nameOf(me()))} · ${esc(L(personaTitle(role())))}</span>
         </div>
         <div class="tabs" role="tablist">
-          ${mod.tabs.filter(t=>tabAllowed(mod,t)).map(t=>`<button role="tab" data-tab="${t.id}" aria-selected="${t.id===state.tab}">
+          ${mod.tabs.filter(t=>tabAllowed(mod,t) && (!t.more || state.more)).map(t=>`<button role="tab" data-tab="${t.id}" aria-selected="${t.id===state.tab}">
              ${esc(state.lang==='zh'?t.zh:t.en)}<span class="ten">${esc(state.lang==='zh'?t.en:t.zh)}</span></button>`).join('')}
+          ${mod.tabs.some(t=>t.more && tabAllowed(mod,t))?`<button class="more" id="moreToggle" aria-pressed="${!!state.more}">${esc(state.more?both('收起更多頁面','Hide extra pages'):both('更多頁面','More pages'))}</button>`:''}
         </div>
         ${scopeBanner()}
         <div id="view"></div>
@@ -1013,6 +1018,7 @@ function renderShell(){
     state.module=b.dataset.mod; state.tab=null; render();   // ensureAccess 會選第一個看得到的分頁
   });
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; render(); });
+  const mt=document.getElementById('moreToggle'); if(mt) mt.onclick=()=>{ state.more=!state.more; if(!state.more&&mod.tabs.some(t=>t.id===state.tab&&t.more)) state.tab=null; render(); };
   document.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{ state.lang=b.dataset.lang; render(); });
   document.getElementById('roleSel').onchange = e=>{
     state.role=e.target.value; state.office='ALL'; state.empId=null; state.nodeId=null;

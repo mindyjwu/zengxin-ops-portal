@@ -24,7 +24,11 @@ async function setRole(page, role) {
 }
 async function go(page, mod, tab) {
   await page.click(`[data-mod="${mod}"]`);
-  if (tab) await page.click(`[data-tab="${tab}"]`);
+  if (tab) {
+    /* 「更多頁面」預設收起；要去的分頁不在畫面上時先展開 */
+    if (!(await page.locator(`[data-tab="${tab}"]`).count()) && (await page.locator('#moreToggle').count())) await page.click('#moreToggle');
+    await page.click(`[data-tab="${tab}"]`);
+  }
 }
 const empRows = page => page.locator('#view tbody tr[data-emp]');
 const requestRow = (page, id) =>
@@ -170,6 +174,8 @@ test.describe('Settings & permission matrix', () => {
       await expect(page.locator('.permtable thead th')).toHaveCount(2);
       await expect(page.locator('[data-perm]')).toHaveCount(0);
       await expect(page.locator('#view')).toContainText('完整權限對照表僅系統管理員可檢視與調整');
+      await expect(page.locator('[data-tab="open"]')).toHaveCount(0);   // 預設收在「更多頁面」
+      await page.click('#moreToggle');
       await expect(page.locator('[data-tab="open"]')).toBeVisible();
     });
   }
@@ -219,6 +225,7 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
     await expect(page.locator('[data-mod="set"]')).toHaveCount(0);
     await go(page, 'svc');
     await expect(page.locator('[data-tab="case"]')).toHaveCount(0);
+    await page.click('#moreToggle');
     await expect(page.locator('[data-tab="assess"]')).toBeVisible();
     // manager (管理者): payroll is view-only in the Excel, so the module is there; no system settings
     await setRole(page, 'manager');
@@ -590,7 +597,7 @@ test.describe('My Hours', () => {
     await go(page, 'hr', 'mylog');
     await page.click('[data-mytab="ot"]');
     const calc = page.locator('#otCalc');
-    await expect(calc).toContainText('2 小時 / 2 h');             // default 17:00–19:00
+    await expect(calc).toContainText('2 小時');             // default 17:00–19:00
 
     await page.fill('#otForm input[name="end"]', '20:30');
     await expect(calc).toContainText('3.5 小時');
@@ -1875,10 +1882,10 @@ test.describe('仁寶 service-record import (synthetic data only)', () => {
     await importSample(page, [...SAMPLE, ...rows]);
     await expect(page.locator('#svcDay')).toBeVisible();
     const v = page.locator('#view');
-    await expect(v).toContainText('服務個案數 / Cases served：3');      // T-001, T-002, T-003（T-004 缺居服員被略過）
-    await expect(v).toContainText('服務紀錄 / Records：4');
-    await expect(v).toContainText('居服員 / Workers：2');
-    await expect(v).toContainText('總工時 / Total hours：3.5');            // 210 分鐘
+    await expect(v).toContainText('服務個案數：3');      // T-001, T-002, T-003（T-004 缺居服員被略過）
+    await expect(v).toContainText('服務紀錄：4');
+    await expect(v).toContainText('居服員：2');
+    await expect(v).toContainText('總工時：3.5');            // 210 分鐘
     await expect(v).toContainText('有 1 列缺居服員');
     await expect(v).toContainText('「忘簽退」1 列');
     const itemRow = v.locator('tbody tr', { hasText: '陪伴服務' }).first();
@@ -1903,5 +1910,30 @@ test.describe('仁寶 service-record import (synthetic data only)', () => {
     await importSample(page, [['隨便'], ['A', 'B'], ['1', '2']]);
     await expect(page.locator('#svcMsg')).toContainText('找不到表頭');
     await expect(page.locator('#svcDay')).toHaveCount(0);
+  });
+});
+
+
+test.describe('Trimmed menus', () => {
+  test('rarely used pages sit under 更多頁面 and links still reach them', async ({ page }) => {
+    await openPortal(page);
+    await page.click('[data-mod="doc"]');
+    await expect(page.locator('[data-tab="sysinfo"]')).toHaveCount(0);
+    await expect(page.locator('[data-tab="meeting"]')).toBeVisible();
+    await page.click('#moreToggle');
+    await expect(page.locator('[data-tab="sysinfo"]')).toBeVisible();
+    await page.click('#moreToggle');
+    await expect(page.locator('[data-tab="sysinfo"]')).toHaveCount(0);
+    // 行動項目的連結會自動展開
+    await go(page, 'arch', 'scope');
+    await page.locator('.actiontable [data-goto="doc|sysinfo"]').first().click();
+    await expect(page.locator('#view')).toContainText('雲端儲存空間估算');
+  });
+  test('Chinese mode shows Chinese only; EN switches the whole page to English', async ({ page }) => {
+    await openPortal(page);
+    await expect(page.locator('.page-head .sub, .sub')).toBeHidden();
+    await expect(page.locator('#view')).not.toContainText(/ \/ [A-Z][a-z]+ [a-z]+/);
+    await page.click('[data-lang="en"]');
+    await expect(page.locator('.navitem').first()).toContainText('Prototype Info');
   });
 });

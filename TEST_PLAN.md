@@ -325,3 +325,5 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] 10/14: leave form accepts an attachment (file name shown to the approver); 勞健保證明 period is a custom month range (min one month); 私人秘書 › 查詢 has no 個人工作日誌
 - [ ] 文件管理 › 會議紀錄: the fourth meeting's official minutes (V2.0) come first with 9 items, 6 actions and the next meeting (10/21); no attendee names; 原型說明 › 範圍與進展 lists the 9 decisions from 14 Oct
 - [ ] 私人秘書 › 課程: an employee (照服員) sees the four summary tables with standards, clicking a number opens the course list; the admin sees 全員進度 (filters, drill into a person, Excel export, import template) and 缺口分析; a 日照主管 sees only their own unit; a role without the requirement sees a notice
+
+- [ ] Trimmed menus: 文件管理 shows only 會議紀錄 and 使用指南 until 更多頁面 is clicked; the toggle collapses it again; an action-item link to 系統說明 opens the extras automatically; in Chinese mode no English subtitles show, and EN switches the whole UI to English.
