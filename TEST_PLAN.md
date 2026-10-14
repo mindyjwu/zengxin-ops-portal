@@ -324,3 +324,4 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] 10/14: 身分選單沒有「管理者（日照主管）」與單獨的「一般員工」; 公告欄 › 組織圖 is the formal full-name tree, 權限與範圍 › 組織圖（功能版） is the staff chart with 編輯職位文字; 權限與範圍 › 內部通訊錄 has a department filter and accepts 注音 input; tables keep the first row and column frozen
 - [ ] 10/14: leave form accepts an attachment (file name shown to the approver); 勞健保證明 period is a custom month range (min one month); 私人秘書 › 查詢 has no 個人工作日誌
 - [ ] 文件管理 › 會議紀錄: the fourth meeting's official minutes (V2.0) come first with 9 items, 6 actions and the next meeting (10/21); no attendee names; 原型說明 › 範圍與進展 lists the 9 decisions from 14 Oct
+- [ ] 私人秘書 › 課程: an employee (照服員) sees the four summary tables with standards, clicking a number opens the course list; the admin sees 全員進度 (filters, drill into a person, Excel export, import template) and 缺口分析; a 日照主管 sees only their own unit; a role without the requirement sees a notice
