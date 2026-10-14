@@ -1951,3 +1951,25 @@ test.describe('Meeting agenda in the guide', () => {
     await expect(page.locator('.toc a[href="#agenda"]')).toBeVisible();
   });
 });
+
+test.describe('Phone width (390px)', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  test('no page overflows sideways and buttons are big enough to tap', async ({ page }) => {
+    await openPortal(page);
+    const mods = await page.$$eval('[data-mod]', e => e.map(x => x.dataset.mod));
+    for (const m of mods) {
+      await page.evaluate(m => { state.module = m; state.tab = null; state.more = true; render(); }, m);
+      const tabs = await page.$$eval('[data-tab]', e => e.map(x => x.dataset.tab));
+      for (const t of (tabs.length ? tabs : [null])) {
+        if (t) await page.evaluate(t => { state.tab = t; render(); }, t);
+        const r = await page.evaluate(() => ({
+          over: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          small: [...document.querySelectorAll('button,a.btn,select,input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file])')]
+            .filter(e => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height < 39.5 && !e.classList.contains('navitem'); }).length   // 主選單項目 37px，刻意不放大以免手機上選單佔滿畫面
+        }));
+        expect(r.over, `${m}/${t} overflows`).toBeLessThanOrEqual(2);
+        expect(r.small, `${m}/${t} has small tap targets`).toBe(0);
+      }
+    }
+  });
+});
