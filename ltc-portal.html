@@ -706,7 +706,7 @@ const ROLES = {
   hr:{ id:'hr', zh:'人資', en:'HR', persona:'H003', allOffices:true, built:true,
     perms:{ salary:true, editEmp:true, mobile:true, approve:true, finalize:true,
             annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
-  manager:{ id:'manager', zh:'管理者', en:'Manager', persona:'A001', chipTitle:{zh:'管理者',en:'Manager'}, allOffices:false, built:true,
+  manager:{ id:'manager', zh:'管理者', en:'Manager', persona:'H002', allOffices:true, built:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false,
             annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
   /* 一般員工：只用「私人秘書」自助頁面（對應 104 私人秘書），資料範圍僅限本人 */
@@ -722,7 +722,7 @@ const ROLES = {
     perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
   accountant:{ id:'accountant', zh:'會計', en:'Accountant', persona:'H004', allOffices:true, built:true, provisional:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:true, mgmt:true } },
-  daydir:{ id:'daydir', zh:'日照主管', en:'Day care supervisor', persona:'B001', allOffices:false, built:true, provisional:true,
+  daydir:{ id:'daydir', zh:'日照主管', en:'Day care supervisor', persona:'A001', allOffices:false, built:true, provisional:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
   daysw:{ id:'daysw', zh:'日照社工/護理師', en:'Day care social worker / nurse', persona:'A005', allOffices:false, built:true, provisional:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
@@ -978,7 +978,7 @@ function renderShell(){
         </div>
         ${role().selfOnly?'':`<button class="assume" id="assumeBtn" aria-pressed="${state.crossOffice}" title="${both('切換此假設以進行討論','Toggle this assumption for discussion')}">
           <span class="switch"></span>
-          <span><small>${barBi('假設','Assumption')}</small> <b>${barBi('管理者可跨公司查看','Managers see all companies')}</b></span>
+          <span><small>${barBi('假設','Assumption')}</small> <b>${barBi('主管可跨單位查看','Supervisors see all units')}</b></span>
         </button>`}
         <div class="spacer"></div>
         <button class="btn ghost mini" id="tourBtn">${barBi('導覽','Walkthrough')}</button>
@@ -5272,12 +5272,12 @@ function viewOpen(){
         <div><h2>${esc(both('管理者應看到所有單位的資料，還是僅限所屬單位？','Should managers see all units, or only their own?'))}</h2></div></div>
       <div class="card-b" style="display:grid;gap:10px">
         <div><div class="eyebrow">${esc(both('原型預設','Prototype default'))}</div>
-          <div>${esc(both('僅限所屬公司。日照主管只看得到所屬公司的員工、出勤與請假；公告看得到全公司與所屬公司的公告。',
-            'Own company only. A day care supervisor sees only their company’s staff, attendance and leave; announcements show company-wide and own-company posts.'))}</div></div>
+          <div>${esc(both('管理者（組織圖上在 4 個主體之上）跨所有單位；日照主管、居服主管等只看得到所屬單位的員工、出勤與請假；公告看得到全公司與所屬單位的公告。',
+            'The manager (above all four entities on the org chart) works across all units; a day care supervisor, home care lead and similar roles see only their own unit’s staff, attendance and leave; announcements show company-wide and own-unit posts.'))}</div></div>
         <div><div class="eyebrow">${esc(both('會議紀錄','Meeting minutes'))}</div>
           <div>${esc(both('管理者或三家公司共用的行政人員，可依授權在系統內切換不同公司，或查看全公司資料總覽；各角色範圍後續以權限矩陣確認。',
             'Managers and shared admin staff can switch company or see an all-company overview, as authorised; each role’s scope will be confirmed in the permission matrix.'))}</div></div>
-        <div class="note q">${esc(both('請用上方「假設：管理者可跨公司查看」開關比較兩種情境。','Use the "Assumption: managers see all companies" switch above to compare.'))}</div>
+        <div class="note q">${esc(both('請用上方「假設：主管可跨單位查看」開關比較兩種情境（管理者本身已經是跨單位，這個開關影響日照主管等只看所屬單位的身分）。','Use the "Assumption: managers see all companies" switch above to compare.'))}</div>
       </div>
     </section>
     <section class="card">
