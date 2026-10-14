@@ -191,6 +191,15 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 .node.scoped{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
 .node.dim{opacity:.42}
 .vline{width:1px;height:16px;background:var(--line-strong)}
+.blkchain{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.blk{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line-strong);border-radius:6px;padding:6px 10px;background:var(--surface);font-size:13px}
+.blk.first{background:var(--accent-soft)}.arr{color:var(--ink-3);font-size:18px}
+/* 所有表格：凍結首行與首欄，方便橫向瀏覽（10/14） */
+.tablewrap{overflow:auto;max-height:72vh}
+.tablewrap thead th{position:sticky;top:0;z-index:2;background:var(--surface-2)}
+.tablewrap tbody td:first-child,.tablewrap thead th:first-child{position:sticky;left:0;background:var(--surface)}
+.tablewrap tbody td:first-child{z-index:1}
+.tablewrap thead th:first-child{z-index:3;background:var(--surface-2)}
 .orgtree,.orgtree ul{list-style:none;margin:0;padding-left:18px;border-left:1px solid var(--line-strong)}
 .orgtree{padding-left:0;border-left:0}
 .orgtree li{margin:6px 0;position:relative}
@@ -543,6 +552,7 @@ const EVENTS = [
  {d:'2026-09-30', type:'audit', scope:'ALL', zh:'截止：NAS 硬體清單與容量確認', en:'Due: NAS hardware and capacity list'},
  {d:'2026-10-07', type:'hr',    scope:'ALL', zh:'第三次需求會議 10:00–11:40', en:'Third requirements meeting, 10:00–11:40'},
  {d:'2026-10-14', type:'hr',    scope:'ALL', zh:'下次會議 10:00（地點待確認）', en:'Next meeting, 10:00 (venue to confirm)'},
+ {d:'2026-10-20', type:'hr',    scope:'ALL', zh:'下次 Meeting：10/20 晚上 10 點（台灣時間 10/21 早上）', en:'Next meeting: 20 Oct 10 pm (Taiwan time: morning of 21 Oct)'},
  {d:'2026-10-15', type:'audit', scope:'ALL', zh:'截止：仁寶系統 API、衛福部介接要求確認', en:'Due: Renbao API and MOHW interface requirements'},
  {d:'2026-10-31', type:'train', scope:'ALL', zh:'第一期 MVP 目標上線', en:'Phase 1 MVP target'}
 ];
@@ -618,7 +628,7 @@ const mkLeave = (id,emp,type,from,fromT,to,toT,filed,status,note) =>
   ({id,emp,type,from,fromT,to,toT,hours:leaveHours(from,fromT,to,toT,emp),filed,status,note});
 let LEAVE = [
  mkLeave('L241','A003','annual',  '2026-09-14','08:00','2026-09-16','17:00','2026-09-01','pending', {zh:'家庭旅遊，已與同仁換班',en:'Family trip; shift swap arranged'}),
- mkLeave('L242','A004','sick',    '2026-09-09','08:00','2026-09-09','17:00','2026-09-08','pending', {zh:'附診斷證明',en:'Medical certificate attached'}),
+ Object.assign(mkLeave('L242','A004','sick',    '2026-09-09','08:00','2026-09-09','17:00','2026-09-08','pending', {zh:'附診斷證明',en:'Medical certificate attached'}),{file:'診斷證明.pdf'}),
  mkLeave('L243','A007','family',  '2026-09-18','13:00','2026-09-18','17:00','2026-09-05','pending', {zh:'子女學校活動（下午半天）',en:'Child school event (afternoon)'}),
  mkLeave('L244','A002','annual',  '2026-09-28','08:00','2026-09-30','17:00','2026-09-06','pending', {zh:'需確認班表覆蓋',en:'Roster coverage to be confirmed'}),
  mkLeave('L245','B003','personal','2026-09-11','08:00','2026-09-11','12:00','2026-09-04','pending', {zh:'家中事務（上午半天）',en:'Personal matter (morning)'}),
@@ -696,11 +706,11 @@ const ROLES = {
   hr:{ id:'hr', zh:'人資', en:'HR', persona:'H003', allOffices:true, built:true,
     perms:{ salary:true, editEmp:true, mobile:true, approve:true, finalize:true,
             annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
-  manager:{ id:'manager', zh:'管理者（日照主管）', en:'Manager (day care supervisor)', persona:'A001', allOffices:false, built:true,
+  manager:{ id:'manager', zh:'管理者', en:'Manager', persona:'A001', chipTitle:{zh:'管理者',en:'Manager'}, allOffices:false, built:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false,
             annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
   /* 一般員工：只用「私人秘書」自助頁面（對應 104 私人秘書），資料範圍僅限本人 */
-  employee:{ id:'employee', zh:'一般員工', en:'Employee', persona:'A004', allOffices:false, selfOnly:true, built:true,
+  employee:{ id:'employee', zh:'一般員工：照服員', en:'Employee: care attendant', persona:'A004', allOffices:false, selfOnly:true, built:true,
     perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false,
             annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } },
 
@@ -851,8 +861,7 @@ const MODULES = [
   {id:'ann', zh:'公告欄', en:'Announcements', built:true, tabs:[
     {id:'board',  zh:'公告',     en:'Board'},
     {id:'cal',    zh:'公司行事曆', en:'Calendar'},
-    {id:'org',    zh:'組織圖',    en:'Org chart'},
-    {id:'dir',    zh:'內部通訊錄', en:'Directory'}
+    {id:'org',    zh:'組織圖',    en:'Org chart'}
   ]},
   {id:'hr', zh:'人事系統', en:'HR', built:true, perm:'mgmt', tabs:[
     {id:'emp',   zh:'員工資料', en:'Employee records'},
@@ -863,6 +872,8 @@ const MODULES = [
   {id:'perm', zh:'權限與範圍', en:'Roles & scope', built:true, perm:'mgmt', tabs:[
     {id:'matrix', zh:'權限對照表', en:'Permission matrix'},
     {id:'titles', zh:'職稱對照', en:'Title matrix'},
+    {id:'dir',    zh:'內部通訊錄', en:'Directory'},
+    {id:'orgfn',  zh:'組織圖（功能版）', en:'Org chart (working view)'},
     {id:'open',   zh:'待決議題',   en:'Open questions'}
   ]},
   {id:'doc', zh:'文件管理', en:'Documents', built:true, perm:'mgmt', tabs:[
@@ -893,6 +904,9 @@ const NOT_BUILT = [];
 /* 權限連動（使用者指定：以需求端 Excel 為準）：四個身分各對應「職稱對照」的一欄，哪些項目名稱（頁面）看得到由那一欄決定。
    「可」「可檢視」「可編輯」看得到；「不可」與空白看不到。系統管理員永遠保留「權限與範圍」，避免把自己鎖在外面。
    對應欄被刪除（例如一般員工：照服員）時，退回原型原本的權限判斷。 */
+/* 角色類別的名稱（子類別掛在類別底下）：一般員工 = 照服員、司機、居服員等（10/14：不再單獨列「一般員工」欄，已細分） */
+const CATEGORY_LABEL = {employee:{zh:'一般員工',en:'Employee'}};
+const catLabel = k => CATEGORY_LABEL[k]||ROLES[k];
 const ROLE_COL = {admin:'it', hr:'hrd', manager:'mgr', employee:'sub:S1', boss:'boss', training:'trn', accountant:'acc', daydir:'dir', daysw:'dsn',
   homelead:'hsv', homesup:'sup', cmlead:'cml', cm:'cm', driver:'sub:S2', hca:'sub:S3'};
 function roleColLive(){ const k=ROLE_COL[state.role]; return k && matrixCols().some(c=>c.k===k) ? k : null; }
@@ -1058,9 +1072,9 @@ function render(){
   const fn={
     'arch:scope':viewArchScope, 'arch:roles':viewArchRoles,
     'desk:home':viewDeskHome, 'desk:forms':viewDeskForms, 'desk:query':viewDeskQuery, 'desk:course':viewDeskCourse,
-    'ann:board':viewBoard, 'ann:cal':viewCalendar, 'ann:org':viewOrg, 'ann:dir':viewDirectory,
+    'ann:board':viewBoard, 'ann:cal':viewCalendar, 'ann:org':viewOrgFormal,
     'hr:emp':viewEmployees, 'hr:mylog':viewMyHours, 'hr:att':viewAttendance, 'hr:leave':viewLeave,
-    'perm:matrix':viewMatrix, 'perm:titles':viewTitleMatrix, 'perm:open':viewOpen,
+    'perm:matrix':viewMatrix, 'perm:titles':viewTitleMatrix, 'perm:dir':viewDirectory, 'perm:orgfn':viewOrgFn, 'perm:open':viewOpen,
     'doc:comp':viewDocCompliance, 'doc:guide':viewDocGuides, 'doc:meeting':viewDocMeeting, 'doc:sysinfo':viewDocSysInfo, 'doc:cmp104':viewDocCmp104,
     'svc:case':viewSvcCase, 'svc:contract':viewSvcContract, 'svc:assess':viewSvcAssess,
     'fin:proc':viewFinProcurement, 'fin:petty':viewFinPettyCash,
@@ -1155,6 +1169,11 @@ const MEETING_DECISIONS = [
 const DECISION_ST = {built:{zh:'已建置',en:'Built',cls:'ok'}, part:{zh:'部分完成',en:'Partly done',cls:'info'}, demo:{zh:'示意',en:'Illustrated',cls:'warn'}, todo:{zh:'待辦',en:'To do',cls:''}};
 /* 後續追蹤事項（會議紀錄第三節）；負責人以職務表示，不列個人姓名 */
 const FOLLOW_UPS = [
+  {src:'10/14', zh:'傳送長照教育訓練網站連結、帳號密碼及現有 Excel 格式，供專案負責人研究如何整合教育時數管理，避免逐人手動查詢（政府網站無法匯出全員資料）', ownerZh:'需求端／人事', whenZh:'下次會議（10/20）前', st:'待辦'},
+  {src:'10/14', zh:'確認並提供正確版組織圖與內部通訊錄資料，含各職位正式全名與地點', ownerZh:'需求端', whenZh:'下次會議（10/20）前', st:'待辦'},
+  {src:'10/14', zh:'整理簽核流程架構（各職務簽核到哪一層，部分流程不依組織圖走），建議用 Block＋Arrow 圖示呈現，方便設計', ownerZh:'需求端', whenZh:'下次會議（10/20）前', st:'待辦'},
+  {src:'10/14', zh:'用 GPT／Gemini 帶入四個問題（拍照打卡、定位、保存年限、人數）估算雲端實際容量，再決定 AWS／Google Cloud／Azure（傾向 Google）', ownerZh:'IT／需求端', whenZh:'下次會議（10/20）前', st:'待辦'},
+  {src:'10/14', zh:'仁寶服務記錄總表 Excel：下次會議匯入，呈現員工工時與服務數', ownerZh:'需求端', whenZh:'下次會議（10/20）', st:'待辦'},
   {src:'10/7', zh:'持續整理現有 104 系統功能截圖及匯出表單，提供 IT 作為差勤功能建置參考', ownerZh:'行政／人事', whenZh:'下次會議前', st:'待辦'},
   {src:'10/7', zh:'整理系統角色、頁面及各項操作權限清單，梳理各「職稱」與 Portal 各「項目名稱」的權限對照矩陣表', ownerZh:'需求端／人事', whenZh:'下次會議前', st:'Excel 範本已提供'},
   {src:'10/7', zh:'擬定全公司統一的員工編號原則，並盤點既有員工編號；導入「復職年資重算、員編重編」的程式邏輯', ownerZh:'人事／IT', whenZh:'待訂', st:'回任重新編號已確認並示範；全公司編號原則預計 10/14 會議前提出'},
@@ -1429,22 +1448,28 @@ BINDERS['ann:cal']=function(){
 </script>
 <script>
 /* =============================== 組織圖 Org chart =============================== */
-function viewOrg(){
+function viewOrgFn(){
   const boss=person('H001'), mgr=person('H002');
   const shared=STAFF.filter(s=>s.unit==='HQ' && !['H001','H002'].includes(s.id));
   const nodeBtn=(p,cls)=>`<button class="node ${cls||''} ${inScope(p.unit)?'':'dim'}" data-node="${p.id}">
       <span class="n">${esc(empName(p.id))}</span><span class="r">${esc(both(TITLES[p.title].zh,TITLES[p.title].en))}</span></button>`;
-  const leaf=p=>`<button class="leaf" data-node="${p.id}">${esc(empName(p.id))} · ${esc(both(TITLES[p.title].zh,TITLES[p.title].en))}</button>`;
+  const ed=!!state.orgEditMode, edits=state.orgEdits||(state.orgEdits={});
+  const leaf=p=>ed
+    ? `<input class="leaf" data-orgedit="${p.id}" value="${esc(edits[p.id]||(empName(p.id)+' · '+both(TITLES[p.title].zh,TITLES[p.title].en)))}">`
+    : `<button class="leaf" data-node="${p.id}">${esc(edits[p.id]||(empName(p.id)+' · '+both(TITLES[p.title].zh,TITLES[p.title].en)))}</button>`;
   return `
   <section class="card">
     <div class="card-h">
-      <h2>${esc(both('組織圖','Org chart'))}</h2>
+      <h2>${esc(both('組織圖（功能版）','Org chart (working view)'))}</h2>
       <span class="en">${esc(both(STAFF.length+' 人 · '+OFFICES.length+' 個主體單位＋共用行政（示範人員）',STAFF.length+' people · '+OFFICES.length+' entities + shared admin (demo staff)'))}</span>
       <div class="spacer"></div>
+      <button class="btn ghost mini" data-orgedit-toggle aria-pressed="${ed}">${esc(ed?both('完成編輯','Done editing'):both('編輯職位文字','Edit labels'))}</button>
       <span class="chip ${scopeLocked()?'warn':'acc'}">${esc(scopeLocked()
         ? both('灰階部分超出您的資料範圍','Dimmed parts are outside your data scope')
         : both('可檢視全部','All visible'))}</span>
     </div>
+    <div class="note" style="margin:12px 14px 0">${esc(both('功能版：用「職位＋地點（單位）」方便同仁找到對接窗口；正式全名版（法人名稱）在「公告欄 › 組織圖」。員工可以自己編輯職位文字，但要等雲端儲存串接後，修改才會真正保存（目前只存在本次瀏覽）。',
+      'Working view: positions and places, so colleagues can find the right contact; the formal full-name version is under Announcements › Org chart. Staff will be able to edit labels themselves, but changes only persist once cloud storage is connected (for now they live in this browser session).'))}</div>
     <div class="orgwrap">
       <div class="orgtop">
         ${nodeBtn(boss,'exec')}
@@ -1473,9 +1498,9 @@ function viewOrg(){
     <div class="legend">${esc(both(
       '公司與部門依需求簡報第 3 頁；人員與姓名為示範資料。組織結構全公司可見，個人明細依身分範圍限制。',
       'Companies and departments follow deck p.3; staff and names are demo data. The structure is visible to all; personal detail follows role scope.'))}</div>
-  </section>
-  ${titleStructureCard()}`;
+  </section>`;
 }
+function viewOrgFormal(){ return `<div class="grid">${titleStructureCard()}</div>`; }
 /* 組織架構（需求端 10/13 提供的組織圖 PDF）：4 個主體單位（1 協會＋3 公司）、各附設機構、業務負責人、單位與職稱。
    目前仍因業務需求動態調整，之後會逐步收斂各業務、與部分機構整合，屆時組織圖與職稱可能再統一調整；簽核流程有部分與組織圖不同，需求端再想怎麼呈現。
    「A個管」是政府的命名（Ａ單位個管師）。圖上的兩個浮動主管（日照主管、A個管主管）以虛線箭頭連到各單位。 */
@@ -1517,7 +1542,7 @@ function orgNodeHTML(n){
 function titleStructureCard(){
   const T=ORG_TREE, one=n=>`<li><div class="orgbox top"><b>${esc(state.lang==='zh'?n.zh:n.en)}</b></div>${n.kids?`<ul>${n.kids.map(one).join('')}</ul>`:''}</li>`;
   return `<section class="card">
-    <div class="card-h"><h2>${esc(both('組織架構（需求端 10/13 提供）','Organisation structure (from the requester side, 13 Oct)'))}</h2>
+    <div class="card-h"><h2>${esc(both('組織架構（需求端 10/13 提供）','Organisation structure (from the requester side, 13 Oct)'))}</h2><span class="chip acc">${esc(both('正式全名版','Formal full-name version'))}</span>
       <span class="en">${esc(both(T.entities.length+' 個主體單位（1 協會＋3 公司）',T.entities.length+' entities (1 association + 3 companies)'))}</span></div>
     <div class="card-b">
       <div class="note q">${esc(both('目前主體單位有 4 家（1 家協會、3 家公司），組織圖仍因業務需求而動態調整；之後會逐步收斂各業務、與部分機構整合，屆時組織圖與職稱可能都會再統一調整。目前的簽核流程有部分與組織圖不一樣，需求端會再想怎麼呈現。',
@@ -1538,13 +1563,19 @@ function titleStructureCard(){
       'Built from the org chart the requester side supplied on 13 Oct. “A個管” is the government’s title (A-unit case manager). The mapping of data scope and employee-number prefix (A association, B Chengxin, C Oxford, D Zengxin Health) is a provisional prototype choice; the system administrator is not on the chart and sits under shared admin in the prototype. The people in the chart above are still demo data.'))}</div>
   </section>`;
 }
-BINDERS['ann:org']=function(){ document.querySelectorAll('[data-node]').forEach(b=>b.onclick=()=>openPerson(b.dataset.node)); };
+BINDERS['perm:orgfn']=function(){
+  document.querySelectorAll('[data-node]').forEach(b=>b.onclick=()=>openPerson(b.dataset.node));
+  const tg=document.querySelector('[data-orgedit-toggle]'); if(tg) tg.onclick=()=>{ state.orgEditMode=!state.orgEditMode; render(); };
+  document.querySelectorAll('[data-orgedit]').forEach(i=>i.onchange=()=>{ (state.orgEdits||(state.orgEdits={}))[i.dataset.orgedit]=i.value.trim(); toast(both('已修改（示範：要等雲端儲存串接後才會真正保存）','Edited (demo: it will only persist once cloud storage is connected)')); });
+};
+BINDERS['ann:org']=function(){};
 
 /* =============================== 通訊錄 Directory =============================== */
 function viewDirectory(){
   const units=activeUnitIds();
-  const q=state.dirQ.trim().toLowerCase();
-  const list=STAFF.filter(s=>units.includes(s.unit)).filter(s=>!q ||
+  const q=state.dirQ.trim().toLowerCase(), dd=state.dirDept||'ALL';
+  const deptIds=[...new Set(STAFF.filter(s=>units.includes(s.unit)).map(s=>s.dept))];
+  const list=STAFF.filter(s=>units.includes(s.unit)).filter(s=>dd==='ALL'||s.dept===dd).filter(s=>!q ||
     (s.zh+s.en+s.ext+L(TITLES[s.title])+L(DEPTS[s.dept])+L(unit(s.unit))).toLowerCase().includes(q));
   const hidden=STAFF.length-STAFF.filter(s=>units.includes(s.unit)).length;
   return `
@@ -1553,6 +1584,7 @@ function viewDirectory(){
       <h2>${esc(both('內部通訊錄','Internal directory'))}</h2>
       <span class="en">${list.length} / ${STAFF.length}</span>
       <div class="spacer"></div>
+      <select id="dirDept" title="${esc(both('部門篩選','Filter by department'))}"><option value="ALL">${esc(both('全部部門','All departments'))}</option>${deptIds.map(d=>`<option value="${d}" ${d===dd?'selected':''}>${esc(both(DEPTS[d].zh,DEPTS[d].en))}</option>`).join('')}</select>
       <input type="search" id="dirQ" placeholder="${esc(both('搜尋姓名、職稱、分機','Search name, title, extension'))}" value="${esc(state.dirQ)}" style="min-width:230px">
     </div>
     ${hidden>0?`<div class="note ${scopeLocked()?'q':''}" style="margin:12px 14px 0">${esc(both(
@@ -1580,10 +1612,17 @@ function viewDirectory(){
       'Prototype note: mobile numbers are fictional and partly masked to demonstrate field-level permissions.'))}</div>
   </section>`;
 }
-BINDERS['ann:dir']=function(){
-  const i=document.getElementById('dirQ');
-  if(i) i.oninput=e=>{ state.dirQ=e.target.value; const p=e.target.selectionStart; render();
-    const j=document.getElementById('dirQ'); if(j){ j.focus(); j.setSelectionRange(p,p);} };
+/* 中文輸入（注音）時不要在組字中途重新繪製畫面，否則輸入會被打斷：組字結束（compositionend）才更新 */
+function bindSearch(id,key){
+  const i=document.getElementById(id); if(!i) return; let comp=false;
+  const apply=()=>{ state[key]=i.value; const p=i.selectionStart; render(); const j=document.getElementById(id); if(j){ j.focus(); j.setSelectionRange(p,p);} };
+  i.addEventListener('compositionstart',()=>{ comp=true; });
+  i.addEventListener('compositionend',()=>{ comp=false; apply(); });
+  i.addEventListener('input',e=>{ if(comp||e.isComposing) return; apply(); });
+}
+BINDERS['perm:dir']=function(){
+  bindSearch('dirQ','dirQ');
+  const d=document.getElementById('dirDept'); if(d) d.onchange=()=>{ state.dirDept=d.value; render(); };
 };
 function lockIcon(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 1 1 8 0v3"></path></svg>'; }
 </script>
@@ -1705,9 +1744,7 @@ function openAddEmp(){
   };
 }
 BINDERS['hr:emp']=function(){
-  const i=document.getElementById('empQ');
-  if(i) i.oninput=e=>{ state.q=e.target.value; const p=e.target.selectionStart; render();
-    const j=document.getElementById('empQ'); if(j){ j.focus(); j.setSelectionRange(p,p);} };
+  bindSearch('empQ','q');
   document.querySelectorAll('[data-emp]').forEach(r=>r.onclick=()=>openPerson(r.dataset.emp));
   const n=document.querySelector('[data-newemp]');
   if(n&&!n.disabled) n.onclick=openAddEmp;
@@ -2308,6 +2345,7 @@ function myLeave(){
         ${rot?`<div><label>${esc(both('開始日班別','Shift on start date'))}</label><div class="calc" id="leaveShift"></div></div>`:''}
       </div>
       <div><label>${esc(both('事由','Reason'))}</label><textarea name="reason" required></textarea></div>
+      <div><label>${esc(both('附件（選填，例如診斷證明、結婚證明）','Attachment (optional, e.g. medical or marriage certificate)'))}</label><input type="file" name="file"></div>
       <div><button type="submit" class="btn">${esc(both('送出請假','Submit leave'))}</button></div>
     </form>
   </section>`;
@@ -2507,6 +2545,7 @@ BINDERS['hr:mylog']=function(){
       const fd=new FormData(lf);
       const r=mkLeave(nextId('L',LEAVE), u.id, fd.get('type'), fd.get('from'), fd.get('fromT'), fd.get('to'), fd.get('toT'),
         ymd(TODAY), 'pending', {zh:fd.get('reason'),en:fd.get('reason')});
+      const up=fd.get('file'); if(up&&up.name) r.file=up.name;     // 只記檔名（示範；要等雲端儲存串接才會真正保存檔案）
       LEAVE.push(r); state.leaveDraft=null;
       toast(both(r.id+' 已送出 '+fmtH(r.hours)+' 小時請假', r.id+' submitted: '+fmtH(r.hours)+' h leave')); render();
     };
@@ -2576,7 +2615,8 @@ const TRIP_WAYS = {scooter:{zh:'機車',en:'Scooter'}, car:{zh:'自用汽車',en
 const CERT_TYPES = {emp:{zh:'在職證明',en:'Employment certificate'}, svc:{zh:'服務證明',en:'Service certificate'}, pay:{zh:'薪資證明',en:'Salary certificate'}};
 const INS_TYPES = {labor:{zh:'勞保投保證明',en:'Labor insurance certificate'}, health:{zh:'健保投保證明',en:'Health insurance certificate'}, pension:{zh:'勞退提繳證明',en:'Pension contribution certificate'}};
 const CERT_LANG = {zh:{zh:'中文',en:'Chinese'}, en:{zh:'英文',en:'English'}};
-const INS_PERIOD = {ytd:{zh:'本年度',en:'This year'}, y1:{zh:'近 1 年',en:'Last 12 months'}, all:{zh:'自到職日起',en:'Since hire date'}};
+/* 證明期間（10/14）：自訂起訖月份，最短一個月，以整月計算 */
+const monthSpan = (a,b) => (+b.slice(0,4)-+a.slice(0,4))*12 + (+b.slice(5,7)-+a.slice(5,7)) + 1;
 const DOC_PICK = {hr:{zh:'至人資領取',en:'Collect from HR'}, mail:{zh:'電子檔寄至信箱',en:'PDF by email'}};
 const RULES = [
   {zh:'工作規則',en:'Work rules',v:'2026-01-01'},
@@ -2909,7 +2949,8 @@ function deskDocForm(kind){
     <form id="docForm" data-kind="${kind}" class="card-b frm">
       <div class="row">
         ${sel('證明類別','Type','type',cert?CERT_TYPES:INS_TYPES)}
-        ${cert?sel('語言','Language','lang',CERT_LANG):sel('期間','Period','period',INS_PERIOD)}
+        ${cert?sel('語言','Language','lang',CERT_LANG):`<div><label>${esc(both('期間：起始月份','Period: from month'))}</label><input type="month" name="pfrom" value="${CUR_MONTH.slice(0,4)}-01" max="${CUR_MONTH}" required></div>
+          <div><label>${esc(both('結束月份（整月計算）','To month (whole months)'))}</label><input type="month" name="pto" value="${CUR_MONTH}" max="${CUR_MONTH}" required></div>`}
         <div><label>${esc(both('份數','Copies'))}</label><input type="number" name="copies" min="1" max="5" value="1" required></div>
         ${sel('領取方式','Delivery','pick',DOC_PICK)}
       </div>
@@ -2936,7 +2977,7 @@ function deskSign(){
         <td class="mono">${x.id}</td><td>${esc(empName(p.id))} <span class="muted" style="font-size:11px">${esc(L(TITLES[p.title]))}</span></td>
         <td>${esc(both(q.form.zh,q.form.en))}</td><td style="white-space:normal">${esc(q.what)}</td>
         <td class="mono" style="font-size:12px">${esc(q.when)}</td><td class="num">${q.h==null?'—':fmtH(q.h)}</td><td>${statusChip(x.status)}</td>
-        <td class="muted" style="white-space:normal;max-width:200px">${esc(L(x.note)||'—')}</td>
+        <td class="muted" style="white-space:normal;max-width:200px">${esc(L(x.note)||'—')}${x.file?` <span class="chip">📎 ${esc(x.file)}</span>`:''}</td>
         <td style="display:flex;gap:6px">${deskAction(x)}</td></tr>`; }).join('')}</tbody></table></div>
       <div class="legend">${esc(both('與「人事系統 › 請假審核」同一流程：主管核准 → 人資複核 → 生效。','Same flow as HR › Leave approvals: director approves → HR countersigns → effective.'))}</div>`
     : doneBox('太好了！您目前沒有待處理事項','All clear — nothing is waiting for you')}</section>`;
@@ -3024,7 +3065,12 @@ BINDERS['desk:forms']=function(){
   };
   const df=document.getElementById('docForm');
   if(df) df.onsubmit=e=>{ e.preventDefault(); const fd=new FormData(df), kind=df.dataset.kind, cert=kind==='cert';
-    const t=(cert?CERT_TYPES:INS_TYPES)[fd.get('type')], x=cert?CERT_LANG[fd.get('lang')]:INS_PERIOD[fd.get('period')], n=+fd.get('copies');
+    let x;
+    if(cert) x=CERT_LANG[fd.get('lang')];
+    else { const a=fd.get('pfrom'), b=fd.get('pto');
+      if(!a||!b||b<a){ toast(both('結束月份不能早於起始月份','The end month cannot be before the start month')); return; }
+      const n0=monthSpan(a,b); x={zh:a+' 至 '+b+'（整月，共 '+n0+' 個月）', en:a+' to '+b+' (whole months, '+n0+' months)'}; }
+    const t=(cert?CERT_TYPES:INS_TYPES)[fd.get('type')], n=+fd.get('copies');
     const r=deskNewForm(kind,{date:ymd(TODAY),
       what:{zh:t.zh+'（'+x.zh+'）× '+n+' · '+DOC_PICK[fd.get('pick')].zh, en:t.en+' ('+x.en+') × '+n+' · '+DOC_PICK[fd.get('pick')].en},
       note:{zh:fd.get('purpose'),en:fd.get('purpose')}});
@@ -3044,7 +3090,7 @@ BINDERS['desk:forms']=function(){
 function deskQueryGroups(){
   const g=[{g:{zh:'個人資料',en:'My records'}, items:[
     {id:'att',zh:'出勤紀錄',en:'Attendance'}, {id:'slip',zh:'薪資袋',en:'Payslips'}, {id:'ins',zh:'保險費',en:'Insurance'},
-    {id:'tax',zh:'所得稅',en:'Income tax'}, {id:'rec',zh:'人事資料',en:'My HR record'}, {id:'log',zh:'個人工作日誌',en:'Work log'},
+    {id:'tax',zh:'所得稅',en:'Income tax'}, {id:'rec',zh:'人事資料',en:'My HR record'},
     {id:'yearly',zh:'年度假勤',en:'Leave this year'}]}];
   if(mySubs().length) g.push({g:{zh:'部屬資料',en:'My team'}, items:[
     {id:'subatt',zh:'部屬出勤資料',en:'Team attendance'}, {id:'subperf',zh:'部屬績效考核',en:'Team reviews'}, {id:'sublog',zh:'部屬工作日誌',en:'Team work logs'}]});
@@ -3452,7 +3498,7 @@ function viewLeave(){
           <td class="mono">${l.from} ${l.fromT} → ${l.to!==l.from?l.to+' ':''}${l.toT}</td>
           <td class="num">${fmtH(l.hours)} <span class="muted">(${hToDays(l.hours)}d)</span></td>
           <td>${statusChip(l.status)}</td>
-          <td class="muted" style="white-space:normal;max-width:200px">${esc(L(l.note)||'—')}</td>
+          <td class="muted" style="white-space:normal;max-width:200px">${esc(L(l.note)||'—')}${l.file?` <span class="chip">📎 ${esc(l.file)}</span>`:''}</td>
           <td style="display:flex;gap:6px">${rowAction(l)}</td>
         </tr>`).join('')}</tbody></table></div>
       ${list.length?'':empty}
@@ -3874,6 +3920,14 @@ function viewDocSysInfo(){
       <div class="card-b" style="display:grid;gap:10px">
         <div class="note">${esc(both('怎麼估：容量 ≈ 員工數 × 每月出勤日 × 每日打卡次數 × 12 × 每筆大小 × 保存年限，再加上員工附件，最後乘上備份份數。打卡「筆數」本身很小（每筆只是時間與文字），真正決定容量的是打卡時要不要存照片或定位，以及要保存幾年。下面的預設值是我的假設，不是會議決定，請 IT 用實際設計替換。',
           'How to estimate: capacity ≈ staff × workdays per month × punches per day × 12 × size per record × years kept, plus employee attachments, times the number of backup copies. The record count itself is small (each is just a time and some text); what drives capacity is whether each punch stores a photo or location and how many years are kept. The defaults below are my assumptions, not meeting decisions; IT should replace them with the real design.'))}</div>
+        <div class="eyebrow">${esc(both('10/14 需求端的規劃方向','Direction from the requester side, 14 Oct'))}</div>
+        <ul id="stPlan" style="margin:0;padding-left:20px;line-height:1.8">${[
+          ['以 300 人為基準估算；雲端空間每年續約調整，可隨時擴充，不需一次買足。','Plan for 300 people; renew and adjust cloud space each year; it can be expanded any time, no need to buy everything at once.'],
+          ['預估 2–3 TB 應足夠（若沒有大量照片）。','About 2–3 TB should be enough (if there are not many photos).'],
+          ['雲端平台在 AWS、Google Cloud、Microsoft Azure 三選一；傾向 Google（員工多已有 Gmail 帳號，整合較方便）。','Choose one of AWS, Google Cloud and Microsoft Azure; leaning to Google (most staff already have Gmail accounts, so it integrates more easily).'],
+          ['下一步：用 GPT／Gemini 帶入四個問題（是否拍照打卡、是否定位、保存年限、支援人數）估算實際容量，再決定平台。','Next: use GPT/Gemini with the four questions (photo punch, location, years kept, number of people) to estimate the real capacity, then pick the platform.']
+        ].map(x=>`<li>${esc(both(x[0],x[1]))}</li>`).join('')}</ul>
+        <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('下面的估算與你們的 2–3 TB 方向一致：300 人只存文字約 7.5 GB，每次拍照約 687 GB，都在 2–3 TB 之內；2,000 人每次拍照約 4.5 TB 才會超過。','The estimate below fits the 2–3 TB direction: 300 people with text only is about 7.5 GB, with a photo per punch about 687 GB, both within 2–3 TB; only 2,000 people with a photo per punch (about 4.5 TB) would exceed it.'))}</div>
         <div>${Object.entries(STORAGE_PRESETS).map(([k,x])=>`<button class="btn ghost mini" type="button" data-stpreset="${k}">${esc(x.label)}</button>`).join(' ')}</div>
         <form id="stForm" class="frm" onsubmit="return false"><div class="row">
           <div><label>${esc(both('員工數（300 或 2,000？待確認）','Staff (300 or 2,000? to confirm)'))}</label><input name="n" type="number" min="1" value="${STORAGE_DEF.n}"></div>
@@ -3895,6 +3949,7 @@ function viewDocSysInfo(){
       <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.8">
         <li>${esc(both('沒有真實登入：用上方「身分」切換角色。','No real login: switch roles with the Role selector.'))}</li>
         <li>${esc(both('資料只存在瀏覽器：重新整理就會還原，不會寫入資料庫。','Data lives in the browser only and resets on reload.'))}</li>
+        <li>${esc(both('目前網站是 Demo：資料寫在程式裡（連接 GitHub），沒有雲端儲存；任何修改（包括組織圖、附件上傳）都不會真正保存，要等登入系統與雲端儲存串接後才能正式使用。','The site is a demo: the data is hard-coded (served from GitHub) with no cloud storage; no change (including org-chart edits and attachment uploads) is truly saved until a login system and cloud storage are connected.'))}</li>
         <li>${esc(both('人員、姓名、出勤與薪資數字皆為示範資料。','People, names, attendance and pay figures are demo data.'))}</li>
         <li>${esc(both('展示日期固定為 '+ymd(TODAY)+'。','The demo date is fixed at '+ymd(TODAY)+'.'))}</li>
       </ul></div>
@@ -4019,9 +4074,9 @@ function viewApprovalPath(){
         ${custom?`<button class="btn ghost mini" data-pathreset>${esc(both('還原為組織圖','Back to the org chart'))}</button>`:''}
       </div>
       ${canEdit?'':`<div class="muted" style="font-size:12px">${esc(both('只有能簽核的身分（人資、管理者）可以調整簽核節點。','Only roles that can approve (HR, manager) can adjust approval nodes.'))}</div>`}
-      <div id="pathChain" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-        <span class="chip acc">${esc(both('申請人','Requester'))}：${esc(empName(me0.id))}（${esc(L(TITLES[me0.title]))}）</span>
-        ${chain.map((x,i)=>`→ <span class="chip">${esc(both('第 '+(i+1)+' 層','Level '+(i+1)))}：${esc(empName(x.id))}（${esc(L(TITLES[x.title]))}）${custom?` <button class="btn ghost mini" data-pathdel="${x.id}" aria-label="${esc(both('移除','Remove'))}">✕</button>`:''}</span>`).join(' ')}
+      <div id="pathChain" class="blkchain">
+        <span class="blk first">${esc(both('申請人','Requester'))}：${esc(empName(me0.id))}（${esc(L(TITLES[me0.title]))}）</span>
+        ${chain.map((x,i)=>`<span class="arr">→</span><span class="blk">${esc(both('第 '+(i+1)+' 層','Level '+(i+1)))}：${esc(empName(x.id))}（${esc(L(TITLES[x.title]))}）${custom?` <button class="btn ghost mini" data-pathdel="${x.id}" aria-label="${esc(both('移除','Remove'))}">✕</button>`:''}</span>`).join(' ')}
         ${chain.length?'':`<span class="muted">${esc(both(custom?'（沒有簽核節點）':'（最上層，沒有上一層）',custom?'(no approval nodes)':'(top of the chart — nobody above)'))}</span>`}
       </div>
       ${custom?`<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap"><div><label style="font-size:12px;color:var(--ink-3)">${esc(both('加入簽核人','Add an approver'))}</label>
@@ -4980,7 +5035,8 @@ const TITLE_SHEET = {
   '公告欄 › 公告':'YYYYYYYYYYYYYYY',
   '公告欄 › 公司行事曆':'YYYYYYYYYYYYYYY',
   '公告欄 › 組織圖':'YYYYYYYYYYYYYYY',
-  '公告欄 › 內部通訊錄':'YYYYYYYYYYYYYYY',
+  '權限與範圍 › 組織圖（功能版）':'YYYYYYYYYYYYYYY',
+  '權限與範圍 › 內部通訊錄':'YYYYYYYYYYYYYYY',
   '人事系統 › 員工資料':'YYYNNYNNNNNNNNN',
   '人事系統 › 我的工時':'YYYNNYNNNNNNNNN',
   '人事系統 › 出勤管理':'YYYNNYNNNNNNNNN',
@@ -5021,7 +5077,7 @@ function titleCell(it, ck){
 function subcats(){ return state.subcats || (state.subcats=MATRIX_SUBS.map(s=>({...s}))); }
 function matrixCols(){
   return [...MATRIX_TITLES,
-    ...subcats().map(sc=>({k:'sub:'+sc.id, sc, zh:ROLES[sc.parent].zh+'：'+sc.name, en:ROLES[sc.parent].en+': '+sc.name}))];
+    ...subcats().map(sc=>({k:'sub:'+sc.id, sc, zh:catLabel(sc.parent).zh+'：'+sc.name, en:catLabel(sc.parent).en+': '+sc.name}))];
 }
 function titleWorksheetRows(){
   const cols=matrixCols(), items=permItems();
@@ -5073,7 +5129,7 @@ function viewTitleMatrix(){
       <div class="card-h"><h2>${esc(both('建立子類別','Create a sub-category'))}</h2><span class="en">${esc(both('10/7 錄音摘要；示範','7 Oct recording summary; demo'))}</span></div>
       <form class="frm" id="subAddForm" style="padding:12px 14px"><div class="muted" style="font-size:12.5px;line-height:1.7;margin-bottom:10px">${esc(both('在角色類別底下建立子類別：例如「一般員工」底下有很多種員工（司機、約聘人員 contractor 等），建立後會在上面的矩陣多一欄，可以各自設定權限。',
         'Create a sub-category under a role category: e.g. Employee holds many kinds of staff (driver, contractor…). It adds a column to the matrix above with its own permissions.'))}</div>
-        <div class="row"><div><label>${esc(both('角色類別','Role category'))}</label><select name="parent">${BUILT_ROLES.map(k=>`<option value="${k}" ${k==='employee'?'selected':''}>${esc(both(ROLES[k].zh,ROLES[k].en))}</option>`).join('')}</select></div>
+        <div class="row"><div><label>${esc(both('角色類別','Role category'))}</label><select name="parent">${BUILT_ROLES.map(k=>`<option value="${k}" ${k==='employee'?'selected':''}>${esc(both(catLabel(k).zh,catLabel(k).en))}</option>`).join('')}</select></div>
           <div><label>${esc(both('子類別名稱','Sub-category name'))}</label><input name="name" required maxlength="20" placeholder="${esc(both('例如：實習生','e.g. intern'))}"></div>
           <div><button class="btn mini" type="submit">${esc(both('建立','Create'))}</button></div></div></form>
     </section>`:''}
@@ -5090,7 +5146,7 @@ BINDERS['perm:titles']=function(){
   const af=document.getElementById('subAddForm');
   if(af) af.onsubmit=e=>{ e.preventDefault(); const fd=new FormData(af), n=fd.get('name').toString().trim(); if(!n) return;
     subcats().push({id:'S'+(Date.now()%100000), parent:fd.get('parent'), name:n});
-    toast(both('已建立子類別：'+ROLES[fd.get('parent')].zh+'：'+n,'Sub-category created: '+ROLES[fd.get('parent')].en+': '+n)); render(); };
+    toast(both('已建立子類別：'+catLabel(fd.get('parent')).zh+'：'+n,'Sub-category created: '+catLabel(fd.get('parent')).en+': '+n)); render(); };
   const x=document.querySelector('[data-titlexlsx]');
   if(x) x.onclick=()=>saveBlob(buildXlsx(titleWorksheetRows()), '職稱權限對照表.xlsx');
 };
@@ -5242,7 +5298,6 @@ const TOURS = [
    {target:'[data-punch="in"]', zh:'到班時按右側「打卡」卡片的「上班打卡」；下班時按「下班打卡」。原型會記錄你按下的時間。'},
    {go:()=>({deskDay:pastWorkday()}), target:'#deskDay', zh:'點月曆上任一天，可看當天班別、上下班時間與工時；也能直接開請假單、加班單或公出差旅單。漏打卡的日子會出現「忘刷申請單」。'},
    {go:{tab:'query', deskQ:'att'}, target:'#view .tiles', zh:'整個月的工時、請假與加班總計在「查詢 › 出勤紀錄」，下方表格是每天的明細。'},
-   {go:{tab:'query', deskQ:'log'}, target:'#logHours', zh:'想記錄工時用在哪些工作，到「查詢 › 個人工作日誌」填日期、時數與工作類別。'}
  ]},
  {id:'leave', zh:'員工：請假（全天、半天或以小時計）', role:'employee', steps:[
    {go:{module:'desk',tab:'forms',deskForm:'leave'}, target:'#leaveForm', zh:'到「表單 › 請假單」。也可以從首頁右側「常用表單」或點月曆上的日期進來。'},
@@ -5258,7 +5313,7 @@ const TOURS = [
    {go:{deskQ:'ins'}, target:'#view table', zh:'勞健保與勞退的個人負擔和公司負擔在「保險費」；扣繳稅額在「所得稅」。'}
  ]},
  {id:'approve', zh:'主管：簽核部屬的請假與表單', role:'manager', steps:[
-   {go:{module:'desk',tab:'home'}, target:'#signCard', zh:'以「管理者（日照主管）」身分進入私人秘書，首頁的「未簽核表單」會列出等你簽核的申請。'},
+   {go:{module:'desk',tab:'home'}, target:'#signCard', zh:'以「管理者」身分進入私人秘書，首頁的「未簽核表單」會列出等你簽核的申請。'},
    {go:{tab:'forms',deskForm:'sign'}, target:'#view table', zh:'到「表單 › 表單簽核」逐筆按「核准」或「駁回」。核准後會轉人資複核，複核完成才生效。'},
    {go:{module:'hr',tab:'leave'}, target:'#view .tiles', zh:'也可以在「人事系統 › 請假審核」看所屬公司全部的請假、加班、補打卡與其他表單。'}
  ]},
