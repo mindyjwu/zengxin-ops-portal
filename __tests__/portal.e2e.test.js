@@ -1820,4 +1820,27 @@ test.describe('CSV exports', () => {
     await go(page, 'desk', 'course');
     await expect(page.locator('tr[data-ceemp]')).toHaveCount(0);
   });
+
+  test('the scope page leads with 12 action items and keeps the long logs collapsed', async ({ page }) => {
+    await openPortal(page);
+    const v = page.locator('#view');
+    await expect(v).toContainText('行動項目：要結案的 12 件事');
+    await expect(page.locator('.actiontable tbody tr')).toHaveCount(12);
+    const types = await page.locator('.actiontable tbody tr td:nth-child(2)').allTextContents();
+    expect(types.filter(x => x.includes('現在決定')).length).toBe(5);
+    expect(types.filter(x => x.includes('等資料')).length).toBe(4);
+    expect(types.filter(x => x.includes('IT 研究')).length).toBe(2);
+    expect(types.filter(x => x.includes('後續')).length).toBe(1);
+    await expect(v).toContainText('建議只是提案');
+    // the long logs are collapsed until opened
+    const logs = page.locator('details.card');
+    await expect(logs).toHaveCount(2);
+    await expect(logs.first()).not.toHaveAttribute('open', '');
+    await logs.first().locator('summary').click();
+    await expect(logs.first()).toContainText('會議決議');
+    expect(await logs.first().locator('tbody tr').count()).toBe(await page.evaluate(() => MEETING_DECISIONS.length));
+    // an action item links to the page it is about
+    await page.locator('.actiontable [data-goto="doc|sysinfo"]').first().click();
+    await expect(page.locator('#view')).toContainText('雲端儲存空間估算');
+  });
 });

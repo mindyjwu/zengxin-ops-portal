@@ -2,7 +2,25 @@
 
 Format: `YYYY-MM-DD — decision — why / who decided`. Keep one line each.
 
-## Decided
+## Action items — 12 things to close (the same list is on 原型說明 › 範圍與進展)
+Type: **Decide** = can be decided now (recommendation given, not yet a decision) · **Material** = waiting for material · **IT** = IT study · **Later**.
+
+| # | Type | Item | Recommendation / what is needed | Owner | Due |
+|---|---|---|---|---|---|
+| 1 | Decide | Mobile clock-in: what a punch stores, cloud capacity, platform | Time and location only, no photo; keep punch records 5 years (Labor Standards Act art. 30, HR to confirm); plan for 300 people; Google, buy a small amount and renew yearly (about 7.5 GB, 2–3 TB is ample). Still needed: IT and the requester confirm photo / location | IT / requester | 10/21 |
+| 2 | Decide | Employee-number format and prefixes | A association, B Chengxin, C Oxford, D Zengxin Health, H shared admin + 3 digits; rejoin = new number (decided); keep old 104 number in a reference column. Still needed: full 104 export | HR / IT | 10/21 |
+| 3 | Decide | Roles and permissions | Use the Excel's 15 roles; drop “four provisional roles”; manager across units, day care supervisor own unit (HR pages opened, sync the Excel). Still needed: fill the “provisional” cells | requester / HR | 10/21 |
+| 4 | Decide | Two org-chart versions | Formal full-name version on the announcement board; the simple version (for ordinary staff) is today's “working view”, rename it “simple”. Still needed: full names and places, directory data | admin / HR | 10/21 |
+| 5 | Decide | 104: replace, connect or run in parallel | Run in parallel first; revisit replacing once attendance and revenue-share pay are stable. Still needed: which 104 modules are in use | requester / IT | 10/21 |
+| 6 | Material | Approval flows (block and arrow) | Levels per role, amount thresholds, which forms need a custom flow, the feedback-form flow | admin | before 10/21 |
+| 7 | Material | 仁寶 service-record Excel | One export (not yet received): enables the import page, case counts, item usage shares and per-worker daily / weekly / cumulative hours | IT / requester | 10/21 |
+| 8 | Material | Continuing-education import | 3–5 people in the import template (one row per course) and the rules confirmed | training | 10/21 |
+| 9 | Material | Revenue-share pay rules | Rules, data sources, exceptions, approval flow | HR / finance | TBD |
+| 10 | IT | MOHW points-system connection | Confirm it is allowed and the limits; use the Excel format meanwhile; no passwords in the site or repo | IT | TBD |
+| 11 | IT | Mobile clock-in go-live and input-method test | API token? location or device limits? test typing, search and saving across input methods | IT | TBD |
+| 12 | Later | Q&A feature and UAT | After 1–9 settle the structure to 80–90%; Q&A after cloud and portal are live | project lead | later |
+
+## Decision log (reference — what has already been decided or built)
 - 2026-09-30 — This repo is the single canonical repo; `ltc-ops-portal` is archived as a predecessor.
 - 2026-09 — Scope is three companies, 誠馨、誠芯、牛津, all in greater Hsinchu, same functions; plus shared admin (共用行政). 彰化 and 台中 are only a future expansion idea — owner.
 - 2026-09 — Brand is 誠馨日照; use day care (日照) wording — owner.
@@ -30,30 +48,11 @@ Format: `YYYY-MM-DD — decision — why / who decided`. Keep one line each.
 - 2026-10-07 — Settle the overall structure (org chart, permissions, flows) to 80–90% before UAT (recording summary).
 - 2026-09-20 — Meeting decisions (one account per person by employee number; managers and shared admin can switch company; HR maintains data, employees only view; monthly / hourly / revenue-share pay; link out to existing systems) are listed on 原型說明 › 範圍與進展 — 9/20 meeting minutes.
 
-## Open (resolve with the requester side before building on them)
-1. ~~**Number of sites**~~ — answered: three companies (see Decided). The "7 offices" figure has no source and was removed.
-2. **104 usage:** which 104 modules are actually in use? (Drives Plan A "keep 104 + CSV import" vs Plan B "replace 104".)
-3. ~~**仁寶 integration:** API, webhook, or CSV export?~~ — answered by the 7 Oct meeting: no outside connection; link out by button (see Decided).
-4. **Roles:** confirm the deck p.6 role matrix (老闆、管理者、人資、教育訓練專員、會計、系統管理員、一般人員) and data-scoping rules (can managers see other companies, payroll visibility, leave approval levels). Deck p.15 lists the other open decisions.
-5. **Hosting/data residency:** who owns infrastructure, where does production data live, how is 個資法 compliance handled?
-6. **ROI framing:** savings from retiring 104 are modest — define the business case on other value (hidden HR labor, reporting, integration).
-7. **Production path:** the prototype is static HTML. Choose stack, auth, database, and hosting for the 300+ employee build.
-8. **拆帳制 (revenue-share) pay rules** — not yet defined.
-9. **Links** for 居服個案管理系統 (仁寶), 衛福部長照系統 and 誠馨雲端（NAS） — waiting on IT.
-10. **Employee-number prefix** — proposal only (9/30): replace the per-company prefixes (e.g. CSHR, OXHR) with A/B/C-style letters, keeping room for acquisitions. Not decided; the prototype demos the proposal (誠馨 A, 誠芯 B, 牛津 C; shared admin uses H).
-11. ~~**Case-management system name**~~ — answered: it is 仁寶; the 9/30 notes misspelt it.
-12. **Target size** — the 9/30 notes say 2,000 employees long term; `CLAUDE.md` says 300+. Confirm which one to design for.
-13. **Management role names** — the 9/30 notes list the current roles as system administrator, manager and 院長; the prototype uses system administrator, HR and manager (day care supervisor).
-14. ~~**Rehire rule**~~ — answered 13 Oct: a rejoin after leaving is a new hire with a new employee number (the old number is not reused) and tenure restarts.
-15. **Title × item permission matrix and org chart** — due from the requester side / HR before the next meeting (7 Oct action 2); needed to define the nurse, social-worker and supervisor titles. The portal has an Excel template.
-16. **104 export** — export 104 data first, review the format, then build the pay logic (9/30).
-17. **Four provisional roles** — the requester side confirms or changes them; the project lead builds the formal table from the filled title matrix.
-18. **Org chart, approval-path rules, form fields** — due from the requester side; levels and amount thresholds for approvals depend on them. Feedback-form approval details are to be uploaded after the meeting.
-19. **Group-wide employee-number principle** — HR/IT to define it and inventory existing numbers (7 Oct action 3); the portal's rule (Settings › Employee-number rule) is provisional.
-20. **Mobile clock-in** — purchase spec, capacity and budget of the cloud storage (and whether an API token is also needed).
-21. ~~**Wording in the recording summary**~~ — all confirmed; 「製造」 means “create”: the system admin can create sub-categories under a role category (e.g. under Employee).
-22. **仁寶 Excel import layout** — IT tests the layout and reports at the next meeting (7 Oct action 5); until then the portal shows no demo data for it.
-23. **Attendance scope** — IT assesses the scope, cost and rollout of attendance in the portal after the 104 inventory (7 Oct action 4).
+## Parked (not for now)
+- **Hosting and data residency / 個資法** — decide with the cloud platform (Google leaning); region, access logs and a personal-data safeguard plan come after the capacity and punch decisions.
+- **Production path** — the prototype is static HTML; the stack, login and database for the real build wait for the cloud platform and the permission matrix.
+- **ROI framing** — retiring 104 saves little; the business case rests on other value (hidden HR labour, reporting, integration).
+- **Revenue-share (拆帳制) pay rules** — see action item 9.
 
 ## Repo hygiene tasks
 - [ ] Set this repo to **private** (or stop publishing the real operator name via Pages) — owner action in GitHub settings.
