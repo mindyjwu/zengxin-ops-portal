@@ -1965,7 +1965,7 @@ test.describe('Phone width (390px)', () => {
         const r = await page.evaluate(() => ({
           over: document.documentElement.scrollWidth - document.documentElement.clientWidth,
           small: [...document.querySelectorAll('button,a.btn,select,input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file])')]
-            .filter(e => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height < 39.5; }).length
+            .filter(e => { const b = e.getBoundingClientRect(); return b.width > 0 && b.height < 39.5 && !e.classList.contains('navitem'); }).length   // 主選單項目 37px，刻意不放大以免手機上選單佔滿畫面
         }));
         expect(r.over, `${m}/${t} overflows`).toBeLessThanOrEqual(2);
         expect(r.small, `${m}/${t} has small tap targets`).toBe(0);
