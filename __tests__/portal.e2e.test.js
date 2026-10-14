@@ -875,6 +875,10 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await expect(page.locator('.toc a[href="#new1014"]')).toBeVisible();
     await expect(page.locator('#basics')).toContainText('日照主管');
     await expect(sec).toContainText('可以直接傳給同事的訊息');
+    await expect(sec).toContainText('最影響進度的三件事');
+    await expect(sec.locator('.note.warn li')).toHaveCount(3);
+    await expect(page.locator('#ce')).toContainText('匯入範本怎麼用');
+    await expect(page.locator('#ce')).toContainText('一列一門課');
     await expect(sec).toContainText('下次會議（10/21 週三 10:00）前想請你幫忙');
     const msg = (await sec.locator('.note').last().innerText()).length;
     expect(msg).toBeLessThan(400);                                   // the message stays short
