@@ -327,3 +327,4 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] 私人秘書 › 課程: an employee (照服員) sees the four summary tables with standards, clicking a number opens the course list; the admin sees 全員進度 (filters, drill into a person, Excel export, import template) and 缺口分析; a 日照主管 sees only their own unit; a role without the requirement sees a notice
 
 - [ ] Trimmed menus: 文件管理 shows only 會議紀錄 and 使用指南 until 更多頁面 is clicked; the toggle collapses it again; an action-item link to 系統說明 opens the extras automatically; in Chinese mode no English subtitles show, and EN switches the whole UI to English.
+- [ ] Phone width (390px): no page scrolls sideways; buttons, selects and inputs are at least 40px tall.

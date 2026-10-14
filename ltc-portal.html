@@ -365,6 +365,12 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 @media (max-width:1900px){ .utility .bar-alt{display:none} }
 @media (max-width:1450px){ .utility .ulabel{display:none} .assume small{display:none} }
 @media (max-width:1150px){ .ufield{flex:0 1 auto} .utility{gap:8px} }
+/* 手機／觸控：按鈕、下拉與輸入框至少 40px 高，才點得準（桌面版不變） */
+@media (max-width:760px), (pointer:coarse){
+  button:not(.navitem):not(.tabs button), a.btn, select, input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]){ min-height:40px }
+  .btn.mini, .btn.ghost.mini{ padding-top:8px; padding-bottom:8px }
+  .tabs button{ min-height:40px }
+}
 @media (max-width:760px){ .utility{flex-wrap:wrap} .ufield{flex:0 1 auto} .ufield select{max-width:none} .utility .ulabel{display:inline} .utility .bar-alt{display:inline} .assume small{display:inline} }
 </style>
 <!--#artifact-split-->
