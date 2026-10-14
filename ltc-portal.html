@@ -742,6 +742,7 @@ const ROLES = {
 
 /* ---------- state ---------- */
 const state = {
+  svcImp:null, svcMsg:'', svcDay:'',
   lang:'zh', role:'admin', module:'arch', tab:'scope',
   crossOffice:false,          // ASSUMPTION TOGGLE: managers see all offices?
   office:'ALL',               // office filter within the allowed scope
@@ -1180,7 +1181,7 @@ const MEETING_DECISIONS = [
   {src:'10/14', zh:'不同中文輸入法的相容性測試（輸入、編輯、搜尋、儲存）', en:'Test different Chinese input methods (typing, editing, search, saving)',
    whereZh:'搜尋框已修正注音輸入被打斷的問題；各輸入法的完整測試待 IT', whereEn:'Search boxes no longer break Zhuyin input; a full test across input methods is for IT', st:'part'},
   {src:'10/14', zh:'確認仁寶資料下載為 Excel 後上傳入口網站的可行性（格式、欄位對應、匯入方式、錯誤）', en:'Confirm that 仁寶 data downloaded as Excel can be uploaded to the portal (format, column mapping, import method, errors)',
-   whereZh:'業務資料整合 › 居服個案管理系統（等仁寶匯出檔案，尚未開發）', whereEn:'Business data › Home-care case system (waiting for the 仁寶 export; not built)', st:'todo'},
+   whereZh:'業務資料整合 › 居服個案管理系統：已可匯入 .xlsx 並彙總（10/14 收到的樣本檔）；定義與欄位待需求端確認', whereEn:'Business data › Home-care case system: .xlsx import and summary work (with the 14 Oct sample); definitions and columns to be confirmed by the requester', st:'part'},
   {src:'10/14', zh:'雲端服務與 Portal 完成後，在導覽與使用指南之外新增 Q&A 互動功能', en:'Once cloud service and portal are live, add a Q&A feature beside the walkthroughs and user guide',
    whereZh:'規劃中；目前有導覽與使用指南', whereEn:'Planned; today there are walkthroughs and the user guide', st:'todo'}
 ];
@@ -1242,7 +1243,7 @@ const ACTIONS = [
   {type:'data', zh:'簽核流程（Block＋Arrow）', en:'Approval flows (block and arrow)',
    rec:'', need:'各職務簽核到哪一層、金額門檻、哪些表單要自訂流程、意見反映單的簽核細節；請用方塊加箭頭畫給我', owner:'行政', due:'10/21 會議前', go:['線上申請 › 簽核路徑預覽','fin','proc']},
   {type:'data', zh:'仁寶服務記錄 Excel（匯入與工時儀表板）', en:'仁寶 service-record Excel',
-   rec:'', need:'一份仁寶匯出的服務記錄 Excel（需求端說會給，尚未收到）；有了才能做匯入頁、服務個案數、各項目使用比例、居服員日／週／累積工時', owner:'IT／需求端', due:'10/21', go:['業務資料整合 › 居服個案管理系統','svc','case']},
+   rec:'', need:'樣本檔已收到、匯入頁已做好。請需求端確認：「服務個案數」怎麼算、忘簽退／服務未遇要不要計入工時、仁寶匯出能否加員工編號欄', owner:'IT／需求端', due:'10/21', go:['業務資料整合 › 居服個案管理系統','svc','case']},
   {type:'data', zh:'繼續教育積分匯入', en:'Continuing-education import',
    rec:'', need:'教育訓練先照匯入範本整理 3–5 位（一列一門課），並確認積分規則；有了才能試匯，讓全員進度顯示真實資料', owner:'教育訓練', due:'10/21', go:['私人秘書 › 課程','desk','course']},
   {type:'data', zh:'拆帳制薪資規則', en:'Revenue-share pay rules',
@@ -4303,30 +4304,143 @@ const planCard=(title, src, steps, todo, note)=>`<div class="grid">
   </div>`;
 function viewSvcCase(){
   const sys=EXISTING_SYSTEMS.find(x=>/居服個案管理系統/.test(x.zh));
-  const steps=['在仁寶下載 Excel 報表','匯入 Portal：欄位比對、驗證、錯誤清單、匯入紀錄','Portal 彙總分析，產出整體的分析報告'];
+  const steps=['在仁寶下載 Excel 報表','匯入 Portal：欄位比對、驗證、錯誤清單','Portal 彙總分析（只留彙總，原始列不保存）'];
   return `
   <div class="grid">
-    <div class="note">${esc(both('Portal 裡引導到仁寶的外部連結，正式名稱是「居服個案管理系統」。仁寶可以直接連接衛福部系統，能簡化第一線業務流程；仁寶本身不開放對外連接，所以 Portal 只放按鈕連結，之後以 Excel 匯入做彙總分析。',
-      'The portal’s external link to 仁寶 is officially named 居服個案管理系統. 仁寶 connects to the MOHW system directly, which simplifies front-line work; 仁寶 itself is not open to outside connections, so the portal only has a link button and later imports Excel reports for summary analysis.'))}</div>
+    <div class="note">${esc(both('Portal 裡引導到仁寶的外部連結，正式名稱是「居服個案管理系統」。仁寶可以直接連接衛福部系統，能簡化第一線業務流程；仁寶本身不開放對外連接，所以 Portal 只放按鈕連結，再以 Excel 匯入做彙總分析。',
+      'The portal’s external link to 仁寶 is officially named 居服個案管理系統. 仁寶 connects to the MOHW system directly, which simplifies front-line work; 仁寶 itself is not open to outside connections, so the portal only has a link button and then imports Excel reports for summary analysis.'))}</div>
     <section class="card">
       <div class="card-h"><h2>${esc(both('居服個案管理系統（仁寶）','Home-care case system (仁寶)'))}</h2></div>
       <div class="card-b" style="display:grid;gap:10px">
         <div>${sys&&sys.url?`<a class="btn" href="${esc(sys.url)}" target="_blank" rel="noopener">${esc(both('開啟居服個案管理系統','Open the home-care case system'))} ↗</a>`:`<span class="chip">${esc(both('按鈕連結：網址待 IT 提供','Link button: URL pending from IT'))}</span>`}
           <span class="muted" style="font-size:12.5px;margin-left:8px">${esc(both('連結設定在「系統設定 › 既有系統連結」','Set under Settings › Existing systems'))}</span></div>
-        <div class="eyebrow">${esc(both('規劃中的資料流程（尚未開發）','Planned data flow (not built)'))}</div>
+        <div class="eyebrow">${esc(both('資料流程','Data flow'))}</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">${steps.map((x,i)=>`<span class="chip ${i===0?'acc':''}">${i+1}. ${esc(x)}</span>`).join(' → ')}</div>
-        <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('IT 正在規劃連結並測試匯入版型，下次會議說明初步結果（10/7 待辦 5）。版型還沒有提供，所以這裡不放示範資料。',
-          'IT is planning the link and testing the import layout and will report at the next meeting (7 Oct action 5). No layout has been supplied yet, so no demo data is shown here.'))}</div>
-        <div class="eyebrow">${esc(both('期待匯入後在 Portal 看到什麼（需求端 10/13）','What the requester side expects to see after import (13 Oct)'))}</div>
-        <ul style="margin:0;padding-left:20px;line-height:1.8">${[['目前服務的個案數','Number of cases currently served'],['每個服務項目的使用比例','Share of use per service item'],['每位居服員的日工時、週工時、累積工時','Per home-care worker: daily, weekly and cumulative hours']].map(x=>`<li>${esc(both(x[0],x[1]))}</li>`).join('')}</ul>
-        <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('需求端說會提供一份仁寶匯出的服務紀錄供參，但這次還沒收到檔案；收到後才能對欄位、做匯入與驗證，所以這裡仍不放示範資料。居服員的工時要靠員工編號或姓名對到 Portal 的員工資料，這點也要在樣本裡確認。Portal 只存彙總，個案敏感資訊留在仁寶。',
-          'The requester side will supply a service-record export from 仁寶 for reference, but the file has not arrived; the columns, import and validation can only be built once it does, so no demo data is shown. Home-care workers’ hours must be matched to the portal’s employee records by number or name, which the sample must confirm. The portal stores only summaries; sensitive case information stays in 仁寶.'))}</div>
-        <div class="eyebrow">${esc(both('待確認','To confirm'))}</div>
-        <ul style="margin:0;padding-left:20px;line-height:1.8">${['Excel 報表的固定格式與欄位','資料更新頻率與歷史資料範圍','欄位異動、重複資料與匯入失敗的處理方式','哪一套系統是正式資料來源','服務員可否在個案家打卡並記錄服務項目（9/30 會議提出的需求）'].map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('匯入仁寶服務記錄（Excel）','Import 仁寶 service records (Excel)'))}</h2></div>
+      <div class="card-b" style="display:grid;gap:10px">
+        <div class="note">${esc(both('檔案只在你的瀏覽器裡讀取，不會上傳、不會儲存；匯入後只保留彙總數字，原始列（身分證字號、地址、電話等個資）讀完就丟掉。重新整理頁面，彙總也會清掉。',
+          'The file is read only inside your browser: nothing is uploaded or stored. Only summary numbers are kept; the raw rows (ID numbers, addresses, phones) are discarded once read. Reloading the page clears the summary too.'))}</div>
+        <div><input type="file" id="svcFile" accept=".xlsx" aria-label="${esc(both('選擇仁寶服務記錄 Excel（.xlsx）','Choose the 仁寶 service-record Excel (.xlsx)'))}">
+          ${state.svcImp?`<button class="btn" id="svcClear" style="margin-left:8px">${esc(both('清除彙總','Clear summary'))}</button>`:''}</div>
+        <div id="svcMsg" class="muted" style="font-size:12.5px" role="status">${esc(state.svcMsg||'')}</div>
+        ${state.svcImp?svcImpView(state.svcImp):''}
+      </div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('待確認','To confirm'))}</h2></div>
+      <div class="card-b" style="display:grid;gap:10px">
+        <ul style="margin:0;padding-left:20px;line-height:1.8">${['「目前服務個案數」的定義：現在算「這份檔案期間內有服務紀錄的不重複案號」，要不要排除已結案／暫停的個案？','居服員工時以哪個欄位為準：現在用「打卡紀錄」的服務時間長度（分）；排班時數與實際打卡不同時怎麼算？','「忘簽退」「服務未遇」的紀錄是否計入工時','Excel 報表的固定格式、更新頻率與歷史資料範圍；欄位異動時的處理','居服員要對到 Portal 員工：目前用姓名比對，正式版建議在仁寶匯出加員工編號欄','哪一套系統是正式資料來源','服務員可否在個案家打卡並記錄服務項目（9/30 會議提出的需求）'].map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
         <div class="muted" style="font-size:12.5px">${esc(both('個案敏感資訊留在仁寶，Portal 不存放（v2.0 規格 2.2）。','Sensitive case information stays in 仁寶; the portal does not store it (spec 2.2).'))}</div>
       </div>
     </section>
   </div>`;
+}
+/* ---------- 仁寶服務記錄匯入：瀏覽器內讀 .xlsx（zip + sharedStrings + sheet），只留彙總 ---------- */
+async function xlsxRead(buf){
+  const u8=new Uint8Array(buf), dv=new DataView(buf);
+  let e=-1; for(let i=u8.length-22;i>=Math.max(0,u8.length-70000);i--){ if(dv.getUint32(i,true)===0x06054b50){ e=i; break; } }
+  if(e<0) throw new Error('不是有效的 .xlsx 檔案');
+  const n=dv.getUint16(e+10,true); let p=dv.getUint32(e+16,true); const files={};
+  const td=new TextDecoder('utf-8');
+  for(let k=0;k<n;k++){
+    if(dv.getUint32(p,true)!==0x02014b50) throw new Error('壓縮檔結構異常');
+    const meth=dv.getUint16(p+10,true), csz=dv.getUint32(p+20,true), nl=dv.getUint16(p+28,true), xl=dv.getUint16(p+30,true), cl=dv.getUint16(p+32,true), lo=dv.getUint32(p+42,true);
+    const name=td.decode(u8.subarray(p+46,p+46+nl)); p+=46+nl+xl+cl;
+    if(!/^xl\/(workbook\.xml|_rels\/workbook\.xml\.rels|sharedStrings\.xml|worksheets\/sheet\d+\.xml)$/.test(name)) continue;
+    const ds=lo+30+dv.getUint16(lo+26,true)+dv.getUint16(lo+28,true), raw=u8.subarray(ds,ds+csz);
+    if(meth===0) files[name]=td.decode(raw);
+    else if(meth===8){
+      if(typeof DecompressionStream==='undefined') throw new Error('這個瀏覽器不支援讀取 .xlsx，請改用較新的 Chrome、Edge 或 Safari');
+      files[name]=await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    } else throw new Error('不支援的壓縮方式');
+  }
+  const dom=x=>new DOMParser().parseFromString(x,'application/xml');
+  const sst=[]; if(files['xl/sharedStrings.xml']) dom(files['xl/sharedStrings.xml']).querySelectorAll('si').forEach(si=>sst.push([...si.querySelectorAll('t')].map(t=>t.textContent).join('')));
+  /* 第一個工作表 */
+  let sheetPath='xl/worksheets/sheet1.xml';
+  try{
+    const wb=dom(files['xl/workbook.xml']), rid=wb.querySelector('sheet').getAttribute('r:id')||wb.querySelector('sheet').getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id');
+    const rel=[...dom(files['xl/_rels/workbook.xml.rels']).querySelectorAll('Relationship')].find(r=>r.getAttribute('Id')===rid);
+    if(rel) sheetPath='xl/'+rel.getAttribute('Target').replace(/^\/?(xl\/)?/,'');
+  }catch(_){}
+  if(!files[sheetPath]) throw new Error('找不到工作表');
+  const colIdx=ref=>{ let c=0; for(const ch of ref.replace(/\d+/g,'')) c=c*26+ch.charCodeAt(0)-64; return c-1; };
+  const rows=[];
+  dom(files[sheetPath]).querySelectorAll('row').forEach(r=>{
+    const arr=[]; r.querySelectorAll('c').forEach(c=>{
+      const t=c.getAttribute('t'), v=c.querySelector('v'); let val='';
+      if(t==='s'&&v) val=sst[+v.textContent]??''; else if(t==='inlineStr') val=[...c.querySelectorAll('t')].map(x=>x.textContent).join(''); else if(v) val=v.textContent;
+      arr[colIdx(c.getAttribute('r'))]=val;
+    }); rows.push(arr);
+  });
+  return rows;
+}
+const SVC_NEED=['案號','服務項目類別','項目服務次數','居服員姓名','服務日期','服務時間長度(分)'];
+function svcAggregate(rows){
+  const norm=v=>String(v??'').split('\n')[0].replace(/\s/g,'');
+  let h=-1; for(let i=0;i<Math.min(rows.length,12);i++){ const f=(rows[i]||[]).map(norm); if(f.includes('案號')&&f.includes('服務項目類別')){ h=i; break; } }
+  if(h<0) return {fatal:'找不到表頭：需要有「案號」與「服務項目類別」欄的那一列'};
+  /* 表頭可能是兩列（上列 A–R、下列 S 以後），合併後用位置找 */
+  const lab=[]; for(let r=h;r<=Math.min(h+1,rows.length-1);r++) (rows[r]||[]).forEach((v,i)=>{ const t=norm(v); if(t) (lab[i]=lab[i]||[]).push(t); });
+  const find=(name,nth=0)=>{ let k=0; for(let i=0;i<lab.length;i++) if(lab[i]&&lab[i].includes(name)){ if(k===nth) return i; k++; } return -1; };
+  const C={case:find('案號'), item:find('服務項目類別'), times:find('項目服務次數'), who:find('居服員姓名'), date:find('服務日期',1)>=0?find('服務日期',1):find('服務日期'), mins:find('服務時間長度(分)'), plan:find('排班時間長度(分)'), status:find('服務狀態')};
+  const missing=SVC_NEED.filter((n,i)=>[C.case,C.item,C.times,C.who,C.date,C.mins][i]<0);
+  if(missing.length) return {fatal:'缺少必要欄位：'+missing.join('、')};
+  const dataStart=h+((rows[h+1]||[]).map(norm).includes('居服員姓名')?2:1);
+  const A={rows:0,skipped:[],cases:new Set(),items:{},who:{},dates:new Set(),odd:{noOut:0,noShow:0}};
+  const isoDate=v=>{ const m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?m[0]:(/^\d{5}$/.test(String(v).trim())?new Date(Date.UTC(1899,11,30)+ +v*864e5).toISOString().slice(0,10):''); };
+  for(let r=dataStart;r<rows.length;r++){
+    const x=rows[r]||[]; if(!String(x[C.case]??'').trim()) continue;
+    const who=String(x[C.who]??'').trim(), d=isoDate(x[C.date]??''), m=parseFloat(x[C.mins]);
+    if(!who||!d||!isFinite(m)){ A.skipped.push(r+1); continue; }
+    A.rows++; A.cases.add(String(x[C.case]).trim()); A.dates.add(d);
+    const it=String(x[C.item]??'').trim()||'（未填）', n=parseFloat(x[C.times])||1;
+    const o=A.items[it]=A.items[it]||{n:0,min:0}; o.n+=n; o.min+=m;
+    const w=A.who[who]=A.who[who]||{min:0,byDay:{}}; w.min+=m; w.byDay[d]=(w.byDay[d]||0)+m;
+    const st=C.status>=0?String(x[C.status]??''):''; if(st.includes('忘簽退')) A.odd.noOut++; if(st.includes('未遇')) A.odd.noShow++;
+  }
+  const ds=[...A.dates].sort();
+  return {rows:A.rows, skipped:A.skipped, cases:A.cases.size, items:A.items, who:A.who, from:ds[0], to:ds[ds.length-1], odd:A.odd};
+}
+const svcHr=m=>(m/60).toFixed(1);
+function svcWeekOf(d){ const t=new Date(d+'T00:00:00Z'), k=(t.getUTCDay()+6)%7, a=new Date(t-k*864e5), b=new Date(+a+6*864e5); return [a.toISOString().slice(0,10), b.toISOString().slice(0,10)]; }
+function svcImpView(g){
+  const day=state.svcDay||g.to, [w0,w1]=svcWeekOf(day);
+  const names=Object.keys(g.who);
+  const staffBy={}; STAFF.forEach(s=>{ (staffBy[s.name]=staffBy[s.name]||[]).push(s); });
+  const rows=names.map(n=>{ const w=g.who[n]; let dm=w.byDay[day]||0, wm=0; for(const k in w.byDay) if(k>=w0&&k<=w1) wm+=w.byDay[k]; const mt=staffBy[n]||[]; return {n,dm,wm,tm:w.min,days:Object.keys(w.byDay).length,match:mt.length===1?mt[0].no:(mt.length>1?'同名多人，請人工確認':'未對到')}; }).sort((a,b)=>b.tm-a.tm);
+  const totMin=Object.values(g.items).reduce((a,o)=>a+o.min,0), totN=Object.values(g.items).reduce((a,o)=>a+o.n,0);
+  const items=Object.entries(g.items).sort((a,b)=>b[1].min-a[1].min);
+  const bar=p=>`<span style="display:inline-block;height:8px;width:${Math.max(2,Math.round(p*1.4))}px;background:var(--accent,#2f6f5e);border-radius:4px;vertical-align:middle"></span>`;
+  const matched=rows.filter(r=>/^[^未同]/.test(r.match)).length;
+  return `
+  <div class="eyebrow">${esc(both('匯入結果（彙總）','Import result (summary)'))}</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px">
+    <span class="chip acc">${esc(both('服務個案數','Cases served'))}：${g.cases}</span>
+    <span class="chip">${esc(both('服務紀錄','Records'))}：${g.rows}</span>
+    <span class="chip">${esc(both('期間','Period'))}：${esc(g.from)} ~ ${esc(g.to)}</span>
+    <span class="chip">${esc(both('居服員','Workers'))}：${names.length}</span>
+    <span class="chip">${esc(both('總工時','Total hours'))}：${svcHr(totMin)}</span>
+  </div>
+  ${g.skipped.length?`<div class="note">${esc(both(`有 ${g.skipped.length} 列缺居服員、日期或時數，沒有計入（Excel 列號：${g.skipped.slice(0,15).join('、')}${g.skipped.length>15?' …':''}）。`,`${g.skipped.length} rows lack a worker, date or minutes and were left out (Excel rows: ${g.skipped.slice(0,15).join(', ')}${g.skipped.length>15?' …':''}).`))}</div>`:''}
+  ${(g.odd.noOut||g.odd.noShow)?`<div class="muted" style="font-size:12.5px">${esc(both(`其中「忘簽退」${g.odd.noOut} 列、「服務未遇」${g.odd.noShow} 列，目前仍計入工時，要不要排除待確認。`,`${g.odd.noOut} “forgot sign-out” and ${g.odd.noShow} “client not home” rows are still counted; whether to exclude them is to be confirmed.`))}</div>`:''}
+  <div class="eyebrow">${esc(both('每個服務項目的使用比例','Share of use per service item'))}</div>
+  <div class="tablewrap"><table class="cetable"><thead><tr><th>${esc(both('服務項目','Service item'))}</th><th>${esc(both('次數','Times'))}</th><th>${esc(both('次數占比','% of times'))}</th><th>${esc(both('時數','Hours'))}</th><th>${esc(both('時數占比','% of hours'))}</th></tr></thead><tbody>
+    ${items.map(([k,o])=>{ const a=totN?o.n/totN*100:0, b=totMin?o.min/totMin*100:0; return `<tr><td>${esc(k)}</td><td>${o.n}</td><td>${bar(a)} ${a.toFixed(1)}%</td><td>${svcHr(o.min)}</td><td>${bar(b)} ${b.toFixed(1)}%</td></tr>`; }).join('')}
+  </tbody></table></div>
+  <div class="eyebrow">${esc(both('每位居服員的工時（小時）','Hours per home-care worker'))}</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><label for="svcDay" class="muted" style="font-size:12.5px">${esc(both('看哪一天／哪一週','Day / week to show'))}</label>
+    <input type="date" id="svcDay" value="${esc(day)}" min="${esc(g.from)}" max="${esc(g.to)}">
+    <span class="muted" style="font-size:12.5px">${esc(both(`週 = ${w0} ~ ${w1}（週一到週日）`,`Week = ${w0} ~ ${w1} (Mon–Sun)`))}</span>
+    <button class="btn" id="svcXlsx">${esc(both('匯出彙總 Excel','Export summary Excel'))}</button></div>
+  <div class="tablewrap" style="max-height:420px;overflow:auto"><table class="cetable"><thead><tr><th>${esc(both('居服員','Worker'))}</th><th>${esc(both('當日','Day'))}</th><th>${esc(both('當週','Week'))}</th><th>${esc(both('累積','Cumulative'))}</th><th>${esc(both('出勤天數','Days worked'))}</th><th>${esc(both('對到 Portal 員工','Matched employee'))}</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td>${esc(r.n)}</td><td>${svcHr(r.dm)}</td><td>${svcHr(r.wm)}</td><td>${svcHr(r.tm)}</td><td>${r.days}</td><td>${esc(r.match)}</td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both(`工時 = 「打卡紀錄」的服務時間長度（分）加總。姓名比對：${matched} / ${names.length} 位對到 Portal 員工（示範員工為虛構，所以多半對不到；正式版建議仁寶匯出加員工編號欄）。`,
+    `Hours = sum of the clock-in “service minutes”. Name matching: ${matched} / ${names.length} workers matched to portal staff (demo staff are fictional, so most will not match; the real version should add an employee-number column to the 仁寶 export).`))}</div>`;
 }
 function viewSvcContract(){ return planCard('個案資料、契約與報表（規劃中）','第 13 頁',
   ['HTML 匯入：上傳衛福部下載的檔案並辨識個案欄位','資料驗證：缺漏、格式、重複個案與異動比對','文件產出：依核准範本建立契約及相關表單','總表管理：在案、暫停、結案與歷程紀錄','報表輸出：依公司、部門與授權範圍統計'],
@@ -4336,7 +4450,27 @@ function viewSvcAssess(){ return planCard('異常事件通報與追蹤（規劃�
   ['事件通報：時間、地點、對象、說明與附件','分類分級：事件類型、嚴重度與通知對象','指派處理：責任人、期限與即時措施','改善追蹤：原因分析、改善措施與佐證','審核結案：主管確認、留存與統計分析'],
   ['事件分類、嚴重度、通報期限、處理時限','跨公司通報及法定通報需求'],
   '權限與通知：通報人可追蹤進度；主管依公司與事件類型接收通知；敏感事件限制檢視與下載；逾期案件自動提醒。'); }
-BINDERS['svc:case']=function(){};
+BINDERS['svc:case']=function(){
+  const f=document.getElementById('svcFile');
+  if(f) f.onchange=async()=>{
+    const file=f.files[0]; if(!file) return;
+    const msg=document.getElementById('svcMsg'); msg.textContent='讀取中…';
+    try{
+      const g=svcAggregate(await xlsxRead(await file.arrayBuffer()));
+      if(g.fatal){ state.svcImp=null; state.svcMsg='無法匯入：'+g.fatal; }
+      else{ state.svcImp=g; state.svcDay=''; state.svcMsg='已匯入：'+file.name.replace(/[^一-鿿A-Za-z0-9._-]/g,'')+'（原始列已丟棄，只留彙總）'; }
+    }catch(e){ state.svcImp=null; state.svcMsg='無法匯入：'+(e&&e.message||e); }
+    render();
+  };
+  const c=document.getElementById('svcClear'); if(c) c.onclick=()=>{ state.svcImp=null; state.svcMsg=''; state.svcDay=''; render(); };
+  const d=document.getElementById('svcDay'); if(d) d.onchange=()=>{ state.svcDay=d.value; render(); };
+  const x=document.getElementById('svcXlsx'); if(x) x.onclick=()=>{
+    const g=state.svcImp; if(!g) return; const [w0,w1]=svcWeekOf(state.svcDay||g.to), day=state.svcDay||g.to;
+    const out=[['居服員工時彙總（'+g.from+' ~ '+g.to+'）'],['居服員','當日('+day+')','當週('+w0+'~'+w1+')','累積','出勤天數']];
+    Object.keys(g.who).sort((a,b)=>g.who[b].min-g.who[a].min).forEach(n=>{ const w=g.who[n]; let wm=0; for(const k in w.byDay) if(k>=w0&&k<=w1) wm+=w.byDay[k]; out.push([n,svcHr(w.byDay[day]||0),svcHr(wm),svcHr(w.min),Object.keys(w.byDay).length]); });
+    saveBlob(buildXlsx(out),'居服員工時彙總.xlsx');
+  };
+};
 BINDERS['svc:contract']=function(){};
 BINDERS['svc:assess']=function(){};
 

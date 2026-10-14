@@ -1146,7 +1146,7 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(v).toContainText('網址待 IT 提供');
     await expect(v).toContainText('在仁寶下載 Excel 報表');
     await expect(v).toContainText('Portal 彙總分析');
-    await expect(v).toContainText('10/7 待辦 5');
+    await expect(v).toContainText('匯入仁寶服務記錄');
     await expect(v).not.toContainText('暫緩');
     await setRole(page, 'admin');
     await go(page, 'set');
@@ -1647,11 +1647,11 @@ test.describe('CSV exports', () => {
     await expect(page.locator('#stOut')).toContainText('保存 1 年');
   });
 
-  test('the case-system page records what the requester side expects from the 仁寶 import', async ({ page }) => {
+  test('the case-system page offers the 仁寶 import and lists what is still to confirm', async ({ page }) => {
     await openPortal(page);
     await go(page, 'svc', 'case');
     const v = page.locator('#view');
-    for (const s of ['目前服務的個案數', '每個服務項目的使用比例', '每位居服員的日工時、週工時、累積工時', '還沒收到檔案']) await expect(v).toContainText(s);
+    for (const s of ['匯入仁寶服務記錄', '只在你的瀏覽器裡讀取', '忘簽退', '現在算「這份檔案期間內有服務紀錄的不重複案號」']) await expect(v).toContainText(s);
   });
 
   test('the user guide explains how to estimate cloud storage, with numbers that match the estimator', async ({ page }) => {
@@ -1842,5 +1842,66 @@ test.describe('CSV exports', () => {
     // an action item links to the page it is about
     await page.locator('.actiontable [data-goto="doc|sysinfo"]').first().click();
     await expect(page.locator('#view')).toContainText('雲端儲存空間估算');
+  });
+});
+
+
+/* ================================================================ */
+test.describe('仁寶 service-record import (synthetic data only)', () => {
+  /* 欄位結構照仁寶匯出（兩列表頭），內容全是虛構：不放任何真實個資 */
+  const SAMPLE = [
+    ['服務紀錄'],
+    ['服務紀錄', '', '', '', '', '', '排班紀錄', '', '', '打卡紀錄', '', '', ''],
+    ['編號', '案號', '服務項目類別', '項目服務次數', '服務日期', '服務狀態', '居服員姓名', '', '', '服務日期', '服務時間長度(分)'],
+    ['', '', '', '', '', '', '', '', '', '', ''],
+  ];
+  const rows = [
+    ['1', 'T-001', '陪伴服務', '1', '2026-10-05', '', '測試員甲', '', '', '2026-10-05', '60'],
+    ['2', 'T-001', '陪伴服務', '1', '2026-10-06', '已簽退', '測試員甲', '', '', '2026-10-06', '30'],
+    ['3', 'T-002', '協助沐浴及洗頭', '1', '2026-10-06', '忘簽退', '測試員乙', '', '', '2026-10-06', '90'],
+    ['4', 'T-003', '陪伴服務', '1', '2026-10-14', '已簽退', '測試員甲', '', '', '2026-10-14', '30'],
+    ['5', 'T-004', '陪伴服務', '1', '2026-10-14', '', '', '', '', '2026-10-14', '30'],
+  ];
+  async function importSample(page, data) {
+    await openPortal(page);
+    await go(page, 'svc', 'case');
+    const bytes = await page.evaluate(async d => {
+      const blob = buildXlsx(d); return Array.from(new Uint8Array(await blob.arrayBuffer()));
+    }, data);
+    await page.setInputFiles('#svcFile', { name: 'sample.xlsx', mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) });
+  }
+
+  test('summarises cases, item shares and worker hours; skips incomplete rows', async ({ page }) => {
+    await importSample(page, [...SAMPLE, ...rows]);
+    await expect(page.locator('#svcDay')).toBeVisible();
+    const v = page.locator('#view');
+    await expect(v).toContainText('服務個案數 / Cases served：3');      // T-001, T-002, T-003（T-004 缺居服員被略過）
+    await expect(v).toContainText('服務紀錄 / Records：4');
+    await expect(v).toContainText('居服員 / Workers：2');
+    await expect(v).toContainText('總工時 / Total hours：3.5');            // 210 分鐘
+    await expect(v).toContainText('有 1 列缺居服員');
+    await expect(v).toContainText('「忘簽退」1 列');
+    const itemRow = v.locator('tbody tr', { hasText: '陪伴服務' }).first();
+    await expect(itemRow).toContainText('75.0%');                        // 3 / 4 次
+    const jia = v.locator('tbody tr', { hasText: '測試員甲' });
+    await expect(jia).toContainText('2.0');                              // 累積 120 分
+    await expect(jia).toContainText('未對到');                           // 示範員工是虛構的，不會對到
+  });
+
+  test('day / week hours follow the date picker; clear resets; nothing is stored', async ({ page }) => {
+    await importSample(page, [...SAMPLE, ...rows]);
+    await page.fill('#svcDay', '2026-10-06');
+    const jia = page.locator('#view tbody tr', { hasText: '測試員甲' });
+    await expect(jia.locator('td').nth(1)).toHaveText('0.5');            // 當日 30 分
+    await expect(jia.locator('td').nth(2)).toHaveText('1.5');            // 10/5–10/11 週：60+30
+    expect(await page.evaluate(() => JSON.stringify(Object.keys(localStorage)))).not.toMatch(/svc/);
+    await page.click('#svcClear');
+    await expect(page.locator('#svcDay')).toHaveCount(0);
+  });
+
+  test('a file without the required columns gives a clear message', async ({ page }) => {
+    await importSample(page, [['隨便'], ['A', 'B'], ['1', '2']]);
+    await expect(page.locator('#svcMsg')).toContainText('找不到表頭');
+    await expect(page.locator('#svcDay')).toHaveCount(0);
   });
 });
