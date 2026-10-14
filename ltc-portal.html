@@ -552,7 +552,7 @@ const EVENTS = [
  {d:'2026-09-30', type:'audit', scope:'ALL', zh:'截止：NAS 硬體清單與容量確認', en:'Due: NAS hardware and capacity list'},
  {d:'2026-10-07', type:'hr',    scope:'ALL', zh:'第三次需求會議 10:00–11:40', en:'Third requirements meeting, 10:00–11:40'},
  {d:'2026-10-14', type:'hr',    scope:'ALL', zh:'下次會議 10:00（地點待確認）', en:'Next meeting, 10:00 (venue to confirm)'},
- {d:'2026-10-20', type:'hr',    scope:'ALL', zh:'下次 Meeting：10/20 晚上 10 點（台灣時間 10/21 早上）', en:'Next meeting: 20 Oct 10 pm (Taiwan time: morning of 21 Oct)'},
+ {d:'2026-10-21', type:'hr',    scope:'ALL', zh:'下次會議 10:00（地點待確認）', en:'Next meeting, 10:00 (venue to confirm)'},
  {d:'2026-10-15', type:'audit', scope:'ALL', zh:'截止：仁寶系統 API、衛福部介接要求確認', en:'Due: Renbao API and MOHW interface requirements'},
  {d:'2026-10-31', type:'train', scope:'ALL', zh:'第一期 MVP 目標上線', en:'Phase 1 MVP target'}
 ];
@@ -1169,11 +1169,11 @@ const MEETING_DECISIONS = [
 const DECISION_ST = {built:{zh:'已建置',en:'Built',cls:'ok'}, part:{zh:'部分完成',en:'Partly done',cls:'info'}, demo:{zh:'示意',en:'Illustrated',cls:'warn'}, todo:{zh:'待辦',en:'To do',cls:''}};
 /* 後續追蹤事項（會議紀錄第三節）；負責人以職務表示，不列個人姓名 */
 const FOLLOW_UPS = [
-  {src:'10/14', zh:'傳送長照教育訓練網站連結、帳號密碼及現有 Excel 格式，供專案負責人研究如何整合教育時數管理，避免逐人手動查詢（政府網站無法匯出全員資料）', ownerZh:'需求端／人事', whenZh:'下次會議（10/20）前', st:'待辦'},
-  {src:'10/14', zh:'確認並提供正確版組織圖與內部通訊錄資料，含各職位正式全名與地點', ownerZh:'需求端', whenZh:'下次會議（10/20）前', st:'待辦'},
-  {src:'10/14', zh:'整理簽核流程架構（各職務簽核到哪一層，部分流程不依組織圖走），建議用 Block＋Arrow 圖示呈現，方便設計', ownerZh:'需求端', whenZh:'下次會議（10/20）前', st:'待辦'},
-  {src:'10/14', zh:'用 GPT／Gemini 帶入四個問題（拍照打卡、定位、保存年限、人數）估算雲端實際容量，再決定 AWS／Google Cloud／Azure（傾向 Google）', ownerZh:'IT／需求端', whenZh:'下次會議（10/20）前', st:'待辦'},
-  {src:'10/14', zh:'仁寶服務記錄總表 Excel：下次會議匯入，呈現員工工時與服務數', ownerZh:'需求端', whenZh:'下次會議（10/20）', st:'待辦'},
+  {src:'10/14', zh:'傳送長照教育訓練網站連結、帳號密碼及現有 Excel 格式，供專案負責人研究如何整合教育時數管理，避免逐人手動查詢（政府網站無法匯出全員資料）', ownerZh:'需求端／人事', whenZh:'下次會議（10/21）前', st:'待辦'},
+  {src:'10/14', zh:'確認並提供正確版組織圖與內部通訊錄資料，含各職位正式全名與地點', ownerZh:'需求端', whenZh:'下次會議（10/21）前', st:'待辦'},
+  {src:'10/14', zh:'整理簽核流程架構（各職務簽核到哪一層，部分流程不依組織圖走），建議用 Block＋Arrow 圖示呈現，方便設計', ownerZh:'需求端', whenZh:'下次會議（10/21）前', st:'待辦'},
+  {src:'10/14', zh:'用 GPT／Gemini 帶入四個問題（拍照打卡、定位、保存年限、人數）估算雲端實際容量，再決定 AWS／Google Cloud／Azure（傾向 Google）', ownerZh:'IT／需求端', whenZh:'下次會議（10/21）前', st:'待辦'},
+  {src:'10/14', zh:'仁寶服務記錄總表 Excel：下次會議匯入，呈現員工工時與服務數', ownerZh:'需求端', whenZh:'下次會議（10/21）', st:'待辦'},
   {src:'10/7', zh:'持續整理現有 104 系統功能截圖及匯出表單，提供 IT 作為差勤功能建置參考', ownerZh:'行政／人事', whenZh:'下次會議前', st:'待辦'},
   {src:'10/7', zh:'整理系統角色、頁面及各項操作權限清單，梳理各「職稱」與 Portal 各「項目名稱」的權限對照矩陣表', ownerZh:'需求端／人事', whenZh:'下次會議前', st:'Excel 範本已提供'},
   {src:'10/7', zh:'擬定全公司統一的員工編號原則，並盤點既有員工編號；導入「復職年資重算、員編重編」的程式邏輯', ownerZh:'人事／IT', whenZh:'待訂', st:'回任重新編號已確認並示範；全公司編號原則預計 10/14 會議前提出'},
