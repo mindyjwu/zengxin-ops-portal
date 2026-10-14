@@ -865,7 +865,8 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     const sec = page.locator('#confirm');
     await expect(sec.locator('h2')).toContainText('MVP 定案前待同事補齊');
-    await expect(sec.locator('tbody tr')).toHaveCount(5);
+    await expect(sec.locator('tbody tr')).toHaveCount(6);
+    await expect(sec).toContainText('繼續教育積分（私人秘書 › 課程）：確認積分規則');
     await expect(sec).toContainText('組織圖 10/13 版已收到');
     const upd = page.locator('#new1014');
     await expect(upd).toContainText('日照主管的人事頁面已開放');
