@@ -867,6 +867,11 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await expect(sec.locator('h2')).toContainText('MVP 定案前待同事補齊');
     await expect(sec.locator('tbody tr')).toHaveCount(5);
     await expect(sec).toContainText('組織圖 10/13 版已收到');
+    const upd = page.locator('#new1014');
+    await expect(upd).toContainText('日照主管的人事頁面已開放');
+    await expect(upd).toContainText('主管可跨單位查看');
+    await expect(page.locator('.toc a[href="#new1014"]')).toBeVisible();
+    await expect(page.locator('#basics')).toContainText('日照主管');
     await expect(sec).toContainText('可以直接傳給同事的訊息');
     await expect(page.locator('.toc a[href="#confirm"]')).toBeVisible();
   });
