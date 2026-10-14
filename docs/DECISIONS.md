@@ -13,7 +13,7 @@ Type: **Decide** = can be decided now (recommendation given, not yet a decision)
 | 4 | Decide | Two org-chart versions | Formal full-name version on the announcement board; the simple version (for ordinary staff) is today's “working view”, rename it “simple”. Still needed: full names and places, directory data | admin / HR | 10/21 |
 | 5 | Decide | 104: replace, connect or run in parallel | Run in parallel first; revisit replacing once attendance and revenue-share pay are stable. Still needed: which 104 modules are in use | requester / IT | 10/21 |
 | 6 | Material | Approval flows (block and arrow) | Levels per role, amount thresholds, which forms need a custom flow, the feedback-form flow | admin | before 10/21 |
-| 7 | Material | 仁寶 service-record Excel | One export (not yet received): enables the import page, case counts, item usage shares and per-worker daily / weekly / cumulative hours | IT / requester | 10/21 |
+| 7 | Material | 仁寶 service-record Excel | Sample received 14 Oct and the import page is built (browser-only, summaries only). Still to confirm: how "cases served" is counted, whether 忘簽退 / 服務未遇 rows count as hours, an employee-number column in the export | IT / requester | 10/21 |
 | 8 | Material | Continuing-education import | 3–5 people in the import template (one row per course) and the rules confirmed | training | 10/21 |
 | 9 | Material | Revenue-share pay rules | Rules, data sources, exceptions, approval flow | HR / finance | TBD |
 | 10 | IT | MOHW points-system connection | Confirm it is allowed and the limits; use the Excel format meanwhile; no passwords in the site or repo | IT | TBD |
@@ -83,7 +83,7 @@ Type: **Decide** = can be decided now (recommendation given, not yet a decision)
 - 組織圖：已提供（見上）；簽核流程要再討論確認，需求端再想怎麼呈現。
 - 員工資料：104 匯出範例已提供；**離職後回任以新進人員重新編號，不沿用舊員編**（已確認）；全公司員編原則預計 10/14 會議前提出。原型：已離職的人不能改回在職，回任要「新增員工」建新編號，前員編只供對照。
 - 手機打卡雲端空間：需求端請我們協助估算方法（打卡筆數只是一部分）。網站新增「雲端儲存空間估算」，預設值是假設；關鍵變數是是否存照片或定位、保存年限、300 或 2,000 人、雙備份的定義。
-- 仁寶服務紀錄：需求端期待用 Excel 匯入，在 Portal 直接呈現「目前服務個案數」「每個服務項目的使用比例」「每位居服員的日工時、週工時、累積工時」；樣本檔案這次沒收到，待收到後才做欄位對照與匯入。Portal 只存彙總，個案敏感資訊留在仁寶（v2.0 規格 2.2）。
+- 仁寶服務紀錄：需求端期待用 Excel 匯入，在 Portal 直接呈現「目前服務個案數」「每個服務項目的使用比例」「每位居服員的日工時、週工時、累積工時」；樣本檔 10/14 收到，匯入頁已做（瀏覽器內讀 .xlsx，只留彙總，原始列丟棄；居服員用姓名對員工）。Portal 只存彙總，個案敏感資訊留在仁寶（v2.0 規格 2.2）。
 
 ## 10/14 會議：雲端空間規劃與系統功能修改
 - 下次會議：10/21（三）10:00，地點待確認（第四次會議正式紀錄 V2.0）。
