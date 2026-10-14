@@ -321,3 +321,5 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] 人事系統 › 員工資料: a 離職 person cannot be set back to 在職 (the status form hides it and points to 新增員工); adding an employee accepts an optional 前員工編號 and shows 前員編 … （不沿用）
 - [ ] 文件管理 › 系統說明: 雲端儲存空間估算 recalculates from its inputs and presets; 業務資料整合 › 居服個案管理系統 lists the three metrics expected from the 仁寶 import
 - [ ] 使用指南 › 雲端儲存空間怎麼估: the formula, four scenarios (7.5 GB / 687 GB / 50 GB / 4.5 TB) match 文件管理 › 系統說明 › 雲端儲存空間估算; the guide link walks through the estimator
+- [ ] 10/14: 身分選單沒有「管理者（日照主管）」與單獨的「一般員工」; 公告欄 › 組織圖 is the formal full-name tree, 權限與範圍 › 組織圖（功能版） is the staff chart with 編輯職位文字; 權限與範圍 › 內部通訊錄 has a department filter and accepts 注音 input; tables keep the first row and column frozen
+- [ ] 10/14: leave form accepts an attachment (file name shown to the approver); 勞健保證明 period is a custom month range (min one month); 私人秘書 › 查詢 has no 個人工作日誌

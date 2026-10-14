@@ -202,7 +202,7 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
     await expect(page.locator('[data-mod="desk"]')).toHaveAttribute('aria-current', 'true');
     await expect(page.locator('[data-tab="home"]')).toHaveAttribute('aria-selected', 'true');
     const mods = await page.locator('[data-mod]').evaluateAll(n => n.map(x => x.dataset.mod));
-    expect(mods).toEqual(['desk', 'ann', 'fin']);   // 職稱對照 Excel：一般員工：照服員 只開放私人秘書、公告欄、線上申請
+    expect(mods).toEqual(['desk', 'ann', 'perm', 'fin']);   // 職稱對照 Excel：照服員 開放私人秘書、公告欄、內部通訊錄（在權限與範圍）、線上申請
     await expect(page.locator('#assumeBtn')).toHaveCount(0);
     await expect(page.locator('.pagehead .chip.acc')).toContainText('照服員');
   });
@@ -1122,7 +1122,7 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await go(page, 'perm', 'titles');
     const tm = page.locator('#view table.titlematrix');
     await expect(tm.locator('thead th')).toHaveCount(16);            // item column + 12 titles + 3 sub-categories
-    await expect(page.locator('#view')).toContainText('已填 480 / 480');
+    await expect(page.locator('#view')).toContainText('已填 495 / 495');
     const row = name => tm.locator('tbody tr', { hasText: name }).first();
     const cellOf = async (rowName, title) => {
       const idx = await tm.locator('thead th').evaluateAll((ths, t) => ths.findIndex(h => h.textContent.includes(t)), title);
@@ -1160,7 +1160,11 @@ test.describe('Updates from the 7 Oct meeting', () => {
       'A個管', '日照社工', '居家服務督導', '照服員、司機', '跨單位主管', 'A個管主管', '政府的命名（Ａ單位個管師）',
       '動態調整', '簽核流程有部分與組織圖不一樣']) await expect(v).toContainText(s);
     await expect(page.locator('.orgtree .orgbox.ent')).toHaveCount(4);
+    await expect(v).toContainText('正式全名版');
+    await expect(page.locator('#view .orgcol')).toHaveCount(0);     // the staff chart is the working view, in the other tab
+    await go(page, 'perm', 'orgfn');
     await expect(page.locator('#view .orgcol')).toHaveCount(5);    // shared admin + 4 entities in the staff chart
+    await expect(page.locator('#view')).toContainText('組織圖（功能版）');
   });
 
   test('the admin creates a sub-category under a role category and it becomes a column', async ({ page }) => {
@@ -1443,7 +1447,7 @@ test.describe('Personnel file drawer', () => {
   test('manager opening an out-of-scope person gets no sections', async ({ page }) => {
     await openPortal(page);
     await setRole(page, 'manager');
-    await go(page, 'ann', 'org');
+    await go(page, 'perm', 'orgfn');
     await page.click('[data-node="B001"]');              // 誠芯 day care supervisor (out of scope)
     await expect(drawer(page)).toBeVisible();
     await expect(body(page)).toContainText('不在您目前的資料範圍內');
@@ -1537,7 +1541,7 @@ test.describe('CSV exports', () => {
 
   test('org chart shows the real names for the owner, manager and system administrator', async ({ page }) => {
     await openPortal(page);
-    await go(page, 'ann', 'org');
+    await go(page, 'perm', 'orgfn');
     const view = page.locator('#view');
     await expect(view).toContainText('吳培滋 Steven Wu');
     await expect(view).toContainText('黃千育 Drew');
@@ -1550,7 +1554,7 @@ test.describe('CSV exports', () => {
     await go(page, 'perm', 'matrix');
     const rm = page.locator('table.rolematrix');
     await expect(rm.locator('thead th')).toHaveCount(16);            // item column + 15 roles
-    expect(await rm.locator('tbody tr').count()).toBe(32);
+    expect(await rm.locator('tbody tr').count()).toBe(33);
     const idx = await rm.locator('thead th').evaluateAll(ths => ths.findIndex(h => h.textContent.includes('老闆')));
     await expect(rm.locator('tbody tr', { hasText: '薪資計算 › 薪資試算' }).first().locator('td').nth(idx)).toContainText('可檢視');
     await expect(page.locator('.permtable thead th')).toHaveCount(16); // the finer table now covers all 15 roles
@@ -1627,5 +1631,75 @@ test.describe('CSV exports', () => {
     expect(totals).toEqual(['7.5 GB', '687.3 GB', '50.3 GB', '4582.1 GB']);
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     for (const v of ['7.5 GB', '687', '50 GB', '4.5 TB']) await expect(sec).toContainText(v);
+  });
+
+  test('10/14 changes: role names, directory moved with a department filter, org chart in two tabs', async ({ page }) => {
+    await openPortal(page);
+    const options = await page.locator('#roleSel option').allTextContents();
+    expect(options.some(o => o.includes('管理者（日照主管）'))).toBe(false);
+    expect(options.some(o => /^一般員工 \/ Employee$/.test(o.trim()))).toBe(false);
+    expect(options.some(o => o.includes('一般員工：照服員'))).toBe(true);
+    // the announcement board no longer holds the directory; the formal org chart stays there
+    await go(page, 'ann');
+    await expect(page.locator('[data-tab="dir"]')).toHaveCount(0);
+    await expect(page.locator('[data-tab="org"]')).toBeVisible();
+    // directory under Roles & scope, with a department filter
+    await go(page, 'perm', 'dir');
+    await expect(page.locator('.dircard')).toHaveCount(30);
+    await page.selectOption('#dirDept', 'it');
+    await expect(page.locator('.dircard')).toHaveCount(1);
+    await page.selectOption('#dirDept', 'ALL');
+    // IME: typing in the middle of a composition does not redraw the page; the filter applies when composition ends
+    const same = await page.evaluate(() => {
+      const i = document.getElementById('dirQ'); i.focus();
+      i.dispatchEvent(new CompositionEvent('compositionstart'));
+      i.value = '日'; i.dispatchEvent(new InputEvent('input', { isComposing: true, bubbles: true }));
+      return document.getElementById('dirQ') === i;
+    });
+    expect(same).toBe(true);
+    await page.evaluate(() => { const i = document.getElementById('dirQ'); i.value = '司機'; i.dispatchEvent(new CompositionEvent('compositionend')); });
+    expect(await page.locator('.dircard').count()).toBeLessThan(30);
+    // the working view of the org chart can be edited (demo)
+    await page.click('[data-tab="orgfn"]');
+    await page.click('[data-orgedit-toggle]');
+    const leaf = page.locator('input[data-orgedit]').first();
+    await leaf.fill('示範窗口：請找我');
+    await leaf.dispatchEvent('change');
+    await page.click('[data-orgedit-toggle]');
+    await expect(page.locator('#view')).toContainText('示範窗口：請找我');
+    // all tables keep their first row and column frozen
+    await go(page, 'perm', 'titles');
+    const pos = await page.evaluate(() => [getComputedStyle(document.querySelector('.titlematrix thead th')).position, getComputedStyle(document.querySelector('.titlematrix tbody td')).position]);
+    expect(pos).toEqual(['sticky', 'sticky']);
+  });
+
+  test('10/14 changes: leave attachment, custom certificate months, no personal work log', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'employee');
+    // leave: attach a file
+    await go(page, 'desk', 'forms');
+    await page.click('[data-dform="leave"]');
+    await page.fill('#leaveForm textarea[name="reason"]', '看診');
+    await page.setInputFiles('#leaveForm input[name="file"]', { name: '診斷證明.pdf', mimeType: 'application/pdf', buffer: Buffer.from('demo') });
+    await page.click('#leaveForm button[type="submit"]');
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'leave');
+    await expect(page.locator('#view')).toContainText('診斷證明.pdf');
+    // insurance certificate: custom month range, whole months
+    await setRole(page, 'employee');
+    await go(page, 'desk', 'forms');
+    await page.click('[data-dform="inscert"]');
+    await expect(page.locator('#docForm select[name="period"]')).toHaveCount(0);
+    await page.fill('#docForm input[name="pfrom"]', '2026-03');
+    await page.fill('#docForm input[name="pto"]', '2026-01');
+    await page.fill('#docForm input[name="purpose"]', '貸款');
+    await page.click('#docForm button[type="submit"]');
+    await expect(page.locator('.toast')).toContainText('結束月份不能早於起始月份');
+    await page.fill('#docForm input[name="pto"]', '2026-03');                 // shortest span: one whole month
+    await page.click('#docForm button[type="submit"]');
+    await expect(page.locator('#view')).toContainText('2026-03 至 2026-03（整月，共 1 個月）');
+    // the personal work log is gone from My Desk › Look up
+    await go(page, 'desk', 'query');
+    await expect(page.locator('[data-dq="log"]')).toHaveCount(0);
   });
 });
