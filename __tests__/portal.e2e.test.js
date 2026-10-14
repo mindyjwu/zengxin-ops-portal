@@ -26,7 +26,6 @@ async function go(page, mod, tab) {
   await page.click(`[data-mod="${mod}"]`);
   if (tab) await page.click(`[data-tab="${tab}"]`);
 }
-const grantHr = page => page.evaluate(() => { for (const k of ['hr:emp', 'hr:att', 'hr:leave']) (state.titleMatrix = state.titleMatrix || {})[k + '|dir'] = '可'; render(); });   // 日照主管 has no HR pages in the Excel; grant them to test own-company data scope
 const empRows = page => page.locator('#view tbody tr[data-emp]');
 const requestRow = (page, id) =>
   page.locator('#view tbody tr').filter({ has: page.locator('td.mono', { hasText: new RegExp(`^${id}$`) }) });
@@ -100,7 +99,6 @@ test.describe('Data scope', () => {
 
   test('manager sees only O1 staff and the office filter is locked', async ({ page }) => {
     await setRole(page, 'daydir');
-    await grantHr(page);
     await go(page, 'hr', 'emp');
     await expect(empRows(page)).toHaveCount(10);   // 誠馨: day care, home care and community center staff
     const ids = await empRows(page).evaluateAll(rs => rs.map(r => r.dataset.emp));
@@ -127,7 +125,6 @@ test.describe('Data scope', () => {
 
   test('manager attendance and leave views are limited to O1', async ({ page }) => {
     await setRole(page, 'daydir');
-    await grantHr(page);
     await go(page, 'hr', 'att');
     await expect(page.locator('#view')).toContainText('誠馨');
     await expect(page.locator('#view')).not.toContainText('誠芯');
@@ -1708,5 +1705,15 @@ test.describe('CSV exports', () => {
     // the personal work log is gone from My Desk › Look up
     await go(page, 'desk', 'query');
     await expect(page.locator('[data-dq="log"]')).toHaveCount(0);
+  });
+
+  test('the day care supervisor can open the HR pages, limited to their own unit', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'daydir');
+    await go(page, 'hr');
+    for (const tab of ['emp', 'mylog', 'att', 'leave']) await expect(page.locator(`[data-tab="${tab}"]`)).toBeVisible();
+    await page.click('[data-tab="emp"]');
+    await expect(empRows(page)).toHaveCount(10);                 // only the supervisor's own unit
+    await expect(page.locator('#view tbody')).not.toContainText('NT$');   // pay stays hidden
   });
 });
