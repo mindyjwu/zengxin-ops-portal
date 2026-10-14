@@ -870,6 +870,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     const upd = page.locator('#new1014');
     await expect(upd).toContainText('日照主管的人事頁面已開放');
     await expect(upd).toContainText('主管可跨單位查看');
+    await expect(upd).toContainText('第四次會議正式紀錄（V2.0）已放進');
     await expect(page.locator('.toc a[href="#new1014"]')).toBeVisible();
     await expect(page.locator('#basics')).toContainText('日照主管');
     await expect(sec).toContainText('可以直接傳給同事的訊息');
@@ -1063,10 +1064,30 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(v).not.toContainText('人保');
     // the attendees' names are not on the site
     for (const n of ['吳培滋', '黃千育', '莊啟聖', '劉思慧']) await expect(v).not.toContainText(n);
-    const todo = await page.locator('#view table', { hasText: '負責單位／人員' }).locator('tbody tr').count();
+    const todo = await page.locator('section.card', { has: page.locator('h2', { hasText: '後續待辦事項（10/7 會議）' }) }).locator('tbody tr').count();
     expect(todo).toBe(5);
     expect(await page.evaluate(() => ANNOUNCEMENTS.some(a => a.id === 'A11'))).toBe(true);
     expect(await page.evaluate(() => EVENTS.filter(e => e.d === '2026-10-14').length)).toBe(1);
+  });
+
+  test('the minutes page holds the official minutes of the fourth meeting, with decisions and follow-ups', async ({ page }) => {
+    await go(page, 'doc', 'meeting');
+    const v = page.locator('#view');
+    for (const x of ['入口網站建置第四次需求討論會議', '10/14（三）11:00–12:00', '雲端儲存容量規劃', '無須於初期一次購足所有容量', '正式版：提供管理及行政作業使用',
+      '簡易版：提供一般員工查閱', '新增附件上傳機制', '日期區間的彈性選擇機制', '衛福部積分系統與入口網站串接', '內部通訊錄資料維護', '中文輸入法相容性確認',
+      '仁寶 Excel 資料上傳入口網站之可行性', '新增 Q&A 互動功能', '10/21（三）10:00；地點待確認', '評估雲端儲存容量及加購方案', '確認並更新內部通訊錄資料']) await expect(v).toContainText(x);
+    await expect(v).not.toContainText('人保');
+    for (const n of ['吳培滋', '黃千育', '莊啟聖', '劉思慧', 'Mindy']) await expect(v).not.toContainText(n);
+    const todo = await page.locator('section.card', { has: page.locator('h2', { hasText: '後續待辦事項（10/14 會議）' }) }).locator('tbody tr').count();
+    expect(todo).toBe(6);
+    // the 14 Oct decisions are tracked on the prototype page, and the follow-ups carry the new items
+    const info = await page.evaluate(() => ({ dec: MEETING_DECISIONS.filter(d => d.src === '10/14').length, fu: FOLLOW_UPS.filter(f => /積分系統|內部通訊錄/.test(f.zh) && f.src === '10/14').length,
+      ev: EVENTS.filter(e => e.d === '2026-10-21').length }));
+    expect(info.dec).toBe(9);
+    expect(info.fu).toBe(3);               // the two minutes items plus the 10/14 note about the directory
+    expect(info.ev).toBe(1);
+    await go(page, 'arch', 'scope');
+    await expect(page.locator('#view')).toContainText('衛福部積分系統');
   });
 
   test('the recording summary is kept apart, with confirmed and pending wording', async ({ page }) => {
