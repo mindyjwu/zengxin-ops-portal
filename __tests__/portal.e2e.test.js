@@ -1937,3 +1937,17 @@ test.describe('Trimmed menus', () => {
     await expect(page.locator('.navitem').first()).toContainText('Prototype Info');
   });
 });
+
+
+test.describe('Meeting agenda in the guide', () => {
+  test('guide lists the five agenda items with a message colleagues can copy', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    const sec = page.locator('#agenda');
+    await expect(sec.locator('h2')).toContainText('下次會議議程');
+    await expect(sec.locator('tbody tr')).toHaveCount(5);
+    await expect(sec).toContainText('簽核流程');
+    await expect(sec).toContainText('仁寶匯入');
+    await expect(sec).toContainText('會前請準備');
+    await expect(page.locator('.toc a[href="#agenda"]')).toBeVisible();
+  });
+});
