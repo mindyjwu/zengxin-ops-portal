@@ -701,43 +701,43 @@ const nextId = (prefix, arr) => prefix+(Math.max(0,...arr.map(x=>+x.id.replace(/
 const ROLES = {
   /* --- Built (working in this prototype) --- */
   admin:{ id:'admin', zh:'系統管理員', en:'System Admin', persona:'H005', allOffices:true, built:true,
-    perms:{ salary:false, editEmp:true, mobile:true, approve:false, finalize:false,
+    perms:{ trainView:true, salary:false, editEmp:true, mobile:true, approve:false, finalize:false,
             annGroup:true, annOffice:true, perms:true, exportAll:true, mgmt:true } },
   hr:{ id:'hr', zh:'人資', en:'HR', persona:'H003', allOffices:true, built:true,
-    perms:{ salary:true, editEmp:true, mobile:true, approve:true, finalize:true,
+    perms:{ trainView:true, salary:true, editEmp:true, mobile:true, approve:true, finalize:true,
             annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
   manager:{ id:'manager', zh:'管理者', en:'Manager', persona:'H002', allOffices:true, built:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false,
+    perms:{ trainView:true, salary:false, editEmp:false, mobile:false, approve:true, finalize:false,
             annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
   /* 一般員工：只用「私人秘書」自助頁面（對應 104 私人秘書），資料範圍僅限本人 */
   employee:{ id:'employee', zh:'一般員工：照服員', en:'Employee: care attendant', persona:'A004', allOffices:false, selfOnly:true, built:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false,
+    perms:{ trainView:false, salary:false, editEmp:false, mobile:false, approve:false, finalize:false,
             annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } },
 
   /* --- 其餘職稱（職稱對照 Excel 的其他欄位）：可切換，頁面權限由「職稱對照」決定；
          資料範圍與下列細項是依職稱推定的暫定值，Excel 沒有規定，待確認。老闆、教育訓練專員、會計跨三家公司依簡報第 6 頁 --- */
   boss:{ id:'boss', zh:'老闆', en:'Owner', persona:'H001', allOffices:true, built:true, provisional:true,
-    perms:{ salary:true, editEmp:false, mobile:true, approve:true, finalize:false, annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
+    perms:{ trainView:true, salary:true, editEmp:false, mobile:true, approve:true, finalize:false, annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
   training:{ id:'training', zh:'教育訓練專員', en:'Training officer', persona:'H006', allOffices:true, built:true, provisional:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
+    perms:{ trainView:true, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
   accountant:{ id:'accountant', zh:'會計', en:'Accountant', persona:'H004', allOffices:true, built:true, provisional:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:true, mgmt:true } },
+    perms:{ trainView:false, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:true, mgmt:true } },
   daydir:{ id:'daydir', zh:'日照主管', en:'Day care supervisor', persona:'A001', allOffices:false, built:true, provisional:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
+    perms:{ trainView:true, salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
   daysw:{ id:'daysw', zh:'日照社工/護理師', en:'Day care social worker / nurse', persona:'A005', allOffices:false, built:true, provisional:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
+    perms:{ trainView:false, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
   homelead:{ id:'homelead', zh:'居服主管', en:'Home care lead', persona:'C001', chipTitle:{zh:'居服主管',en:'Home care lead'}, allOffices:false, built:true, provisional:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
+    perms:{ trainView:true, salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
   homesup:{ id:'homesup', zh:'居家服務督導', en:'Home care supervisor', persona:'A009', allOffices:false, built:true, provisional:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
+    perms:{ trainView:true, salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
   cmlead:{ id:'cmlead', zh:'A個管主管', en:'A-unit case-management lead', persona:'B002', chipTitle:{zh:'A個管主管',en:'A-unit case-management lead'}, allOffices:false, built:true, provisional:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
+    perms:{ trainView:true, salary:false, editEmp:false, mobile:false, approve:true, finalize:false, annGroup:false, annOffice:true, perms:false, exportAll:false, mgmt:true } },
   cm:{ id:'cm', zh:'A個管', en:'A-unit case manager', persona:'A006', chipTitle:{zh:'A個管',en:'A-unit case manager'}, allOffices:false, built:true, provisional:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
+    perms:{ trainView:false, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
   driver:{ id:'driver', zh:'一般員工：司機', en:'Employee: driver', persona:'A008', allOffices:false, selfOnly:true, built:true, provisional:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } },
+    perms:{ trainView:false, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } },
   hca:{ id:'hca', zh:'一般員工：居服員', en:'Employee: home care worker', persona:'A010', allOffices:false, selfOnly:true, built:true, provisional:true,
-    perms:{ salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } }
+    perms:{ trainView:false, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:false } }
 };
 
 /* ---------- state ---------- */
@@ -3343,35 +3343,217 @@ BINDERS['desk:query']=function(){
 };
 
 /* ---------------- 課程 ---------------- */
+/* =============================== 繼續教育積分（私人秘書 › 課程）===============================
+   依需求端 10/14 提供的「長照人員繼續教育積分」資料整理：衛福部長照人員積分系統的查詢畫面（總表、點數字進入課程清單），
+   以及人事／教育訓練現在用 Excel 統計的積分總表（每人一張工作表，總表看每個人的進度、補強明年度的課程）。
+   規則取自 Excel 表頭與積分系統畫面，實際以主管機關規定為準；人員與課程紀錄是示範資料（課程名稱與積分取自 Excel 的常見課程，不放任何真實人員的紀錄）。 */
+const CE_TITLES = ['ca','hca','sup','rn'];                       // 需要長照繼續教育積分的職稱：照服員、居服員、居家服務督導、護理師
+const CE_COLS = ['pro','qual','ethic','law','fire','emerg','infect','gender','indig','divers'];
+const CE_NAME = {
+  pro:{zh:'專業課程',en:'Professional'}, qual:{zh:'專業品質',en:'Quality'}, ethic:{zh:'專業倫理',en:'Ethics'}, law:{zh:'專業法規',en:'Regulations'},
+  fire:{zh:'消防安全',en:'Fire safety'}, emerg:{zh:'緊急應變',en:'Emergency response'}, infect:{zh:'感染管制',en:'Infection control'}, gender:{zh:'性別敏感度',en:'Gender sensitivity'},
+  indig:{zh:'原住民族文化',en:'Indigenous cultures'}, divers:{zh:'多元族群文化',en:'Diverse ethnic cultures'}
+};
+const CE_RULES = {total:120, years:6, qelMin:24, qelMax:36, fourMin:10, indigMin:6, diversMin:6, onlineMax:80};
+/* 積分計算指引（積分系統畫面）：依認證有效期限，原住民族與多元族群文化兩類的累計點數 */
+const CE_GUIDE = [['113年6月2日以前','合計 2',2],['113年6月3日以後','1+1',4],['114年','1+1',6],['115年','1+1',8],['116年','1+1',10],['117年','1+1',12]];
+/* 課程目錄（示範）：名稱與積分取自 Excel 的常見課程；v 依序為 CE_COLS */
+const CE_CATALOG = [
+  {name:'認識預立醫療與安寧照護', mode:'phys', v:[0,0,0,1,0,0,0,0,0,0]},
+  {name:'CPR+AED操作及緊急應變處置', mode:'phys', v:[0,4.6,0,0,0,4.6,0,0,0,0]},
+  {name:'原住民族與多元族群文化敏感度及能力', mode:'phys', v:[0,0,4.8,0,0,0,0,0,2.4,2.4]},
+  {name:'照顧服務員繼續教育訓練第一場', mode:'phys', v:[3.6,0,0,3.6,0,0,0,0,0,0]},
+  {name:'照顧服務員繼續教育訓練第二場', mode:'phys', v:[0,0,3.6,3.6,0,0,0,0,0,3.6]},
+  {name:'照顧服務員繼續教育訓練第三場', mode:'phys', v:[0,3.6,0,3.6,0,3.6,0,0,0,0]},
+  {name:'照顧服務員繼續教育訓練第四場', mode:'phys', v:[3.6,0,3.6,0,0,0,0,0,0,0]},
+  {name:'照顧服務員繼續教育訓練第五場', mode:'phys', v:[0,3.6,3.6,0,0,0,3.6,0,0,3.6]},
+  {name:'照顧服務員繼續教育訓練第六場', mode:'phys', v:[0,0,3.6,3.6,0,0,0,0,0,3.6]},
+  {name:'長者慢性疾病認識及照顧要點', mode:'phys', v:[4.8,0,0,0,0,0,0,0,0,0]},
+  {name:'失智症照顧服務20小時訓練課程', mode:'phys', v:[24,0,0,0,0,0,0,0,0,0]},
+  {name:'身心障礙支持服務核心課程訓練', mode:'phys', v:[24,0,0,0,0,0,0,0,0,0]},
+  {name:'長照人員必修五合一積分課程', mode:'phys', v:[0,4.8,7.2,4.8,2.4,2.4,2.4,2.4,4.8,0]},
+  {name:'長照必修六合一課程', mode:'phys', v:[0,2.2,6.8,0,1.2,1.2,1,2.2,2.4,1]},
+  {name:'老人保護基本知能推廣課程', mode:'phys', v:[3,0,0,0,0,0,0,0,0,0]},
+  {name:'112年度原住民族文化敏感度及能力訓練', mode:'phys', v:[0,0,7.2,0,0,0,0,0,7.2,0]},
+  {name:'原住民文化安全－文化敏感度之照顧議題', mode:'phys', v:[0,0,2.2,0,0,0,0,0,2.2,0]},
+  {name:'長照人員數位學習平台', mode:'online', v:[0,0,4.36,0,0,0,0,0,2.18,2.18]},
+  {name:'長照數位學習平台', mode:'online', v:[0,0,11.5,0,0,0,0,1.1,2.34,8.06]},
+  {name:'仁寶線上課程', mode:'online', v:[4,0,6,2,0,0,0,0,0,6]}
+];
+const CE_UNITS = ['示範開課單位 甲','示範開課單位 乙','示範開課單位 丙'];
+const ceEligible = p => !!p && CE_TITLES.includes(p.title);
+const rocDate = d => { const a=d.split('-'); return (+a[0]-1911)+'/'+a[1]+'/'+a[2]; };
+function ceRecord(id){
+  state.ceRecords = state.ceRecords || {};
+  if(state.ceRecords[id]) return state.ceRecords[id];
+  const r=k=>seed('ce-'+id+'-'+k);
+  const sy=2021+Math.floor(r('sy')*4), sm=1+Math.floor(r('sm')*11), start=`${sy}-${String(sm).padStart(2,'0')}-10`, end=addYears(start,6), cprExp=addYears(ymd(TODAY), 1+Math.floor(r('cpr')*2));
+  const n=3+Math.floor(r('n')*(5+(2026-sy)*4)), order=Array.from({length:n},(_,j)=>({i:Math.floor(r('i'+j)*CE_CATALOG.length)}));   // 同一門課可以上不同梯次，所以可重複
+  const t0=new Date(start).getTime(), t1=new Date('2026-09-30').getTime();
+  const courses=order.map((o,j)=>{ const c=CE_CATALOG[o.i], d=new Date(t0+Math.floor(r('d'+j)*(t1-t0)));
+    return {name:c.name, mode:c.mode, v:c.v.slice(), date:ymd(d), unit:CE_UNITS[Math.floor(r('u'+j)*CE_UNITS.length)]}; }).sort((a,b)=>a.date.localeCompare(b.date));
+  return state.ceRecords[id] = {certNo:'示範-'+id, start, end, cprExp, courses};
+}
+function ceGuideNeed(endDate){      // 認證有效期限 → 原住民族＋多元族群文化兩類的累計點數
+  const y=+endDate.slice(0,4)-1911, m=+endDate.slice(5,7), d=+endDate.slice(8,10);
+  if(y<113||(y===113&&(m<6||(m===6&&d<=2)))) return 2;
+  return Math.min(12, 2*(y-111));
+}
+function ceCalc(id){
+  const rec=ceRecord(id), s={}, phys={}, onl={};
+  CE_COLS.forEach(k=>{ s[k]=0; phys[k]=0; onl[k]=0; });
+  rec.courses.forEach(c=>CE_COLS.forEach((k,i)=>{ const v=c.v[i]; s[k]+=v; (c.mode==='online'?onl:phys)[k]+=v; }));
+  const rd=x=>Math.round(x*100)/100, qelRaw=s.qual+s.ethic+s.law, qel=Math.min(qelRaw,CE_RULES.qelMax), four=s.fire+s.emerg+s.infect+s.gender;
+  const need=ceGuideNeed(rec.end)/2, total=s.pro+qel, gaps=[];
+  const proPhys=phys.pro+phys.qual+phys.ethic+phys.law, proOnl=onl.pro+onl.qual+onl.ethic+onl.law;
+  if(total<CE_RULES.total) gaps.push({k:'total', short:CE_RULES.total-total});
+  if(qelRaw<CE_RULES.qelMin) gaps.push({k:'qel', short:CE_RULES.qelMin-qelRaw});
+  ['fire','emerg','infect','gender'].forEach(k=>{ if(s[k]<=0) gaps.push({k, short:null}); });
+  if(four<CE_RULES.fourMin) gaps.push({k:'four', short:CE_RULES.fourMin-four});
+  if(s.indig<need) gaps.push({k:'indig', short:need-s.indig});
+  if(s.divers<need) gaps.push({k:'divers', short:need-s.divers});
+  const monthsLeft=Math.round(daysUntil(rec.end)/30.4), status=!gaps.length?'ok':(monthsLeft<=12?'late':'going');
+  return {rec, s, phys, onl, qelRaw, qel, four, total:rd(total), need, gaps, status, proPhys:rd(proPhys), proOnl:rd(proOnl), monthsLeft};
+}
+const CE_STATUS = {ok:{zh:'已達標',en:'Met',cls:'ok'}, going:{zh:'進行中',en:'In progress',cls:'info'}, late:{zh:'落後（效期 12 個月內）',en:'Behind (expires within 12 months)',cls:'crit'}};
+const ceChip = st => `<span class="chip ${CE_STATUS[st].cls}">${esc(both(CE_STATUS[st].zh,CE_STATUS[st].en))}</span>`;
+const ce1 = x => (Math.round(x*100)/100).toString();
+/* 數字可以點：點進去看該類別的課程清單（積分系統的做法） */
+const ceNum = (x,key) => x>0 ? `<button class="btn ghost mini" data-cecat="${key}">${ce1(x)}</button>` : '0';
+function ceEligibleStaff(){ return scopedStaff().filter(s=>ceEligible(s) && onRoster(s,CUR_MONTH)); }
+function ceCourseList(id,key){
+  const [kind,sel,mode]=key.split('|'), rec=ceRecord(id);
+  const rows=rec.courses.filter(c=>kind==='mode' ? c.mode===sel : (CE_COLS.includes(sel)&&c.v[CE_COLS.indexOf(sel)]>0 && (!mode||c.mode===mode)));
+  const title = kind==='mode' ? (sel==='phys'?both('實體課程','In-person courses'):both('網路課程','Online courses')) : both(CE_NAME[sel].zh,CE_NAME[sel].en)+(mode?' · '+(mode==='phys'?both('實體','in person'):both('網路','online')):'');
+  return `<section class="card">
+    <div class="card-h"><h2>${esc(title)}</h2><span class="en">${esc(both(rows.length+' 筆課程',rows.length+' courses'))}</span></div>
+    <div class="tablewrap"><table class="cetable"><thead><tr><th>#</th><th>${bi('課程日期','Date')}</th><th>${bi('課程名稱','Course')}</th><th>${bi('實施方式','Mode')}</th><th>${bi('開課單位','Provider')}</th><th>${bi('課程類別','Category')}</th><th>${bi('積分','Points')}</th><th>${bi('認可狀態','Status')}</th></tr></thead>
+      <tbody>${rows.map((c,i)=>{ const cats=CE_COLS.filter((k,j)=>c.v[j]>0).map(k=>both(CE_NAME[k].zh,CE_NAME[k].en)).join('、');
+        const pts = kind==='mode' ? CE_COLS.slice(0,4).reduce((a,k,j)=>a+c.v[j],0) : c.v[CE_COLS.indexOf(sel)];
+        return `<tr><td class="mono">${i+1}</td><td class="mono" style="font-size:12px">${rocDate(c.date)}</td><td style="white-space:normal">${esc(c.name)}</td><td>${esc(c.mode==='phys'?both('實體','In person'):both('網路','Online'))}</td><td style="white-space:normal">${esc(c.unit)}</td><td style="white-space:normal;font-size:12px">${esc(cats)}</td><td class="num">${ce1(pts)}</td><td><span class="chip ok">${esc(both('符合','Accepted'))}</span></td></tr>`; }).join('')}</tbody></table></div>
+    <div class="legend">${esc(both('課程名稱與積分取自 Excel 的常見課程；開課單位為示範名稱。實際資料要等串接積分系統或匯入 Excel 後才有。','Course names and points are common courses from the Excel; providers are demo names. Real data comes once the points system is connected or the Excel is imported.'))}</div>
+  </section>`;
+}
+function ceSummary(id){
+  const c=ceCalc(id), p=person(id), rec=c.rec, s=c.s, need=c.need, ok=v=>v?'ok':'crit';
+  const row=(k,key1,key2)=>`<tr><td><b>${esc(both(CE_NAME[k].zh,CE_NAME[k].en))}</b></td><td class="num">${ceNum(c.phys[k],'col|'+k+'|phys')}</td><td class="num">${ceNum(c.onl[k],'col|'+k+'|online')}</td></tr>`;
+  const cat=k=>`<tr><td><b>${esc(both(CE_NAME[k].zh,CE_NAME[k].en))}</b></td><td class="num">${ceNum(s[k],'col|'+k)}</td></tr>`;
+  return `
+  <section class="card">
+    <div class="card-b" style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+      <div><div style="font-size:18px;font-weight:600">${esc(empName(id))}</div><div class="mono muted">${esc(id)} · ${esc(both(TITLES[p.title].zh,TITLES[p.title].en))}</div></div>
+      <div class="muted" style="font-size:12.5px">${esc(both('長照人員證號（示範）','Care worker certificate no. (demo)'))}<br><span class="mono">${esc(rec.certNo)}</span><br>${rocDate(rec.start)} ~ ${rocDate(rec.end)}</div>
+      <div class="muted" style="font-size:12.5px">${esc(both('CPR 效期','CPR valid to'))}<br><span class="mono">${rocDate(rec.cprExp)}</span></div>
+      <div class="spacer" style="flex:1"></div>
+      <div style="text-align:right"><div class="mono" style="font-size:20px">${c.total} / ${CE_RULES.total}</div>${ceChip(c.status)}</div>
+    </div>
+    <div class="card-b" style="padding-top:0"><div class="bar"><i class="${c.total>=CE_RULES.total?'':'warn'}" style="width:${Math.min(100,c.total/CE_RULES.total*100)}%"></i></div>
+      <div class="muted" style="font-size:12.5px;margin-top:6px">${esc(both('課程區間（依人員證書有效期間）：'+rocDate(rec.start)+'–'+rocDate(rec.end)+'。點積分數字，可查看課程清單。','Course period (the certificate’s validity): '+rocDate(rec.start)+'–'+rocDate(rec.end)+'. Click a points figure to see the course list.'))}</div></div>
+  </section>
+  <section class="card"><div class="tablewrap"><table class="cetable">
+    <thead><tr><th>${bi('課程屬性','Attribute')}</th><th>${bi('登錄積分（實體）','Points (in person)')}</th><th>${bi('登錄積分（網路）','Points (online)')}</th><th>${bi('法規標準','Standard')}</th></tr></thead>
+    <tbody>${['pro','qual','ethic','law'].map((k,i)=>row(k).replace('</tr>', i===0?`<td rowspan="4" style="white-space:normal">${esc(both('專業品質、專業倫理、專業法規累積積分至少 24 點；超過 36 點者，以 36 點計（目前 '+ce1(c.qelRaw)+' 點，計 '+ce1(c.qel)+' 點）','Quality, ethics and regulations together at least 24 points; over 36 counts as 36 (now '+ce1(c.qelRaw)+', counted '+ce1(c.qel)+')'))} <span class="chip ${ok(c.qelRaw>=CE_RULES.qelMin)}">${esc(c.qelRaw>=CE_RULES.qelMin?both('符合','Met'):both('未達','Short'))}</span></td></tr>`:'</tr>')).join('')}</tbody></table></div></section>
+  <section class="card"><div class="tablewrap"><table class="cetable">
+    <thead><tr><th>${bi('課程類別','Category')}</th><th>${bi('系統登錄積分','Registered points')}</th><th>${bi('累積積分','Cumulative')}</th><th>${bi('法規標準','Standard')}</th></tr></thead>
+    <tbody>${['fire','emerg','infect','gender'].map((k,i)=>`<tr><td><b>${esc(both(CE_NAME[k].zh,CE_NAME[k].en))}</b></td><td class="num">${ceNum(s[k],'col|'+k)}</td>${i===0?`<td rowspan="4" class="num">${ce1(c.four)}</td><td rowspan="4" style="white-space:normal">${esc(both('1. 各主題已至少完成一堂　2. 累計積分至少 10 點','1. At least one session in each topic　2. At least 10 points in total'))}
+      <span class="chip ${ok(c.four>=CE_RULES.fourMin&&['fire','emerg','infect','gender'].every(x=>s[x]>0))}">${esc(c.four>=CE_RULES.fourMin&&['fire','emerg','infect','gender'].every(x=>s[x]>0)?both('符合','Met'):both('未達','Short'))}</span></td>`:''}</tr>`).join('')}</tbody></table></div></section>
+  <section class="card"><div class="tablewrap"><table class="cetable">
+    <thead><tr><th>${bi('課程類別','Category')}</th><th>${bi('累積積分','Cumulative')}</th><th>${bi('法規標準','Standard')}</th></tr></thead>
+    <tbody>${['indig','divers'].map(k=>`<tr><td><b>${esc(both(CE_NAME[k].zh,CE_NAME[k].en))}</b></td><td class="num">${ceNum(s[k],'col|'+k)}</td><td style="white-space:normal">${esc(both('依認證效期至少 '+need+' 點','At least '+need+' points for this validity'))} <span class="chip ${ok(s[k]>=need)}">${esc(s[k]>=need?both('符合','Met'):both('未達，差 '+ce1(need-s[k])+' 點','Short by '+ce1(need-s[k])))}</span></td></tr>`).join('')}</tbody></table></div>
+    <div class="card-b"><div class="eyebrow">${esc(both('積分計算指引：認證有效期限 → 兩類各年度 1 點，累計點數','Guide: validity date → 1 point each per year, cumulative'))}</div>
+      <div class="tablewrap"><table><thead><tr><th>${bi('認證有效期限日期','Validity date')}</th><th>${bi('各年度點數','Per year')}</th><th>${bi('累計點數','Cumulative')}</th></tr></thead>
+        <tbody>${CE_GUIDE.map(g=>`<tr><td>${esc(g[0])}</td><td>${esc(g[1])}</td><td class="num">${g[2]}</td></tr>`).join('')}</tbody></table></div></div></section>
+  <section class="card"><div class="tablewrap"><table class="cetable">
+    <thead><tr><th>${bi('課程類別','Category')}</th><th>${bi('累積積分','Cumulative')}</th><th>${bi('法規標準','Standard')}</th></tr></thead>
+    <tbody><tr><td><b>${esc(both('實體課程','In-person'))}</b></td><td class="num">${ceNum(c.proPhys,'mode|phys')}</td><td></td></tr>
+      <tr><td><b>${esc(both('網路課程','Online'))}</b></td><td class="num">${ceNum(c.proOnl,'mode|online')}</td><td>${esc(both('至多 80 點（超過以 80 點計算）','At most 80 points (more counts as 80)'))}</td></tr></tbody></table></div></section>
+  <div class="note">${esc(both('本查詢結果僅列示目前累計繼續教育積分；如需辦理長照人員認證效期更新，應向登錄長照服務單位所在地地方政府主管機關申辦，並以地方主管機關審核結果為準。總積分＝專業課程＋品質、倫理、法規（最多計 36 點），與公司現行 Excel 的算法相同。',
+    'This only lists the continuing-education points accumulated so far; renewing the certificate is applied for with the local competent authority and its decision prevails. Total = professional courses + quality, ethics and regulations (counted up to 36), the same as the company’s current Excel.'))}</div>`;
+}
+function ceAll(){
+  const f=state.ceF||(state.ceF={unit:'ALL',title:'ALL',status:'ALL',q:''}), q=f.q.trim().toLowerCase();
+  const all=ceEligibleStaff().map(p=>({p,c:ceCalc(p.id)}));
+  const list=all.filter(x=>(f.unit==='ALL'||x.p.unit===f.unit)&&(f.title==='ALL'||x.p.title===f.title)&&(f.status==='ALL'||x.c.status===f.status)&&(!q||(x.p.id+empName(x.p.id)).toLowerCase().includes(q)));
+  const met=all.filter(x=>x.c.status==='ok').length, late=all.filter(x=>x.c.status==='late').length, soon=all.filter(x=>x.c.monthsLeft<=12).length;
+  const low=(v,min)=>v<min?' style="color:var(--crit);font-weight:600"':'';
+  return `
+  <div class="tiles">${[['人數','Staff',all.length],['已達標','Met',met],['落後（效期 12 個月內）','Behind',late],['小卡效期 12 個月內到期','Cards expiring within 12 months',soon]].map(t=>`<div class="tile"><span class="k">${esc(both(t[0],t[1]))}</span><span class="v">${t[2]}</span></div>`).join('')}</div>
+  <section class="card">
+    <div class="card-h"><h2>${esc(both('全員繼續教育積分總表','Everyone’s continuing-education points'))}</h2><span class="en">${esc(both(list.length+' / '+all.length+' 人',list.length+' / '+all.length+' people'))}</span><div class="spacer" style="flex:1"></div>
+      <button class="btn ghost mini" data-cetemplate>${esc(both('下載匯入範本（Excel）','Download the import template (Excel)'))}</button>
+      <button class="btn mini" data-ceexcel style="margin-left:6px">${esc(both('匯出積分總表（Excel）','Export the points table (Excel)'))}</button></div>
+    <div class="card-b" style="display:flex;gap:8px;flex-wrap:wrap">
+      <select id="ceUnit"><option value="ALL">${esc(both('全部單位','All units'))}</option>${filterUnits().filter(u=>u.id!=='HQ').map(u=>`<option value="${u.id}" ${f.unit===u.id?'selected':''}>${esc(both(u.zh,u.en))}</option>`).join('')}</select>
+      <select id="ceTitle"><option value="ALL">${esc(both('全部職稱','All titles'))}</option>${CE_TITLES.map(k=>`<option value="${k}" ${f.title===k?'selected':''}>${esc(both(TITLES[k].zh,TITLES[k].en))}</option>`).join('')}</select>
+      <select id="ceStatus"><option value="ALL">${esc(both('全部狀態','All statuses'))}</option>${Object.entries(CE_STATUS).map(([k,v])=>`<option value="${k}" ${f.status===k?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}</select>
+      <input type="search" id="ceQ" placeholder="${esc(both('搜尋姓名或員工編號','Search name or number'))}" value="${esc(f.q)}"></div>
+    <div class="tablewrap"><table class="cetable">
+      <thead><tr><th>${bi('員工','Employee')}</th><th>${bi('單位','Unit')}</th><th>${bi('長照類別','Type')}</th><th>${bi('CPR 效期','CPR')}</th><th>${bi('小卡效期','Card')}</th><th>${bi('總積分（120）','Total (120)')}</th><th>${bi('專業課程','Professional')}</th><th>${bi('品質、倫理、法規（24–36）','Q/E/R (24–36)')}</th><th>${bi('四類別（10）','Four topics (10)')}</th><th>${bi('原住民','Indigenous')}</th><th>${bi('多元','Diverse')}</th><th>${bi('狀態','Status')}</th></tr></thead>
+      <tbody>${list.map(({p,c})=>`<tr data-ceemp="${p.id}" style="cursor:pointer"><td><b>${esc(empName(p.id))}</b> <span class="muted mono" style="font-size:11px">${p.id}</span></td><td>${esc(unit(p.unit).zh)}</td><td>${esc(both(TITLES[p.title].zh,TITLES[p.title].en))}</td>
+        <td class="mono" style="font-size:12px">${rocDate(c.rec.cprExp)}</td><td class="mono" style="font-size:12px">${rocDate(c.rec.end)}</td>
+        <td class="num"${low(c.total,CE_RULES.total)}>${c.total}</td><td class="num">${ce1(c.s.pro)}</td><td class="num"${low(c.qelRaw,CE_RULES.qelMin)}>${ce1(c.qel)}</td><td class="num"${low(c.four,CE_RULES.fourMin)}>${ce1(c.four)}</td>
+        <td class="num"${low(c.s.indig,c.need)}>${ce1(c.s.indig)}</td><td class="num"${low(c.s.divers,c.need)}>${ce1(c.s.divers)}</td><td>${ceChip(c.status)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="legend">${esc(both('點一列看這個人的積分總表與課程清單。紅色數字是還沒達到標準。人員與課程紀錄是示範資料。','Click a row for that person’s summary and course lists. Red figures are below the standard. People and course records are demo data.'))}</div>
+  </section>`;
+}
+function ceGap(){
+  const staff=ceEligibleStaff(), calcs=staff.map(p=>ceCalc(p.id)), n=calcs.length||1;
+  const items=[['total','總積分（120）','Total (120)'],['qel','品質、倫理、法規（至少 24）','Quality/ethics/regulations (≥24)'],['four','四類別合計（至少 10）','Four topics (≥10)'],
+    ['fire','消防安全（至少一堂）','Fire safety (≥1 session)'],['emerg','緊急應變（至少一堂）','Emergency response (≥1)'],['infect','感染管制（至少一堂）','Infection control (≥1)'],['gender','性別敏感度（至少一堂）','Gender sensitivity (≥1)'],
+    ['indig','原住民族文化','Indigenous cultures'],['divers','多元族群文化','Diverse ethnic cultures']];
+  const rows=items.map(([k,zh,en])=>{ const gs=calcs.map(c=>c.gaps.find(g=>g.k===k)).filter(Boolean), cnt=gs.length, sum=gs.reduce((a,g)=>a+(g.short||0),0); return {k,zh,en,cnt,sum}; }).sort((a,b)=>b.cnt-a.cnt||b.sum-a.sum);
+  const soon=staff.map(p=>({p,c:ceCalc(p.id)})).filter(x=>x.c.monthsLeft<=12||daysUntil(x.c.rec.cprExp)<=365).sort((a,b)=>a.c.rec.end.localeCompare(b.c.rec.end));
+  return `<section class="card">
+    <div class="card-h"><h2>${esc(both('缺口分析：明年度課程設計','Gap analysis: next year’s course design'))}</h2><span class="en">${esc(both('人數越多越缺','More people = bigger gap'))}</span></div>
+    <div class="card-b" style="display:grid;gap:8px">
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('教育訓練人員可以看大家比較缺哪些積分，據此設計明年度的課程。下表依「未達標人數」排序。','The training officer can see which points most people lack and design next year’s courses from it. The table is ordered by the number of people below the standard.'))}</div>
+      ${rows.map(r=>`<div style="display:grid;grid-template-columns:minmax(180px,260px) 1fr 150px;gap:10px;align-items:center"><span>${esc(both(r.zh,r.en))}</span>
+        <div class="bar"><i class="${r.cnt?'warn':''}" style="width:${r.cnt/n*100}%"></i></div>
+        <span class="mono" style="font-size:12.5px">${r.cnt} / ${calcs.length} ${esc(both('人未達','short'))}${r.sum?' · '+esc(both('缺 '+ce1(r.sum)+' 點','gap '+ce1(r.sum)+' pts')):''}</span></div>`).join('')}
+    </div></section>
+  <section class="card"><div class="card-h"><h2>${esc(both('效期 12 個月內到期','Expiring within 12 months'))}</h2><span class="en">${soon.length}</span></div>
+    <div class="tablewrap"><table class="cetable"><thead><tr><th>${bi('員工','Employee')}</th><th>${bi('CPR 效期','CPR')}</th><th>${bi('小卡效期','Card')}</th><th>${bi('目前缺口','Gaps now')}</th></tr></thead>
+      <tbody>${soon.map(({p,c})=>`<tr data-ceemp="${p.id}" style="cursor:pointer"><td><b>${esc(empName(p.id))}</b> <span class="muted mono" style="font-size:11px">${p.id}</span></td><td class="mono">${rocDate(c.rec.cprExp)}</td><td class="mono">${rocDate(c.rec.end)}</td><td>${c.gaps.length?esc(both(c.gaps.length+' 項未達',c.gaps.length+' short')):ceChip('ok')}</td></tr>`).join('')||`<tr><td colspan="4" class="muted">${esc(both('沒有','None'))}</td></tr>`}</tbody></table></div></section>`;
+}
 function viewDeskCourse(){
-  const u=me(), ce=empRecord(u.id).lic.filter(l=>l.ce), en=state.enrolled||{};
-  const trainRec=empRecord(u.id).training, doneH=trainRec.reduce((a,c)=>a+c.h,0);
+  const u=me(), mine=ceEligible(u), all=!!can('trainView');
+  const v = state.ceView || (mine?'mine':(all?'all':'mine'));
+  const tabs=[...(mine?[['mine','我的積分','My points']]:[]), ...(all?[['all','全員進度','Everyone'],['gap','缺口分析','Gaps']]:[])];
+  let body;
+  if(v==='mine'&&!mine) body=`<div class="empty">${esc(both('您的職稱沒有長照繼續教育積分規定。','Your title has no long-term-care continuing-education requirement.'))}</div>`;
+  else if(v==='mine') body = state.ceCat&&state.ceCat.id===u.id ? `<button class="btn ghost mini" data-cemine>${esc(both('← 返回積分總表','← Back to the summary'))}</button>${ceCourseList(u.id,state.ceCat.key)}` : ceSummary(u.id);
+  else if(!all) body=`<div class="empty">${esc(both('只有教育訓練、人資、主管等身分可以看全員進度。','Only training, HR, managers and similar roles can see everyone’s progress.'))}</div>`;
+  else if(v==='gap') body=ceGap();
+  else if(state.ceEmp && ceEligibleStaff().some(p=>p.id===state.ceEmp)) body=`<button class="btn ghost mini" data-ceback>${esc(both('← 返回全員進度','← Back to everyone'))}</button>`+(state.ceCat&&state.ceCat.id===state.ceEmp?`<button class="btn ghost mini" data-cemine style="margin-left:6px">${esc(both('← 返回積分總表','← Back to the summary'))}</button>${ceCourseList(state.ceEmp,state.ceCat.key)}`:ceSummary(state.ceEmp));
+  else body=ceAll();
   return `<div class="grid">
-    <section class="card"><div class="card-h"><h2>${esc(both('繼續教育時數','Continuing education'))}</h2></div>
-      ${ce.length?`<div class="card-b" style="display:grid;gap:12px">${ce.map(l=>`<div>
-          <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap"><b>${esc(l.name)}</b>
-            <span class="muted mono" style="font-size:12px">${esc(both('效期至 '+l.exp,'valid to '+l.exp))}</span>
-            <span class="spacer"></span><span class="mono">${l.ce.have} / ${l.ce.need} h</span></div>
-          <div class="bar" style="margin-top:6px"><i class="${l.ce.have<l.ce.need&&daysUntil(l.exp)<=365?'warn':''}" style="width:${Math.min(100,l.ce.have/l.ce.need*100)}%"></i></div>
-        </div>`).join('')}</div>`
-      :`<div class="empty">${esc(both('您的職務沒有繼續教育時數規定','Your role has no continuing-education requirement'))}</div>`}
-    </section>
-    <section class="card"><div class="card-h"><h2>${esc(both('可報名課程','Upcoming courses'))}</h2></div>
-      <div class="empty">${esc(both('尚無課程。課程由教育訓練專員建立（需求簡報第 6 頁：證照與訓練管理）。','No courses yet. Courses are set up by the training officer (deck p.6: licences and training).'))}</div>
-    </section>
-    <section class="card"><div class="card-h"><h2>${esc(both('訓練紀錄（示範）','Training record (demo)'))}</h2>
-        <span class="en">${esc(both('本年度 '+doneH+' 小時',doneH+' h this year'))}</span></div>
-      <div class="tablewrap"><table><thead><tr><th>${bi('日期','Date')}</th><th>${bi('課程','Course')}</th><th>${bi('時數','Hours')}</th></tr></thead>
-        <tbody>${trainRec.map(c=>`<tr><td class="mono">${c.d}</td><td>${bi(c.zh,c.en)}</td><td class="num">${c.h}</td></tr>`).join('')}</tbody></table></div>
-      <div class="legend">${esc(both('原型示意：課程紀錄為虛構資料，尚未串接 104 企業學習平台。','Prototype: course records are fictional and not linked to the 104 learning platform.'))}</div>
-    </section>
+    ${tabs.length>1?`<div class="seg">${tabs.map(t=>`<button type="button" data-ceview="${t[0]}" aria-pressed="${t[0]===v}">${esc(both(t[1],t[2]))}</button>`).join('')}</div>`:''}
+    <div class="note">${esc(both('這裡整理長照人員的繼續教育積分，做法照衛福部積分系統的畫面：總表看各類別的積分，點數字進入該類別的課程清單。「全員進度」給教育訓練、人資與主管看每個人的進度（取代目前用 Excel 一人一張工作表統計的做法），「缺口分析」看大家比較缺哪些積分，用來設計明年度課程。',
+      'Long-term-care continuing-education points, laid out like the MOHW points system: the summary shows points per category and a click opens the course list. “Everyone” lets training, HR and managers see each person’s progress (replacing the one-sheet-per-person Excel), and “Gaps” shows which points are most lacking, to design next year’s courses.'))}</div>
+    ${body}
   </div>`;
 }
 BINDERS['desk:course']=function(){
-  document.querySelectorAll('[data-enroll]').forEach(b=>b.onclick=()=>{
-    const k=b.dataset.enroll; state.enrolled=state.enrolled||{}; state.enrolled[k]=!state.enrolled[k];
-    toast(state.enrolled[k]?both('已報名：'+k.split('|')[1],'Enrolled'):both('已取消報名','Enrolment cancelled')); render();
-  });
+  const u=me(), v=state.ceView||(ceEligible(u)?'mine':(can('trainView')?'all':'mine')), who=()=>v==='mine'?u.id:state.ceEmp;
+  document.querySelectorAll('[data-ceview]').forEach(b=>b.onclick=()=>{ state.ceView=b.dataset.ceview; state.ceEmp=null; state.ceCat=null; render(); });
+  document.querySelectorAll('[data-cecat]').forEach(b=>b.onclick=()=>{ state.ceCat={id:who(), key:b.dataset.cecat}; render(); });
+  document.querySelectorAll('[data-cemine]').forEach(b=>b.onclick=()=>{ state.ceCat=null; render(); });
+  document.querySelectorAll('[data-ceback]').forEach(b=>b.onclick=()=>{ state.ceEmp=null; state.ceCat=null; render(); });
+  document.querySelectorAll('[data-ceemp]').forEach(r=>r.onclick=()=>{ state.ceView='all'; state.ceEmp=r.dataset.ceemp; state.ceCat=null; render(); });
+  const f=state.ceF||(state.ceF={unit:'ALL',title:'ALL',status:'ALL',q:''});
+  [['ceUnit','unit'],['ceTitle','title'],['ceStatus','status']].forEach(([id,k])=>{ const e=document.getElementById(id); if(e) e.onchange=()=>{ f[k]=e.value; render(); }; });
+  const q=document.getElementById('ceQ'); if(q){ let comp=false; const apply=()=>{ f.q=q.value; const p=q.selectionStart; render(); const j=document.getElementById('ceQ'); if(j){ j.focus(); j.setSelectionRange(p,p);} };
+    q.addEventListener('compositionstart',()=>{ comp=true; }); q.addEventListener('compositionend',()=>{ comp=false; apply(); }); q.addEventListener('input',e=>{ if(!(comp||e.isComposing)) apply(); }); }
+  const tp=document.querySelector('[data-cetemplate]'); if(tp) tp.onclick=()=>{
+    const head=['員工編號','課程日期（民國）','課程名稱','實施方式（實體／網路）','開課單位','專業課程','專業品質','專業倫理','專業法規','消防安全','緊急應變','感染管制','性別敏感度','原住民族文化','多元族群文化'];
+    const ex=(id,d,c,mode,unitName)=>[id,d,c.name,mode,unitName,...c.v];
+    saveBlob(buildXlsx([['繼續教育積分匯入範本（示範）'],['一列一門課；各類積分欄位填該課程在這個類別給的點數（沒有就空白）。範例列是示範，不是真實資料。匯入功能要等需求端確認格式後再做。'],[],head,
+      ex('A004','115/03/12',CE_CATALOG[1],'實體','示範開課單位 甲'),ex('A004','115/05/20',CE_CATALOG[17],'網路','示範開課單位 乙')]),'繼續教育積分匯入範本.xlsx'); };
+  const x=document.querySelector('[data-ceexcel]'); if(x) x.onclick=()=>{
+    const rows=[['繼續教育積分總表（示範資料）'],['總積分＝專業課程＋品質、倫理、法規（最多計 36）；規則依 Excel 表頭與衛福部積分系統畫面整理'],[],
+      ['單位','員工編號','長照類別','姓名','CPR效期','長照小卡效期','總積分','專業課程','品質、倫理、法規','四類別','原住民','多元','狀態'],
+      ...ceEligibleStaff().map(p=>{ const c=ceCalc(p.id); return [unit(p.unit).zh,p.id,TITLES[p.title].zh,empName(p.id),rocDate(c.rec.cprExp),rocDate(c.rec.end),c.total,ce1(c.s.pro),ce1(c.qel),ce1(c.four),ce1(c.s.indig),ce1(c.s.divers),CE_STATUS[c.status].zh]; })];
+    saveBlob(buildXlsx(rows),'繼續教育積分總表.xlsx'); };
 };
 </script>
 <script>
@@ -5076,6 +5258,7 @@ const CAPS=[
  {key:'finalize', zh:'人資複核（假單生效）', en:'HR countersign (makes leave effective)'},
  {key:'annGroup', zh:'發布全公司公告', en:'Publish company-wide announcements'},
  {key:'annOffice',zh:'發布本公司公告', en:'Publish facility announcements'},
+ {key:'trainView', zh:'查看全員繼續教育積分（私人秘書 › 課程）', en:'View everyone’s continuing-education points (My Desk › Courses)'},
  {key:'perms',    zh:'管理角色與權限、系統設定', en:'Manage roles, permissions and settings'},
  {key:'salary', derived:true, zh:'薪資計算與覆核', en:'Run and review payroll', note:{zh:'與「查看薪資」同一權限',en:'Same permission as "View pay"'}}
 ];
@@ -5415,6 +5598,12 @@ const TOURS = [
    {go:{tab:'titles'}, target:'.titlematrix', zh:'「職稱對照」是 10/7 會議的新做法：每個職稱對哪些項目名稱可以操作，填一張矩陣就好，不必逐一對單一員工設定。內容取自需求端提供的 Excel；按格子可切換，也能下載 Excel，最下面列出和目前原型權限的差異。'},
    {go:{module:'set',tab:null}, target:'#view table', zh:'「系統設定」有既有系統連結（104、居服個案管理系統等）、帳號原則與員工編號規則。過渡期間以連結導向現有系統。'}
  ]},
+ {id:'ce', zh:'系統管理員：查看全員的繼續教育積分', role:'admin', steps:[
+   {go:{module:'desk',tab:'course',ceView:'all',ceEmp:null,ceCat:null}, target:'#view .tiles', zh:'「私人秘書 › 課程」的「全員進度」：人數、已達標、落後（小卡效期 12 個月內且還有缺口）、效期 12 個月內到期，一眼看出誰需要先處理。'},
+   {target:'#ceUnit', zh:'依單位、職稱、狀態篩選，或搜尋姓名、員工編號。'},
+   {target:'tr[data-ceemp]', zh:'點任一列，看這個人的積分總表；點積分數字，再看該類別的課程清單。紅色數字是還沒達到標準。'},
+   {go:{ceView:'gap'}, target:'#view .bar', zh:'「缺口分析」把大家缺的積分排序（未達標人數越多越前面），教育訓練專員據此設計明年度的課程。'}
+ ]},
  {id:'storage', zh:'系統管理員：估算手機打卡的雲端儲存空間', role:'admin', steps:[
    {go:{module:'doc',tab:'sysinfo'}, target:'#stForm', zh:'「文件管理 › 系統說明 › 雲端儲存空間估算」：輸入員工數、每月出勤日、每日打卡次數、每筆大小、是否存照片、員工附件、備份份數與保存年限。預設值是假設，不是會議決定。'},
    {target:'[data-stpreset]', zh:'四個按鈕套用常見情境：300 或 2,000 人，只存文字紀錄或每次打卡拍照，可以直接看差距。'},
@@ -5431,7 +5620,7 @@ function startTour(id){
 function applyTourStep(){
   const t=TOURS.find(x=>x.id===state.tour.id), st=t.steps[state.tour.i];
   const go=typeof st.go==='function' ? st.go() : (st.go||{});
-  ['module','tab','deskForm','deskQ','deskDay'].forEach(k=>{ if(k in go) state[k]=go[k]; });
+  ['module','tab','deskForm','deskQ','deskDay','ceView','ceEmp','ceCat'].forEach(k=>{ if(k in go) state[k]=go[k]; });
   render();
 }
 function drawTour(){

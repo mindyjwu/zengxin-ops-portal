@@ -157,7 +157,7 @@ test.describe('Settings & permission matrix', () => {
   test('admin sees the full matrix with editable permission cells', async ({ page }) => {
     await go(page, 'perm', 'matrix');
     await expect(page.locator('.permtable thead th')).toHaveCount(16);   // capability column + 15 roles
-    await expect(page.locator('[data-perm]')).toHaveCount(135);          // 9 editable capabilities × 15 roles
+    await expect(page.locator('[data-perm]')).toHaveCount(150);          // 10 editable capabilities × 15 roles
     await expect(page.locator('[data-perm="admin|perms"]')).toBeDisabled();
     await expect(page.locator('[data-perm="admin|mgmt"]')).toBeDisabled();
     await expect(page.locator('[data-perm="employee|mgmt"]')).toHaveAttribute('aria-pressed', 'false');
@@ -792,7 +792,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
         const tabs = await page.locator('[data-tab]').evaluateAll(n => n.map(x => x.dataset.tab));
         for (const tab of tabs.length ? tabs : [null]) {
           if (tab) await page.click(`[data-tab="${tab}"]`);
-          const text = await page.locator('#app').innerText();
+          const text = (await page.locator('#app').innerText()).replace(/原住民/g, '');   // 「原住民族文化」是繼續教育積分的正式類別名稱
           for (const w of banned) expect(text, `${role} ${m}:${tab} shows ${w}`).not.toContain(w);
           if (!mayQuote(m, tab)) expect(text, `${role} ${m}:${tab} shows 院長`).not.toContain('院長');
         }
@@ -1744,5 +1744,75 @@ test.describe('CSV exports', () => {
     await page.click('[data-tab="emp"]');
     await expect(empRows(page)).toHaveCount(10);                 // only the supervisor's own unit
     await expect(page.locator('#view tbody')).not.toContainText('NT$');   // pay stays hidden
+  });
+
+  test('continuing-education points: my summary, clickable categories, course list', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'employee');
+    await go(page, 'desk', 'course');
+    const v = page.locator('#view');
+    for (const x of ['長照人員證號', '專業品質、專業倫理、專業法規累積積分至少 24 點', '各主題已至少完成一堂', '依認證效期至少', '積分計算指引', '至多 80 點', '總積分＝專業課程＋品質、倫理、法規']) await expect(v).toContainText(x);
+    await expect(page.locator('[data-ceview]')).toHaveCount(0);                 // an employee has no "everyone" view
+    const calc = await page.evaluate(() => { const c = ceCalc('A004'); return { total: c.total, pro: c.s.pro, qel: c.qel, req: c.need }; });
+    expect(calc.total).toBeCloseTo(calc.pro + calc.qel, 5);                     // the Excel formula: professional + min(quality+ethics+law, 36)
+    expect(calc.qel).toBeLessThanOrEqual(36);
+    await expect(v).toContainText(`${calc.total} / 120`);
+    // click a number to open the course list, then go back
+    await page.locator('[data-cecat]').first().click();
+    await expect(v).toContainText('課程日期');
+    await expect(v).toContainText('認可狀態');
+    expect(await page.locator('.cetable tbody tr').count()).toBeGreaterThan(0);
+    await page.click('[data-cemine]');
+    await expect(v).toContainText('積分計算指引');
+    // a role without the long-term-care requirement sees a notice
+    await setRole(page, 'boss');
+    await go(page, 'desk', 'course');
+    await expect(page.locator('[data-ceview="all"]')).toBeVisible();
+  });
+
+  test('continuing-education points: the admin sees everyone, filters, drills into a person and sees the gap analysis', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'desk', 'course');
+    const v = page.locator('#view');
+    await expect(v).toContainText('全員繼續教育積分總表');
+    const staff = await page.evaluate(() => ceEligibleStaff().map(p => p.id));
+    expect(staff.length).toBe(12);                                              // care attendants, home care workers, supervisors and nurses on the roster
+    await expect(page.locator('tr[data-ceemp]')).toHaveCount(12);
+    const [tpl] = await Promise.all([page.waitForEvent('download'), page.click('[data-cetemplate]')]);
+    expect(tpl.suggestedFilename()).toBe('繼續教育積分匯入範本.xlsx');
+    const tplText = fs.readFileSync(await tpl.path()).toString('utf8');
+    for (const x of ['繼續教育積分匯入範本', '實施方式', '消防安全', '多元族群文化']) expect(tplText).toContain(x);
+    await page.selectOption('#ceTitle', 'rn');
+    await expect(page.locator('tr[data-ceemp]')).toHaveCount(3);
+    await page.selectOption('#ceTitle', 'ALL');
+    await page.selectOption('#ceUnit', 'O3');
+    await expect(page.locator('tr[data-ceemp]')).toHaveCount(2);                // C001 and C002 (C003 has left)
+    await page.selectOption('#ceUnit', 'ALL');
+    // drill into a person, open a category, go back twice
+    await page.click('tr[data-ceemp="A004"]');
+    await expect(v).toContainText('A004');
+    await expect(v).toContainText('積分計算指引');
+    await page.locator('[data-cecat]').first().click();
+    await expect(v).toContainText('課程日期');
+    await page.click('[data-cemine]');
+    await page.click('[data-ceback]');
+    await expect(v).toContainText('全員繼續教育積分總表');
+    // gap analysis
+    await page.click('[data-ceview="gap"]');
+    await expect(v).toContainText('缺口分析：明年度課程設計');
+    await expect(v).toContainText('效期 12 個月內到期');
+    // the Excel export
+    await page.click('[data-ceview="all"]');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-ceexcel]')]);
+    expect(dl.suggestedFilename()).toBe('繼續教育積分總表.xlsx');
+    const text = fs.readFileSync(await dl.path()).toString('utf8');
+    for (const x of ['繼續教育積分總表', '長照小卡效期', '品質、倫理、法規', 'A004']) expect(text).toContain(x);
+    // the day care supervisor sees only their own unit; an employee cannot reach the everyone view
+    await setRole(page, 'daydir');
+    await go(page, 'desk', 'course');
+    expect(await page.locator('tr[data-ceemp]').count()).toBeLessThanOrEqual(6);
+    await setRole(page, 'employee');
+    await go(page, 'desk', 'course');
+    await expect(page.locator('tr[data-ceemp]')).toHaveCount(0);
   });
 });
