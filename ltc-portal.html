@@ -551,7 +551,7 @@ const EVENTS = [
  {d:'2026-09-30', type:'hr',    scope:'ALL', zh:'第二次需求會議 11:30', en:'Requirements meeting #2, 11:30'},
  {d:'2026-09-30', type:'audit', scope:'ALL', zh:'截止：NAS 硬體清單與容量確認', en:'Due: NAS hardware and capacity list'},
  {d:'2026-10-07', type:'hr',    scope:'ALL', zh:'第三次需求會議 10:00–11:40', en:'Third requirements meeting, 10:00–11:40'},
- {d:'2026-10-14', type:'hr',    scope:'ALL', zh:'下次會議 10:00（地點待確認）', en:'Next meeting, 10:00 (venue to confirm)'},
+ {d:'2026-10-14', type:'hr',    scope:'ALL', zh:'第四次需求會議 11:00–12:00', en:'Fourth requirements meeting, 11:00–12:00'},
  {d:'2026-10-21', type:'hr',    scope:'ALL', zh:'下次會議 10:00（地點待確認）', en:'Next meeting, 10:00 (venue to confirm)'},
  {d:'2026-10-15', type:'audit', scope:'ALL', zh:'截止：仁寶系統 API、衛福部介接要求確認', en:'Due: Renbao API and MOHW interface requirements'},
  {d:'2026-10-31', type:'train', scope:'ALL', zh:'第一期 MVP 目標上線', en:'Phase 1 MVP target'}
@@ -1164,11 +1164,31 @@ const MEETING_DECISIONS = [
   {src:'10/7', zh:'導覽與使用指南兩項新功能，入口在右上角，員工可自學操作流程', en:'Walkthroughs and the user guide, entry points at the top right, let employees learn on their own',
    whereZh:'畫面右上角「導覽」「使用指南」', whereEn:'Walkthrough and User guide buttons at the top right', st:'built'},
   {src:'10/7', zh:'先把整體架構（組織圖、權限、流程）定到八九成，再進行 UAT', en:'Settle the overall structure (org chart, permissions, flows) to 80–90% before UAT',
-   whereZh:'下次會議（10/14）聚焦：104 功能盤點、權限矩陣、員工編號規則、仁寶報表匯入', whereEn:'Next meeting (14 Oct) focus: 104 inventory, permission matrix, employee-number rule, 仁寶 report import', st:'todo'}
+   whereZh:'下次會議（10/14）聚焦：104 功能盤點、權限矩陣、員工編號規則、仁寶報表匯入', whereEn:'Next meeting (14 Oct) focus: 104 inventory, permission matrix, employee-number rule, 仁寶 report import', st:'todo'},
+  {src:'10/14', zh:'雲端儲存容量依資料類型與數量評估，啟用後可看剩餘容量、彈性加購，不必初期一次購足', en:'Cloud capacity is estimated from the data types and volumes; once live, remaining space can be checked and topped up, with no need to buy everything at the start',
+   whereZh:'文件管理 › 系統說明 › 雲端儲存空間估算', whereEn:'Documents › System info › Cloud storage estimate', st:'part'},
+  {src:'10/14', zh:'簽核流程結合組織圖設計；組織圖分正式版（管理與行政）與簡易版（一般員工查閱）', en:'Approval flows are designed together with the org chart; two org charts: formal (management and admin) and simple (for ordinary staff)',
+   whereZh:'公告欄 › 組織圖（正式全名版）；權限與範圍 › 組織圖（功能版）；線上申請 › 簽核路徑預覽（Block＋Arrow）', whereEn:'Announcements › Org chart (formal); Roles & scope › Org chart (working view); Online requests › Approval path preview', st:'part'},
+  {src:'10/14', zh:'請假申請新增附件上傳', en:'Leave requests get an attachment upload',
+   whereZh:'私人秘書 › 表單 › 請假單（原型只記檔名，要等雲端串接才真正保存）', whereEn:'My Desk › Forms › Leave request (file name only until cloud storage is connected)', st:'built'},
+  {src:'10/14', zh:'員工證明文件申請新增日期區間的彈性選擇', en:'Certificate requests get a flexible date range',
+   whereZh:'私人秘書 › 表單 › 勞健保證明申請單（自訂起訖月份，整月計算）', whereEn:'My Desk › Forms › Insurance certificate (custom month range, whole months)', st:'built'},
+  {src:'10/14', zh:'研究衛福部積分系統與入口網站的串接可行性，減少人工逐筆輸入', en:'Study how the MOHW points system could connect to the portal, to cut manual key-in',
+   whereZh:'IT 研究中；網站尚未開發', whereEn:'IT is studying it; not built', st:'todo'},
+  {src:'10/14', zh:'請人事確認內部通訊錄資料，並建立更新維護機制', en:'HR to confirm the internal directory and set up an update routine',
+   whereZh:'權限與範圍 › 內部通訊錄（含部門篩選）；資料與維護機制待人事確認', whereEn:'Roles & scope › Directory (with department filter); data and routine to be confirmed by HR', st:'part'},
+  {src:'10/14', zh:'不同中文輸入法的相容性測試（輸入、編輯、搜尋、儲存）', en:'Test different Chinese input methods (typing, editing, search, saving)',
+   whereZh:'搜尋框已修正注音輸入被打斷的問題；各輸入法的完整測試待 IT', whereEn:'Search boxes no longer break Zhuyin input; a full test across input methods is for IT', st:'part'},
+  {src:'10/14', zh:'確認仁寶資料下載為 Excel 後上傳入口網站的可行性（格式、欄位對應、匯入方式、錯誤）', en:'Confirm that 仁寶 data downloaded as Excel can be uploaded to the portal (format, column mapping, import method, errors)',
+   whereZh:'業務資料整合 › 居服個案管理系統（等仁寶匯出檔案，尚未開發）', whereEn:'Business data › Home-care case system (waiting for the 仁寶 export; not built)', st:'todo'},
+  {src:'10/14', zh:'雲端服務與 Portal 完成後，在導覽與使用指南之外新增 Q&A 互動功能', en:'Once cloud service and portal are live, add a Q&A feature beside the walkthroughs and user guide',
+   whereZh:'規劃中；目前有導覽與使用指南', whereEn:'Planned; today there are walkthroughs and the user guide', st:'todo'}
 ];
 const DECISION_ST = {built:{zh:'已建置',en:'Built',cls:'ok'}, part:{zh:'部分完成',en:'Partly done',cls:'info'}, demo:{zh:'示意',en:'Illustrated',cls:'warn'}, todo:{zh:'待辦',en:'To do',cls:''}};
 /* 後續追蹤事項（會議紀錄第三節）；負責人以職務表示，不列個人姓名 */
 const FOLLOW_UPS = [
+  {src:'10/14', zh:'研究衛福部積分系統與入口網站串接方式（正式紀錄待辦 4）', ownerZh:'IT', whenZh:'待訂', st:'待辦'},
+  {src:'10/14', zh:'確認並更新內部通訊錄資料（正式紀錄待辦 5）', ownerZh:'人事', whenZh:'下次會議前', st:'待辦'},
   {src:'10/14', zh:'傳送長照教育訓練網站連結、帳號密碼及現有 Excel 格式，供專案負責人研究如何整合教育時數管理，避免逐人手動查詢（政府網站無法匯出全員資料）', ownerZh:'需求端／人事', whenZh:'下次會議（10/21）前', st:'待辦'},
   {src:'10/14', zh:'確認並提供正確版組織圖與內部通訊錄資料，含各職位正式全名與地點', ownerZh:'需求端', whenZh:'下次會議（10/21）前', st:'待辦'},
   {src:'10/14', zh:'整理簽核流程架構（各職務簽核到哪一層，部分流程不依組織圖走），建議用 Block＋Arrow 圖示呈現，方便設計', ownerZh:'需求端', whenZh:'下次會議（10/21）前', st:'待辦'},
@@ -3600,6 +3620,32 @@ const MEETING_3RD = {
   nextFocus:['確認 104 系統功能盤點結果與 Portal 差勤管理的預計建置範圍。','確認員工角色及各身分別的權限矩陣。','確認全公司員工編號規則。','追蹤仁寶系統報表匯入 Portal 的分析功能開發進度。'],
   next:'10/14（三）10:00；地點待確認'
 };
+/* 第四次會議正式紀錄（V2.0，10/14）：照正式紀錄原文整理，主席、紀錄與出席者姓名不列 */
+const MEETING_4TH = {
+  name:'入口網站建置第四次需求討論會議', theme:'員工頁面、差勤管理及系統整合規劃', when:'10/14（三）11:00–12:00', where:'Teams', attendees:'4 人（姓名略）', ver:'V2.0',
+  purpose:'針對入口網站之員工頁面與資料欄位進行說明，並確認員工識別方式、差勤管理建置方向、系統角色與權限、員工編號統一、個資管理及仁寶系統串接等後續工作。',
+  items:[
+    {h:'雲端儲存容量規劃', items:['建議依Portal預計上傳之資料類型及數量評估雲端儲存容量，包含文字文件、圖片及其他附件等。','雲端服務啟用後，可依實際使用情況查看剩餘儲存容量，並視需求彈性加購，無須於初期一次購足所有容量。','後續應依預估資料量及實際使用情形，評估合適之雲端容量與採購方案。']},
+    {h:'簽核流程與組織架構規劃', items:['建議將系統簽核流程結合組織圖進行設計，以利呈現組織層級、簽核順序及權責關係。','組織圖建議規劃兩種版本：','正式版：提供管理及行政作業使用，呈現完整組織架構與相關職務資訊。','簡易版：提供一般員工查閱，方便快速了解部門架構及人員隸屬關係。','後續由IT確認組織資料及簽核規則，並評估系統建置方式。']},
+    {h:'請假申請功能調整', items:['建議於請假申請功能新增附件上傳機制，供員工依請假類別及實際需求上傳相關證明文件。','後續由 IT 評估附件上傳功能之建置方式及相關設定。']},
+    {h:'員工證明文件申請功能調整', items:['建議於員工申請證明文件功能中，新增日期區間的彈性選擇機制，員工可依實際申請需求選擇起訖日期，以提升申請作業之便利性']},
+    {h:'衛福部積分系統與入口網站串接', items:['請 IT 研究衛福部積分系統與公司入口網站之串接可行性，評估是否可透過系統介接或資料匯入方式，減少人工逐筆輸入（Key-in）作業，提升資料處理效率及正確性。','後續應確認相關系統之介接方式、資料格式、權限及技術限制。']},
+    {h:'內部通訊錄資料維護', items:['請人事確認Portal內部通訊錄資料，確保員工姓名、部門、職稱及其他相關資訊正確。','後續應建立適當的資料更新及維護機制，以確保通訊錄資訊之即時性與正確性。']},
+    {h:'中文輸入法相容性確認', items:['建議針對不同中文輸入法進行系統操作測試，確認文字輸入、編輯、搜尋及資料儲存等功能之流暢度與相容性。','後續由 IT 進行測試，確認不同輸入法環境下是否存在操作異常或相容性問題。']},
+    {h:'仁寶 Excel 資料上傳入口網站之可行性', items:['請 IT 確認仁寶相關資料下載為 Excel 格式後，再上傳至公司入口網站之可行性，評估 Excel 檔案格式、欄位對應、資料匯入方式及可能發生之格式或資料錯誤。']},
+    {h:'Portal導覽、使用指南及 Q&A 功能', items:['雲端服務及Portal建置完成後，除既有導覽及使用指南功能外，建議新增 Q&A 互動功能，可依員工常見問題規劃問答內容，協助員工快速查詢系統操作方式及相關資訊。','後續評估 Q&A 功能之呈現方式、內容維護機制及互動形式，以提升使用者體驗。']}
+  ],
+  todo:[
+    {zh:'評估雲端儲存容量及加購方案', owner:'行政', when:'待訂'},
+    {zh:'規劃簽核流程及正式版、簡易版組織圖', owner:'行政', when:'下次會議前'},
+    {zh:'擬定全公司統一的員工編號原則，並盤點既有員工編號。導入「復職年資重算、員編重編」之程式邏輯。', owner:'人事／IT', when:'待訂'},
+    {zh:'研究衛福部積分系統與入口網站串接方式', owner:'IT', when:'待訂'},
+    {zh:'確認並更新內部通訊錄資料', owner:'人事', when:'下次會議前'},
+    {zh:'規劃並執行 Portal「居服個案管理系統」連結建置，並測試仁寶 Excel 匯入 Portal 彙總分析之版型。', owner:'IT', when:'下次會議說明初步結果'}
+  ],
+  nextFocus:['規劃簽核流程及正式版、簡易版組織圖。','研究衛福部積分系統與入口網站串接方式。','確認全公司員工編號規則。','追蹤仁寶系統報表匯入 Portal 的分析功能開發進度。'],
+  next:'10/21（三）10:00；地點待確認'
+};
 /* 同一場會議的錄音摘要：正式紀錄沒有寫、但摘要有提到的項目 */
 const MEETING_3RD_SUMMARY = [
   '目前的四個身分（系統管理員、人資、管理者、一般員工）是暫定，需求端要確認是否正確、需不需要增減。',
@@ -3642,6 +3688,32 @@ function viewDocMeeting(){
   return `
   <div class="grid">
     <section class="card">
+      <div class="card-h"><h2>${esc(MEETING_4TH.name)}</h2><span class="en">${esc(both('10/14 · 第四次 · '+MEETING_4TH.ver,'14 Oct · fourth · '+MEETING_4TH.ver))}</span></div>
+      <div class="card-b"><dl class="kv">
+        ${kvRow('會議主題','Theme',esc(MEETING_4TH.theme))}
+        ${kvRow('日期／時間','Date',esc(MEETING_4TH.when))}
+        ${kvRow('地點／方式','Format',esc(MEETING_4TH.where))}
+        ${kvRow('出席','Attendees',esc(MEETING_4TH.attendees))}
+        ${kvRow('會議目的','Purpose',esc(MEETING_4TH.purpose))}
+      </dl>
+      <div class="muted" style="font-size:12.5px;margin:10px 0">${esc(both('下列照第四次會議正式紀錄（V2.0）整理，用字保持原樣；主席、紀錄與出席者的姓名不列。','Taken from the official minutes of the fourth meeting (V2.0), wording unchanged; the names of the chair, note-taker and attendees are left out.'))}</div>
+      <div style="display:grid;gap:12px">${MEETING_4TH.items.map((m,i)=>`<div><b>${i+1}. ${esc(m.h)}</b>
+        <ul style="margin:6px 0 0;padding-left:20px;line-height:1.75">${m.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div>
+      <div class="note" style="margin-top:12px">${esc(both('和 10/14 會議整理的對照：紀錄的「正式版／簡易版」組織圖，網站目前對應「公告欄 › 組織圖」（正式全名版）與「權限與範圍 › 組織圖（功能版）」；紀錄說簡易版給一般員工查閱，這兩處怎麼對應待確認。',
+        'How this relates to the notes from the 14 Oct meeting: the minutes’ formal and simple org charts map for now to Announcements › Org chart (formal full-name) and Roles & scope › Org chart (working view); the minutes say the simple version is for ordinary staff, so how the two line up is to be confirmed.'))}</div></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('後續待辦事項（10/14 會議）','Action items (14 Oct meeting)'))}</h2></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>${bi('項次','No.')}</th><th>${bi('待辦事項','Action')}</th><th>${bi('負責單位／人員','Owner')}</th><th>${bi('預計完成時間','When')}</th></tr></thead>
+        <tbody>${MEETING_4TH.todo.map((t,i)=>`<tr><td class="mono">${i+1}</td><td style="white-space:normal">${esc(t.zh)}</td><td style="white-space:normal">${esc(t.owner)}</td><td>${esc(t.when)}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>${esc(both('下次會議（10/14 會議後）','Next meeting (after 14 Oct)'))}</h2><span class="en">${esc(both(MEETING_4TH.next,'Wed 21 Oct, 10:00; venue to confirm'))}</span></div>
+      <div class="card-b"><div class="muted" style="font-size:12.5px;margin-bottom:6px">${esc(both('建議討論重點：','Suggested focus:'))}</div><ol style="margin:0;padding-left:20px;line-height:1.8">${MEETING_4TH.nextFocus.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>
+    </section>
+    <section class="card">
       <div class="card-h"><h2>${esc(MEETING_3RD.name)}</h2><span class="en">${esc(both('10/7 · 第三次 · '+MEETING_3RD.ver,'7 Oct · third · '+MEETING_3RD.ver))}</span></div>
       <div class="card-b"><dl class="kv">
         ${kvRow('會議主題','Theme',esc(MEETING_3RD.theme))}
@@ -3662,7 +3734,7 @@ function viewDocMeeting(){
       </table></div>
     </section>
     <section class="card">
-      <div class="card-h"><h2>${esc(both('下次會議','Next meeting'))}</h2><span class="en">${esc(both(MEETING_3RD.next,'Wed 14 Oct, 10:00; venue to confirm'))}</span></div>
+      <div class="card-h"><h2>${esc(both('下次會議（10/7 會議後；已於 10/14 召開）','Next meeting (after 7 Oct; held on 14 Oct)'))}</h2><span class="en">${esc(both(MEETING_3RD.next,'Wed 14 Oct, 10:00; venue to confirm'))}</span></div>
       <div class="card-b"><div class="muted" style="font-size:12.5px;margin-bottom:6px">${esc(both('建議討論重點：','Suggested focus:'))}</div><ol style="margin:0;padding-left:20px;line-height:1.8">${MEETING_3RD.nextFocus.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>
     </section>
     <section class="card">

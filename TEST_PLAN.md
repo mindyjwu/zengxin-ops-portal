@@ -323,3 +323,4 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] 使用指南 › 雲端儲存空間怎麼估: the formula, four scenarios (7.5 GB / 687 GB / 50 GB / 4.5 TB) match 文件管理 › 系統說明 › 雲端儲存空間估算; the guide link walks through the estimator
 - [ ] 10/14: 身分選單沒有「管理者（日照主管）」與單獨的「一般員工」; 公告欄 › 組織圖 is the formal full-name tree, 權限與範圍 › 組織圖（功能版） is the staff chart with 編輯職位文字; 權限與範圍 › 內部通訊錄 has a department filter and accepts 注音 input; tables keep the first row and column frozen
 - [ ] 10/14: leave form accepts an attachment (file name shown to the approver); 勞健保證明 period is a custom month range (min one month); 私人秘書 › 查詢 has no 個人工作日誌
+- [ ] 文件管理 › 會議紀錄: the fourth meeting's official minutes (V2.0) come first with 9 items, 6 actions and the next meeting (10/21); no attendee names; 原型說明 › 範圍與進展 lists the 9 decisions from 14 Oct
