@@ -26,6 +26,7 @@ async function go(page, mod, tab) {
   await page.click(`[data-mod="${mod}"]`);
   if (tab) await page.click(`[data-tab="${tab}"]`);
 }
+const grantHr = page => page.evaluate(() => { for (const k of ['hr:emp', 'hr:att', 'hr:leave']) (state.titleMatrix = state.titleMatrix || {})[k + '|dir'] = '可'; render(); });   // 日照主管 has no HR pages in the Excel; grant them to test own-company data scope
 const empRows = page => page.locator('#view tbody tr[data-emp]');
 const requestRow = (page, id) =>
   page.locator('#view tbody tr').filter({ has: page.locator('td.mono', { hasText: new RegExp(`^${id}$`) }) });
@@ -51,6 +52,8 @@ test.describe('Shell & role switching', () => {
     await setRole(page, 'hr');
     await expect(chip).toContainText('人資');
     await setRole(page, 'manager');
+    await expect(chip).toContainText('管理者');
+    await setRole(page, 'daydir');
     await expect(chip).toContainText('日照主管');
   });
 
@@ -96,7 +99,8 @@ test.describe('Data scope', () => {
   });
 
   test('manager sees only O1 staff and the office filter is locked', async ({ page }) => {
-    await setRole(page, 'manager');
+    await setRole(page, 'daydir');
+    await grantHr(page);
     await go(page, 'hr', 'emp');
     await expect(empRows(page)).toHaveCount(10);   // 誠馨: day care, home care and community center staff
     const ids = await empRows(page).evaluateAll(rs => rs.map(r => r.dataset.emp));
@@ -122,7 +126,8 @@ test.describe('Data scope', () => {
   });
 
   test('manager attendance and leave views are limited to O1', async ({ page }) => {
-    await setRole(page, 'manager');
+    await setRole(page, 'daydir');
+    await grantHr(page);
     await go(page, 'hr', 'att');
     await expect(page.locator('#view')).toContainText('誠馨');
     await expect(page.locator('#view')).not.toContainText('誠芯');
@@ -380,7 +385,7 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
     await setRole(page, 'employee');
     await page.click('[data-tab="query"]');
     await expect(page.locator('[data-dq="subatt"]')).toHaveCount(0);
-    await setRole(page, 'manager');
+    await setRole(page, 'daydir');
     await page.click('[data-tab="query"]');
     await page.click('[data-dq="subatt"]');
     await expect(page.locator('#view tbody tr')).toHaveCount(6);   // day care staff reporting to the 誠馨 supervisor
@@ -396,7 +401,7 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
   });
 
   test('batch missed punches files one correction per ticked day', async ({ page }) => {
-    await setRole(page, 'manager');
+    await setRole(page, 'daydir');
     await page.click('[data-mod="desk"]');
     await openForm(page, 'fix');
     const n = await page.locator('#batchFix input[name="pick"]').count();
@@ -771,8 +776,10 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await expect(page.locator('.pagehead .chip.warn')).toContainText('全部公司');
     await page.selectOption('#offSel', 'O3');
     await expect(page.locator('.pagehead .chip.warn')).toContainText('牛津');
-    await setRole(page, 'manager');
+    await setRole(page, 'daydir');
     await expect(page.locator('.pagehead .chip.warn')).toContainText('誠馨');
+    await setRole(page, 'manager');
+    await expect(page.locator('.pagehead .chip.warn')).toContainText('全部公司');   // the manager works across units
   });
 
   test('no page shows the removed, unsourced content', async ({ page }) => {
@@ -812,7 +819,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
 
   test('a manager fills in a mid-year review from the team reviews page', async ({ page }) => {
     await openPortal(page);
-    await setRole(page, 'manager');
+    await setRole(page, 'daydir');
     await page.click('[data-mod="desk"]');
     await page.click('[data-tab="query"]');
     await page.click('[data-dq="subperf"]');
@@ -1446,7 +1453,7 @@ test.describe('Personnel file drawer', () => {
 
   test('manager opening an out-of-scope person gets no sections', async ({ page }) => {
     await openPortal(page);
-    await setRole(page, 'manager');
+    await setRole(page, 'daydir');
     await go(page, 'perm', 'orgfn');
     await page.click('[data-node="B001"]');              // 誠芯 day care supervisor (out of scope)
     await expect(drawer(page)).toBeVisible();
@@ -1522,7 +1529,7 @@ test.describe('CSV exports', () => {
   }
 
   test('manager exports contain only O1 staff', async ({ page }) => {
-    await setRole(page, 'manager');
+    await setRole(page, 'daydir');
     await go(page, 'rpt');
     const { lines } = await download(page, 'attendance');
     const ids = col(lines, '員工編號');
