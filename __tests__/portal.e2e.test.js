@@ -1973,3 +1973,25 @@ test.describe('Phone width (390px)', () => {
     }
   });
 });
+
+test.describe('Day / night theme', () => {
+  test('switch sets the theme, is remembered after reload, and auto follows the device', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await openPortal(page);
+    const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    const light = await bg();
+    await page.click('[data-theme-set="dark"]');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    expect(await bg()).not.toBe(light);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await expect(page.locator('[data-theme-set="dark"]')).toHaveAttribute('aria-pressed', 'true');
+    await page.click('[data-theme-set="auto"]');
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/);
+    expect(await bg()).toBe(light);                       // 裝置是日間 → 自動 = 日間
+    await page.emulateMedia({ colorScheme: 'dark' });
+    expect(await bg()).not.toBe(light);                   // 裝置改夜間 → 自動跟著變
+    await page.click('[data-theme-set="light"]');
+    expect(await bg()).toBe(light);                       // 手動日間蓋過裝置的夜間
+  });
+});
