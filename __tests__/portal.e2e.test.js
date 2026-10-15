@@ -81,12 +81,12 @@ test.describe('Shell & role switching', () => {
     await page.click('[data-lang="zh"]');
   });
 
-  test('HR module exposes its four tabs', async ({ page }) => {
+  test('HR module exposes its tabs and opens on the to-do page', async ({ page }) => {
     await go(page, 'hr');
-    for (const t of ['emp', 'mylog', 'att', 'leave']) {
+    for (const t of ['todo', 'emp', 'mylog', 'att', 'leave']) {
       await expect(page.locator(`[data-tab="${t}"]`)).toBeVisible();
     }
-    await expect(page.locator('[data-tab="emp"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('[data-tab="todo"]')).toHaveAttribute('aria-selected', 'true');
   });
 });
 
@@ -252,7 +252,7 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
   test('every title column in the matrix has a role to switch to, and its pages follow the Excel', async ({ page }) => {
     const expected = await page.evaluate(() => Object.keys(ROLE_COL).map(r => {
       const col = ROLE_COL[r];
-      const mods = MODULES.filter(m => m.tabs.length ? m.tabs.some(t => ['可', '可檢視', '可編輯'].includes(titleCell(permItems().find(i => i.key === m.id + ':' + t.id), col)))
+      const mods = MODULES.filter(m => m.tabs.length ? m.tabs.filter(t => !t.virtual).some(t => ['可', '可檢視', '可編輯'].includes(titleCell(permItems().find(i => i.key === m.id + ':' + t.id), col)))
         : ['可', '可檢視', '可編輯'].includes(titleCell(permItems().find(i => i.key === m.id), col))).map(m => m.id);
       return { r, mods };
     }));
@@ -1993,5 +1993,28 @@ test.describe('Day / night theme', () => {
     expect(await bg()).not.toBe(light);                   // 裝置改夜間 → 自動跟著變
     await page.click('[data-theme-set="light"]');
     expect(await bg()).toBe(light);                       // 手動日間蓋過裝置的夜間
+  });
+});
+
+test.describe('Manager to-do', () => {
+  test('to-do button shows the count and opens a page that follows the role', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'hr');
+    const n = +(await page.locator('#todoBtn .chip').innerText());
+    expect(n).toBeGreaterThan(0);
+    await page.click('#todoBtn');
+    await expect(page.locator('[data-tab="todo"]')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#view')).toContainText('待我簽核');
+    await expect(page.locator('#view')).toContainText('證照 90 天內到期');
+    await expect(page.locator('#view .tile .v').first()).toHaveText(String(n));
+    await page.locator('#view [data-goto="hr|leave"]').first().click();      // 按鈕直接帶到請假審核
+    await expect(page.locator('[data-tab="leave"]')).toHaveAttribute('aria-selected', 'true');
+    await setRole(page, 'employee');
+    await expect(page.locator('#todoBtn')).toHaveCount(0);                  // 一般員工沒有待辦按鈕
+  });
+  test('the to-do page is not a row in the permission matrix', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'perm', 'titles');
+    await expect(page.locator('table.titlematrix')).not.toContainText('今日待辦');
   });
 });
