@@ -24,6 +24,7 @@
   --sans:"IBM Plex Sans","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
   --mono:"IBM Plex Mono","Noto Sans TC",ui-monospace,monospace;
 }
+:root{ --att-ok:var(--ok-soft); --att-late:var(--warn-soft); --att-leave:var(--info-soft); --att-miss:var(--crit-soft); --att-off:var(--surface-2) }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --ground:#0E1513; --surface:#151E1B; --surface-2:#1B2724; --rail:#0A100E;
@@ -33,9 +34,11 @@
     --ok:#6FC98D; --ok-soft:#17301F; --warn:#E0B061; --warn-soft:#33280F; --warn-line:#5C481D;
     --crit:#E8909A; --crit-soft:#361B1F; --info:#8FBCD8; --info-soft:#14252F;
     --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    --att-ok:#2F7D56; --att-late:#9A7424; --att-leave:#2F6B8A; --att-miss:#B04A57; --att-off:#26332E;
   }
 }
 :root[data-theme="dark"]{
+  --att-ok:#2F7D56; --att-late:#9A7424; --att-leave:#2F6B8A; --att-miss:#B04A57; --att-off:#26332E;
   --ground:#0E1513; --surface:#151E1B; --surface-2:#1B2724; --rail:#0A100E;
   --rail-ink:#D3E0DB; --rail-ink-dim:#7A908A; --line:#28352F; --line-strong:#3A4A44;
   --ink:#E7EEEA; --ink-2:#B3C2BC; --ink-3:#869892;
@@ -250,11 +253,11 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 
 /* ---------- attendance ---------- */
 .attgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(15px,1fr));gap:3px}
-.attcell{aspect-ratio:1;border-radius:3px;background:var(--ok-soft);position:relative}
-.attcell.late{background:var(--warn-soft);box-shadow:inset 0 0 0 1px var(--warn-line)}
-.attcell.leave{background:var(--info-soft)}
-.attcell.miss{background:var(--crit-soft);box-shadow:inset 0 0 0 1px var(--crit)}
-.attcell.off{background:var(--surface-2)}
+.attcell{aspect-ratio:1;border-radius:3px;background:var(--att-ok);position:relative}
+.attcell.late{background:var(--att-late);box-shadow:inset 0 0 0 1px var(--warn-line)}
+.attcell.leave{background:var(--att-leave)}
+.attcell.miss{background:var(--att-miss);box-shadow:inset 0 0 0 1px var(--crit)}
+.attcell.off{background:var(--att-off)}
 .bar{height:7px;border-radius:99px;background:var(--surface-2);overflow:hidden;min-width:76px}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
 .bar i.low{background:var(--warn)}
@@ -3722,11 +3725,11 @@ function viewAttendance(){
             ${attendance(s.id,y,m).map(r=>`<span class="attcell ${r.status==='present'?'':(r.status||'off')}"></span>`).join('')}</span></td>
         </tr>`).join('')}</tbody></table></div>
       <div class="legend">
-        <span><i style="background:var(--ok-soft)" class="ev"></i>${esc(both('正常','On time'))}</span>
-        <span><i style="background:var(--warn-soft)" class="ev"></i>${esc(both('遲到','Late'))}</span>
-        <span><i style="background:var(--info-soft)" class="ev"></i>${esc(both('請假','Leave'))}</span>
-        <span><i style="background:var(--crit-soft)" class="ev"></i>${esc(both('未打卡','Missing punch'))}</span>
-        <span><i style="background:var(--surface-2)" class="ev"></i>${esc(both('排休','Rest day'))}</span>
+        <span><i style="background:var(--att-ok)" class="ev"></i>${esc(both('正常','On time'))}</span>
+        <span><i style="background:var(--att-late)" class="ev"></i>${esc(both('遲到','Late'))}</span>
+        <span><i style="background:var(--att-leave)" class="ev"></i>${esc(both('請假','Leave'))}</span>
+        <span><i style="background:var(--att-miss)" class="ev"></i>${esc(both('未打卡','Missing punch'))}</span>
+        <span><i style="background:var(--att-off)" class="ev"></i>${esc(both('排休','Rest day'))}</span>
         <span class="spacer" style="flex:1"></span>
         <span>${esc(both('原型說明：出勤資料為程式產生的示意資料，未串接打卡機或班表。','Prototype note: attendance is generated demo data — no time-clock or roster integration.'))}</span>
       </div>
