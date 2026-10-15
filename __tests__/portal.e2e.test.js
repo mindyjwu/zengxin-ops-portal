@@ -16,7 +16,7 @@ const PORTAL = 'file://' + path.resolve(__dirname, '../ltc-portal.html') + '?dem
 /* ---------- helpers ---------- */
 async function openPortal(page) {
   await page.goto(PORTAL);
-  await expect(page.locator('#roleSel')).toBeVisible();
+  await expect(page.locator('.brand')).toBeVisible();   // 手機上篩選列收起，所以不等身分下拉
 }
 async function setRole(page, role) {
   await page.selectOption('#roleSel', role);
@@ -2037,5 +2037,29 @@ test.describe('Collapsible main menu on phones', () => {
     await openPortal(page);
     await expect(page.locator('#navToggle')).toBeHidden();
     await expect(page.locator('[data-mod="hr"]')).toBeVisible();
+  });
+});
+
+test.describe('Collapsible filter bar on phones', () => {
+  test('filters are collapsed on a phone, the to-do button stays, and the bar opens on tap', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPortal(page);
+    await expect(page.locator('#roleSel')).toBeHidden();
+    await expect(page.locator('#utilToggle')).toContainText('系統管理員');
+    await expect(page.locator('#todoBtn')).toBeVisible();                 // 待辦件數一直看得到
+    await page.click('#utilToggle');
+    await expect(page.locator('#roleSel')).toBeVisible();
+    await expect(page.locator('[data-theme-set="dark"]')).toBeVisible();
+    await setRole(page, 'hr');                                             // 切換身分後仍保持展開
+    await expect(page.locator('#utilToggle')).toContainText('人資');
+    await page.click('#navToggle');
+    await page.click('[data-mod="hr"]');                                   // 換頁後收起
+    await expect(page.locator('#roleSel')).toBeHidden();
+  });
+  test('on a desktop the filter bar is always open and the toggle is hidden', async ({ page }) => {
+    await page.setViewportSize({ width: 1300, height: 800 });
+    await openPortal(page);
+    await expect(page.locator('#utilToggle')).toBeHidden();
+    await expect(page.locator('#roleSel')).toBeVisible();
   });
 });

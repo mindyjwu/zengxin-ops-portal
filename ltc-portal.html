@@ -62,7 +62,7 @@ button{font:inherit;color:inherit}
 .brand b{color:#fff;font-size:15px;font-weight:600;letter-spacing:-.01em}
 .brand span{font-size:11px;color:var(--rail-ink-dim);letter-spacing:.04em}
 .rail-group{margin:14px 10px 6px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--rail-ink-dim)}
-.navtoggle{display:none}
+.navtoggle,.utiltoggle{display:none}
 .railitems{display:contents}
 .navitem{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:6px;color:var(--rail-ink);cursor:pointer;font-size:13.5px;white-space:nowrap}
 .navitem:hover{background:rgba(255,255,255,.06)}
@@ -363,6 +363,9 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
   .brand{padding:0 14px 0 4px}
   /* 手機／窄螢幕：主選單預設收起，點「選單」展開 */
   .navtoggle{display:inline-flex;align-items:center;gap:8px;order:2;margin-left:auto;background:rgba(255,255,255,.08);color:var(--rail-ink);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px 12px;font-size:13.5px;cursor:pointer}
+  .utiltoggle{display:inline-flex;align-items:center;gap:6px;flex:1 1 100%;text-align:left;background:var(--surface-2);color:var(--ink);border:1px solid var(--line-strong);border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer}
+  .utility:not(.open) > :not(.utiltoggle):not(#todoBtn){display:none}
+  .utility:not(.open) .spacer{display:none}
   .railitems{display:none;width:100%;order:3;flex-wrap:wrap;gap:6px}
   .rail.open .railitems{display:flex}
   .rail-group,.rail-foot{display:none}
@@ -762,6 +765,7 @@ const ROLES = {
 
 /* ---------- state ---------- */
 const state = {
+  utilOpen:false,
   navOpen:false,
   more:false,
   svcImp:null, svcMsg:'', svcDay:'',
@@ -997,7 +1001,8 @@ function renderShell(){
       </div>
     </nav>
     <div class="main">
-      <div class="utility">
+      <div class="utility ${state.utilOpen?'open':''}">
+        <button class="utiltoggle" id="utilToggle" aria-expanded="${!!state.utilOpen}">⚙ ${esc(both('篩選與設定','Filters & settings'))}：${esc(state.lang==='zh'?role().zh:role().en)}・${esc(currentCompanyLabel())}</button>
         <div class="ufield">
           <span class="ulabel">${barBi('身分','Role')}</span>
           <select id="roleSel" title="${esc(both(role().zh,role().en))}">${Object.values(ROLES).filter(r=>r.built).map(r=>`<option value="${r.id}" ${r.id===state.role?'selected':''}>${esc(state.lang==='zh'?r.zh:r.en)}</option>`).join('')}</select>
@@ -1049,10 +1054,11 @@ function renderShell(){
   </div>`;
 
   document.querySelectorAll('[data-mod]').forEach(b=>b.onclick=()=>{
-    state.module=b.dataset.mod; state.tab=null; state.navOpen=false; render();   // ensureAccess 會選第一個看得到的分頁；手機上選完就收起
+    state.module=b.dataset.mod; state.tab=null; state.navOpen=false; state.utilOpen=false; render();   // ensureAccess 會選第一個看得到的分頁；手機上選完就收起
   });
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; render(); });
   const mt=document.getElementById('moreToggle'); if(mt) mt.onclick=()=>{ state.more=!state.more; if(!state.more&&mod.tabs.some(t=>t.id===state.tab&&t.more)) state.tab=null; render(); };
+  const ut=document.getElementById('utilToggle'); if(ut) ut.onclick=()=>{ state.utilOpen=!state.utilOpen; render(); };
   const nt=document.getElementById('navToggle'); if(nt) nt.onclick=()=>{ state.navOpen=!state.navOpen; render(); };
   const tb=document.getElementById('todoBtn'); if(tb) tb.onclick=()=>{ state.module='hr'; state.tab='todo'; render(); };
   document.querySelectorAll('[data-theme-set]').forEach(b=>b.onclick=()=>{ setTheme(b.dataset.themeSet); render(); });
