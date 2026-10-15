@@ -2063,3 +2063,22 @@ test.describe('Collapsible filter bar on phones', () => {
     await expect(page.locator('#roleSel')).toBeVisible();
   });
 });
+
+test.describe('Attendance squares in dark mode', () => {
+  test('on-time squares stand out from the row background (contrast at least 3:1)', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await openPortal(page);
+    await page.click('[data-theme-set="dark"]');
+    await go(page, 'hr', 'att');
+    const ratio = await page.evaluate(() => {
+      const rgb = c => c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+      const lum = c => { const [r, g, b] = rgb(c).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
+      const cell = document.querySelector('.attcell:not(.late):not(.leave):not(.miss):not(.off)');
+      const bg = getComputedStyle(cell.closest('tr')).backgroundColor;
+      const base = bg.includes('0, 0, 0, 0') || bg === 'transparent' ? getComputedStyle(cell.closest('.card, section')).backgroundColor : bg;
+      const a = lum(getComputedStyle(cell).backgroundColor), b = lum(base);
+      return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+    });
+    expect(ratio).toBeGreaterThanOrEqual(3);
+  });
+});
