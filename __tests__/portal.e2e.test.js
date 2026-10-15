@@ -2018,3 +2018,24 @@ test.describe('Manager to-do', () => {
     await expect(page.locator('table.titlematrix')).not.toContainText('今日待辦');
   });
 });
+
+test.describe('Collapsible main menu on phones', () => {
+  test('menu is collapsed on a phone, opens with the Menu button and closes after choosing', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPortal(page);
+    await expect(page.locator('[data-mod="hr"]')).toBeHidden();
+    await expect(page.locator('#navToggle')).toContainText('原型說明');
+    await page.click('#navToggle');
+    await expect(page.locator('#navToggle')).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('[data-mod="hr"]')).toBeVisible();
+    await page.click('[data-mod="hr"]');
+    await expect(page.locator('[data-mod="hr"]')).toBeHidden();
+    await expect(page.locator('#navToggle')).toContainText('人事系統');
+  });
+  test('on a desktop the menu is always open and the Menu button is hidden', async ({ page }) => {
+    await page.setViewportSize({ width: 1300, height: 800 });
+    await openPortal(page);
+    await expect(page.locator('#navToggle')).toBeHidden();
+    await expect(page.locator('[data-mod="hr"]')).toBeVisible();
+  });
+});

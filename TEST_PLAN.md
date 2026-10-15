@@ -330,3 +330,4 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] Phone width (390px): no page scrolls sideways; buttons, selects and inputs are at least 40px tall.
 - [ ] Day/night: the 自動／日間／夜間 switch in the top bar changes the whole page, is remembered after reload, 自動 follows the device setting, and native controls (file picker, selects) match the theme.
 - [ ] To-do: the 待辦 button in the top bar shows a count for management roles (none for 一般員工); it opens 人事系統 › 今日待辦 with approvals, HR countersign, missing punches, licenses expiring and CE behind; each section has a button to the page that fixes it; the permission matrix does not list the to-do page.
+- [ ] Phone menu: at 390px the main menu is collapsed behind a 選單 button that names the current module; it opens, and closes after picking a module. On a desktop the menu is always open.

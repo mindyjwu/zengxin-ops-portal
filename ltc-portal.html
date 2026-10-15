@@ -62,6 +62,8 @@ button{font:inherit;color:inherit}
 .brand b{color:#fff;font-size:15px;font-weight:600;letter-spacing:-.01em}
 .brand span{font-size:11px;color:var(--rail-ink-dim);letter-spacing:.04em}
 .rail-group{margin:14px 10px 6px;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--rail-ink-dim)}
+.navtoggle{display:none}
+.railitems{display:contents}
 .navitem{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;padding:8px 10px;border-radius:6px;color:var(--rail-ink);cursor:pointer;font-size:13.5px;white-space:nowrap}
 .navitem:hover{background:rgba(255,255,255,.06)}
 .navitem[aria-current="true"]{background:var(--accent);color:var(--accent-ink);font-weight:500}
@@ -359,6 +361,10 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
   .app{grid-template-columns:1fr}
   .rail{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;gap:6px;padding:10px 14px}
   .brand{padding:0 14px 0 4px}
+  /* 手機／窄螢幕：主選單預設收起，點「選單」展開 */
+  .navtoggle{display:inline-flex;align-items:center;gap:8px;order:2;margin-left:auto;background:rgba(255,255,255,.08);color:var(--rail-ink);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:8px 12px;font-size:13.5px;cursor:pointer}
+  .railitems{display:none;width:100%;order:3;flex-wrap:wrap;gap:6px}
+  .rail.open .railitems{display:flex}
   .rail-group,.rail-foot{display:none}
   .navitem{width:auto}
   .navitem .en{display:none}
@@ -756,6 +762,7 @@ const ROLES = {
 
 /* ---------- state ---------- */
 const state = {
+  navOpen:false,
   more:false,
   svcImp:null, svcMsg:'', svcDay:'',
   lang:'zh', role:'admin', module:'arch', tab:'scope',
@@ -966,12 +973,14 @@ function renderShell(){
   const mod = MODULES.find(m=>m.id===state.module);
   document.getElementById('app').innerHTML = `
   <div class="app">
-    <nav class="rail">
+    <nav class="rail ${state.navOpen?'open':''}" id="rail">
+      <button class="navtoggle" id="navToggle" aria-expanded="${!!state.navOpen}" aria-controls="railItems"><span aria-hidden="true">☰</span> ${esc(both('選單','Menu'))}：${esc(state.lang==='zh'?mod.zh:mod.en)}</button>
       <div class="brand">
         <b>誠馨日照</b>
         <span>Zengxin Day Care</span>
         <span>${state.lang==='zh'?'營運入口 · Ops Portal':'Ops Portal · 營運入口'} · v2.1</span>
       </div>
+      <div class="railitems" id="railItems">
       <div class="rail-group">${both('本次原型','In this prototype')}</div>
       ${MODULES.filter(modVisible).map(m=>`<button class="navitem" data-mod="${m.id}" aria-current="${m.id===state.module}">
           <span class="navdot"></span>${esc(state.lang==='zh'?m.zh:m.en)}<span class="en">${esc(state.lang==='zh'?m.en:m.zh)}</span>
@@ -984,6 +993,7 @@ function renderShell(){
         ${both('展示資料為虛構','Demo data is fictional')}<br>
         ${both('無帳號登入・無資料庫','No login · no database')}<br>
         <span class="mono">${both('展示日期','Demo date')} ${ymd(TODAY)}</span>
+      </div>
       </div>
     </nav>
     <div class="main">
@@ -1039,10 +1049,11 @@ function renderShell(){
   </div>`;
 
   document.querySelectorAll('[data-mod]').forEach(b=>b.onclick=()=>{
-    state.module=b.dataset.mod; state.tab=null; render();   // ensureAccess 會選第一個看得到的分頁
+    state.module=b.dataset.mod; state.tab=null; state.navOpen=false; render();   // ensureAccess 會選第一個看得到的分頁；手機上選完就收起
   });
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; render(); });
   const mt=document.getElementById('moreToggle'); if(mt) mt.onclick=()=>{ state.more=!state.more; if(!state.more&&mod.tabs.some(t=>t.id===state.tab&&t.more)) state.tab=null; render(); };
+  const nt=document.getElementById('navToggle'); if(nt) nt.onclick=()=>{ state.navOpen=!state.navOpen; render(); };
   const tb=document.getElementById('todoBtn'); if(tb) tb.onclick=()=>{ state.module='hr'; state.tab='todo'; render(); };
   document.querySelectorAll('[data-theme-set]').forEach(b=>b.onclick=()=>{ setTheme(b.dataset.themeSet); render(); });
   document.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{ state.lang=b.dataset.lang; render(); });
