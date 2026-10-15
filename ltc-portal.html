@@ -886,6 +886,7 @@ const MODULES = [
     {id:'org',    zh:'組織圖',    en:'Org chart'}
   ]},
   {id:'hr', zh:'人事系統', en:'HR', built:true, perm:'mgmt', tabs:[
+    {virtual:true, id:'todo', zh:'今日待辦', en:'Today’s to-do'},
     {id:'emp',   zh:'員工資料', en:'Employee records'},
     {id:'mylog', zh:'我的工時', en:'My Hours'},
     {id:'att',   zh:'出勤管理', en:'Attendance'},
@@ -940,6 +941,7 @@ function payEdit(){
 }
 function itemAllowed(modId, tabId){
   const col=roleColLive(), m=MODULES.find(x=>x.id===modId);
+  if(modId==='hr' && tabId==='todo') return ['emp','att','leave'].some(t=>itemAllowed('hr',t));   // 待辦不在 Excel 內：只要看得到人事的任一頁就看得到
   if(!col) return !m.perm || can(m.perm);
   if(modId==='perm' && can('perms')) return true;
   const it=permItems().find(x=>x.key===(tabId?modId+':'+tabId:modId));
@@ -1004,6 +1006,7 @@ function renderShell(){
           <span><small>${barBi('假設','Assumption')}</small> <b>${barBi('主管可跨單位查看','Supervisors see all units')}</b></span>
         </button>`}
         <div class="spacer"></div>
+        ${tabAllowed(MODULES.find(x=>x.id==='hr'),{id:'todo'})?`<button class="btn ghost mini" id="todoBtn" title="${esc(both('今日待辦','Today’s to-do'))}">${esc(both('待辦','To-do'))} <span class="chip ${todoData().total?'crit':'ok'}">${todoData().total}</span></button>`:''}
         <button class="btn ghost mini" id="tourBtn">${barBi('導覽','Walkthrough')}</button>
         <a class="btn ghost mini" href="guide.html" target="_blank" rel="noopener">${barBi('使用指南','User guide')}</a>
         <div class="seg" role="group" aria-label="${esc(both('外觀','Theme'))}" id="themeSeg">
@@ -1040,6 +1043,7 @@ function renderShell(){
   });
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; render(); });
   const mt=document.getElementById('moreToggle'); if(mt) mt.onclick=()=>{ state.more=!state.more; if(!state.more&&mod.tabs.some(t=>t.id===state.tab&&t.more)) state.tab=null; render(); };
+  const tb=document.getElementById('todoBtn'); if(tb) tb.onclick=()=>{ state.module='hr'; state.tab='todo'; render(); };
   document.querySelectorAll('[data-theme-set]').forEach(b=>b.onclick=()=>{ setTheme(b.dataset.themeSet); render(); });
   document.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{ state.lang=b.dataset.lang; render(); });
   document.getElementById('roleSel').onchange = e=>{
@@ -1102,7 +1106,7 @@ function render(){
     'arch:scope':viewArchScope, 'arch:roles':viewArchRoles,
     'desk:home':viewDeskHome, 'desk:forms':viewDeskForms, 'desk:query':viewDeskQuery, 'desk:course':viewDeskCourse,
     'ann:board':viewBoard, 'ann:cal':viewCalendar, 'ann:org':viewOrgFormal,
-    'hr:emp':viewEmployees, 'hr:mylog':viewMyHours, 'hr:att':viewAttendance, 'hr:leave':viewLeave,
+    'hr:todo':viewTodo, 'hr:emp':viewEmployees, 'hr:mylog':viewMyHours, 'hr:att':viewAttendance, 'hr:leave':viewLeave,
     'perm:matrix':viewMatrix, 'perm:titles':viewTitleMatrix, 'perm:dir':viewDirectory, 'perm:orgfn':viewOrgFn, 'perm:open':viewOpen,
     'doc:comp':viewDocCompliance, 'doc:guide':viewDocGuides, 'doc:meeting':viewDocMeeting, 'doc:sysinfo':viewDocSysInfo, 'doc:cmp104':viewDocCmp104,
     'svc:case':viewSvcCase, 'svc:contract':viewSvcContract, 'svc:assess':viewSvcAssess,
@@ -3727,6 +3731,43 @@ const LEAVE_STATUS={
   withdrawn:{zh:'已抽單',en:'Withdrawn',cls:''}
 };
 function statusChip(s){ const o=LEAVE_STATUS[s]; return `<span class="chip ${o.cls}">${esc(both(o.zh,o.en))}</span>`; }
+/* ---------- 今日待辦（管理者首頁）：只算目前身分、目前資料範圍內「現在要處理」的事 ---------- */
+function todoData(){
+  const units=activeUnitIds(), inScope=x=>units.includes(person(x.emp).unit), hr=MODULES.find(m=>m.id==='hr');
+  const ok=t=>tabAllowed(hr,{id:t});
+  const reqs=[...LEAVE.map(x=>({x,k:'請假',en:'Leave',d:x.from})),...OT_REQ.map(x=>({x,k:'加班',en:'Overtime',d:x.date})),...PUNCH_FIX.map(x=>({x,k:'補刷卡',en:'Punch fix',d:x.date})),...FORMS.map(x=>({x,k:'表單',en:'Form',d:x.date||x.from}))].filter(r=>inScope(r.x));
+  const mine=r=>r.x.emp===me().id;
+  const sign=ok('leave')&&can('approve') ? reqs.filter(r=>r.x.status==='pending'&&!mine(r)) : [];
+  const counter=ok('leave')&&can('finalize') ? reqs.filter(r=>r.x.status==='countersign'&&!mine(r)) : [];
+  let punch=[]; if(ok('att')){ const [y,m]=CUR_MONTH.split('-').map(Number); punch=STAFF.filter(s=>units.includes(s.unit)&&onRoster(s,CUR_MONTH)).map(s=>({s,c:attSummary(s.id,y,m)})).filter(o=>o.c.miss>0); }
+  let lic=[]; if(ok('emp')) lic=STAFF.filter(s=>units.includes(s.unit)&&s.status==='active').map(s=>({s,f:recFlags(s.id)})).filter(o=>o.f.soon.length);
+  let ce=[]; if(ok('emp')&&typeof ceEligibleStaff==='function') ce=ceEligibleStaff().map(s=>({s,c:ceCalc(s.id)})).filter(o=>o.c.status==='late');
+  return {sign,counter,punch,lic,ce,total:sign.length+counter.length+punch.length+lic.length+ce.length};
+}
+function viewTodo(){
+  const d=todoData(), go=(m,t,zh,en)=>`<button class="btn mini" data-goto="${m}|${t}">${esc(both(zh,en))} →</button>`;
+  const rowReq=r=>`<li>${esc(both(r.k,r.en))}・${esc(nameOf(person(r.x.emp)))}・<span class="mono">${esc(r.d||'')}</span> <span class="muted mono" style="font-size:11px">${esc(r.x.id)}</span></li>`;
+  const sec=(zh,en,n,body,btn)=>`<section class="card"><div class="card-h"><h2>${esc(both(zh,en))} <span class="chip ${n?'crit':'ok'}">${n}</span></h2></div><div class="card-b">${n?body+(btn?`<div style="margin-top:8px">${btn}</div>`:''):`<div class="empty">${esc(both('目前沒有','Nothing right now'))}</div>`}</div></section>`;
+  const list=(arr,f)=>`<ul style="margin:0;padding-left:20px;line-height:1.8">${arr.slice(0,6).map(f).join('')}</ul>${arr.length>6?`<div class="muted" style="font-size:12.5px">${esc(both('還有 '+(arr.length-6)+' 筆','and '+(arr.length-6)+' more'))}</div>`:''}`;
+  const parts=[];
+  if(can('approve')||can('finalize')){
+    parts.push(sec('待我簽核','Awaiting my approval',d.sign.length,list(d.sign,rowReq),go('hr','leave','前往請假審核','Open approvals')));
+    if(can('finalize')) parts.push(sec('待人資複核','Awaiting HR countersign',d.counter.length,list(d.counter,rowReq),go('hr','leave','前往請假審核','Open approvals')));
+  }
+  if(tabAllowed(MODULES.find(m=>m.id==='hr'),{id:'att'})) parts.push(sec('本月有未打卡的同仁','Staff with missing punches this month',d.punch.length,list(d.punch,o=>`<li>${esc(nameOf(o.s))}・${esc(both(o.c.miss+' 次','×'+o.c.miss))}</li>`),go('hr','att','前往出勤管理','Open attendance')));
+  if(tabAllowed(MODULES.find(m=>m.id==='hr'),{id:'emp'})){
+    parts.push(sec('證照 90 天內到期或已過期','Licenses expiring within 90 days or expired',d.lic.length,list(d.lic,o=>`<li>${esc(nameOf(o.s))}・${esc(o.f.soon.map(l=>both(l.zh||l.name||'證照',l.en||l.name||'License')+' '+(l.exp||'')).join('、'))}</li>`),go('hr','emp','前往員工資料','Open employee records')));
+    parts.push(sec('繼續教育積分落後（效期 12 個月內）','Continuing-education points behind (≤12 months left)',d.ce.length,list(d.ce,o=>`<li>${esc(nameOf(o.s))}・${esc(both('目前 '+o.c.total+' / '+CE_RULES.total+' 分','now '+o.c.total+' / '+CE_RULES.total+' pts'))}</li>`),go('desk','course','前往教育時數','Open course points')));
+  }
+  return `<div class="grid">
+    <div class="note">${esc(both('這裡只列「現在需要你處理」的事，範圍跟著目前身分與公司篩選。示範資料是虛構的；正式版要接真實的簽核與打卡資料。','Only things that need you now, following the current role and company filter. Demo data is fictional; the real version needs real approval and punch data.'))}</div>
+    <div class="tiles"><div class="tile"><span class="k">${esc(both('待辦總數','Total to-dos'))}</span><span class="v">${d.total}</span><span class="d">${esc(both('件','items'))}</span></div></div>
+    ${parts.join('')||`<div class="empty">${esc(both('這個身分沒有待辦項目','No to-do items for this role'))}</div>`}
+  </div>`;
+}
+BINDERS['hr:todo']=function(){
+  document.querySelectorAll('#view [data-goto]').forEach(b=>b.onclick=()=>{ const [m,tb]=b.dataset.goto.split('|'); state.module=m; state.tab=tb||null; render(); });
+};
 function viewLeave(){
   const units=activeUnitIds();
   const order={pending:0,countersign:1,approved:2,rejected:3,cancelled:4,withdrawn:5};
@@ -5526,7 +5567,7 @@ const TITLE_SHEET = {
 const SHEET_CODE = {Y:'可', N:'不可', V:'可檢視', E:'可編輯'};
 function permItems(){
   return MODULES.flatMap(m=>m.tabs.length
-    ? m.tabs.map(t=>({key:m.id+':'+t.id, zh:m.zh+' › '+t.zh, en:m.en+' › '+t.en, mod:m}))
+    ? m.tabs.filter(t=>!t.virtual).map(t=>({key:m.id+':'+t.id, zh:m.zh+' › '+t.zh, en:m.en+' › '+t.en, mod:m}))
     : [{key:m.id, zh:m.zh, en:m.en, mod:m}]);
 }
 function titleCell(it, ck){
