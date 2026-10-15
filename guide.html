@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
+<script>/* 日／夜／自動：偏好存在瀏覽器；自動 = 跟著裝置設定 */
+(function(){try{var t=localStorage.getItem('zx-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>誠馨日照營運入口使用指南</title>
@@ -33,6 +36,9 @@
   --accent:#57B99B; --accent-ink:#08201A; --accent-soft:#1C332C;
   --warn:#E0B061; --warn-soft:#33280F; --warn-line:#5C481D; --info:#8FBCD8; --info-soft:#14252F;
 }
+:root{color-scheme:light}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){color-scheme:dark} }
+:root[data-theme="dark"]{color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.75;-webkit-font-smoothing:antialiased}
 a{color:var(--accent)}

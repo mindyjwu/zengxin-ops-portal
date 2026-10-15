@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
+<script>/* 日／夜／自動：偏好存在瀏覽器；自動 = 跟著裝置設定 */
+(function(){try{var t=localStorage.getItem('zx-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -41,6 +44,9 @@
   --crit:#E8909A; --crit-soft:#361B1F; --info:#8FBCD8; --info-soft:#14252F;
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
 }
+:root{color-scheme:light}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){color-scheme:dark} }
+:root[data-theme="dark"]{color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{margin:0;text-wrap:balance;font-weight:600;letter-spacing:-.01em}
@@ -855,6 +861,12 @@ function attSummary(empId, y, m){
 }
 </script>
 <script>
+/* ---------- 日／夜／自動 ---------- */
+function themePref(){ try{ const t=localStorage.getItem('zx-theme'); return t==='light'||t==='dark'?t:'auto'; }catch(e){ return document.documentElement.getAttribute('data-theme')||'auto'; } }
+function setTheme(t){
+  if(t==='light'||t==='dark') document.documentElement.setAttribute('data-theme',t); else document.documentElement.removeAttribute('data-theme');
+  try{ if(t==='auto') localStorage.removeItem('zx-theme'); else localStorage.setItem('zx-theme',t); }catch(e){}
+}
 /* ---------- module / tab map ---------- */
 const MODULES = [
   {id:'arch', zh:'原型說明', en:'Prototype Info', built:true, tabs:[
@@ -994,6 +1006,9 @@ function renderShell(){
         <div class="spacer"></div>
         <button class="btn ghost mini" id="tourBtn">${barBi('導覽','Walkthrough')}</button>
         <a class="btn ghost mini" href="guide.html" target="_blank" rel="noopener">${barBi('使用指南','User guide')}</a>
+        <div class="seg" role="group" aria-label="${esc(both('外觀','Theme'))}" id="themeSeg">
+          ${[['auto','自動','Auto'],['light','日間','Day'],['dark','夜間','Night']].map(x=>`<button data-theme-set="${x[0]}" aria-pressed="${themePref()===x[0]}">${esc(both(x[1],x[2]))}</button>`).join('')}
+        </div>
         <div class="seg" role="group" aria-label="Language">
           <button data-lang="zh" aria-pressed="${state.lang==='zh'}">中文</button>
           <button data-lang="en" aria-pressed="${state.lang==='en'}">EN</button>
@@ -1025,6 +1040,7 @@ function renderShell(){
   });
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ state.tab=b.dataset.tab; render(); });
   const mt=document.getElementById('moreToggle'); if(mt) mt.onclick=()=>{ state.more=!state.more; if(!state.more&&mod.tabs.some(t=>t.id===state.tab&&t.more)) state.tab=null; render(); };
+  document.querySelectorAll('[data-theme-set]').forEach(b=>b.onclick=()=>{ setTheme(b.dataset.themeSet); render(); });
   document.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{ state.lang=b.dataset.lang; render(); });
   document.getElementById('roleSel').onchange = e=>{
     state.role=e.target.value; state.office='ALL'; state.empId=null; state.nodeId=null;

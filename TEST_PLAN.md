@@ -328,3 +328,4 @@ This flow is **manual** end to end; its individual steps are covered by the test
 
 - [ ] Trimmed menus: 文件管理 shows only 會議紀錄 and 使用指南 until 更多頁面 is clicked; the toggle collapses it again; an action-item link to 系統說明 opens the extras automatically; in Chinese mode no English subtitles show, and EN switches the whole UI to English.
 - [ ] Phone width (390px): no page scrolls sideways; buttons, selects and inputs are at least 40px tall.
+- [ ] Day/night: the 自動／日間／夜間 switch in the top bar changes the whole page, is remembered after reload, 自動 follows the device setting, and native controls (file picker, selects) match the theme.
