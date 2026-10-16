@@ -383,6 +383,8 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 @media (max-width:1900px){ .utility .bar-alt{display:none} }
 @media (max-width:1450px){ .utility .ulabel{display:none} .assume small{display:none} }
 @media (max-width:1150px){ .ufield{flex:0 1 auto} .utility{gap:8px} }
+/* 桌面但視窗不寬（1001–1300px）：頂列放不下，先收起「手機版」連結（使用指南裡還有） */
+@media (min-width:1001px) and (max-width:1300px){ .mobile-link{display:none} }
 /* 手機／觸控：按鈕、下拉與輸入框至少 40px 高，才點得準（桌面版不變） */
 @media (max-width:760px), (pointer:coarse){
   button:not(.navitem):not(.tabs button), a.btn, select, input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]){ min-height:40px }
@@ -1026,6 +1028,7 @@ function renderShell(){
         <div class="spacer"></div>
         ${tabAllowed(MODULES.find(x=>x.id==='hr'),{id:'todo'})?`<button class="btn ghost mini" id="todoBtn" title="${esc(both('今日待辦','Today’s to-do'))}">${esc(both('待辦','To-do'))} <span class="chip ${todoData().total?'crit':'ok'}">${todoData().total}</span></button>`:''}
         <button class="btn ghost mini" id="tourBtn">${barBi('導覽','Walkthrough')}</button>
+        <a class="btn ghost mini mobile-link" href="mobile.html" target="_blank" rel="noopener">${barBi('手機版','Mobile')}</a>
         <a class="btn ghost mini" href="guide.html" target="_blank" rel="noopener">${barBi('使用指南','User guide')}</a>
         <div class="seg" role="group" aria-label="${esc(both('外觀','Theme'))}" id="themeSeg">
           ${[['auto','自動','Auto'],['light','日間','Day'],['dark','夜間','Night']].map(x=>`<button data-theme-set="${x[0]}" aria-pressed="${themePref()===x[0]}">${esc(both(x[1],x[2]))}</button>`).join('')}
