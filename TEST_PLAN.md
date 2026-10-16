@@ -333,3 +333,5 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] Phone menu: at 390px the main menu is collapsed behind a 選單 button that names the current module; it opens, and closes after picking a module. On a desktop the menu is always open.
 - [ ] Phone filter bar: at 390px the role/company/assumption/theme/language controls are collapsed behind 篩選與設定 (showing the current role and company); 待辦 stays visible; it stays open while switching roles and closes when you change page. On a desktop everything is always visible.
 - [ ] Dark mode: the squares in 人事系統 › 出勤管理 › 當月出勤圖 and their legend are clearly visible (on-time vs rest day distinguishable); light mode looks the same as before.
+
+- [ ] Mobile app (`mobile.html`) on a phone: punch in/out works and survives a reload; overtime, missed-punch and leave forms validate and list their requests; the calendar shows text for each status; Zhuyin typing in a reason box is not interrupted; no sideways scroll from 320px to 430px; add to home screen on iPhone (Safari) and Android (Chrome) and open it like an app. Real location, photo, login and storage are not built (agenda item 3).

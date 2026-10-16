@@ -2082,3 +2082,151 @@ test.describe('Attendance squares in dark mode', () => {
     expect(ratio).toBeGreaterThanOrEqual(3);
   });
 });
+
+/* ================================================================ */
+test.describe('Mobile app (PWA) — mobile.html', () => {
+  const M = 'file://' + path.resolve(__dirname, '../mobile.html');
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  const openM = async page => { await page.goto(M); await expect(page.locator('#punchBtn')).toBeVisible(); };
+  const tab = (page, t) => page.click(`[data-tab="${t}"]`);
+
+  test('four tabs, demo notice, and no real location or camera is requested', async ({ page }) => {
+    const asked = [];
+    await page.addInitScript(() => {
+      window.__perm = [];
+      if (navigator.geolocation) { const g = navigator.geolocation.getCurrentPosition; navigator.geolocation.getCurrentPosition = (...a) => { window.__perm.push('geo'); return g.apply(navigator.geolocation, a); }; }
+      if (navigator.mediaDevices) { const m = navigator.mediaDevices.getUserMedia; navigator.mediaDevices.getUserMedia = (...a) => { window.__perm.push('cam'); return m.apply(navigator.mediaDevices, a); }; }
+    });
+    await openM(page);
+    await expect(page.locator('#tabs button')).toHaveText([/打卡/, /工時/, /請假/, /月曆/]);
+    await expect(page.locator('.demo')).toContainText('虛構');
+    await expect(page.locator('#loc')).toContainText('未取用定位');
+    await page.click('#punchBtn');
+    expect(await page.evaluate(() => window.__perm)).toEqual(asked);
+  });
+
+  test('punch in, punch out, survives reload, and can be cleared', async ({ page }) => {
+    await openM(page);
+    await expect(page.locator('#punchBtn')).toContainText('上班打卡');
+    await page.click('#punchBtn');
+    await expect(page.locator('.toast')).toContainText('上班打卡完成');
+    await expect(page.locator('#punchBtn')).toContainText('下班打卡');
+    await page.reload();                                                    // 資料存在手機本機
+    await expect(page.locator('#punchBtn')).toContainText('下班打卡');
+    await page.click('#punchBtn');
+    await expect(page.locator('.punch[disabled]')).toContainText('今日已完成');
+    await page.click('#undoPunch');
+    await expect(page.locator('#punchBtn')).toContainText('上班打卡');
+  });
+
+  test('overtime form validates, computes hours (also across midnight) and lists the request', async ({ page }) => {
+    await openM(page);
+    await tab(page, 'hours');
+    await page.click('#otForm .btn');
+    await expect(page.locator('#otErr')).toContainText('請填寫事由');
+    await page.fill('#otWhy', '個案家屬臨時需要協助');
+    await page.click('#otForm .btn');
+    await expect(page.locator('.toast')).toContainText('加班單已送出');
+    await expect(page.locator('#view')).toContainText('個案家屬臨時需要協助');
+    await expect(page.locator('#view')).toContainText('2.0 小時');
+    await page.fill('#otFrom', '22:00'); await page.fill('#otTo', '01:00'); await page.fill('#otWhy', '夜間支援');
+    await page.click('#otForm .btn');
+    await expect(page.locator('#view')).toContainText('3.0 小時');
+    await expect(page.locator('.stat', { hasText: '待簽核申請' }).locator('.v')).toHaveText('2');
+  });
+
+  test('missed-punch request and leave request, including validation and withdraw', async ({ page }) => {
+    await openM(page);
+    await tab(page, 'hours');
+    await page.click('[data-hv="fix"]');
+    await page.click('#fixForm .btn');
+    await expect(page.locator('#fxErr')).toContainText('請填寫事由');
+    await page.fill('#fxWhy', '手機沒電');
+    await page.click('#fixForm .btn');
+    await expect(page.locator('.toast')).toContainText('補刷卡已送出');
+    await tab(page, 'leave');
+    await page.fill('#lvWhy', '回診');
+    await page.fill('#lvFrom', '2026-10-20'); await page.fill('#lvTo', '2026-10-19');
+    await page.click('#lvForm .btn');
+    await expect(page.locator('#lvErr')).toContainText('結束日期不能早於開始日期');
+    await page.fill('#lvTo', '2026-10-20');
+    await page.click('#lvForm .btn');
+    await expect(page.locator('.toast')).toContainText('請假已送出');
+    await expect(page.locator('#view')).toContainText('回診');
+    await expect(page.locator('.stat', { hasText: '特休' }).locator('.v')).toHaveText('32');   // 待簽核的 8 小時先保留
+    await page.click('[data-withdraw]');
+    await expect(page.locator('.chip', { hasText: '已撤回' })).toHaveCount(1);
+  });
+
+  test('calendar: statuses have text (not colour only), tapping a day shows its record', async ({ page }) => {
+    await openM(page);
+    await tab(page, 'cal');
+    await expect(page.locator('.cal .h')).toHaveCount(7);
+    const labels = await page.locator('[data-day] i').allInnerTexts();
+    expect(labels.some(x => x === '休')).toBe(true);                         // 週末有文字標示
+    await page.locator('[data-day]').nth(0).click();
+    await expect(page.locator('#view')).toContainText('狀態');
+    await expect(page.locator('[data-day].sel')).toHaveCount(1);
+  });
+
+  test('Chinese (Zhuyin) composition in a reason box is not interrupted by the clock or re-render', async ({ page }) => {
+    await openM(page);
+    await tab(page, 'hours');
+    await page.focus('#otWhy');
+    await page.evaluate(() => { window.__n = document.getElementById('otWhy'); });
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.imeSetComposition', { text: 'ㄓㄨㄥ', selectionStart: 3, selectionEnd: 3 });
+    await page.waitForTimeout(2200);                                         // 時鐘跳了兩次以上
+    expect(await page.evaluate(() => document.activeElement === window.__n && document.body.contains(window.__n))).toBe(true);
+    await cdp.send('Input.insertText', { text: '中文' });
+    await expect(page.locator('#otWhy')).toHaveValue('中文');
+  });
+
+  test('no sideways scrolling and every tap target is at least 44px at common phone widths', async ({ page }) => {
+    for (const w of [320, 360, 390, 430]) {
+      await page.setViewportSize({ width: w, height: 800 });
+      await openM(page);
+      for (const t of ['punch', 'hours', 'leave', 'cal']) {
+        await tab(page, t);
+        const r = await page.evaluate(() => ({
+          over: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          small: [...document.querySelectorAll('button,select,input:not([type=hidden]),textarea,a')].filter(e => { const b = e.getBoundingClientRect(); return b.width > 0 && !e.classList.contains('blank') && b.height < 43.5; }).map(e => e.id || e.className || e.tagName)
+        }));
+        expect(r.over, `${w}px ${t} overflows`).toBeLessThanOrEqual(1);
+        expect(r.small, `${w}px ${t} small targets`).toEqual([]);
+      }
+    }
+  });
+
+  test('theme button cycles auto → day → night and shares the portal preference', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await openM(page);
+    await page.click('#themeBtn'); await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await page.click('#themeBtn'); await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    expect(await page.evaluate(() => localStorage.getItem('zx-theme'))).toBe('dark');
+    await page.click('#themeBtn'); await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/);
+  });
+
+  test('install files: manifest, icons of the right size, service worker and iOS tags', async () => {
+    const root = path.resolve(__dirname, '..');
+    const mf = JSON.parse(fs.readFileSync(path.join(root, 'manifest.webmanifest'), 'utf8'));
+    expect(mf.display).toBe('standalone');
+    expect(mf.start_url).toBe('mobile.html');
+    expect(mf.lang).toBe('zh-Hant');
+    const purposes = mf.icons.map(i => i.purpose);
+    expect(purposes).toEqual(expect.arrayContaining(['any', 'maskable']));
+    for (const ic of mf.icons) {
+      const buf = fs.readFileSync(path.join(root, ic.src));
+      expect(buf.subarray(1, 4).toString()).toBe('PNG');
+      const [w, h] = ic.sizes.split('x').map(Number);
+      expect([buf.readUInt32BE(16), buf.readUInt32BE(20)]).toEqual([w, h]);
+    }
+    const apple = fs.readFileSync(path.join(root, 'icons/apple-touch-icon.png'));
+    expect([apple.readUInt32BE(16), apple.readUInt32BE(20)]).toEqual([180, 180]);
+    const html = fs.readFileSync(path.join(root, 'mobile.html'), 'utf8');
+    for (const s of ['rel="manifest"', 'rel="apple-touch-icon"', 'apple-mobile-web-app-capable', 'viewport-fit=cover', 'safe-area-inset-bottom']) expect(html).toContain(s);
+    const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+    for (const f of ['mobile.html', 'manifest.webmanifest']) expect(sw).toContain(f);
+    expect(html).not.toMatch(/[A-Z][12]\d{8}/);                              // 沒有身分證字號格式的字串
+  });
+});
