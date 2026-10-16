@@ -1940,11 +1940,12 @@ test.describe('Trimmed menus', () => {
 
 
 test.describe('Meeting agenda in the guide', () => {
-  test('guide lists the five agenda items with a message colleagues can copy', async ({ page }) => {
+  test('guide lists the six agenda items with a message colleagues can copy', async ({ page }) => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     const sec = page.locator('#agenda');
     await expect(sec.locator('h2')).toContainText('下次會議議程');
-    await expect(sec.locator('tbody tr')).toHaveCount(5);
+    await expect(sec.locator('tbody tr')).toHaveCount(6);
+    await expect(sec.locator('tbody tr').nth(5)).toContainText('手機版打卡與工時');
     await expect(sec).toContainText('簽核流程');
     await expect(sec).toContainText('仁寶匯入');
     await expect(sec).toContainText('會前請準備');
