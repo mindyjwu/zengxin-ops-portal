@@ -4459,12 +4459,12 @@ function viewSvcCase(){
       </div>
     </section>
     <section class="card">
-      <div class="card-h"><h2>${esc(both('匯入仁寶服務記錄（Excel）','Import 仁寶 service records (Excel)'))}</h2></div>
+      <div class="card-h"><h2>${esc(both('匯入仁寶服務記錄（Excel 或 CSV）','Import 仁寶 service records (Excel)'))}</h2></div>
       <div class="card-b" style="display:grid;gap:10px">
         <div class="note">${esc(both('檔案只在你的瀏覽器裡讀取，不會上傳、不會儲存；匯入後只保留彙總數字，原始列（身分證字號、地址、電話等個資）讀完就丟掉。重新整理頁面，彙總也會清掉。',
           'The file is read only inside your browser: nothing is uploaded or stored. Only summary numbers are kept; the raw rows (ID numbers, addresses, phones) are discarded once read. Reloading the page clears the summary too.'))}</div>
-        <div><input type="file" id="svcFile" accept=".xlsx" aria-label="${esc(both('選擇仁寶服務記錄 Excel（.xlsx）','Choose the 仁寶 service-record Excel (.xlsx)'))}">
-          <div class="uphint muted">${esc(both('只收 .xlsx（Excel 活頁簿）。舊版 .xls、.csv、PDF 與圖片目前讀不了；舊版 .xls 請在 Excel 另存成 .xlsx。','Only .xlsx (Excel workbook) is read. Old .xls, .csv, PDF and images are not supported yet; save an old .xls as .xlsx in Excel.'))}</div>
+        <div><input type="file" id="svcFile" accept=".xlsx,.csv" aria-label="${esc(both('選擇仁寶服務記錄（.xlsx 或 .csv）','Choose the 仁寶 service records (.xlsx or .csv)'))}">
+          <div class="uphint muted">${esc(both('只收 .xlsx（Excel 活頁簿）和 .csv（逗號分隔，UTF-8 或 Big5 都可以）。舊版 .xls、PDF 與圖片目前讀不了；舊版 .xls 請在 Excel 另存成 .xlsx 或 CSV。','Reads .xlsx (Excel workbook) and .csv (comma-separated, UTF-8 or Big5). Old .xls, PDF and images are not supported yet; save an old .xls as .xlsx or CSV in Excel.'))}</div>
           ${state.svcImp?`<button class="btn" id="svcClear" style="margin-left:8px">${esc(both('清除彙總','Clear summary'))}</button>`:''}</div>
         <div id="svcMsg" class="muted" style="font-size:12.5px" role="status">${esc(state.svcMsg||'')}</div>
         ${state.svcImp?svcImpView(state.svcImp):''}
@@ -4519,6 +4519,24 @@ async function xlsxRead(buf){
   });
   return rows;
 }
+/* CSV：支援引號、引號內的逗號與換行、CRLF、UTF-8（含 BOM）；Excel 在繁中 Windows 存的 CSV 常是 Big5，讀不了 UTF-8 時改用 Big5 */
+function csvRead(buf){
+  let text; try{ text=new TextDecoder('utf-8',{fatal:true}).decode(buf); }
+  catch(_){ try{ text=new TextDecoder('big5').decode(buf); }catch(e){ throw new Error('這個 CSV 的文字編碼讀不了，請在 Excel 另存成「CSV UTF-8」或 .xlsx'); } }
+  text=text.replace(/^\uFEFF/,'');
+  const delim=(text.split('\n',1)[0].match(/\t/g)||[]).length>(text.split('\n',1)[0].match(/,/g)||[]).length?'\t':',';
+  const rows=[]; let row=[], cell='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){ cell+='"'; i++; } else q=false; } else cell+=c; }
+    else if(c==='"') q=true;
+    else if(c===delim){ row.push(cell); cell=''; }
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n') i++; row.push(cell); cell=''; rows.push(row); row=[]; }
+    else cell+=c;
+  }
+  if(cell!==''||row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
 const SVC_NEED=['案號','服務項目類別','項目服務次數','居服員姓名','服務日期','服務時間長度(分)'];
 function svcAggregate(rows){
   const norm=v=>String(v??'').split('\n')[0].replace(/\s/g,'');
@@ -4532,7 +4550,7 @@ function svcAggregate(rows){
   if(missing.length) return {fatal:'缺少必要欄位：'+missing.join('、')};
   const dataStart=h+((rows[h+1]||[]).map(norm).includes('居服員姓名')?2:1);
   const A={rows:0,skipped:[],cases:new Set(),items:{},who:{},dates:new Set(),odd:{noOut:0,noShow:0}};
-  const isoDate=v=>{ const m=String(v).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?m[0]:(/^\d{5}$/.test(String(v).trim())?new Date(Date.UTC(1899,11,30)+ +v*864e5).toISOString().slice(0,10):''); };
+  const isoDate=v=>{ const m=String(v).trim().match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/); return m?`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`:(/^\d{5}$/.test(String(v).trim())?new Date(Date.UTC(1899,11,30)+ +v*864e5).toISOString().slice(0,10):''); };
   for(let r=dataStart;r<rows.length;r++){
     const x=rows[r]||[]; if(!String(x[C.case]??'').trim()) continue;
     const who=String(x[C.who]??'').trim(), d=isoDate(x[C.date]??''), m=parseFloat(x[C.mins]);
@@ -4595,10 +4613,11 @@ BINDERS['svc:case']=function(){
   const f=document.getElementById('svcFile');
   if(f) f.onchange=async()=>{
     const file=f.files[0]; if(!file) return;
-    if(upExt(file.name)!=='xlsx'){ state.svcImp=null; state.svcMsg='無法匯入：只收 .xlsx（目前不支援 .'+upExt(file.name)+'）。舊版 .xls 請在 Excel 另存成 .xlsx。'; render(); return; }
+    const ext=upExt(file.name);
+    if(ext!=='xlsx'&&ext!=='csv'){ state.svcImp=null; state.svcMsg='無法匯入：只收 .xlsx 和 .csv（目前不支援 .'+ext+'）。舊版 .xls 請在 Excel 另存成 .xlsx 或 CSV。'; render(); return; }
     const msg=document.getElementById('svcMsg'); msg.textContent='讀取中…';
     try{
-      const g=svcAggregate(await xlsxRead(await file.arrayBuffer()));
+      const buf=await file.arrayBuffer(), g=svcAggregate(ext==='csv'?csvRead(buf):await xlsxRead(buf));
       if(g.fatal){ state.svcImp=null; state.svcMsg='無法匯入：'+g.fatal; }
       else{ state.svcImp=g; state.svcDay=''; state.svcMsg='已匯入：'+file.name.replace(/[^一-鿿A-Za-z0-9._-]/g,'')+'（原始列已丟棄，只留彙總）'; }
     }catch(e){ state.svcImp=null; state.svcMsg='無法匯入：'+(e&&e.message||e); }
