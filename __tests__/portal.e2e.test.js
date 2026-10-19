@@ -1168,7 +1168,7 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await go(page, 'perm', 'titles');
     const tm = page.locator('#view table.titlematrix');
     await expect(tm.locator('thead th')).toHaveCount(16);            // item column + 12 titles + 3 sub-categories
-    await expect(page.locator('#view')).toContainText('已填 495 / 495');
+    await expect(page.locator('#view')).toContainText('已填 480 / 480');
     const row = name => tm.locator('tbody tr', { hasText: name }).first();
     const cellOf = async (rowName, title) => {
       const idx = await tm.locator('thead th').evaluateAll((ths, t) => ths.findIndex(h => h.textContent.includes(t)), title);
