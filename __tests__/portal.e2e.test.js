@@ -1168,7 +1168,7 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await go(page, 'perm', 'titles');
     const tm = page.locator('#view table.titlematrix');
     await expect(tm.locator('thead th')).toHaveCount(16);            // item column + 12 titles + 3 sub-categories
-    await expect(page.locator('#view')).toContainText('已填 495 / 495');
+    await expect(page.locator('#view')).toContainText('已填 480 / 480');
     const row = name => tm.locator('tbody tr', { hasText: name }).first();
     const cellOf = async (rowName, title) => {
       const idx = await tm.locator('thead th').evaluateAll((ths, t) => ths.findIndex(h => h.textContent.includes(t)), title);
@@ -1210,7 +1210,7 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(page.locator('#view [data-node]')).toHaveCount(0);   // the clickable staff chart is the working view, in the other tab
     await go(page, 'perm', 'orgfn');
     await expect(page.locator('#view .orgcol')).toHaveCount(5);    // shared admin + 4 entities in the staff chart
-    await expect(page.locator('#view')).toContainText('組織圖（功能版）');
+    await expect(page.locator('#view')).toContainText('組織圖與通訊錄');
   });
 
   test('the admin creates a sub-category under a role category and it becomes a column', async ({ page }) => {
@@ -1495,8 +1495,9 @@ test.describe('Personnel file drawer', () => {
     await setRole(page, 'daydir');
     await go(page, 'perm', 'orgfn');
     await page.click('[data-node="B001"]');              // 誠芯 day care supervisor (out of scope)
-    await expect(drawer(page)).toBeVisible();
-    await expect(body(page)).toContainText('不在您目前的資料範圍內');
+    await expect(page.locator('.contactcard')).toContainText('不在您目前的資料範圍內');   // 點人員先看聯絡卡；範圍外只看得到職位
+    await expect(page.locator('.contactcard [data-contact-open]')).toHaveCount(0);
+    await expect(page.locator('.contactcard a[href^="mailto:"]')).toHaveCount(0);
     await expect(page.locator('[data-sec]')).toHaveCount(0);
   });
 });
@@ -1600,7 +1601,7 @@ test.describe('CSV exports', () => {
     await go(page, 'perm', 'matrix');
     const rm = page.locator('table.rolematrix');
     await expect(rm.locator('thead th')).toHaveCount(16);            // item column + 15 roles
-    expect(await rm.locator('tbody tr').count()).toBe(33);
+    expect(await rm.locator('tbody tr').count()).toBe(32);   // 內部通訊錄併入組織圖後少一列
     const idx = await rm.locator('thead th').evaluateAll(ths => ths.findIndex(h => h.textContent.includes('老闆')));
     await expect(rm.locator('tbody tr', { hasText: '薪資計算 › 薪資試算' }).first().locator('td').nth(idx)).toContainText('可檢視');
     await expect(page.locator('.permtable thead th')).toHaveCount(16); // the finer table now covers all 15 roles
@@ -1689,22 +1690,24 @@ test.describe('CSV exports', () => {
     await go(page, 'ann');
     await expect(page.locator('[data-tab="dir"]')).toHaveCount(0);
     await expect(page.locator('[data-tab="org"]')).toBeVisible();
-    // directory under Roles & scope, with a department filter
-    await go(page, 'perm', 'dir');
-    await expect(page.locator('.dircard')).toHaveCount(30);
-    await page.selectOption('#dirDept', 'it');
-    await expect(page.locator('.dircard')).toHaveCount(1);
-    await page.selectOption('#dirDept', 'ALL');
+    // the directory is merged into the org chart under Roles & scope, with a department filter
+    await go(page, 'perm', 'orgfn');
+    await expect(page.locator('[data-tab="dir"]')).toHaveCount(0);
+    await expect(page.locator('.leaf[data-node]')).toHaveCount(28);                     // 30 人：老闆與管理者在最上層
+    await page.selectOption('#orgDept', 'it');
+    await expect(page.locator('.leaf.hit')).toHaveCount(1);
+    await page.selectOption('#orgDept', 'ALL');
     // IME: typing in the middle of a composition does not redraw the page; the filter applies when composition ends
     const same = await page.evaluate(() => {
-      const i = document.getElementById('dirQ'); i.focus();
+      const i = document.getElementById('orgQ'); i.focus();
       i.dispatchEvent(new CompositionEvent('compositionstart'));
       i.value = '日'; i.dispatchEvent(new InputEvent('input', { isComposing: true, bubbles: true }));
-      return document.getElementById('dirQ') === i;
+      return document.getElementById('orgQ') === i;
     });
     expect(same).toBe(true);
-    await page.evaluate(() => { const i = document.getElementById('dirQ'); i.value = '司機'; i.dispatchEvent(new CompositionEvent('compositionend')); });
-    expect(await page.locator('.dircard').count()).toBeLessThan(30);
+    await page.evaluate(() => { const i = document.getElementById('orgQ'); i.value = '司機'; i.dispatchEvent(new CompositionEvent('compositionend')); });
+    expect(await page.locator('.leaf.hit').count()).toBeGreaterThan(0);
+    expect(await page.locator('.leaf.hit').count()).toBeLessThan(28);
     // the working view of the org chart can be edited (demo)
     await page.click('[data-tab="orgfn"]');
     await page.click('[data-orgedit-toggle]');
@@ -2010,7 +2013,7 @@ test.describe('Manager to-do', () => {
     await expect(page.locator('[data-tab="todo"]')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#view')).toContainText('待我簽核');
     await expect(page.locator('#view')).toContainText('證照 90 天內到期');
-    await expect(page.locator('#view .tile .v').first()).toHaveText(String(n));
+    await expect(page.locator('.todostrip .tot b')).toHaveText(String(n));
     await page.locator('#view [data-goto="hr|leave"]').first().click();      // 按鈕直接帶到請假審核
     await expect(page.locator('[data-tab="leave"]')).toHaveAttribute('aria-selected', 'true');
     await setRole(page, 'employee');
@@ -2364,5 +2367,96 @@ test.describe('v3.2 section in the guide', () => {
     for (const s of ['.csv', 'Big5', 'HEIC', '修訂日期', '傘狀圖', '找不到表頭', '服務個案數']) await expect(sec).toContainText(s);
     await expect(sec.locator('tbody tr')).toHaveCount(4);
     await expect(page.locator('.toc a[href="#newv32"]')).toBeVisible();
+  });
+});
+
+
+test.describe('To-do grid, employee column filters, org chart with directory', () => {
+  test('to-do page lays its tables out side by side and fits one screen', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openPortal(page);
+    await setRole(page, 'hr');
+    await page.click('#todoBtn');
+    const cards = page.locator('.todocard');
+    expect(await cards.count()).toBeGreaterThanOrEqual(4);
+    const tops = await cards.evaluateAll(n => n.map(e => Math.round(e.getBoundingClientRect().top)));
+    expect(tops.filter(t => t === tops[0]).length).toBeGreaterThanOrEqual(2);          // 同一排至少兩張卡
+    await expect(page.locator('.todotbl').first()).toBeVisible();
+    const m = await page.evaluate(() => ({ h: document.documentElement.scrollHeight, vh: innerHeight }));
+    expect(m.h).toBeLessThanOrEqual(m.vh + 2);                                           // 不用往下捲
+    expect(await page.locator('.todotbl tbody tr').count()).toBeGreaterThan(8);          // 一頁看到多筆
+  });
+
+  test('employee records: every row is one line and each column has its own filter', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openPortal(page);
+    await go(page, 'hr', 'emp');
+    const hs = await page.locator('.emptable tbody tr').evaluateAll(n => n.map(e => Math.round(e.getBoundingClientRect().height)));
+    expect(Math.max(...hs)).toBeLessThan(46);                                            // 一行（不換行）
+    await expect(page.locator('.emptable tr.filters [data-cf]')).toHaveCount(8);          // 8 欄有篩選（月薪欄人資才有）
+    const all = await page.locator('.emptable tbody tr').count();
+    await page.selectOption('[data-cf="unit"]', { index: 2 });
+    const byUnit = await page.locator('.emptable tbody tr').count();
+    expect(byUnit).toBeGreaterThan(0); expect(byUnit).toBeLessThan(all);
+    await page.selectOption('[data-cf="type"]', 'part');                                  // 兩個欄位一起篩
+    expect(await page.locator('.emptable tbody tr').count()).toBeLessThanOrEqual(byUnit);
+    await page.click('[data-cf-clear]');
+    expect(await page.locator('.emptable tbody tr').count()).toBe(all);
+    await page.fill('[data-cf="id"]', 'a00');
+    expect(await page.locator('.emptable tbody tr').count()).toBeLessThan(all);
+    await expect(page.locator('.emptable tbody tr').first().locator('td').first()).toContainText('A00');
+  });
+  test('employee records: Zhuyin typing in a column filter is not interrupted; pay filter only for roles that see pay', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'emp');
+    const same = await page.evaluate(() => {
+      const i = document.querySelector('[data-cf="name"]'); i.focus();
+      i.dispatchEvent(new CompositionEvent('compositionstart'));
+      i.value = '護'; i.dispatchEvent(new InputEvent('input', { isComposing: true, bubbles: true }));
+      return document.querySelector('[data-cf="name"]') === i;                            // 組字中不重畫
+    });
+    expect(same).toBe(true);
+    await page.evaluate(() => { const i = document.querySelector('[data-cf="name"]'); i.value = '護理師'; i.dispatchEvent(new CompositionEvent('compositionend')); });
+    expect(await page.locator('.emptable tbody tr').count()).toBeGreaterThan(0);
+    await expect(page.locator('.emptable tr.filters [data-cf="pay"]')).toHaveCount(1);   // 人資看得到月薪，所以有月薪篩選
+    await setRole(page, 'manager');
+    await go(page, 'hr', 'emp');
+    await expect(page.locator('.emptable tr.filters [data-cf="pay"]')).toHaveCount(0);
+  });
+
+  test('org chart and directory are one page: click a person for extension, phone, mobile and email', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'perm', 'orgfn');
+    await expect(page.locator('[data-tab="dir"]')).toHaveCount(0);
+    await page.locator('.leaf[data-node="A002"]').click();
+    const card = page.locator('.contactcard');
+    await expect(card).toContainText('分機');
+    await expect(card.locator('a[href^="tel:"]')).toHaveCount(2);                          // 電話、手機
+    await expect(card.locator('a[href^="mailto:"]')).toHaveCount(1);
+    await expect(card.locator('a[href^="mailto:"]')).toContainText('@');
+    await card.locator('[data-contact-open]').click();                                    // 完整人事資料
+    await expect(drawer(page)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => { state.contactId = null; render(); });
+    await expect(page.locator('.contactcard')).toHaveCount(0);
+    await page.fill('#orgQ', '司機');
+    expect(await page.locator('.leaf.hit').count()).toBeGreaterThan(0);                   // 符合的標出來
+    expect(await page.locator('.leaf.dim').count()).toBeGreaterThan(0);                   // 其他變淡
+  });
+  test('the contact card follows scope and the mobile-number right', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'employee');
+    await go(page, 'perm', 'orgfn');
+    const mobileOk = await page.evaluate(() => can('mobile'));
+    await page.locator('.leaf[data-node="A002"]').click();                                // 同一家公司的同仁
+    const card = page.locator('.contactcard');
+    await expect(card).toBeVisible();
+    await expect(card.locator('a[href^="mailto:"]')).toHaveCount(1);
+    await expect(card.locator('a[href^="tel:"]')).toHaveCount(mobileOk ? 2 : 1);          // 沒有手機權限就只有公司電話
+    if (!mobileOk) await expect(card.locator('.lock')).toContainText('僅人資');
+    await page.locator('.leaf[data-node="B001"]').click();                                // 別家公司的同仁：只看得到職位
+    await expect(page.locator('.contactcard')).toContainText('不在您目前的資料範圍內');
+    await expect(page.locator('.contactcard a[href^="mailto:"]')).toHaveCount(0);
   });
 });
