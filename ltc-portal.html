@@ -385,6 +385,28 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 @media (max-width:1150px){ .ufield{flex:0 1 auto} .utility{gap:8px} }
 /* 桌面但視窗不寬（1001–1300px）：頂列放不下，先收起「手機版」連結（使用指南裡還有） */
 @media (min-width:1001px) and (max-width:1300px){ .mobile-link{display:none} }
+/* 公告欄 › 組織圖（正式版）：由上往下的傘狀圖，一頁看完 */
+.orgf-wrap{padding:12px 12px 6px;overflow:visible}
+.orgf-top{gap:0}.orgf-top .orgbox{min-width:140px;text-align:center}
+.orgf-row{gap:10px;align-items:stretch;padding-top:16px}
+.orgf-row::before{left:10%;right:10%}
+.orgf .orgcol{flex:1 1 0;min-width:0}
+.orgf .orgcol>.orgbox{width:100%;text-align:center}
+.orgf .orgbox{font-size:12px;line-height:1.35;padding:4px 7px}
+.orgf .orgbox.sm{width:100%;text-align:center}
+.orgf .orgbox .hd{font-size:10.5px}
+.orgf .orgbox.sub{width:88%;margin:0 auto;border-style:dashed}
+.orgf .kids{gap:6px;margin-top:12px}
+.orgf .kids::before{top:-12px;height:12px}
+.orgf .fac{display:flex;flex-direction:column;align-items:center;gap:0}
+.orgf .units{display:flex;flex-direction:column;gap:3px;width:90%;border-left:1px solid var(--line-strong);padding:6px 0 0 8px;margin-left:10%;align-self:flex-start}
+.orgf .roles{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin-top:2px}
+.orgf .roles .chip{font-size:10px;padding:0 6px}
+.orgf-float{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:12px;padding:10px 2px 4px}
+.orgf .orgbox.float{width:auto;border-style:dashed;text-align:left;display:inline-block}
+.orgf-note{padding:0 14px 12px}.orgf-note summary{cursor:pointer;font-size:12.5px;color:var(--ink-3);padding:4px 0}
+@media (max-width:1000px){ .orgf-row{flex-direction:column;align-items:stretch} .orgf-row::before,.orgf .orgcol::before{display:none} .orgf .orgcol{flex:none} .orgf .kids::before{display:none} }
+.uphint{font-size:11.5px;margin-top:4px;line-height:1.5;white-space:normal}
 /* 手機／觸控：按鈕、下拉與輸入框至少 40px 高，才點得準（桌面版不變） */
 @media (max-width:760px), (pointer:coarse){
   button:not(.navitem):not(.tabs button), a.btn, select, input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]){ min-height:40px }
@@ -769,6 +791,7 @@ const ROLES = {
 };
 
 /* ---------- state ---------- */
+const APP_VERSION='3.2', APP_REVISION='2026-10-19';   // 修訂日期：部署時會自動改成最後一次修改的日期（台北時間）
 const state = {
   utilOpen:false,
   navOpen:false,
@@ -987,7 +1010,7 @@ function renderShell(){
       <div class="brand">
         <b>誠馨日照</b>
         <span>Zengxin Day Care</span>
-        <span>${state.lang==='zh'?'營運入口 · Ops Portal':'Ops Portal · 營運入口'} · v2.1</span>
+        <span>${state.lang==='zh'?'營運入口 · Ops Portal':'Ops Portal · 營運入口'} · v${APP_VERSION}</span>
       </div>
       <div class="railitems" id="railItems">
       <div class="rail-group">${both('本次原型','In this prototype')}</div>
@@ -1001,7 +1024,7 @@ function renderShell(){
       <div class="rail-foot">
         ${both('展示資料為虛構','Demo data is fictional')}<br>
         ${both('無帳號登入・無資料庫','No login · no database')}<br>
-        <span class="mono">${both('展示日期','Demo date')} ${ymd(TODAY)}</span>
+        <span class="mono">${both('版本','Version')} v${APP_VERSION}・${both('修訂','Revised')} ${APP_REVISION}</span>
       </div>
       </div>
     </nav>
@@ -1659,27 +1682,36 @@ function orgNodeHTML(n){
     ${n.kids?`<ul>${n.kids.map(orgNodeHTML).join('')}</ul>`:''}</li>`;
 }
 function titleStructureCard(){
-  const T=ORG_TREE, one=n=>`<li><div class="orgbox top"><b>${esc(state.lang==='zh'?n.zh:n.en)}</b></div>${n.kids?`<ul>${n.kids.map(one).join('')}</ul>`:''}</li>`;
-  return `<section class="card">
-    <div class="card-h"><h2>${esc(both('組織架構（需求端 10/13 提供）','Organisation structure (from the requester side, 13 Oct)'))}</h2><span class="chip acc">${esc(both('正式全名版','Formal full-name version'))}</span>
+  const T=ORG_TREE, nm=n=>esc(state.lang==='zh'?n.zh:n.en);
+  const unitBox=u=>`<div class="orgbox unit sm"><b>${nm(u)}</b>${(u.roles||[]).length?`<div class="roles">${u.roles.map(r=>`<span class="chip">${esc(r)}</span>`).join('')}</div>`:''}</div>`;
+  const facBlock=f=>`<div class="fac"><div class="orgbox sm"><b>${nm(f)}</b>${f.head?`<div class="muted hd">${esc(state.lang==='zh'?f.head:f.headEn)}</div>`:''}</div>
+      ${(f.kids||[]).length?`<div class="units">${f.kids.map(unitBox).join('')}</div>`:''}</div>`;
+  const staffBlock=n=>`<div class="orgbox sm"><b>${nm(n)}</b></div>${(n.kids||[]).map(k=>`<div class="orgbox sm sub"><b>${nm(k)}</b></div>`).join('')}`;
+  return `<section class="card orgf">
+    <div class="card-h"><h2>${esc(both('組織架構（需求端 10/13 提供）','Organisation structure (from the requester side, 13 Oct)'))}</h2>
+      <span class="chip acc">${esc(both('正式全名版','Formal full-name version'))}</span>
       <span class="en">${esc(both(T.entities.length+' 個主體單位（1 協會＋3 公司）',T.entities.length+' entities (1 association + 3 companies)'))}</span></div>
-    <div class="card-b">
+    <div class="orgwrap orgf-wrap">
+      <div class="orgtop orgf-top">
+        ${T.top.map(n=>`<div class="orgbox top"><b>${nm(n)}</b></div>`).join('<span class="vline"></span>')}
+        <span class="vline"></span>
+      </div>
+      <div class="orgrow orgf-row">
+        <div class="orgcol"><div class="orgbox ent shared"><b>${esc(both('共用行政','Shared administration'))}</b><div class="muted hd">${esc(both('各單位共用','Shared by all units'))}</div></div>
+          <div class="kids">${T.staff.map(staffBlock).join('')}</div></div>
+        ${T.entities.map(e=>`<div class="orgcol"><div class="orgbox ent"><b>${nm(e)}</b>
+            <div class="muted hd">${esc(both(unit(e.oid).zh+'・編號 '+unit(e.oid).code,unit(e.oid).en+' · no. '+unit(e.oid).code))}</div></div>
+          <div class="kids">${e.kids.map(k=>k.kind==='unit'?unitBox(k):facBlock(k)).join('')}</div></div>`).join('')}
+      </div>
+      <div class="orgf-float"><span class="muted">${esc(both('跨單位主管（虛線）：','Cross-unit supervisors (dashed): '))}</span>
+        ${T.floating.map(f=>`<span class="orgbox float sm"><b>${esc(both(f.zh,f.en))}</b> ⇢ ${esc(both(f.zhTo.join('、'),f.enTo.join(', ')))}</span>`).join('')}</div>
+    </div>
+    <details class="orgf-note"><summary>${esc(both('說明與提醒','Notes'))}</summary>
       <div class="note q">${esc(both('目前主體單位有 4 家（1 家協會、3 家公司），組織圖仍因業務需求而動態調整；之後會逐步收斂各業務、與部分機構整合，屆時組織圖與職稱可能都會再統一調整。目前的簽核流程有部分與組織圖不一樣，需求端會再想怎麼呈現。',
         'There are 4 entities (1 association and 3 companies). The chart still changes with business needs; the requester side will gradually consolidate businesses and merge some facilities, after which the chart and titles may be unified again. Some current approval flows differ from this chart; the requester side will think about how to present them.'))}</div>
-      <ul class="orgtree">
-        ${T.top.map(n=>`<li><div class="orgbox top"><b>${esc(state.lang==='zh'?n.zh:n.en)}</b></div>`).join('<span class="vline"></span>')}
-        <li><div class="muted" style="font-size:12px;margin:6px 0 2px">${esc(both('管理者底下','Under the manager'))}</div>
-          <ul>${T.staff.map(one).join('')}
-            ${T.entities.map(e=>`<li><div class="orgbox ent"><b>${esc(state.lang==='zh'?e.zh:e.en)}</b>${state.lang==='zh'?'':` <span class="muted">${esc(e.zh)}</span>`}
-              <div class="muted" style="font-size:12px">${esc(both('資料範圍：'+unit(e.oid).zh+'（員工編號 '+unit(e.oid).code+'）','Data scope: '+unit(e.oid).en+' (employee no. '+unit(e.oid).code+')'))}</div></div>
-              <ul>${e.kids.map(orgNodeHTML).join('')}</ul></li>`).join('')}
-          </ul></li>
-      </ul>
-      <h3 style="margin:14px 0 6px;font-size:14px">${esc(both('跨單位主管（圖上以虛線箭頭表示）','Cross-unit supervisors (dashed arrows on the chart)'))}</h3>
-      <ul style="margin:0;padding-left:20px;line-height:1.8">${T.floating.map(f=>`<li><b>${esc(both(f.zh,f.en))}</b>：${esc(both(f.zhTo.join('、'),f.enTo.join(', ')))}</li>`).join('')}</ul>
-    </div>
-    <div class="legend">${esc(both('依需求端 10/13 提供的組織圖整理。「A個管」是政府的命名（Ａ單位個管師）。資料範圍與員工編號前綴的對應（A 協會、B 誠芯、C 牛津、D 誠馨健康）是原型暫定，待確認；系統管理員未出現在圖上，原型放在共用行政。上方組織圖的人員仍是示範資料。',
+      <div class="legend">${esc(both('依需求端 10/13 提供的組織圖整理。「A個管」是政府的命名（Ａ單位個管師）。資料範圍與員工編號前綴的對應（A 協會、B 誠芯、C 牛津、D 誠馨健康）是原型暫定，待確認；系統管理員未出現在圖上，原型放在共用行政。上方組織圖的人員仍是示範資料。',
       'Built from the org chart the requester side supplied on 13 Oct. “A個管” is the government’s title (A-unit case manager). The mapping of data scope and employee-number prefix (A association, B Chengxin, C Oxford, D Zengxin Health) is a provisional prototype choice; the system administrator is not on the chart and sits under shared admin in the prototype. The people in the chart above are still demo data.'))}</div>
+    </details>
   </section>`;
 }
 BINDERS['arch:scope']=function(){
@@ -1978,7 +2010,23 @@ const lockTxt = (zh,en) => `<span class="lock">${lockIcon()}${esc(both(zh,en))}<
 const kvRow = (zh,en,val) => `<dt>${esc(both(zh,en))}</dt><dd>${val}</dd>`;
 const addBox = (id, title, inner) => `<details class="addbox"><summary>${esc(title)}</summary><form class="frm" data-add="${id}" style="padding-top:10px">${inner}
   <div><button class="btn mini" type="submit">${esc(both('儲存','Save'))}</button></div></form></details>`;
-const fld = (zh,en,name,type='text',extra='') => `<div><label>${esc(both(zh,en))}</label><input name="${name}" type="${type}" ${extra}></div>`;
+/* ---------- 上傳：接受的檔案格式（一處定義，所有上傳欄位共用） ---------- */
+const UP_IMG=['jpg','jpeg','png','heic','heif','webp','gif','tif','tiff','bmp'];
+const UP_DOC=['pdf','doc','docx','xls','xlsx','csv','ppt','pptx','txt'];
+const UP_OK=[...UP_IMG,...UP_DOC];
+const UP_ACCEPT=UP_OK.map(e=>'.'+e).join(',')+',image/*';
+const upExt=n=>(String(n).split('.').pop()||'').toLowerCase();
+const upHint=()=>both('可上傳：圖片（JPG、PNG、HEIC／HEIF〔iPhone 照片〕、WebP、GIF、TIFF、BMP）、PDF、Word、Excel、PowerPoint、CSV、TXT。檔案大小上限待決定（取決於雲端空間規劃）；原型只記檔名，不會真的儲存檔案。',
+  'Accepted: images (JPG, PNG, HEIC/HEIF [iPhone photos], WebP, GIF, TIFF, BMP), PDF, Word, Excel, PowerPoint, CSV, TXT. Size limit to be decided (depends on the cloud-storage plan); the prototype only records the file name and does not store the file.');
+const fileInput=(name,extra='')=>`<input type="file" name="${name}" accept="${UP_ACCEPT}" data-up ${extra}><div class="uphint muted">${esc(upHint())}</div>`;
+document.addEventListener('change',e=>{
+  const i=e.target; if(!(i&&i.matches&&i.matches('input[type=file][data-up]'))) return;
+  const f=i.files&&i.files[0]; if(!f) return;
+  if(!UP_OK.includes(upExt(f.name)) && !/^image\//.test(f.type||'')){ i.value=''; toast(both('不接受 .'+upExt(f.name)+' 檔。','.'+upExt(f.name)+' files are not accepted. ')+upHint()); }
+},true);
+const fld = (zh,en,name,type='text',extra='') => type==='file'
+  ? `<div><label>${esc(both(zh,en))}</label>${fileInput(name,extra.replace(/accept="[^"]*"/,''))}</div>`
+  : `<div><label>${esc(both(zh,en))}</label><input name="${name}" type="${type}" ${extra}></div>`;
 const sel = (zh,en,name,obj) => `<div><label>${esc(both(zh,en))}</label><select name="${name}">${Object.entries(obj).map(([k,v])=>`<option value="${k}">${esc(both(v.zh,v.en||v.zh))}</option>`).join('')}</select></div>`;
 
 function secBasic(p, rec){
@@ -2467,7 +2515,7 @@ function myLeave(){
         ${rot?`<div><label>${esc(both('開始日班別','Shift on start date'))}</label><div class="calc" id="leaveShift"></div></div>`:''}
       </div>
       <div><label>${esc(both('事由','Reason'))}</label><textarea name="reason" required></textarea></div>
-      <div><label>${esc(both('附件（選填，例如診斷證明、結婚證明）','Attachment (optional, e.g. medical or marriage certificate)'))}</label><input type="file" name="file"></div>
+      <div><label>${esc(both('附件（選填，例如診斷證明、結婚證明）','Attachment (optional, e.g. medical or marriage certificate)'))}</label>${fileInput('file')}</div>
       <div><button type="submit" class="btn">${esc(both('送出請假','Submit leave'))}</button></div>
     </form>
   </section>`;
@@ -4416,6 +4464,7 @@ function viewSvcCase(){
         <div class="note">${esc(both('檔案只在你的瀏覽器裡讀取，不會上傳、不會儲存；匯入後只保留彙總數字，原始列（身分證字號、地址、電話等個資）讀完就丟掉。重新整理頁面，彙總也會清掉。',
           'The file is read only inside your browser: nothing is uploaded or stored. Only summary numbers are kept; the raw rows (ID numbers, addresses, phones) are discarded once read. Reloading the page clears the summary too.'))}</div>
         <div><input type="file" id="svcFile" accept=".xlsx" aria-label="${esc(both('選擇仁寶服務記錄 Excel（.xlsx）','Choose the 仁寶 service-record Excel (.xlsx)'))}">
+          <div class="uphint muted">${esc(both('只收 .xlsx（Excel 活頁簿）。舊版 .xls、.csv、PDF 與圖片目前讀不了；舊版 .xls 請在 Excel 另存成 .xlsx。','Only .xlsx (Excel workbook) is read. Old .xls, .csv, PDF and images are not supported yet; save an old .xls as .xlsx in Excel.'))}</div>
           ${state.svcImp?`<button class="btn" id="svcClear" style="margin-left:8px">${esc(both('清除彙總','Clear summary'))}</button>`:''}</div>
         <div id="svcMsg" class="muted" style="font-size:12.5px" role="status">${esc(state.svcMsg||'')}</div>
         ${state.svcImp?svcImpView(state.svcImp):''}
@@ -4546,6 +4595,7 @@ BINDERS['svc:case']=function(){
   const f=document.getElementById('svcFile');
   if(f) f.onchange=async()=>{
     const file=f.files[0]; if(!file) return;
+    if(upExt(file.name)!=='xlsx'){ state.svcImp=null; state.svcMsg='無法匯入：只收 .xlsx（目前不支援 .'+upExt(file.name)+'）。舊版 .xls 請在 Excel 另存成 .xlsx。'; render(); return; }
     const msg=document.getElementById('svcMsg'); msg.textContent='讀取中…';
     try{
       const g=svcAggregate(await xlsxRead(await file.arrayBuffer()));
@@ -4904,8 +4954,9 @@ function viewSettings(){
     <section class="card">
       <div class="card-h"><h2>${esc(both('版本','Version'))}</h2></div>
       <div class="card-b"><dl class="kv">
-        ${kvRow('版本','Version','v2.1 · '+esc(both('原型展示版','Prototype demo')))}
-        ${kvRow('展示日期','Demo date','<span class="mono">'+ymd(TODAY)+'</span>')}
+        ${kvRow('版本','Version','v'+APP_VERSION+' · '+esc(both('原型展示版','Prototype demo')))}
+        ${kvRow('修訂日期','Revised','<span class="mono">'+APP_REVISION+'</span>')}
+        ${kvRow('示範資料的「今天」','Demo data “today”','<span class="mono">'+ymd(TODAY)+'</span>')}
         ${kvRow('資料','Data',esc(both('示範資料，存在瀏覽器，重新整理即還原','Demo data held in the browser; resets on reload')))}
       </dl></div>
     </section>

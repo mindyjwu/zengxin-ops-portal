@@ -19,6 +19,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Stamp revision date (last commit, Taipei time)
+        run: |
+          D=$(TZ=Asia/Taipei git log -1 --format=%cd --date=format-local:%Y-%m-%d)
+          echo "Revision date: $D"
+          sed -i "s/APP_REVISION='[0-9-]*'/APP_REVISION='$D'/" ltc-portal.html mobile.html
+          sed -i "s/data-rev>[0-9-]*</data-rev>$D</g" guide.html index.html demo.html
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact

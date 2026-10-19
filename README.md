@@ -1,5 +1,5 @@
-# 誠馨日照營運入口 v2.1
-# Zengxin Day Care Operations Portal v2.1
+# 誠馨日照營運入口 v3.2
+# Zengxin Day Care Operations Portal v3.2
 
 > **Canonical repo.** This is the single active repo for the project. Project map: [`docs/INDEX.md`](docs/INDEX.md) · context for Claude: [`CLAUDE.md`](CLAUDE.md).
 
@@ -93,7 +93,7 @@ PW_CHROMIUM_PATH=/path/to/chrome npx playwright test # Playwright 端對端測�
 
 ---
 
-v2.1 · 2026 年 9 月
+v3.2 · 修訂 2026-10-19
 - 使用指南「MVP 定案前待同事補齊」：依優先順序列出要請需求端、人事、IT 補的資料，附可直接傳給同事的訊息
 - 10/13 需求端更新：組織圖改為 4 個主體單位（1 協會＋3 公司）與附設機構，網站已放入組織架構樹並新增第 4 個主體「誠馨健康」；104 員工資料匯出欄位已整理在 104 功能對照
 - 10/13 需求端回覆：離職後回任以新進人員重新編號（不沿用舊員編），原型已照此示範；系統說明新增「雲端儲存空間估算」；仁寶匯出的服務紀錄檔案待收到後再做匯入
@@ -112,3 +112,4 @@ v2.1 · 2026 年 9 月
 - 深色模式：出勤管理「當月出勤圖」的小方塊與圖例調亮（正常／遲到／請假／未打卡／排休各有深色專用顏色，與底色對比至少 3:1）；日間模式不變。
 
 - 手機版（PWA 第一版）：`mobile.html`（含 `manifest.webmanifest`、`sw.js`、`icons/`）。上下班打卡、工時與加班單／補刷卡、請假、出勤月曆；可加入手機主畫面；示範資料，存在手機瀏覽器；不取用定位或相機。營運入口頂列有「手機版」連結。
+- v3.2（10/19）：公告欄組織圖改為由上往下的傘狀圖（一頁看完，窄螢幕改直式堆疊）；所有上傳欄位列出可接受格式（圖片含 HEIC／HEIF、PDF、Word、Excel、PowerPoint、CSV、TXT），不支援的檔案會被擋下並說明；版本與「修訂日期」顯示在左下角與系統設定，部署時自動改成最後一次修改的日期（台北時間），取代「展示日期」。

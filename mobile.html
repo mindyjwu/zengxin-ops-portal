@@ -57,7 +57,7 @@ header.top .who{flex:1;min-width:0}
 header.top b{display:block;font-size:17px}
 header.top span{font-size:13px;color:var(--ink-3)}
 .iconbtn{min-width:44px;min-height:44px;border:1px solid var(--line-strong);background:var(--surface);border-radius:12px;font-size:13px;padding:0 10px;cursor:pointer}
-main{flex:1;padding:4px 16px calc(92px + env(safe-area-inset-bottom))}
+main{flex:1;padding:4px 16px 12px}
 .demo{background:var(--warn-soft);color:var(--ink);border:1px dashed var(--warn);border-radius:12px;padding:8px 12px;font-size:13px;margin:0 0 12px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
 .card h2{margin:0 0 10px;font-size:16px}
@@ -108,6 +108,7 @@ nav.tabs button[aria-current="true"]{color:var(--accent);font-weight:700}
 .cal .blank{visibility:hidden}
 .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;font-size:13px;color:var(--ink-2)}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.ver{text-align:center;font-size:12px;padding:0 16px calc(80px + env(safe-area-inset-bottom))}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));background:var(--ink);color:var(--ground);padding:10px 16px;border-radius:99px;font-size:14px;z-index:9;max-width:90%;text-align:center}
 @media (prefers-reduced-motion: no-preference){ .punch{transition:transform .08s} }
 </style>
@@ -119,6 +120,7 @@ nav.tabs button[aria-current="true"]{color:var(--accent);font-weight:700}
     <button class="iconbtn" id="themeBtn" aria-label="切換日夜模式">自動</button>
   </header>
   <main id="view" aria-live="polite"></main>
+  <div class="ver muted" id="ver"></div>
   <nav class="tabs" aria-label="主要功能" id="tabs"></nav>
 </div>
 <script>
@@ -126,6 +128,7 @@ nav.tabs button[aria-current="true"]{color:var(--accent);font-weight:700}
    誠馨日照 手機版（PWA 第一版）— 示範資料，沒有後端、沒有登入。
    打卡不會取用定位或相機，資料只存在這支手機的瀏覽器裡。
    ========================================================= */
+const APP_VERSION='3.2', APP_REVISION='2026-10-19';   // 修訂日期：部署時自動改成最後一次修改的日期（台北時間）
 const DEMO = {name:'示範員工', title:'照服員', unit:'竹北日照中心（示範）', shiftStart:'08:00', shiftEnd:'17:00', lunchH:1, lateGrace:0};
 const LEAVE_TYPES = ['特休','病假','事假','家庭照顧假','生理假'];
 const TABS = [{id:'punch',zh:'打卡',ic:'⏱'},{id:'hours',zh:'工時',ic:'🗒'},{id:'leave',zh:'請假',ic:'🌴'},{id:'cal',zh:'月曆',ic:'📅'}];
@@ -184,6 +187,7 @@ function monthDays(){ const n=now(), y=n.getFullYear(), m=n.getMonth(), last=new
 /* ---------- 畫面 ---------- */
 function render(){
   document.getElementById('hSub').textContent=`${DEMO.title}・${DEMO.unit}`;
+  document.getElementById('ver').textContent=`手機版 v${APP_VERSION}・修訂 ${APP_REVISION}`;
   document.getElementById('tabs').innerHTML=TABS.map(t=>`<button data-tab="${t.id}" aria-current="${S.tab===t.id}"><span aria-hidden="true">${t.ic}</span>${t.zh}</button>`).join('');
   const v=document.getElementById('view');
   v.innerHTML=`<div class="demo">示範版：人物與出勤資料是虛構的；打卡不會取用定位或相機，資料只存在這支手機的瀏覽器。</div>`+({punch:vPunch,hours:vHours,leave:vLeave,cal:vCal}[S.tab])();
