@@ -2317,3 +2317,40 @@ test.describe('Formal org chart layout, upload formats, version and revision dat
     expect(w).toContain('Asia/Taipei');
   });
 });
+
+test.describe('仁寶 import accepts .csv', () => {
+  const CSV = '案號,服務項目類別,項目服務次數,居服員姓名,服務日期,服務時間長度(分)\r\nT-001,陪伴服務,1,測試員甲,2026/10/5,60\r\nT-002,"協助沐浴,洗頭",1,測試員乙,2026-10-06,90\r\n';
+  const BIG5_B64 = 'rte4uSyqQbDItrWl2MP+p08strWl2KpBsMimuLzGLKl+qkGt+6ltplcsqkGwyKTptMEsqkGwyK7JtqGq+KvXKKTAKQ0KVC0wMDEss62m8apBsMgsMSy0+rjVrful0iwyMDI2LzEwLzUsNjANClQtMDAyLCKo86dVqE6vRCysfsBZIiwxLLT6uNWt+6RBLDIwMjYtMTAtMDYsOTANCg==';
+  const openCase = async page => { await openPortal(page); await go(page, 'svc', 'case'); };
+  const expectSummary = async page => {
+    const v = page.locator('#view');
+    await expect(v).toContainText('服務個案數：2');
+    await expect(v).toContainText('服務紀錄：2');
+    await expect(v).toContainText('居服員：2');
+    await expect(v).toContainText('總工時：2.5');                      // 150 分鐘
+    await expect(v).toContainText('協助沐浴,洗頭');                    // 引號裡的逗號不會把欄位切開
+    await expect(v.locator('tbody tr', { hasText: '測試員甲' })).toContainText('1.0');
+  };
+  test('UTF-8 csv with BOM, CRLF, quoted commas and slash dates', async ({ page }) => {
+    await openCase(page);
+    await expect(page.locator('#svcFile')).toHaveAttribute('accept', /\.csv/);
+    await expect(page.locator('#view')).toContainText('.csv');
+    await page.setInputFiles('#svcFile', { name: 'sample.csv', mimeType: 'text/csv', buffer: Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(CSV, 'utf8')]) });
+    await expectSummary(page);
+  });
+  test('Big5 csv (what Excel saves on Traditional Chinese Windows) reads correctly', async ({ page }) => {
+    await openCase(page);
+    await page.setInputFiles('#svcFile', { name: 'sample-big5.csv', mimeType: 'text/csv', buffer: Buffer.from(BIG5_B64, 'base64') });
+    await expectSummary(page);
+  });
+  test('a csv without the required columns gives the same clear message', async ({ page }) => {
+    await openCase(page);
+    await page.setInputFiles('#svcFile', { name: 'bad.csv', mimeType: 'text/csv', buffer: Buffer.from('a,b\r\n1,2\r\n', 'utf8') });
+    await expect(page.locator('#svcMsg')).toContainText('找不到表頭');
+  });
+  test('.xls and other formats are still refused with a pointer to .xlsx / csv', async ({ page }) => {
+    await openCase(page);
+    await page.setInputFiles('#svcFile', { name: 'old.xls', mimeType: 'application/vnd.ms-excel', buffer: Buffer.from('x') });
+    await expect(page.locator('#svcMsg')).toContainText('只收 .xlsx 和 .csv');
+  });
+});
