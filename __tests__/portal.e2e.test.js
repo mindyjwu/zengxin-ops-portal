@@ -2354,3 +2354,15 @@ test.describe('仁寶 import accepts .csv', () => {
     await expect(page.locator('#svcMsg')).toContainText('只收 .xlsx 和 .csv');
   });
 });
+
+
+test.describe('v3.2 section in the guide', () => {
+  test('records the csv support, upload formats and revision date, with a table of import formats', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    const sec = page.locator('#newv32');
+    await expect(sec.locator('h2')).toContainText('v3.2 更新（10/19）');
+    for (const s of ['.csv', 'Big5', 'HEIC', '修訂日期', '傘狀圖', '找不到表頭', '服務個案數']) await expect(sec).toContainText(s);
+    await expect(sec.locator('tbody tr')).toHaveCount(4);
+    await expect(page.locator('.toc a[href="#newv32"]')).toBeVisible();
+  });
+});

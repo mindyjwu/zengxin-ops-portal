@@ -129,6 +129,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
     <a href="#cmp104">104 功能對照</a>
     <a href="#perms">權限、職稱對照與簽核路徑</a>
     <b>參考</b>
+    <a href="#newv32">v3.2 更新（10/19）</a>
     <a href="#new1014">10/14 會議後的更新</a>
     <a href="#newlatest">10/7 會議後的更新</a>
     <a href="#new930">9/30 會議後的更新</a>
@@ -427,6 +428,35 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
     <section id="cmp104">
       <h2>104 功能對照</h2>
       <p><span class="path">文件管理 › 104 功能對照</span>：依你提供的 104 截圖，逐項比對 104 的功能和原型現在有什麼。分為「原型已有」「部分」「原型尚無」「104 未啟用」四種，另有 104 職務類別與原型職稱的對照。這是 9/30 會議待辦「評估 Portal 能否取代 104 差勤功能」的輸入資料，不是評估結論。</p>
+    </section>
+
+    <section id="newv32">
+      <h2>v3.2 更新（10/19）</h2>
+      <p>版本 v3.2；頁面左下角的「修訂」日期是最後一次修改的日期（台北時間），發布時自動更新。</p>
+      <h3>已經改好的</h3>
+      <ul>
+        <li><b>仁寶匯入支援 .csv</b>：除了 .xlsx，現在也能讀 .csv（UTF-8 或 Big5 自動判斷，Excel 在繁體中文 Windows 另存的 CSV 常是 Big5）。欄位內有逗號、換行、<span class="mono">2026/10/5</span> 這類日期都能正確讀取。</li>
+        <li><b>公告欄 › 組織圖</b>改成由上往下的傘狀圖（老闆 › 管理者 › 共用行政與 4 個主體單位 › 機構 › 服務單位），跟「組織圖（功能版）」同一種看法。螢幕高度 900px 左右可以一頁看完；更小的螢幕仍要稍微往下滑，手機上改成直式堆疊。</li>
+        <li><b>上傳欄位</b>統一列出可以上傳的格式：圖片（JPG、PNG、HEIC／HEIF〔iPhone 照片〕、WebP、GIF、TIFF、BMP）、PDF、Word、Excel、PowerPoint、CSV、TXT。不在清單內的檔案會被擋下並說明。檔案大小上限還沒決定（要看雲端空間規劃），原型也只記檔名、不會真的儲存檔案。</li>
+        <li><b>版本與日期</b>：左下角與 <span class="path">系統設定</span> 顯示「版本 v3.2・修訂日期」，取代原本的「展示日期」；示範資料用來當「今天」的日期仍在系統設定，叫「示範資料的今天」。</li>
+      </ul>
+      <h3>匯入仁寶服務記錄怎麼用（<span class="path">業務資料整合 › 居服個案管理系統</span>）</h3>
+      <ol>
+        <li>在仁寶下載服務記錄，存成 .xlsx 或 .csv。</li>
+        <li>在頁面「匯入仁寶服務記錄」選檔案。檔案只在你的瀏覽器裡讀取，不上傳、不儲存；原始列（身分證字號、地址、電話）讀完就丟掉，只留彙總，重新整理頁面就清掉。</li>
+        <li>看彙總：服務個案數、每個服務項目的次數與時數占比、每位居服員的當日、當週（週一到週日）與累積工時；也可以匯出彙總 Excel。</li>
+      </ol>
+      <div class="tablewrap"><table>
+        <thead><tr><th>檔案格式</th><th>能不能匯入</th><th>說明</th></tr></thead>
+        <tbody>
+          <tr><td>.xlsx</td><td><span class="chip ok">可以</span></td><td>Excel 活頁簿。</td></tr>
+          <tr><td>.csv</td><td><span class="chip ok">可以</span></td><td>UTF-8（含 BOM）或 Big5。</td></tr>
+          <tr><td>.xls（舊版 Excel）</td><td><span class="chip warn">不行</span></td><td>在 Excel 另存成 .xlsx 或 CSV。</td></tr>
+          <tr><td>PDF、圖片</td><td><span class="chip warn">不行</span></td><td>目前讀不了表格內容。</td></tr>
+        </tbody>
+      </table></div>
+      <p>檔案需要有「案號」「服務項目類別」等表頭欄位，否則會顯示「找不到表頭」。我用 10/14 的真實樣本驗證過：.xlsx、UTF-8 CSV、Big5 CSV 三種的結果完全一致。<b>還沒驗證的是仁寶直接匯出的 CSV</b>（只驗證了由 Excel 轉出的）；如果編碼不是 UTF-8 或 Big5，可能會讀出亂碼而不是顯示錯誤，拿到仁寶的 CSV 請試一次。</p>
+      <div class="note warn"><b>仍待需求端確認（議程第 2 項）</b>：「服務個案數」怎麼算（現在是這份檔案期間內有服務紀錄的不重複案號）、忘簽退與服務未遇是否計入工時、仁寶匯出能否加員工編號欄。</div>
     </section>
 
     <section id="new1014">
