@@ -742,7 +742,8 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
 
   test('without a demoDate the demo date is 2026-10-07 and holidays are days off', async ({ page }) => {
     await page.goto(BARE);
-    await expect(page.locator('.rail-foot')).toContainText('2026-10-07');
+    await go(page, 'set');                                                          // 展示日期不再放在左下角，改看系統設定的「示範資料的今天」
+    await expect(page.locator('#view')).toContainText('2026-10-07');
     await setRole(page, 'employee');
     await expect(page.locator('[data-dday="2026-10-07"]')).toHaveCount(1);          // the home calendar opens on the demo month
     const status = await page.evaluate(() => [25, 28].map(d => attendance('A004', 2026, 9)[d - 1].status));
@@ -1204,9 +1205,9 @@ test.describe('Updates from the 7 Oct meeting', () => {
       '附設私立誠馨二館社區長照機構', '附設私立誠芯三館綜合長照機構', '社區整合型服務中心（北區Ａ單位）', '業務負責人（居服主管）', '業務負責人（日照主管）',
       'A個管', '日照社工', '居家服務督導', '照服員、司機', '跨單位主管', 'A個管主管', '政府的命名（Ａ單位個管師）',
       '動態調整', '簽核流程有部分與組織圖不一樣']) await expect(v).toContainText(s);
-    await expect(page.locator('.orgtree .orgbox.ent')).toHaveCount(4);
+    await expect(page.locator('.orgf .orgbox.ent:not(.shared)')).toHaveCount(4);
     await expect(v).toContainText('正式全名版');
-    await expect(page.locator('#view .orgcol')).toHaveCount(0);     // the staff chart is the working view, in the other tab
+    await expect(page.locator('#view [data-node]')).toHaveCount(0);   // the clickable staff chart is the working view, in the other tab
     await go(page, 'perm', 'orgfn');
     await expect(page.locator('#view .orgcol')).toHaveCount(5);    // shared admin + 4 entities in the staff chart
     await expect(page.locator('#view')).toContainText('組織圖（功能版）');
@@ -2231,5 +2232,88 @@ test.describe('Mobile app (PWA) — mobile.html', () => {
     const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
     for (const f of ['mobile.html', 'manifest.webmanifest']) expect(sw).toContain(f);
     expect(html).not.toMatch(/[A-Z][12]\d{8}/);                              // 沒有身分證字號格式的字串
+  });
+});
+
+
+test.describe('Formal org chart layout, upload formats, version and revision date', () => {
+  test('formal org chart is a top-down chart that fits one screen on a normal laptop', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openPortal(page);
+    await go(page, 'ann', 'org');
+    const chart = page.locator('.orgf');
+    await expect(chart.locator('.orgf-top .orgbox')).toHaveText([/老闆/, /管理者/]);   // 上面：老闆 → 管理者
+    await expect(chart.locator('.orgf-row > .orgcol')).toHaveCount(5);                 // 下面一排：共用行政 + 4 個主體單位
+    await expect(chart.locator('.orgbox.unit').first()).toBeVisible();
+    await expect(chart.locator('.orgf-float .orgbox.float')).toHaveCount(2);            // 跨單位主管（虛線）
+    const m = await page.evaluate(() => ({ docH: document.documentElement.scrollHeight, vh: innerHeight, over: document.documentElement.scrollWidth - document.documentElement.clientWidth }));
+    expect(m.docH).toBeLessThanOrEqual(m.vh + 2);                                       // 不用往下捲
+    expect(m.over).toBeLessThanOrEqual(1);
+    // 上層在下層的上方、四家公司在同一排
+    const ys = await chart.locator('.orgf-row > .orgcol > .orgbox.ent').evaluateAll(n => n.map(e => Math.round(e.getBoundingClientRect().top)));
+    expect(new Set(ys).size).toBe(1);
+    const topY = await chart.locator('.orgf-top .orgbox').first().evaluate(e => e.getBoundingClientRect().top);
+    expect(topY).toBeLessThan(ys[0]);
+  });
+  test('on a narrow screen the formal org chart stacks instead of overflowing', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPortal(page);
+    await page.evaluate(() => { state.module = 'ann'; state.tab = 'org'; render(); });
+    const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(over).toBeLessThanOrEqual(1);
+  });
+
+  test('every upload box lists the accepted formats (including HEIC), and an unsupported file is refused', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'employee');
+    await go(page, 'desk', 'forms');
+    const input = page.locator('input[type=file][data-up]').first();
+    await expect(input).toHaveAttribute('accept', /\.heic/);
+    for (const e of ['.pdf', '.png', '.jpg', '.docx', '.xlsx']) await expect(input).toHaveAttribute('accept', new RegExp(e.replace('.', '\\.')));
+    await expect(page.locator('.uphint').first()).toContainText('HEIC');
+    await expect(page.locator('.uphint').first()).toContainText('PDF');
+    await expect(page.locator('.uphint').first()).toContainText('大小上限待決定');
+    await input.setInputFiles({ name: 'virus.exe', mimeType: 'application/octet-stream', buffer: Buffer.from('x') });
+    await expect(page.locator('.toast')).toContainText('不接受 .exe');
+    expect(await input.evaluate(i => i.files.length)).toBe(0);
+    await input.setInputFiles({ name: 'IMG_0001.HEIC', mimeType: 'image/heic', buffer: Buffer.from('x') });
+    expect(await input.evaluate(i => i.files.length)).toBe(1);                         // iPhone 照片可以選
+  });
+  test('the 仁寶 import says it reads only .xlsx and explains other formats', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'svc', 'case');
+    await expect(page.locator('#view')).toContainText('只收 .xlsx');
+    await page.setInputFiles('#svcFile', { name: 'old.xls', mimeType: 'application/vnd.ms-excel', buffer: Buffer.from('x') });
+    await expect(page.locator('#svcMsg')).toContainText('只收 .xlsx');
+  });
+
+  test('version is v3.2 and the footer shows the revision date, not the demo date', async ({ page }) => {
+    await openPortal(page);
+    await expect(page.locator('.brand')).toContainText('v3.2');
+    const foot = page.locator('.rail-foot');
+    await expect(foot).toContainText('v3.2');
+    await expect(foot).toContainText('修訂');
+    await expect(foot).toContainText(/\d{4}-\d{2}-\d{2}/);
+    await expect(foot).not.toContainText('展示日期');
+    await go(page, 'set');
+    await expect(page.locator('#view')).toContainText('修訂日期');
+    await expect(page.locator('#view')).toContainText('v3.2');
+    const rev = await page.evaluate(() => APP_REVISION);
+    expect(rev).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+  test('guide, index and mobile app show the same version and a revision date', async ({ page }) => {
+    for (const f of ['guide.html', 'index.html']) {
+      await page.goto('file://' + path.resolve(__dirname, '../' + f));
+      await expect(page.locator('body')).toContainText('v3.2');
+      await expect(page.locator('[data-rev]').first()).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
+    }
+    await page.goto('file://' + path.resolve(__dirname, '../mobile.html'));
+    await expect(page.locator('#ver')).toContainText(/v3\.2・修訂 \d{4}-\d{2}-\d{2}/);
+  });
+  test('the deploy workflow stamps the revision date from the last commit', async () => {
+    const w = fs.readFileSync(path.resolve(__dirname, '../.github/workflows/deploy.yml'), 'utf8');
+    expect(w).toContain('APP_REVISION');
+    expect(w).toContain('data-rev');
+    expect(w).toContain('Asia/Taipei');
   });
 });
