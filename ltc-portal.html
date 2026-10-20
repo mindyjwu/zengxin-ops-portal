@@ -808,7 +808,7 @@ const ROLES = {
 };
 
 /* ---------- state ---------- */
-const APP_VERSION='3.2', APP_REVISION='2026-10-19';   // 修訂日期：部署時會自動改成最後一次修改的日期（台北時間）
+const APP_VERSION='3.3', APP_REVISION='2026-10-20';   // 修訂日期：部署時會自動改成最後一次修改的日期（台北時間）
 const state = {
   utilOpen:false,
   navOpen:false,
@@ -1325,7 +1325,7 @@ const PHASES = [
 const ACTION_TYPE = {decide:{zh:'現在決定',en:'Decide now',cls:'acc'}, data:{zh:'等資料',en:'Need material',cls:'warn'}, it:{zh:'IT 研究',en:'IT study',cls:'info'}, later:{zh:'後續',en:'Later',cls:''}};
 const ACTIONS = [
   {type:'decide', zh:'手機打卡存什麼、雲端容量與平台', en:'What a punch stores, cloud capacity and platform',
-   rec:'建議：只存時間與位置座標、不存照片；出勤紀錄保存 5 年（勞基法第 30 條，請人資確認）；以 300 人為基準；平台選 Google，先買小容量、每年續約。照這樣 300 人約 7.5 GB，2–3 TB 綽綽有餘。', need:'IT 與需求端確認：要不要拍照、要不要定位', owner:'IT／需求端', due:'10/21', go:['文件管理 › 系統說明','doc','sysinfo']},
+   rec:'建議：只存時間與位置座標、不存照片；出勤紀錄保存 5 年（勞基法第 30 條，請人資確認）；以 300 人為基準；平台選 Google，先買小容量、每年續約。照這樣 300 人約 7.5 GB，2–3 TB 綽綽有餘。', need:'IT 與需求端確認：要不要拍照、要不要定位；10/20 收到雲端方案比較（見系統說明），還要確認要開帳號的人數與 Google 空間的算法', owner:'IT／需求端', due:'10/21', go:['文件管理 › 系統說明','doc','sysinfo']},
   {type:'decide', zh:'員工編號格式與前綴', en:'Employee-number format and prefixes',
    rec:'建議：A 協會、B 誠芯、C 牛津、D 誠馨健康、H 共用行政，後面三位數；回任已定「重新編號、不沿用舊編號」；104 舊編號留一欄對照。', need:'104 全部在職同仁的完整匯出（做舊編號對照）', owner:'人事／IT', due:'10/21', go:['系統設定 › 員工編號規則','set',null]},
   {type:'decide', zh:'身分與權限', en:'Roles and permissions',
@@ -1335,7 +1335,7 @@ const ACTIONS = [
   {type:'decide', zh:'104 要取代、串接還是並行', en:'104: replace, connect or run in parallel',
    rec:'建議：先並行——連結導向 104，差勤與拆帳制薪資穩定後再談取代；104 費用不是主要考量，重點是能撐 2,000 人。', need:'104 目前實際使用哪些模組', owner:'需求端／IT', due:'10/21', go:['文件管理 › 104 功能對照','doc','cmp104']},
   {type:'data', zh:'簽核流程（Block＋Arrow）', en:'Approval flows (block and arrow)',
-   rec:'', need:'各職務簽核到哪一層、金額門檻、哪些表單要自訂流程、意見反映單的簽核細節；請用方塊加箭頭畫給我', owner:'行政', due:'10/21 會議前', go:['線上申請 › 簽核路徑預覽','fin','proc']},
+   rec:'', need:'10/20 收到組織圖 V3（職務層級已放進網站）；還要：各表單簽到哪一層、金額門檻、哪些表單要自訂流程、意見反映單的簽核細節；誠芯三館居服主管欄位未填', owner:'行政', due:'10/21 會議前', go:['線上申請 › 簽核路徑預覽','fin','proc']},
   {type:'data', zh:'仁寶服務記錄 Excel（匯入與工時儀表板）', en:'仁寶 service-record Excel',
    rec:'', need:'樣本檔已收到、匯入頁已做好。請需求端確認：「服務個案數」怎麼算、忘簽退／服務未遇要不要計入工時、仁寶匯出能否加員工編號欄', owner:'IT／需求端', due:'10/21', go:['業務資料整合 › 居服個案管理系統','svc','case']},
   {type:'data', zh:'繼續教育積分匯入', en:'Continuing-education import',
@@ -4377,6 +4377,52 @@ function viewDocCmp104(){
     </section>
   </div>`;
 }
+/* 雲端方案比較：同事提供的「Portal 建置評估：雲端方案比較」（2026 年 10 月）。價格照該表轉錄，我沒有查證；美金牌價、未稅 */
+const CLOUD_HOST=[
+  ['項目','AWS','Google Cloud','Azure'],
+  ['入門服務','Lightsail','Compute Engine／Cloud Run','App Service／B 系列 VM'],
+  ['計費方式','固定月費方案','依用量計費','依用量計費'],
+  ['每月費用','主機 US$5 起；資料庫 US$15 起','主機約 US$28；年約約 US$18；三年約約 US$13','主機約 US$13（美國區域價）'],
+  ['參考規格','US$5 方案：2 vCPU、0.5GB、20GB SSD、每月 1TB 流量','e2-medium：2 vCPU（共用）、4GB 記憶體','App Service B1：1 核心、1.75GB 記憶體'],
+  ['台灣機房','台北區域（2025 上線）','彰化 asia-east1（2011 起）','台灣區域（2024 上線）'],
+  ['員工登入','需自行串接','Google 帳號 SSO','Microsoft 帳號 SSO'],
+  ['適合誰','想要預算固定','已用 Google Workspace','已用 Microsoft 365']
+];
+const CLOUD_SUITE=[   // 每人每月美金；名稱、空間照表
+  {k:'gs',name:'Google Workspace Business Starter',usd:7,twd:221,mail:'與雲端共用',space:'30GB',doc:'線上 Docs、Sheets',meet:'Meet 100 人',portal:'Google 協作平台',who:'預算最低、收發信為主'},
+  {k:'gp',name:'Google Workspace Business Standard',usd:14,twd:441,mail:'與雲端共用',space:'2TB',doc:'線上 Docs、Sheets',meet:'Meet 150 人＋錄影',portal:'協作平台＋共用雲端硬碟',who:'需要大空間、會議錄影'},
+  {k:'mb',name:'Microsoft 365 Business Basic',usd:7,twd:220,mail:'50GB',space:'OneDrive 1TB',doc:'網頁版、手機版',meet:'Teams 300 人',portal:'SharePoint',who:'只需網頁版 Office'},
+  {k:'ms',name:'Microsoft 365 Business Standard',usd:14,twd:440,mail:'50GB',space:'OneDrive 1TB',doc:'含桌面版 Office',meet:'Teams 300 人',portal:'SharePoint',who:'需桌面版 Word、Excel'}
+];
+const cloudCostHTML=n=>{
+  const f=v=>Math.round(v).toLocaleString('en-US');
+  return `<table class="todotbl"><thead><tr><th>${bi('方案','Plan')}</th><th>${bi('每人每月（美金）','Per person / month (USD)')}</th><th>${bi('每月合計','Monthly total')}</th><th>${bi('每年合計','Yearly total')}</th></tr></thead><tbody>${
+    CLOUD_SUITE.map(x=>`<tr><td>${esc(x.name)}</td><td class="num">US$${x.usd}</td><td class="num">US$${f(x.usd*n)}（約 NT$${f(x.twd*n)}）</td><td class="num">US$${f(x.usd*n*12)}（約 NT$${f(x.twd*n*12)}）</td></tr>`).join('')}</tbody></table>`;
+};
+function cloudCompareCard(){
+  const tbl=(rows,cls)=>`<div class="tablewrap"><table class="todotbl ${cls||''}"><thead><tr>${rows[0].map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.slice(1).map(r=>`<tr>${r.map((c,i)=>`<td style="${i?'white-space:normal':'white-space:nowrap;font-weight:500'}">${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const suiteRows=[['項目',...CLOUD_SUITE.map(x=>x.name)],['每人每月',...CLOUD_SUITE.map(x=>`US$${x.usd}（約 NT$${x.twd}）`)],['信箱容量',...CLOUD_SUITE.map(x=>x.mail)],['雲端空間',...CLOUD_SUITE.map(x=>x.space)],['文書軟體',...CLOUD_SUITE.map(x=>x.doc)],['視訊會議',...CLOUD_SUITE.map(x=>x.meet)],['內建 Portal',...CLOUD_SUITE.map(x=>x.portal)],['適合誰',...CLOUD_SUITE.map(x=>x.who)]];
+  return `<section class="card" id="cloudCmp">
+    <div class="card-h"><h2>${esc(both('雲端方案比較（同事提供，2026 年 10 月）','Cloud plan comparison (from a colleague, Oct 2026)'))}</h2><span class="chip warn">${esc(both('價格未查證','Prices not verified'))}</span></div>
+    <div class="card-b" style="display:grid;gap:12px">
+      <div class="note">${esc(both('兩件事分開看：① 自建 Portal 放在哪個雲端平台（主機與資料庫）；② 全公司的辦公室套件（信箱、雲端硬碟、會議）。美金牌價、未稅；台幣照同事表上的數字（約 1 USD ≈ 31.5）；不含開發與維護人力；Microsoft 已於 2026/7/1 調漲。價格照同事的表轉錄，我沒有查證，以各家官網的計算器為準。','Two separate questions: (1) which cloud platform hosts the portal (server and database); (2) the company-wide office suite (mail, drive, meetings). USD list prices, before tax; NTD at about 31.5 per USD; excludes development and maintenance staff; Microsoft raised prices on 1 Jul 2026. Prices are copied from the colleague’s table and not verified by me; use each vendor’s calculator.'))}</div>
+      <div class="eyebrow">${esc(both('① 雲端平台：自建 Portal 用（每月）','1. Cloud platform for the self-built portal (monthly)'))}</div>
+      ${tbl(CLOUD_HOST)}
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('小型 Portal 粗估每月 US$20–50，資料庫另計，常比主機貴（表上的備註）。Google Cloud 另有 Cloud Run 按用量計費：每月免費 200 萬次請求加 18 萬 vCPU 秒運算，內部 Portal 可能近乎免費。AWS Lightsail 主機關機仍計費；Azure 高規格每月可超過 US$120。','Small portals roughly US$20–50 a month; the database is extra and often costs more than the server (the table’s own note). Google Cloud Run bills by use with 2 million free requests and 180,000 vCPU-seconds a month, so an internal portal may be nearly free. Lightsail bills while stopped; high-end Azure can exceed US$120 a month.'))}</div>
+      <div class="eyebrow">${esc(both('② 辦公室套件：每人每月（年約牌價）','2. Office suite: per person per month (annual contract list price)'))}</div>
+      ${tbl(suiteRows)}
+      <div class="eyebrow">${esc(both('照人數算算看','Try it with a head count'))}</div>
+      <form id="cloudForm" class="frm" onsubmit="return false"><div class="row"><div><label>${esc(both('要開帳號的人數（300 或 2,000？待確認）','Accounts needed (300 or 2,000? to confirm)'))}</label><input name="n" type="number" min="1" value="300"></div></div></form>
+      <div id="cloudOut" class="tablewrap">${cloudCostHTML(300)}</div>
+      <div class="eyebrow">${esc(both('我的提醒（請需求端與 IT 確認）','My reminders (for the requester side and IT to confirm)'))}</div>
+      <ul style="margin:0;padding-left:20px;line-height:1.8">${[
+        ['表上寫 Google「雲端空間 30GB／2TB（全公司共用）」。我的了解是 Google 的空間是「每位使用者各有配額、整個組織加總共用」，不是全公司只有 2TB；兩種算法差很多，請向 Google 或官網確認。','The table says Google storage is 30GB / 2TB “shared company-wide”. My understanding is that Google gives each user a quota and pools them across the organisation, not 2TB for the whole company; the two readings differ a lot, so please confirm with Google or its site.'],
+        ['是不是每位居服員、照服員都需要一個授權帳號？如果只有管理與行政人員需要，費用會低很多；這會直接決定上面「人數」填多少。','Does every home-care worker and care attendant need a licensed account? If only management and admin staff do, the cost is much lower; this decides the head count above.'],
+        ['10/14 的方向是傾向 Google、300 人、估 2–3 TB（上面「雲端儲存空間估算」）。照這份表，Google 的方案（含 Cloud Run 或 e2-medium）和這個方向一致；這是我的建議，還沒有決定。','The 14 Oct direction was Google, 300 people, about 2–3 TB (see the estimate above). On this table the Google options (with Cloud Run or e2-medium) fit that direction; this is my suggestion, not a decision.'],
+        ['這份比較沒有包含：開發與維護人力、資料庫實際用量、備份、個資法與資安要求。','Not included: development and maintenance staff, actual database use, backups, and privacy and security requirements.']
+      ].map(x=>`<li>${esc(both(x[0],x[1]))}</li>`).join('')}</ul>
+    </div></section>`;
+}
 function viewDocSysInfo(){
   const built=[['文件管理','會議紀錄（9/20、9/30、10/7）、使用指南、法規與資安、104 功能對照、系統說明'],['公告欄','公告、行事曆、組織圖（正式版，由上往下的傘狀圖）'],['私人秘書','員工自助：出勤月曆、打卡、表單、薪資袋、保險費、所得稅、人事資料'],
     ['人事系統','員工資料（含在職狀態、第二位緊急聯絡人、證照上傳、訓練記錄）、我的工時（0.5 小時為單位）、出勤管理、請假審核、績效考核（含期中考核）'],['薪資計算','月薪制、時薪制試算、薪資計算機、版本與覆核、現金發放簽收清冊；拆帳制待規則確認'],
@@ -4432,6 +4478,7 @@ function viewDocSysInfo(){
         <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('請 IT 先確認：打卡要不要存照片或定位、保存幾年、員工附件的實際大小、「雙備份」是指額外兩份或總共兩份、以及要設計 300 人或 2,000 人。預算再依這個容量向雲端廠商報價。','For IT to confirm first: whether punches store a photo or location, how many years to keep, the real size of employee attachments, whether “double backup” means two extra copies or two in total, and whether to design for 300 or 2,000 people. The budget then comes from quotes for this capacity.'))}</div>
       </div>
     </section>
+    ${cloudCompareCard()}
     <section class="card">
       <div class="card-h"><h2>${esc(both('原型限制','Prototype limits'))}</h2></div>
       <div class="card-b"><ul style="margin:0;padding-left:20px;line-height:1.8">
@@ -4471,6 +4518,7 @@ function storageHTML(v){
   </tbody></table>`;
 }
 BINDERS['doc:sysinfo']=function(){
+  const cf=document.getElementById('cloudForm'); if(cf) cf.oninput=cf.onchange=()=>{ document.getElementById('cloudOut').innerHTML=cloudCostHTML(Math.max(0,+cf.n.value||0)); };
   const f=document.getElementById('stForm'); if(!f) return;
   const read=()=>({n:+f.n.value||0, days:+f.days.value||0, punches:+f.punches.value||0, recKB:+f.recKB.value||0, photo:f.photo.checked, photoKB:+f.photoKB.value||0, attMB:+f.attMB.value||0, backups:+f.backups.value||0, years:+f.years.value||0});
   const draw=()=>{ document.getElementById('stOut').innerHTML=storageHTML(read()); };
@@ -4697,13 +4745,48 @@ function approvalChain(id){
   while(p && p.mgr && !seen.has(p.id)){ seen.add(p.id); p=person(p.mgr); if(p) out.push(p); }
   return out;
 }
+/* 組織圖 V3（115 年 10 月版，Portal 簽核流程；需求端 10/20 提供）：圖上紅色箭頭 = 往上簽核。
+   只放職位，不放圖上的人名。各表單簽到哪一層、金額門檻，圖上看不出來，仍待需求端確認。 */
+const APPROVAL_V3=[
+  {zh:'居家服務',en:'Home care',chain:['居服員','居家服務督導','居服主管（業務負責人）','管理者','老闆']},
+  {zh:'日照服務',en:'Day care',chain:['照服員、司機','日照社工','日照主管（業務負責人）','管理者','老闆']},
+  {zh:'社區整合型服務中心',en:'Community integrated center',chain:['A個管','A個管主管','管理者','老闆']},
+  {zh:'人資與教育訓練',en:'HR and training',chain:['教育訓練專員','HR（人資主管）','管理者','老闆']},
+  {zh:'會計',en:'Accounting',chain:['會計','管理者','老闆']}
+];
+const SUPERVISORS_V3=[   // [機構, 居服主管, 日照主管, A個管主管]
+  ['牛津樂活：新竹縣居家長照機構',1,0,0],
+  ['誠馨協會：綜合式服務類長照機構（含北區、南區 A 單位）',1,1,1],
+  ['誠馨健康：二館社區長照機構',0,1,0],
+  ['誠芯樂活：新竹市居家長照機構',1,0,1],
+  ['誠芯樂活：三館綜合長照機構',1,1,0]
+];
+function approvalV3Card(){
+  const chain=c=>c.chain.map((x,i)=>`<span class="blk${i?'':' first'}">${esc(x)}</span>`).join('<span class="arr">→</span>');
+  return `<section class="card" id="apV3">
+    <div class="card-h"><h2>${esc(both('組織圖 V3 的簽核層級（需求端 10/20 提供）','Approval levels from org chart V3 (supplied 20 Oct)'))}</h2><span class="chip acc">${esc(both('115 年 10 月版','Oct 2026 version'))}</span></div>
+    <div class="card-b" style="display:grid;gap:10px">
+      <div class="note">${esc(both('圖上的紅色箭頭是往上簽核：每一條線最後都到「管理者」，再到「老闆」；人資與會計直接到管理者，教育訓練專員先到人資。下面只放職位，不放圖上的人名。','The red arrows go upward: every line ends at the Manager and then the Owner; HR and accounting go straight to the Manager, and the training officer goes through HR first. Only positions are shown, not the names on the chart.'))}</div>
+      ${APPROVAL_V3.map(c=>`<div><div class="muted" style="font-size:12px;margin-bottom:3px">${esc(both(c.zh,c.en))}</div><div class="blkchain">${chain(c)}</div></div>`).join('')}
+      <div class="eyebrow">${esc(both('各機構的主管位置','Supervisor positions by facility'))}</div>
+      <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('主體單位：機構','Entity: facility')}</th><th>${bi('居服主管','Home care lead')}</th><th>${bi('日照主管','Day care lead')}</th><th>${bi('A個管主管','A-unit lead')}</th></tr></thead>
+        <tbody>${SUPERVISORS_V3.map(r=>`<tr><td>${esc(r[0])}</td>${[1,2,3].map(i=>`<td>${r[i]?'●':'—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+      <div class="eyebrow">${esc(both('還要確認','Still to confirm'))}</div>
+      <ul style="margin:0;padding-left:20px;line-height:1.8">${[
+        ['各表單（請假、加班、請購、維修、人事異動、意見反映）簽到哪一層、金額門檻：圖上看不出來。','Which level each form goes up to, and the amount thresholds: not visible on the chart.'],
+        ['圖上三處「日照主管」是同一個名字，應是同一位跨單位兼任（和跨單位主管的說法一致），請確認。','The three “day care lead” boxes carry the same name, so one person seems to cover three places (consistent with the cross-unit supervisors); please confirm.'],
+        ['誠芯三館的居服主管欄位寫「ＯＯＯ」（還沒填人名），請確認是空缺或待補。','The home care lead of the Chengxin No. 3 facility shows a placeholder; please confirm whether it is vacant or still to be filled.'],
+        ['圖上有主管的姓名；網站先只放職位。要放姓名請需求端同意。','The chart carries supervisors’ names; the site shows positions only until the requester side agrees to show names.']
+      ].map(x=>`<li>${esc(both(x[0],x[1]))}</li>`).join('')}</ul>
+    </div></section>`;
+}
 function viewApprovalPath(){
   const list=scopedStaff(), sel=list.some(x=>x.id===state.pathEmp)?state.pathEmp:(list[0]||{}).id;
   if(!sel) return '';
   const cp=state.customPath||(state.customPath={}), custom=Array.isArray(cp[sel]), canEdit=can('approve');
   const chain=custom ? cp[sel].map(person).filter(Boolean) : approvalChain(sel), me0=person(sel);
   const addable=list.filter(x=>x.id!==sel && !chain.some(c=>c.id===x.id));
-  return `<section class="card">
+  return approvalV3Card()+`<section class="card">
     <div class="card-h"><h2>${esc(both('簽核路徑預覽（依組織圖）','Approval path preview (from the org chart)'))}</h2><span class="en">${esc(both('10/7 會議；示範','7 Oct meeting; demo'))}</span></div>
     <div class="card-b" style="display:grid;gap:10px">
       <div class="note q">${esc(both('10/13 需求端提醒：目前的簽核流程有部分與組織圖不一樣，需求端會再想怎麼呈現會比較容易懂。下面是依組織上下隸屬自動推出的路徑，僅供示範。','13 Oct, from the requester side: some current approval flows differ from the org chart, and they will think about how to present them more clearly. The path below is derived automatically from the reporting lines and is for demonstration only.'))}</div>

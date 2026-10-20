@@ -875,7 +875,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await expect(sec.locator('h2')).toContainText('MVP 定案前待同事補齊');
     await expect(sec.locator('tbody tr')).toHaveCount(6);
     await expect(sec).toContainText('繼續教育積分（私人秘書 › 課程）：確認積分規則');
-    await expect(sec).toContainText('組織圖 10/13 版已收到');
+    await expect(sec).toContainText('組織圖 10/13 版與 10/20 的 V3');
     const upd = page.locator('#new1014');
     await expect(upd).toContainText('日照主管的人事頁面已開放');
     await expect(upd).toContainText('主管可跨單位查看');
@@ -2290,28 +2290,29 @@ test.describe('Formal org chart layout, upload formats, version and revision dat
     await expect(page.locator('#svcMsg')).toContainText('只收 .xlsx');
   });
 
-  test('version is v3.2 and the footer shows the revision date, not the demo date', async ({ page }) => {
+  test('version is v3.3 and the footer shows the revision date, not the demo date', async ({ page }) => {
     await openPortal(page);
-    await expect(page.locator('.brand')).toContainText('v3.2');
+    await expect(page.locator('.brand')).toContainText('v3.3');
     const foot = page.locator('.rail-foot');
-    await expect(foot).toContainText('v3.2');
+    await expect(foot).toContainText('v3.3');
     await expect(foot).toContainText('修訂');
     await expect(foot).toContainText(/\d{4}-\d{2}-\d{2}/);
     await expect(foot).not.toContainText('展示日期');
     await go(page, 'set');
     await expect(page.locator('#view')).toContainText('修訂日期');
-    await expect(page.locator('#view')).toContainText('v3.2');
-    const rev = await page.evaluate(() => APP_REVISION);
-    expect(rev).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    await expect(page.locator('#view')).toContainText('v3.3');
+    const rev = await page.evaluate(() => [APP_VERSION, APP_REVISION]);
+    expect(rev[0]).toBe('3.3');
+    expect(rev[1]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
   test('guide, index and mobile app show the same version and a revision date', async ({ page }) => {
     for (const f of ['guide.html', 'index.html']) {
       await page.goto('file://' + path.resolve(__dirname, '../' + f));
-      await expect(page.locator('body')).toContainText('v3.2');
+      await expect(page.locator('body')).toContainText('v3.3');
       await expect(page.locator('[data-rev]').first()).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
     }
     await page.goto('file://' + path.resolve(__dirname, '../mobile.html'));
-    await expect(page.locator('#ver')).toContainText(/v3\.2・修訂 \d{4}-\d{2}-\d{2}/);
+    await expect(page.locator('#ver')).toContainText(/v3\.3・修訂 \d{4}-\d{2}-\d{2}/);
   });
   test('the deploy workflow stamps the revision date from the last commit', async () => {
     const w = fs.readFileSync(path.resolve(__dirname, '../.github/workflows/deploy.yml'), 'utf8');
@@ -2458,5 +2459,52 @@ test.describe('To-do grid, employee column filters, org chart with directory', (
     await page.locator('.leaf[data-node="B001"]').click();                                // 別家公司的同仁：只看得到職位
     await expect(page.locator('.contactcard')).toContainText('不在您目前的資料範圍內');
     await expect(page.locator('.contactcard a[href^="mailto:"]')).toHaveCount(0);
+  });
+});
+
+
+test.describe('v3.3: org chart V3 approval levels and cloud plan comparison', () => {
+  test('approval levels from org chart V3: five chains that all end at the manager and the owner, positions only', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'fin', 'proc');
+    const card = page.locator('#apV3');
+    await expect(card.locator('h2')).toContainText('組織圖 V3 的簽核層級');
+    const chains = await card.locator('.blkchain').evaluateAll(n => n.map(c => [...c.querySelectorAll('.blk')].map(b => b.textContent.trim())));
+    expect(chains).toHaveLength(5);
+    for (const c of chains) expect(c.slice(-2)).toEqual(['管理者', '老闆']);                // 每一條都到管理者，再到老闆
+    expect(chains[0]).toEqual(['居服員', '居家服務督導', '居服主管（業務負責人）', '管理者', '老闆']);
+    expect(chains[1]).toEqual(['照服員、司機', '日照社工', '日照主管（業務負責人）', '管理者', '老闆']);
+    expect(chains[3]).toEqual(['教育訓練專員', 'HR（人資主管）', '管理者', '老闆']);
+    expect(chains[4]).toEqual(['會計', '管理者', '老闆']);
+    await expect(card.locator('tbody tr')).toHaveCount(5);                                 // 5 個機構的主管位置
+    const allowed = new Set(['居服員', '居家服務督導', '居服主管（業務負責人）', '管理者', '老闆', '照服員、司機', '日照社工', '日照主管（業務負責人）', 'A個管', 'A個管主管', '教育訓練專員', 'HR（人資主管）', '會計']);
+    for (const c of chains) for (const b of c) expect(allowed.has(b), `unexpected block ${b}`).toBe(true);   // 只有職位，沒有人名
+    await expect(card).toContainText('各表單');
+    await expect(card).toContainText('只放職位');
+  });
+  test('cloud plan comparison: both tables, a head-count calculator, and the reminders', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'doc', 'sysinfo');
+    const card = page.locator('#cloudCmp');
+    await expect(card.locator('h2')).toContainText('雲端方案比較');
+    await expect(card).toContainText('價格未查證');
+    for (const s of ['Lightsail', 'Compute Engine', 'App Service', '彰化', 'Business Starter', 'Business Standard', 'SharePoint', '2026/7/1']) await expect(card).toContainText(s);
+    await expect(card.locator('#cloudOut')).toContainText('US$2,100');                      // 300 人 × US$7
+    await expect(card.locator('#cloudOut')).toContainText('US$4,200');                      // 300 人 × US$14
+    await card.locator('#cloudForm [name=n]').fill('2000');
+    await expect(card.locator('#cloudOut')).toContainText('US$28,000');                     // 2,000 人 × US$14
+    await expect(card.locator('#cloudOut')).toContainText('US$336,000');                    // 一年
+    await expect(card).toContainText('全公司共用');                                          // 我的提醒：空間算法請確認
+    await expect(card).toContainText('每位居服員');
+  });
+  test('the guide records the 20 Oct update and the repaired agenda table', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    const sec = page.locator('#newv33');
+    await expect(sec.locator('h2')).toContainText('v3.3 更新（10/20）');
+    for (const s of ['組織圖 V3', '雲端方案比較', '沒有查證', '只放職位']) await expect(sec).toContainText(s);
+    await expect(page.locator('.toc a[href="#newv33"]')).toBeVisible();
+    await expect(page.locator('#agenda tbody tr')).toHaveCount(6);
+    await expect(page.locator('#confirm tbody tr').nth(2)).toContainText('員工編號原則');   // 待補齊清單第 3 列是員編，不是議程
+    await expect(page.locator('#agenda tbody tr').nth(2)).toContainText('雲端方案比較');
   });
 });
