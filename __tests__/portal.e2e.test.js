@@ -1950,10 +1950,12 @@ test.describe('Meeting agenda in the guide', () => {
     await expect(sec.locator('h2')).toContainText('下次會議議程');
     await expect(sec.locator('tbody tr')).toHaveCount(6);
     await expect(sec.locator('tbody tr').nth(5)).toContainText('手機版打卡與工時');
-    await expect(sec).toContainText('簽核流程');
+    await expect(sec).toContainText('簽核層級');
     await expect(sec).toContainText('仁寶匯入');
     await expect(sec).toContainText('會前請準備');
     await expect(sec).toContainText('請用自己的手機試一下手機版');
+    await expect(sec).toContainText('謝謝提供組織圖 V3 與雲端方案比較');
+    await expect(sec).toContainText('各表單簽到哪一層與金額門檻');
     await expect(sec.locator('a[href="mobile.html"], .mono')).not.toHaveCount(0);
     await expect(page.locator('.toc a[href="#agenda"]')).toBeVisible();
   });
