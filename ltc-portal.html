@@ -772,13 +772,13 @@ const ROLES = {
   /* 10/20 會議：系統管理員「可檢視所有內容，不可修改」（例外：權限設定與組織圖增刪）；人資可修改人事系統與公告欄、可審核私人秘書表單、不可改權限設定；管理者幾乎全部功能可修改，薪資計算只能檢視 */
   admin:{ id:'admin', zh:'系統管理員', en:'System Admin', persona:'H005', allOffices:true, built:true,
     perms:{ trainView:true, salary:false, editEmp:false, mobile:true, approve:false, finalize:false,
-            annGroup:false, annOffice:false, perms:true, exportAll:true, mgmt:true } },
+            annGroup:false, annOffice:false, perms:true, exportAll:true, mgmt:true, punchLoc:true } },
   hr:{ id:'hr', zh:'人資', en:'HR', persona:'H003', allOffices:true, built:true,
     perms:{ trainView:true, salary:true, editEmp:true, mobile:true, approve:true, finalize:true,
-            annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
+            annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true, punchLoc:true } },
   manager:{ id:'manager', zh:'管理者', en:'Manager', persona:'H002', allOffices:true, built:true,
     perms:{ trainView:true, salary:true, editEmp:true, mobile:true, approve:true, finalize:false,
-            annGroup:true, annOffice:true, perms:true, exportAll:true, mgmt:true } },
+            annGroup:true, annOffice:true, perms:true, exportAll:true, mgmt:true, punchLoc:true } },
   /* 一般員工：只用「私人秘書」自助頁面（對應 104 私人秘書），資料範圍僅限本人 */
   employee:{ id:'employee', zh:'一般員工：照服員', en:'Employee: care attendant', persona:'A004', allOffices:false, selfOnly:true, built:true,
     perms:{ trainView:false, salary:false, editEmp:false, mobile:false, approve:false, finalize:false,
@@ -789,7 +789,7 @@ const ROLES = {
   boss:{ id:'boss', zh:'老闆', en:'Owner', persona:'H001', allOffices:true, built:true, provisional:true,
     perms:{ trainView:true, salary:true, editEmp:false, mobile:true, approve:true, finalize:false, annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
   training:{ id:'training', zh:'教育訓練專員', en:'Training officer', persona:'H006', allOffices:true, built:true, provisional:true,
-    perms:{ trainView:true, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
+    perms:{ ceEdit:true, trainView:true, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
   accountant:{ id:'accountant', zh:'會計', en:'Accountant', persona:'H004', allOffices:true, built:true, provisional:true,
     perms:{ trainView:false, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:true, mgmt:true } },
   daydir:{ id:'daydir', zh:'日照主管', en:'Day care supervisor', persona:'A001', allOffices:false, built:true, provisional:true,
@@ -811,7 +811,7 @@ const ROLES = {
 };
 
 /* ---------- state ---------- */
-const APP_VERSION='3.3', APP_REVISION='2026-10-20';   // 修訂日期：部署時會自動改成最後一次修改的日期（台北時間）
+const APP_VERSION='3.4', APP_REVISION='2026-10-21';   // 修訂日期：部署時會自動改成最後一次修改的日期（台北時間）
 const state = {
   utilOpen:false,
   navOpen:false,
@@ -1327,23 +1327,23 @@ const PHASES = [
 const ACTION_TYPE = {decide:{zh:'現在決定',en:'Decide now',cls:'acc'}, data:{zh:'等資料',en:'Need material',cls:'warn'}, it:{zh:'IT 研究',en:'IT study',cls:'info'}, later:{zh:'後續',en:'Later',cls:''}};
 const ACTIONS = [
   {type:'decide', zh:'手機打卡存什麼、雲端容量與平台', en:'What a punch stores, cloud capacity and platform',
-   rec:'建議：只存時間與位置座標、不存照片；出勤紀錄保存 5 年（勞基法第 30 條，請人資確認）；以 300 人為基準；平台選 Google，先買小容量、每年續約。照這樣 300 人約 7.5 GB，2–3 TB 綽綽有餘。', need:'IT 與需求端確認：要不要拍照、要不要定位；10/20 收到雲端方案比較（見系統說明），還要確認要開帳號的人數與 Google 空間的算法', owner:'IT／需求端', due:'10/21', go:['文件管理 › 系統說明','doc','sysinfo']},
+   rec:'10/20 已決定：打卡記錄 IP 位置、不強制拍照、位置只給後台看；照片選填（要伺服器壓縮）；離線先暫存、連網自動上傳；保存 5 年。雲端暫定 Google Cloud 按用量計費，待功能確認測試完（約半個月到一個月）再購買並建 backend。', need:'請提供：預計開帳號的人數、預算與上線時程；IT 確認 IP 定位的做法（後台怎麼取得）', owner:'IT／需求端', due:'10/21', go:['文件管理 › 系統說明','doc','sysinfo']},
   {type:'decide', zh:'員工編號格式與前綴', en:'Employee-number format and prefixes',
    rec:'建議：A 協會、B 誠芯、C 牛津、D 誠馨健康、H 共用行政，後面三位數；回任已定「重新編號、不沿用舊編號」；104 舊編號留一欄對照。', need:'104 全部在職同仁的完整匯出（做舊編號對照）', owner:'人事／IT', due:'10/21', go:['系統設定 › 員工編號規則','set',null]},
   {type:'decide', zh:'身分與權限', en:'Roles and permissions',
-   rec:'建議：以 Excel 的 15 個身分為準，不再說「四個暫定身分」；管理者跨單位、日照主管看所屬單位（人事頁面已開放，請同步 Excel）。', need:'需求端填完權限對照表標「暫定」的格子（11 個身分的細項權限）', owner:'需求端／人事', due:'10/21', go:['權限與範圍 › 權限對照表','perm','matrix']},
+   rec:'10/20 已決定：系統管理員可看不可改；人資可改人事系統與公告欄、可審核私人秘書表單、不可改權限；管理者幾乎全可改（薪資計算僅檢視）；權限對照表合併成單一頁，管理者與系統管理員可按右上角編輯並儲存。', need:'請需求端確認新規則與 Excel 一致，並把仍標「暫定」的格子填完', owner:'需求端／人事', due:'10/21', go:['權限與範圍 › 權限對照表','perm','matrix']},
   {type:'decide', zh:'組織圖兩個版本', en:'Two org-chart versions',
    rec:'建議：公告欄放正式全名版（管理與行政用），簡易版（一般員工查閱）就是現在的「組織圖與通訊錄」，改名為「簡易版」對齊正式紀錄。', need:'正式版的職稱全名與地點、內部通訊錄資料', owner:'行政／人事', due:'10/21', go:['公告欄 › 組織圖','ann','org']},
   {type:'decide', zh:'104 要取代、串接還是並行', en:'104: replace, connect or run in parallel',
-   rec:'建議：先並行——連結導向 104，差勤與拆帳制薪資穩定後再談取代；104 費用不是主要考量，重點是能撐 2,000 人。', need:'104 目前實際使用哪些模組', owner:'需求端／IT', due:'10/21', go:['文件管理 › 104 功能對照','doc','cmp104']},
+   rec:'建議：先並行——連結導向 104，差勤與拆帳制薪資穩定後再談取代；104 費用不是主要考量，重點是能撐 2,000 人。', need:'104 先並行；請提供：104 的 demo 讓 Mindy 截圖做筆記、104 在職同仁完整匯出、使用人數／預算／時程', owner:'需求端／IT', due:'10/21', go:['文件管理 › 104 功能對照','doc','cmp104']},
   {type:'data', zh:'簽核流程（Block＋Arrow）', en:'Approval flows (block and arrow)',
-   rec:'', need:'10/20 收到組織圖 V3（職務層級已放進網站）；還要：各表單簽到哪一層、金額門檻、哪些表單要自訂流程、意見反映單的簽核細節；誠芯三館居服主管欄位未填', owner:'行政', due:'10/21 會議前', go:['線上申請 › 簽核路徑預覽','fin','proc']},
+   rec:'', need:'三種簽核表單（報價單、出差申請、零佣金申請）已定為照組織圖 V3 逐層往上簽。請提供：各層級的金額門檻、哪些表單要自訂流程、各機構主管全名與地點（正式組織圖用）、誠芯三館居服主管欄位', owner:'行政', due:'10/21 會議前', go:['線上申請 › 簽核路徑預覽','fin','proc']},
   {type:'data', zh:'仁寶服務記錄 Excel（匯入與工時儀表板）', en:'仁寶 service-record Excel',
-   rec:'', need:'樣本檔已收到、匯入頁已做好。請需求端確認：「服務個案數」怎麼算、忘簽退／服務未遇要不要計入工時、仁寶匯出能否加員工編號欄', owner:'IT／需求端', due:'10/21', go:['業務資料整合 › 居服個案管理系統','svc','case']},
+   rec:'', need:'10/20 已定：服務人數＝當月實際使用服務的人數（不分結案或暫停）、忘簽退與服務未遇先計入、同名同姓加後綴「二」。員編欄需仁寶額外開發。請提供十月份真實仁寶資料用來測試匯入；日照與公館先以居服為主', owner:'IT／需求端', due:'10/21', go:['業務資料整合 › 居服個案管理系統','svc','case']},
   {type:'data', zh:'繼續教育積分匯入', en:'Continuing-education import',
-   rec:'', need:'教育訓練先照匯入範本整理 3–5 位（一列一門課），並確認積分規則；有了才能試匯，讓全員進度顯示真實資料', owner:'教育訓練', due:'10/21', go:['私人秘書 › 課程','desk','course']},
+   rec:'', need:'10/20 已定：只有教育訓練專員可新增、修改與匯入（一次匯入整份檔案）；政府積分系統只能逐人查詢，所以仍用 Excel 匯入。請教育訓練照範本整理資料試匯', owner:'教育訓練', due:'10/21', go:['私人秘書 › 課程','desk','course']},
   {type:'data', zh:'拆帳制薪資規則', en:'Revenue-share pay rules',
-   rec:'', need:'計薪規則、資料來源、例外調整與核准流程（9/20 起一直待提供）', owner:'人資／財務', due:'待訂', go:['薪資計算 › 薪資計算機','pay','calc']},
+   rec:'', need:'10/20 已定三類計薪（一般月薪、居服員時薪、司機月薪＋居服時薪）。請千玉與思慧提供：正式薪資格式、拆帳制約 20 個項目清單、三個機構的單價（跟隨政府支付碼）', owner:'人資／財務', due:'10/27', go:['薪資計算 › 薪資計算機','pay','calc']},
   {type:'it', zh:'衛福部積分系統串接', en:'MOHW points-system connection',
    rec:'', need:'IT 先確認串接是否被允許與技術限制；過渡用現有 Excel 格式匯入；帳號密碼不放進網站或程式庫', owner:'IT', due:'待訂', go:['私人秘書 › 課程','desk','course']},
   {type:'it', zh:'手機打卡上線規格與中文輸入法測試', en:'Mobile clock-in go-live and input-method test',
@@ -3362,7 +3362,7 @@ function dqSlip(){
       ls.map(l=>`<tr><td>${esc(state.lang==='zh'?l.zh:l.en)}</td><td class="muted mono" style="font-size:11.5px;white-space:normal">${esc(l.formula)}</td>
         <td class="num">${g==='earn'?'':'−'}${money(l.amt)}</td></tr>`).join(''); };
   return `${monthBar('slipMonth', months, mon, `<span class="chip ok">${esc(both('已發放 '+payDay(mon),'Paid '+payDay(mon)))}</span>
-      <span class="chip">${esc(u.type==='part'?both('時薪制','Hourly'):both('月薪制','Monthly'))}</span>${payChip(payMethodOf(u.id))}`)}
+      <span class="chip">${esc(both(PAY_BASIS_LABEL[payBasis(u)].zh,PAY_BASIS_LABEL[payBasis(u)].en))}</span>${payChip(payMethodOf(u.id))}`)}
     <div class="tiles">
       <div class="tile"><span class="k">${esc(both('應發金額','Gross pay'))}</span><span class="v" style="font-size:18px">${money(r.gross)}</span></div>
       <div class="tile"><span class="k">${esc(both('代扣合計','Deductions'))}</span><span class="v" style="font-size:18px">−${money(r.stat+r.adjNeg)}</span></div>
@@ -3627,6 +3627,56 @@ const ce1 = x => (Math.round(x*100)/100).toString();
 /* 數字可以點：點進去看該類別的課程清單（積分系統的做法） */
 const ceNum = (x,key) => x>0 ? `<button class="btn ghost mini" data-cecat="${key}">${ce1(x)}</button>` : '0';
 function ceEligibleStaff(){ return scopedStaff().filter(s=>ceEligible(s) && onRoster(s,CUR_MONTH)); }
+/* ---------- 課程資料匯入與修改：只有教育訓練專員（10/20 會議）；整份檔案一次匯入，欄位照「匯入範本」 ---------- */
+function ceDateISO(v){ const t=String(v||'').trim(), m=t.match(/^(\d{2,4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/); if(!m) return ''; let y=+m[1]; if(y<200) y+=1911; const mo=+m[2], d=+m[3]; if(mo<1||mo>12||d<1||d>31) return ''; return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function ceImportRows(rows){
+  const norm=v=>String(v??'').split('\n')[0].replace(/\s/g,'');
+  let h=-1; for(let i=0;i<Math.min(rows.length,12);i++){ const f=(rows[i]||[]).map(norm); if(f.includes('員工編號')&&f.some(x=>x.startsWith('課程名稱'))){ h=i; break; } }
+  if(h<0) return {fatal:'找不到表頭：需要有「員工編號」與「課程名稱」欄的那一列（請用「匯入範本」）'};
+  const head=(rows[h]||[]).map(norm), col=name=>head.findIndex(x=>x.startsWith(name));
+  const C={id:col('員工編號'), date:col('課程日期'), name:col('課程名稱'), mode:col('實施方式'), unit:col('開課單位')};
+  const pc=['專業課程','專業品質','專業倫理','專業法規','消防安全','緊急應變','感染管制','性別敏感度','原住民族文化','多元族群文化'].map(n=>col(n));
+  if([C.id,C.date,C.name,C.mode].some(i=>i<0)||pc.some(i=>i<0)) return {fatal:'缺少欄位：需要員工編號、課程日期、課程名稱、實施方式與 10 個積分欄（請用「匯入範本」）'};
+  const ok=new Set(ceEligibleStaff().map(p=>p.id)), out={added:0,dup:0,errors:[],byEmp:{}};
+  for(let r=h+1;r<rows.length;r++){
+    const x=rows[r]||[]; if(!String(x[C.id]??'').trim()&&!String(x[C.name]??'').trim()) continue;
+    const id=String(x[C.id]??'').trim().toUpperCase(), name=String(x[C.name]??'').trim(), d=ceDateISO(x[C.date]), md=String(x[C.mode]??'').trim();
+    const v=pc.map(i=>{ const t=String(x[i]??'').trim(); return t===''?0:Number(t); });
+    const why = !ok.has(id)?'員工編號不在需要積分的名單':!name?'沒有課程名稱':!d?'日期格式不對（民國 115/03/12 或 2026-03-12）':!/^(實體|網路)$/.test(md)?'實施方式要填「實體」或「網路」':v.some(n=>!isFinite(n)||n<0)?'積分要是 0 以上的數字':'';
+    if(why){ out.errors.push({row:r+1,why}); continue; }
+    const rec=ceRecord(id), mode=md==='實體'?'phys':'online', unitName=String(x[C.unit]??'').trim();
+    if(rec.courses.some(c=>c.date===d&&c.name===name&&c.mode===mode)){ out.dup++; continue; }
+    rec.courses.push({name,mode,v,date:d,unit:unitName||'（未填）'}); rec.courses.sort((a,b)=>a.date.localeCompare(b.date)); out.added++; out.byEmp[id]=1;
+  }
+  return out;
+}
+function ceEditCard(id){
+  if(!can('ceEdit')) return '';
+  const rec=ceRecord(id), last=rec.courses.map((c,i)=>({c,i})).slice(-6).reverse();
+  return `<section class="card" id="ceEdit"><div class="card-h"><h2>${esc(both('新增或修改課程（教育訓練專員）','Add or edit courses (training officer)'))}</h2></div>
+    <div class="card-b" style="display:grid;gap:10px">
+      <form id="ceAddForm" class="frm"><div class="row">
+        <div><label>${esc(both('課程','Course'))}</label><select name="cat">${CE_CATALOG.map((c,i)=>`<option value="${i}">${esc(c.name)}</option>`).join('')}</select></div>
+        <div><label>${esc(both('課程日期','Date'))}</label><input name="date" type="date" required value="${ymd(TODAY)}"></div>
+        <div><label>${esc(both('實施方式','Mode'))}</label><select name="mode"><option value="phys">${esc(both('實體','In person'))}</option><option value="online">${esc(both('網路','Online'))}</option></select></div>
+        <div><label>${esc(both('開課單位','Provider'))}</label><input name="unit" maxlength="30" lang="zh-Hant" placeholder="${esc(both('例如：示範開課單位 甲','e.g. a provider'))}"></div>
+        <div><button class="btn mini" type="submit">${esc(both('新增這門課','Add this course'))}</button></div></div></form>
+      <div class="eyebrow">${esc(both('最近的課程（可以刪除輸入錯誤的）','Recent courses (delete a wrong entry)'))}</div>
+      <div class="tablewrap"><table class="todotbl"><tbody>${last.map(({c,i})=>`<tr><td class="mono">${rocDate(c.date)}</td><td style="white-space:normal">${esc(c.name)}</td><td>${esc(c.mode==='phys'?both('實體','In person'):both('網路','Online'))}</td><td><button class="btn ghost mini" data-cedel="${id}|${i}">${esc(both('刪除','Delete'))}</button></td></tr>`).join('')}</tbody></table></div>
+      <div class="muted" style="font-size:12.5px">${esc(both('只有教育訓練專員可以新增、修改或匯入課程資料；其他身分只能檢視（10/20 會議）。原型的資料只存在這次瀏覽。','Only the training officer can add, edit or import course data; other roles can only view (20 Oct meeting). Prototype data lives in this browser session only.'))}</div>
+    </div></section>`;
+}
+function ceImportCard(){
+  const msg=state.ceImpMsg;
+  return `<section class="card" id="ceImport"><div class="card-h"><h2>${esc(both('匯入課程紀錄（一次匯入整份檔案）','Import course records (a whole file at once)'))}</h2><span class="chip acc">${esc(both('只有教育訓練專員','Training officer only'))}</span></div>
+    <div class="card-b" style="display:grid;gap:8px">
+      ${can('ceEdit')?`<div><input type="file" id="ceFile" accept=".xlsx,.csv" aria-label="${esc(both('選擇課程紀錄（.xlsx 或 .csv）','Choose course records (.xlsx or .csv)'))}"></div>
+        <div class="uphint muted">${esc(both('欄位照上面的「匯入範本」：一列一門課。只收 .xlsx 和 .csv。重複的課程（同一人、同一天、同一門課）會略過；有問題的列會列出列號，不會匯入。檔案只在瀏覽器讀取。','Columns follow the import template above: one row per course. Only .xlsx and .csv. Duplicates (same person, day and course) are skipped; problem rows are listed by row number and not imported. The file is read in the browser only.'))}</div>
+        ${msg?`<div class="note ${msg.err?'q':''}" role="status">${esc(msg.text)}</div>`:''}`
+      :`<div class="muted">${esc(both('只有教育訓練專員可以匯入或修改課程資料；你目前的身分只能檢視。','Only the training officer can import or edit course data; your role can only view.'))}</div>`}
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('目標：在網站呈現每位員工的課程進度，可以篩選落後名單，針對性辦課。衛福部的積分系統目前只能逐人查詢、無法批次匯出，需要再研究能不能和網站串接；在那之前先用匯入。','Goal: show each employee’s course progress, filter the people who are behind and run targeted courses. The MOHW points system only allows one-person-at-a-time lookup and has no bulk export, so whether it can be linked still needs research; until then use the import.'))}</div>
+    </div></section>`;
+}
 function ceCourseList(id,key){
   const [kind,sel,mode]=key.split('|'), rec=ceRecord(id);
   const rows=rec.courses.filter(c=>kind==='mode' ? c.mode===sel : (CE_COLS.includes(sel)&&c.v[CE_COLS.indexOf(sel)]>0 && (!mode||c.mode===mode)));
@@ -3730,8 +3780,8 @@ function viewDeskCourse(){
   else if(v==='mine') body = state.ceCat&&state.ceCat.id===u.id ? `<button class="btn ghost mini" data-cemine>${esc(both('← 返回積分總表','← Back to the summary'))}</button>${ceCourseList(u.id,state.ceCat.key)}` : ceSummary(u.id);
   else if(!all) body=`<div class="empty">${esc(both('只有教育訓練、人資、主管等身分可以看全員進度。','Only training, HR, managers and similar roles can see everyone’s progress.'))}</div>`;
   else if(v==='gap') body=ceGap();
-  else if(state.ceEmp && ceEligibleStaff().some(p=>p.id===state.ceEmp)) body=`<button class="btn ghost mini" data-ceback>${esc(both('← 返回全員進度','← Back to everyone'))}</button>`+(state.ceCat&&state.ceCat.id===state.ceEmp?`<button class="btn ghost mini" data-cemine style="margin-left:6px">${esc(both('← 返回積分總表','← Back to the summary'))}</button>${ceCourseList(state.ceEmp,state.ceCat.key)}`:ceSummary(state.ceEmp));
-  else body=ceAll();
+  else if(state.ceEmp && ceEligibleStaff().some(p=>p.id===state.ceEmp)) body=`<button class="btn ghost mini" data-ceback>${esc(both('← 返回全員進度','← Back to everyone'))}</button>`+(state.ceCat&&state.ceCat.id===state.ceEmp?`<button class="btn ghost mini" data-cemine style="margin-left:6px">${esc(both('← 返回積分總表','← Back to the summary'))}</button>${ceCourseList(state.ceEmp,state.ceCat.key)}`:ceSummary(state.ceEmp)+ceEditCard(state.ceEmp));
+  else body=ceAll()+ceImportCard();
   return `<div class="grid">
     ${tabs.length>1?`<div class="seg">${tabs.map(t=>`<button type="button" data-ceview="${t[0]}" aria-pressed="${t[0]===v}">${esc(both(t[1],t[2]))}</button>`).join('')}</div>`:''}
     <div class="note">${esc(both('這裡整理長照人員的繼續教育積分，做法照衛福部積分系統的畫面：總表看各類別的積分，點數字進入該類別的課程清單。「全員進度」給教育訓練、人資與主管看每個人的進度（取代目前用 Excel 一人一張工作表統計的做法），「缺口分析」看大家比較缺哪些積分，用來設計明年度課程。',
@@ -3750,10 +3800,23 @@ BINDERS['desk:course']=function(){
   [['ceUnit','unit'],['ceTitle','title'],['ceStatus','status']].forEach(([id,k])=>{ const e=document.getElementById(id); if(e) e.onchange=()=>{ f[k]=e.value; render(); }; });
   const q=document.getElementById('ceQ'); if(q){ let comp=false; const apply=()=>{ f.q=q.value; const p=q.selectionStart; render(); const j=document.getElementById('ceQ'); if(j){ j.focus(); j.setSelectionRange(p,p);} };
     q.addEventListener('compositionstart',()=>{ comp=true; }); q.addEventListener('compositionend',()=>{ comp=false; apply(); }); q.addEventListener('input',e=>{ if(!(comp||e.isComposing)) apply(); }); }
+  const cf=document.getElementById('ceFile'); if(cf) cf.onchange=async()=>{
+    const file=cf.files[0]; if(!file||!can('ceEdit')) return; const ext=upExt(file.name);
+    if(ext!=='xlsx'&&ext!=='csv'){ state.ceImpMsg={err:true,text:'只收 .xlsx 和 .csv（目前不支援 .'+ext+'）'}; render(); return; }
+    try{
+      const buf=await file.arrayBuffer(), r=ceImportRows(ext==='csv'?csvRead(buf):await xlsxRead(buf));
+      state.ceImpMsg = r.fatal ? {err:true,text:'無法匯入：'+r.fatal}
+        : {err:!!r.errors.length, text:`匯入完成：新增 ${r.added} 筆課程，涉及 ${Object.keys(r.byEmp).length} 位同仁；略過重複 ${r.dup} 筆；有問題 ${r.errors.length} 列`+(r.errors.length?'（'+r.errors.slice(0,8).map(e=>'第 '+e.row+' 列：'+e.why).join('；')+(r.errors.length>8?' …':'')+'）':'')+'。'};
+    }catch(e){ state.ceImpMsg={err:true,text:'無法匯入：'+(e&&e.message||e)}; }
+    render(); };
+  const af=document.getElementById('ceAddForm'); if(af) af.onsubmit=e=>{ e.preventDefault(); if(!can('ceEdit')) return;
+    const fd=new FormData(af), c=CE_CATALOG[+fd.get('cat')], d=String(fd.get('date')||''); if(!c||!d) return;
+    const rec=ceRecord(state.ceEmp); rec.courses.push({name:c.name,mode:fd.get('mode'),v:c.v.slice(),date:d,unit:String(fd.get('unit')||'').trim()||'（未填）'}); rec.courses.sort((a,b)=>a.date.localeCompare(b.date)); toast(both('已新增課程','Course added')); render(); };
+  document.querySelectorAll('[data-cedel]').forEach(b=>b.onclick=()=>{ if(!can('ceEdit')) return; const [id,i]=b.dataset.cedel.split('|'); ceRecord(id).courses.splice(+i,1); toast(both('已刪除','Deleted')); render(); });
   const tp=document.querySelector('[data-cetemplate]'); if(tp) tp.onclick=()=>{
     const head=['員工編號','課程日期（民國）','課程名稱','實施方式（實體／網路）','開課單位','專業課程','專業品質','專業倫理','專業法規','消防安全','緊急應變','感染管制','性別敏感度','原住民族文化','多元族群文化'];
     const ex=(id,d,c,mode,unitName)=>[id,d,c.name,mode,unitName,...c.v];
-    saveBlob(buildXlsx([['繼續教育積分匯入範本（示範）'],['一列一門課；各類積分欄位填該課程在這個類別給的點數（沒有就空白）。範例列是示範，不是真實資料。匯入功能要等需求端確認格式後再做。'],[],head,
+    saveBlob(buildXlsx([['繼續教育積分匯入範本（示範）'],['一列一門課；各類積分欄位填該課程在這個類別給的點數（沒有就空白）。範例列是示範，不是真實資料。整份檔案一次匯入（只有教育訓練專員）。'],[],head,
       ex('A004','115/03/12',CE_CATALOG[1],'實體','示範開課單位 甲'),ex('A004','115/05/20',CE_CATALOG[17],'網路','示範開課單位 乙')]),'繼續教育積分匯入範本.xlsx'); };
   const x=document.querySelector('[data-ceexcel]'); if(x) x.onclick=()=>{
     const rows=[['繼續教育積分總表（示範資料）'],['總積分＝專業課程＋品質、倫理、法規（最多計 36）；規則依 Excel 表頭與衛福部積分系統畫面整理'],[],
@@ -3765,6 +3828,56 @@ BINDERS['desk:course']=function(){
 <script>
 /* =============================== 出勤管理 Attendance =============================== */
 const ATT_MONTHS=['2026-06','2026-07','2026-08','2026-09','2026-10'];
+/* ---------- 10/20 會議：班別設定（HR 自行定義）與打卡位置（後台 IP） ---------- */
+const SHIFT_DEFAULTS=[
+  {id:'normal',  zh:'一般班', segs:[['08:00','17:00']], who:'一般人員', note:'', builtin:true},
+  {id:'special', zh:'特殊班', segs:[['07:45','16:45']], who:'日照照服員', note:'共九小時，每月輪替', builtin:true},
+  {id:'driver',  zh:'司機班', segs:[['',''],['','']], hours:[2,2], who:'日照司機', note:'分兩段：早上兩小時＋下午兩小時，共四小時；各段上下班時間待 HR 設定', builtin:true}
+];
+const shiftDefs=()=>state.shiftDefs||(state.shiftDefs=SHIFT_DEFAULTS.map(x=>({...x,segs:x.segs.map(g=>[...g])})));
+const canShiftEdit=()=>['hr','manager'].includes(state.role);   // HR 可自行新增班別；管理者幾乎全部可修改；系統管理員只能檢視
+const shiftSpan=sf=>sf.segs.map((g,i)=>g[0]&&g[1]?g[0]+'–'+g[1]:(sf.hours?'（'+sf.hours[i]+' 小時，時間待設定）':'')).join('、');
+const shiftTotal=sf=>sf.segs.reduce((a,g,i)=>a+(g[0]&&g[1]?(toMin(g[1])-toMin(g[0]))/60:(sf.hours?sf.hours[i]:0)),0);
+function shiftCard(){
+  const list=shiftDefs(), ed=canShiftEdit();
+  return `<section class="card" id="shiftCard">
+    <div class="card-h"><h2>${esc(both('班別設定','Shift settings'))}</h2><span class="chip acc">${esc(both('HR 可自行定義','HR can define'))}</span></div>
+    <div class="card-b" style="display:grid;gap:10px">
+      <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('班別','Shift')}</th><th>${bi('時段','Hours')}</th><th>${bi('總時數','Total')}</th><th>${bi('適用','For')}</th><th>${bi('備註','Note')}</th>${ed?'<th></th>':''}</tr></thead>
+        <tbody>${list.map(sf=>`<tr><td><b>${esc(sf.zh)}</b></td><td>${esc(shiftSpan(sf))}</td><td class="num">${shiftTotal(sf)} h</td><td>${esc(sf.who||'')}</td><td style="white-space:normal">${esc(sf.note||'')}</td>${ed?`<td>${sf.builtin?'':`<button class="btn ghost mini" data-shiftdel="${sf.id}">${esc(both('刪除','Delete'))}</button>`}</td>`:''}</tr>`).join('')}</tbody></table></div>
+      ${ed?`<form id="shiftForm" class="frm"><div class="row">
+        <div><label>${esc(both('班別名稱','Shift name'))}</label><input name="zh" required maxlength="20" lang="zh-Hant" placeholder="${esc(both('例如：晚班','e.g. late shift'))}"></div>
+        <div><label>${esc(both('第一段 開始','Segment 1 start'))}</label><input name="s1" type="time" required></div>
+        <div><label>${esc(both('第一段 結束','Segment 1 end'))}</label><input name="e1" type="time" required></div>
+        <div><label>${esc(both('第二段 開始（選填）','Segment 2 start (optional)'))}</label><input name="s2" type="time"></div>
+        <div><label>${esc(both('第二段 結束（選填）','Segment 2 end (optional)'))}</label><input name="e2" type="time"></div></div>
+        <div class="row"><div><label>${esc(both('適用對象','Applies to'))}</label><input name="who" maxlength="30" lang="zh-Hant"></div>
+        <div><label>${esc(both('備註','Note'))}</label><input name="note" maxlength="60" lang="zh-Hant"></div>
+        <div><button class="btn mini" type="submit">${esc(both('新增班別','Add shift'))}</button></div></div>
+        <div class="err" id="shiftErr" role="alert" style="color:var(--crit);font-size:12.5px"></div></form>`
+        :`<div class="muted" style="font-size:12.5px">${esc(both('只有人資與管理者可以新增或刪除班別。','Only HR and the manager can add or remove shifts.'))}</div>`}
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('遲到判定、午休扣除規則：依各班別的開班時間判定，之後再細化（10/20 會議）。這裡的班別目前只用在手機版打卡示範；薪資試算仍用原本的白班／小夜班。','Late and lunch-break rules follow each shift’s start time and will be refined later (20 Oct meeting). These shifts are only used by the phone clock-in demo for now; the payroll run still uses the existing day / evening shifts.'))}</div>
+    </div></section>`;
+}
+/* 打卡位置：正式版打卡記錄 IP 位置、不強制拍照；位置只給後台看，員工的手機介面不顯示（10/20 會議）。下面的 IP 與地點都是虛構的示範（IP 用文件保留網段） */
+function punchLocCard(){
+  if(!can('punchLoc')) return '';
+  const [y,m]=state.attMonth.split('-').map(Number), units=activeUnitIds();
+  const places=[['辦公室網路（示範）',''],['個案家附近的行動網路（示範）',''],['不明網路（示範）','請確認']];
+  const rows=[];
+  STAFF.filter(s=>units.includes(s.unit)&&onRoster(s,state.attMonth)).forEach(s=>{
+    attendance(s.id,y,m).filter(r=>r.in).slice(-2).forEach(r=>{ const k=Math.floor(seed(s.id+'-loc-'+r.d)*100), pl=places[k<70?0:k<92?1:2];
+      rows.push({s,d:r.d,t:r.in,ip:(k<70?'203.0.113.':'198.51.100.')+(10+Math.floor(seed(s.id+'-ip-'+r.d)*200)),pl:pl[0],flag:pl[1]}); });
+  });
+  rows.sort((a,b)=>(b.d-a.d)||b.t.localeCompare(a.t));
+  return `<section class="card" id="punchLoc">
+    <div class="card-h"><h2>${esc(both('打卡位置（後台）','Punch location (back office)'))}</h2><span class="chip warn">${esc(both('只有後台看得到','Back office only'))}</span></div>
+    <div class="card-b" style="display:grid;gap:8px">
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('正式版打卡會記錄網路位置（IP），不強制拍照；位置資訊只顯示在後台，員工的手機介面不顯示位置（10/20 會議）。打卡資料依法規保存五年。照片上傳是選填功能（之後再做，需伺服器端壓縮）。下面的 IP 與地點是虛構的示範。','The real version records the network location (IP) of each punch and does not force a photo; the location shows only in the back office, never on the employee’s phone (20 Oct meeting). Punch data is kept for five years as the law requires. Photo upload is optional and comes later (needs server-side compression). The IPs and places below are fictional demo data.'))}</div>
+      <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('日期','Date')}</th><th>${bi('員工','Employee')}</th><th>${bi('公司','Company')}</th><th>${bi('上班打卡','Punch in')}</th><th>${bi('網路位置','Network location')}</th><th>IP</th><th>${bi('提醒','Flag')}</th></tr></thead>
+        <tbody>${rows.slice(0,12).map(r=>`<tr><td class="mono">${state.attMonth}-${String(r.d).padStart(2,'0')}</td><td>${esc(nameOf(r.s))}</td><td>${esc(both(unit(r.s.unit).zh,unit(r.s.unit).en))}</td><td class="mono">${r.t}</td><td>${esc(r.pl)}</td><td class="mono">${r.ip}</td><td>${r.flag?`<span class="chip warn">${esc(r.flag)}</span>`:''}</td></tr>`).join('')}</tbody></table></div>
+    </div></section>`;
+}
 function viewAttendance(){
   const units=activeUnitIds();
   const list=STAFF.filter(s=>units.includes(s.unit) && onRoster(s,state.attMonth));
@@ -3841,9 +3954,21 @@ function viewAttendance(){
         <span>${esc(both('原型說明：出勤資料為程式產生的示意資料，未串接打卡機或班表。','Prototype note: attendance is generated demo data — no time-clock or roster integration.'))}</span>
       </div>
     </section>
+  ${shiftCard()}
+  ${punchLocCard()}
   </div>`;
 }
 BINDERS['hr:att']=function(){
+  document.querySelectorAll('[data-shiftdel]').forEach(b=>b.onclick=()=>{ if(!canShiftEdit()) return; state.shiftDefs=shiftDefs().filter(x=>x.id!==b.dataset.shiftdel); render(); });
+  const sf=document.getElementById('shiftForm'); if(sf) sf.onsubmit=e=>{ e.preventDefault(); if(!canShiftEdit()) return;
+    const fd=new FormData(sf), g=k=>String(fd.get(k)||'').trim(), err=document.getElementById('shiftErr'), zh=g('zh');
+    const seg1=[g('s1'),g('e1')], seg2=[g('s2'),g('e2')], two=!!(seg2[0]||seg2[1]);
+    let msg='';
+    if(!zh) msg='請填班別名稱'; else if(shiftDefs().some(x=>x.zh===zh)) msg='已有同名的班別';
+    else if(!seg1[0]||!seg1[1]||toMin(seg1[1])<=toMin(seg1[0])) msg='第一段的結束時間要晚於開始時間';
+    else if(two&&(!seg2[0]||!seg2[1]||toMin(seg2[1])<=toMin(seg2[0])||toMin(seg2[0])<toMin(seg1[1]))) msg='第二段要填完整，且晚於第一段結束';
+    if(msg){ err.textContent=msg; return; }
+    shiftDefs().push({id:'c'+(Date.now()%1e7), zh, segs:two?[seg1,seg2]:[seg1], who:g('who'), note:g('note')}); toast(both('已新增班別：'+zh,'Shift added: '+zh)); render(); };
   const s=document.getElementById('attMon'); if(s) s.onchange=e=>{ state.attMonth=e.target.value; render(); };
   document.querySelectorAll('[data-emp]').forEach(r=>r.onclick=()=>openPerson(r.dataset.emp));
 };
@@ -4969,7 +5094,7 @@ function generateFinancialReport(month){
   const rows=[['員工編號','姓名','公司','部門','計薪方式','應發金額','實發金額','雇主勞保','雇主健保','雇主勞退','人事成本合計','發薪方式']];
   list.forEach(e=>{
     const r=calcPay(e.id, month);
-    rows.push([e.id, empName(e.id), unit(e.unit).zh, DEPTS[e.dept].zh, e.type==='part'?'時薪':'月薪', r.gross, r.net, r.er.labor, r.er.health, r.er.pension, r.gross+r.er.total, PAY_METHOD[payMethodOf(e.id)].zh]);
+    rows.push([e.id, empName(e.id), unit(e.unit).zh, DEPTS[e.dept].zh, PAY_BASIS_LABEL[payBasis(e)].zh, r.gross, r.net, r.er.labor, r.er.health, r.er.pension, r.gross+r.er.total, PAY_METHOD[payMethodOf(e.id)].zh]);
   });
   return toCSV(rows);
 }
@@ -5199,7 +5324,17 @@ const PAY_CFG = {
   eveRate:200, nightRate:400,                // 夜班津貼（每班）
   nightInOTBase:true                         // 夜班津貼屬經常性給與，計入加班費時薪基準
 };
-const HOURLY_WAGE = {A007:220, B006:215, C003:200};  // 部分工時人員時薪
+const HOURLY_WAGE = {A007:220, B006:215, C003:200, A010:220, B009:220, C002:225, A008:215, B007:215};  // 示範時薪（虛構）：部分工時、居服員、司機的居服部分
+/* 10/20 會議：薪資計算分三類 ——
+   一般員工：月薪制（固定月薪）；居服員（全職與兼職）：時薪制，做多少拿多少；
+   日照司機（雙重角色）：開車部分月薪制（固定，不分大小月）＋居服部分時薪制。
+   拆帳制（項目制）另外處理，目前不需修改。 */
+const isHourlyPay = p => p.type==='part' || p.title==='hca';
+const isDriver = p => p.title==='drv';
+const payBasis = p => isHourlyPay(p)?'hourly':isDriver(p)?'driver':'monthly';
+const PAY_BASIS_LABEL = {monthly:{zh:'月薪制',en:'Monthly'}, hourly:{zh:'時薪制',en:'Hourly'}, driver:{zh:'司機：月薪＋居服時薪',en:'Driver: monthly + home-care hourly'}};
+const demoHomeH = id => Math.round(seed('homeh-'+id)*60)/2;   // 司機的居服時數（示範，0–30 小時）；正式版由仁寶服務記錄的居服員工時帶入
+const SPLIT_FACILITIES = ['附設新竹縣私立誠馨綜合式服務類長期照顧服務機構','附設新竹市私立誠芯居家長照機構','附設私立誠芯三館綜合長照機構'];
 const HOLIDAYS = {'2026-09-25':'中秋節','2026-09-28':'孔子誕辰紀念日','2026-10-09':'國慶日補假','2026-10-26':'光復節補假'};
 const PENSION_GRADES = HEALTH_GRADES.filter(g=>g<=150000);
 const PAY_MONTHS = ['2026-06','2026-07','2026-08','2026-09','2026-10'];
@@ -5242,8 +5377,8 @@ function splitOT(o){
 /* 從已核准差勤紀錄帶入計算參數 */
 function payInputs(empId, month){
   const p=person(empId), rec=empRecord(empId), [y,m]=month.split('-').map(Number);
-  const mS=month+'-01', mE=monthEnd(month), part=p.type==='part';
-  const inp={empId, month, part, monthly:part?0:p.salary, hourly:part?(HOURLY_WAGE[empId]||PAY_CFG.minHourly):0,
+  const mS=month+'-01', mE=monthEnd(month), part=isHourlyPay(p);
+  const inp={empId, month, part, driver:isDriver(p), homeH:isDriver(p)?demoHomeH(empId):0, homeRate:HOURLY_WAGE[empId]||PAY_CFG.minHourly, monthly:part?0:p.salary, hourly:part?(HOURLY_WAGE[empId]||PAY_CFG.minHourly):0,
     regH:0, wd1:0, wd2:0, rd1:0, rd2:0, rd3:0, hol:0, compH:0, leave:{}, lateMin:0, lateDays:0, missing:0,
     eve:0, night:0, eveRate:PAY_CFG.eveRate, nightRate:PAY_CFG.nightRate, nightInBase:PAY_CFG.nightInOTBase, shiftDates:{eve:[],night:[]},
     bonus:!part, laborG:0, healthG:0, pensionG:0, dep:rec.dep, selfPct:rec.selfPension,
@@ -5306,7 +5441,8 @@ function payMath(inp){
   (inp.adjust||[]).forEach(a=>{ const v=+a.amount||0;
     if(v>=0) adjPos+=add('earn','人工調整：'+a.label,'Manual: '+a.label,a.reason||'',v);
     else adjNeg+=add('other','人工調整：'+a.label,'Manual: '+a.label,a.reason||'',-v); });
-  const gross = base+night+ot+paidLeave+bonus+adjPos-att;
+  const home = +inp.homeH>0 ? add('earn','居服時薪收入（司機兼居服）','Home-care hourly pay (driver)',`${fmtH(+inp.homeH)} 小時 × 時薪 ${n(+inp.homeRate)}`, inp.homeH*inp.homeRate) : 0;
+  const gross = base+night+ot+paidLeave+bonus+adjPos-att+home;
   const regular = (inp.part ? inp.regH*H : +inp.monthly)+night;
   if(inp.laborG && gradeFor(regular,LABOR_GRADES)>inp.laborG) warn.push({zh:`勞保投保薪資 ${inp.laborG} 低於本月經常性薪資（含夜班津貼）${Math.round(regular)} 的級距 ${gradeFor(regular,LABOR_GRADES)}`,
     en:`Labor insured salary ${inp.laborG} is below the bracket for regular pay incl. shift allowance (${gradeFor(regular,LABOR_GRADES)})`,cls:'warn'});
@@ -5328,7 +5464,7 @@ function payMath(inp){
   const otH=OT_TIERS.reduce((a,t)=>a+(+inp[t.k]||0),0)+(+inp.compH||0);
   if(otH>OT_MONTH_CAP_H) warn.push({zh:`本月加班 ${fmtH(otH)} 小時，超過 ${OT_MONTH_CAP_H} 小時上限`,en:`Overtime ${fmtH(otH)}h exceeds ${OT_MONTH_CAP_H}h cap`,cls:'crit'});
   if(net<0) warn.push({zh:'實發為負數',en:'Net pay is negative',cls:'crit'});
-  return {H, Hot, eveN, nightN, lines, base, night, ot, att, paidLeave, bonus, adjPos, adjNeg, adjNet:adjPos-adjNeg, gross, labor, health, pension, tax, stat, net,
+  return {H, Hot, eveN, nightN, lines, base, home, night, ot, att, paidLeave, bonus, adjPos, adjNeg, adjNet:adjPos-adjNeg, gross, labor, health, pension, tax, stat, net,
     er:{labor:erL, health:erH, pension:erP, total:erL+erH+erP}, warn};
 }
 const calcPay = (empId, month) => payMath(payInputs(empId, month));
@@ -5350,7 +5486,7 @@ function payCSV(res, month){
     '勞保自付','健保自付','勞退自提','所得稅','其他扣款','實發金額','發薪方式','雇主勞保','雇主健保','雇主勞退','警示'];
   const rows=[head];
   STAFF.forEach(s=>{ const r=res[s.id]; if(!r) return;
-    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, s.type==='part'?'時薪':'月薪', r.base, r.eveN, ...(night?[r.nightN]:[]), r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
+    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, PAY_BASIS_LABEL[payBasis(s)].zh, r.base, r.eveN, ...(night?[r.nightN]:[]), r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
       r.labor, r.health, r.pension, r.tax, r.adjNeg, r.net, PAY_METHOD[payMethodOf(s.id)].zh, r.er.labor, r.er.health, r.er.pension, r.warn.map(w=>w.zh).join('; ')]); });
   const t=payTotals(res), tot=head.map(()=>'');
   tot[0]='合計'; tot[head.indexOf('應發金額')]=t.gross; tot[head.indexOf('實發金額')]=t.net;
@@ -5369,6 +5505,30 @@ function cashCSV(res, month, ids){
 function monthPicker(id, val){
   return `<select id="${id}">${PAY_MONTHS.map(m=>`<option ${m===val?'selected':''}>${m}</option>`).join('')}</select>`;
 }
+/* 10/20 會議：薪資計算的分類與規則（放在薪資試算最上面） */
+function payRulesCard(){
+  const rows=[
+    ['一般員工','月薪制','固定月薪。','Monthly: fixed monthly pay.'],
+    ['居服員（全職與兼職）','時薪制','做多少拿多少：工時 × 時薪。','Hourly: hours worked × hourly rate.'],
+    ['日照司機（雙重角色）','月薪＋時薪','開車部分：月薪制，固定、不分大小月；居服部分：時薪制。','Driving: fixed monthly pay, the same in long and short months; home care: hourly.']
+  ];
+  const en=['Regular staff','Home care workers (full and part time)','Day-care drivers (dual role)'];
+  return `<section class="card" id="payRules">
+    <div class="card-h"><h2>${esc(both('薪資分類與規則（10/20 會議）','Pay categories and rules (20 Oct meeting)'))}</h2><span class="chip warn">${esc(both('正式格式待提供','Official format pending'))}</span></div>
+    <div class="card-b" style="display:grid;gap:10px">
+      <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('人員','Staff')}</th><th>${bi('計薪','Basis')}</th><th>${bi('規則','Rule')}</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`<tr><td>${esc(both(r[0],en[i]))}</td><td><span class="chip">${esc(both(r[1],['Monthly','Hourly','Monthly + hourly'][i]))}</span></td><td style="white-space:normal">${esc(both(r[2],r[3]))}</td></tr>`).join('')}</tbody></table></div>
+      <div class="eyebrow">${esc(both('拆帳制（項目制）','Revenue-share (per-item)'))}</div>
+      <ul style="margin:0;padding-left:20px;line-height:1.8">
+        <li>${esc(both('適用居服員，約 20 種項目，各有單價；目前不需修改。','For home care workers: about 20 service items, each with a unit price; no change needed for now.'))}</li>
+        <li>${esc(both('適用機構：','Facilities where it applies: '))}${SPLIT_FACILITIES.map(x=>esc(x)).join('；')}</li>
+        <li>${esc(both('項目單價跟隨政府支付碼，過去十年未調整；若政府或老闆調整則另議。','Unit prices follow the government payment codes, unchanged for ten years; if the government or the owner changes them it will be discussed then.'))}</li>
+        <li>${esc(both('項目清單與單價還沒收到，所以原型還不計算拆帳制（薪資計算機選「拆帳制」只顯示說明）。','The item list and unit prices have not arrived, so the prototype does not calculate revenue-share yet (the calculator only shows a note).'))}</li></ul>
+      <div class="eyebrow">${esc(both('權限','Access'))}</div>
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('管理者與老闆可以檢視所有人的薪資，但不能修改。','The manager and the owner can view everyone’s pay but cannot change it.'))}</div>
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('下面試算裡，居服員（含全職）已照時薪制計；司機是「月薪＋居服時薪」，居服時數目前是示範數字，正式版由仁寶服務記錄的居服員工時帶入。時薪與時數都是虛構的示範資料。薪資計算表的欄位與正式格式要等千玉與思慧（管理者與系統管理員）提供後對照調整。','Below, home care workers (including full time) are calculated as hourly; drivers are “monthly + home-care hourly”, with home-care hours as demo numbers for now (the real version takes them from the 仁寶 worker hours). Rates and hours are fictional demo data. The columns and official format of the payroll sheet will be adjusted once the manager and system administrator supply them.'))}</div>
+    </div></section>`;
+}
 function viewPayRun(){
   const month=payDefault(), run=payrun(month), st=monthState(run);
   const units=activeUnitIds(), res=allPay(month);
@@ -5381,6 +5541,7 @@ function viewPayRun(){
   const pendAll=[...LEAVE,...OT_REQ,...PUNCH_FIX].filter(x=>(x.status==='pending'||x.status==='countersign')&&(x.from||x.date).slice(0,7)===month).length;
   return `
   <div class="grid">
+    ${payRulesCard()}
     <div class="card"><div class="card-b" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
       <span class="ulabel">${esc(both('計薪月份','Pay month'))}</span>${monthPicker('payMonth',month)}
       <span class="chip ${st.cls}">${esc(both(st.zh,st.en))}</span>
@@ -5411,7 +5572,7 @@ function viewPayRun(){
           <th>${bi('代扣','Withheld')}</th><th>${bi('實發','Net')}</th><th>${bi('發薪方式','Pay method')}</th><th>${bi('警示','Flags')}</th></tr></thead>
         <tbody>${list.map(s=>{ const r=res[s.id]; return `<tr class="clickable" data-payemp="${s.id}">
           <td>${esc(empName(s.id))} <span class="muted mono" style="font-size:11px">${s.id}</span><div class="muted" style="font-size:11px">${esc(TITLES[s.title].zh)} · ${esc(unit(s.unit).zh)}</div></td>
-          <td><span class="chip ${s.type==='part'?'warn':''}">${esc(s.type==='part'?both('時薪','Hourly'):both('月薪','Monthly'))}</span></td>
+          <td><span class="chip ${isHourlyPay(s)?'warn':isDriver(s)?'info':''}">${esc(isHourlyPay(s)?both('時薪','Hourly'):isDriver(s)?both('月薪＋居服時薪','Monthly + hourly'):both('月薪','Monthly'))}</span></td>
           <td class="num">${money(r.base+r.paidLeave)}</td><td class="num">${r.night?money(r.night):'—'}</td><td class="num">${r.ot?money(r.ot):'—'}</td>
           <td class="num">${r.att?'−'+money(r.att):'—'}</td><td class="num">${r.bonus?money(r.bonus):'—'}</td>
           <td class="num">${r.adjNet?(r.adjNet>0?'+':'−')+money(Math.abs(r.adjNet)):'—'}</td>
@@ -5484,7 +5645,7 @@ function openPayslip(empId, month){
       <div class="drawer-h">
         <span class="avatar" style="width:40px;height:40px;font-size:15px">${esc(empName(empId).slice(0,1))}</span>
         <div><h2 style="font-size:16px">${esc(empName(empId))} <span class="muted mono" style="font-size:12px">${empId} · ${month}</span></h2>
-          <div class="muted" style="font-size:12px">${esc(TITLES[p.title].zh)} · ${esc(unit(p.unit).zh)} · ${esc(p.type==='part'?both('時薪制 '+inp.hourly+' 元','Hourly '+inp.hourly):both('月薪制','Monthly'))} · ${payChip(payMethodOf(empId))}</div></div>
+          <div class="muted" style="font-size:12px">${esc(TITLES[p.title].zh)} · ${esc(unit(p.unit).zh)} · ${esc(isHourlyPay(p)?both('時薪制 '+inp.hourly+' 元','Hourly '+inp.hourly):isDriver(p)?both('開車月薪制＋居服時薪 '+inp.homeRate+' 元','Driving: monthly + home-care hourly '+inp.homeRate):both('月薪制','Monthly'))} · ${payChip(payMethodOf(empId))}</div></div>
         <button class="x" data-close aria-label="${esc(both('關閉','Close'))}">✕</button>
       </div>
       <div class="drawer-b">
@@ -5555,7 +5716,7 @@ const NIGHT_FIELDS = [
 ];
 function calcDefaults(empId, month){
   if(!empId) return {empId:'', month, part:false, monthly:40000, hourly:PAY_CFG.minHourly, regH:0, wd1:0, wd2:0, rd1:0, rd2:0, rd3:0, hol:0,
-    lv_sick:0, lv_personal:0, lv_family:0, lv_menstrual:0, lv_paid:0, lateMin:0, bonus:true,
+    lv_sick:0, lv_personal:0, lv_family:0, lv_menstrual:0, lv_paid:0, lateMin:0, bonus:true, homeH:0, homeRate:PAY_CFG.minHourly,
     eve:0, night:0, eveRate:PAY_CFG.eveRate, nightRate:PAY_CFG.nightRate, nightInBase:PAY_CFG.nightInOTBase, laborG:gradeFor(40000,LABOR_GRADES), healthG:gradeFor(40000,HEALTH_GRADES), dep:0, selfPct:0, addAmt:0, dedAmt:0};
   const i=payInputs(empId, month), c={...i};
   DEDUCT_LEAVES.forEach(k=>c['lv_'+k]=i.leave[k]||0);
@@ -5593,6 +5754,8 @@ function viewPayCalc(){
           <div><label>${esc(both('計薪方式','Basis'))}</label><select name="part"><option value="false" ${!c.part&&!c.split?'selected':''}>${esc(both('月薪制','Monthly'))}</option><option value="true" ${c.part?'selected':''}>${esc(both('時薪制','Hourly'))}</option><option value="split" ${c.split?'selected':''}>${esc(both('拆帳制（規則待確認）','Revenue-share (rules pending)'))}</option></select></div>
           ${num('monthly','月薪','Monthly pay','NT$')}
           ${num('hourly','時薪','Hourly rate','NT$')}
+          ${num('homeH','居服時數（司機兼居服）','Home-care hours (driver)','h')}
+          ${num('homeRate','居服時薪（司機兼居服）','Home-care hourly rate (driver)','NT$')}
         </div>
         <div class="eyebrow">${esc(both('工時與加班','Hours & overtime'))}</div>
         <div class="row">${CALC_FIELDS.slice(0,7).map(f=>num(...f)).join('')}</div>
@@ -5650,7 +5813,7 @@ BINDERS['pay:calc']=function(){
   const draw=()=>{
     if(f.empId.value!==(state.calcInp.empId||'')){ state.calcEmp=f.empId.value; state.calcInp=calcDefaults(f.empId.value, month()); render(); return; }
     const c={...state.calcInp}, el=k=>f.elements[k].value;
-    ['monthly','hourly','regH','wd1','wd2','rd1','rd2','rd3','hol','lv_sick','lv_personal','lv_family','lv_menstrual','lv_paid','lateMin','laborG','healthG','dep','selfPct','addAmt','dedAmt','eve','night','eveRate','nightRate']
+    ['monthly','hourly','homeH','homeRate','regH','wd1','wd2','rd1','rd2','rd3','hol','lv_sick','lv_personal','lv_family','lv_menstrual','lv_paid','lateMin','laborG','healthG','dep','selfPct','addAmt','dedAmt','eve','night','eveRate','nightRate']
       .forEach(k=>c[k]=Math.max(0,+el(k)||0));
     c.part=el('part')==='true'; c.split=el('part')==='split'; c.bonus=el('bonus')==='true'; c.nightInBase=el('nightInBase')==='true';
     f.monthly.disabled=c.part; f.hourly.disabled=!c.part; f.regH.disabled=!c.part;
@@ -5780,6 +5943,8 @@ const CAPS=[
  {key:'annGroup', zh:'發布全公司公告', en:'Publish company-wide announcements'},
  {key:'annOffice',zh:'發布本公司公告', en:'Publish facility announcements'},
  {key:'trainView', zh:'查看全員繼續教育積分（私人秘書 › 課程）', en:'View everyone’s continuing-education points (My Desk › Courses)'},
+ {key:'ceEdit',   zh:'新增／修改課程資料與匯入（只有教育訓練專員）', en:'Add / edit course data and import (training officer only)'},
+ {key:'punchLoc', zh:'查看打卡位置（IP，只在後台）', en:'View punch location (IP, back office only)'},
  {key:'perms',    zh:'管理角色與權限、系統設定', en:'Manage roles, permissions and settings'},
  {key:'salary', derived:true, zh:'薪資計算與覆核', en:'Run and review payroll', note:{zh:'與「查看薪資」同一權限',en:'Same permission as "View pay"'}}
 ];
