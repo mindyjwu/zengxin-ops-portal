@@ -1660,7 +1660,7 @@ test.describe('CSV exports', () => {
     await openPortal(page);
     await go(page, 'svc', 'case');
     const v = page.locator('#view');
-    for (const s of ['匯入仁寶服務記錄', '只在你的瀏覽器裡讀取', '忘簽退', '現在算「這份檔案期間內有服務紀錄的不重複案號」']) await expect(v).toContainText(s);
+    for (const s of ['匯入仁寶服務記錄', '只在你的瀏覽器裡讀取', '忘簽退', '10/20 會議已決定']) await expect(v).toContainText(s);
   });
 
   test('the user guide explains how to estimate cloud storage, with numbers that match the estimator', async ({ page }) => {
@@ -1886,7 +1886,7 @@ test.describe('仁寶 service-record import (synthetic data only)', () => {
     await importSample(page, [...SAMPLE, ...rows]);
     await expect(page.locator('#svcDay')).toBeVisible();
     const v = page.locator('#view');
-    await expect(v).toContainText('服務個案數：3');      // T-001, T-002, T-003（T-004 缺居服員被略過）
+    await expect(v).toContainText('服務人數：3');      // T-001, T-002, T-003（T-004 缺居服員被略過）
     await expect(v).toContainText('服務紀錄：4');
     await expect(v).toContainText('居服員：2');
     await expect(v).toContainText('總工時：3.5');            // 210 分鐘
@@ -2330,7 +2330,7 @@ test.describe('仁寶 import accepts .csv', () => {
   const openCase = async page => { await openPortal(page); await go(page, 'svc', 'case'); };
   const expectSummary = async page => {
     const v = page.locator('#view');
-    await expect(v).toContainText('服務個案數：2');
+    await expect(v).toContainText('服務人數：2');
     await expect(v).toContainText('服務紀錄：2');
     await expect(v).toContainText('居服員：2');
     await expect(v).toContainText('總工時：2.5');                      // 150 分鐘
@@ -2508,5 +2508,62 @@ test.describe('v3.3: org chart V3 approval levels and cloud plan comparison', ()
     await expect(page.locator('#agenda tbody tr')).toHaveCount(6);
     await expect(page.locator('#confirm tbody tr').nth(2)).toContainText('員工編號原則');   // 待補齊清單第 3 列是員編，不是議程
     await expect(page.locator('#agenda tbody tr').nth(2)).toContainText('雲端方案比較');
+  });
+});
+
+
+test.describe('10/20 meeting: org tree, approval forms, 仁寶 summary', () => {
+  test('誠馨健康 has care attendants and drivers under day care, like the other day-care units', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'ann', 'org');
+    const col = page.locator('.orgf-row > .orgcol').filter({ hasText: '誠馨健康股份有限公司' });
+    await expect(col).toContainText('照服員、司機');
+    await expect(col).toContainText('日照社工');
+  });
+  test('three confirmed approval forms with the same flow, and the five deck originals marked as to confirm', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'fin', 'proc');
+    const rows = page.locator('#view table').first().locator('tbody tr');
+    for (const [i, name] of ['報價單', '出差申請', '零佣金申請'].entries()) {
+      await expect(rows.nth(i)).toContainText(name);
+      await expect(rows.nth(i)).toContainText('已確認');
+      await expect(rows.nth(i)).toContainText('依組織圖 V3 逐層往上簽');
+    }
+    await expect(rows.nth(3)).toContainText('採購申請');
+    await expect(rows.nth(3)).toContainText('簡報原案');
+  });
+  const SAMPLE = [
+    ['案號', '服務項目類別', '項目服務次數', '居服員姓名', '服務日期', '服務時間長度(分)', '服務單位', '服務狀態'],
+    ['T-001', '陪伴服務', '1', '測試員甲', '2026-09-30', '60', '機構一', '已簽退'],
+    ['T-002', '陪伴服務', '1', '測試員乙', '2026-10-02', '90', '機構一', '忘簽退'],
+    ['T-002', '協助沐浴及洗頭', '1', '測試員乙', '2026-10-03', '30', '機構二', '服務未遇(新制)'],
+    ['T-003', '陪伴服務', '1', '測試員甲二', '2026-10-04', '60', '機構一', '已簽退'],
+  ];
+  async function importRows(page, data) {
+    await openPortal(page);
+    await go(page, 'svc', 'case');
+    const bytes = await page.evaluate(async d => Array.from(new Uint8Array(await buildXlsx(d).arrayBuffer())), data);
+    await page.setInputFiles('#svcFile', { name: 's.xlsx', mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) });
+    await expect(page.locator('#svcMonth')).toBeVisible();
+  }
+  test('summary table: people served per month and unit, forgot-sign-out rows counted, decisions listed', async ({ page }) => {
+    await importRows(page, SAMPLE);
+    await expect(page.locator('#svcMonth option')).toHaveText(['2026-09', '2026-10']);
+    await expect(page.locator('#svcMonth')).toHaveValue('2026-10');                       // 預設最新月份
+    const units = page.locator('#svcUnits tbody tr');
+    await expect(units.filter({ hasText: '機構一' })).toContainText('2');                 // 10 月機構一：T-002、T-003
+    await expect(units.filter({ hasText: '機構二' })).toContainText('1');
+    await expect(units.filter({ hasText: '合計' })).toContainText('2');                   // 當月不重複人數 = 2（T-002 只算一次）
+    await expect(units.filter({ hasText: '合計' })).toContainText('3.0');                 // (90+30+60) 分 = 3.0 小時：忘簽退與服務未遇都計入
+    await page.selectOption('#svcMonth', '2026-09');
+    await expect(page.locator('#svcUnits tbody tr', { hasText: '合計' })).toContainText('1.0');
+    await expect(page.locator('#svcDecided')).toContainText('不區分結案或暫停');
+    await expect(page.locator('#svcDecided')).toContainText('先計入居服員工時');
+    await expect(page.locator('#svcDecided')).toContainText('後綴「二」');
+    await expect(page.locator('#view')).toContainText('第一版以居家服務為主');
+  });
+  test('a name with the suffix 二 is flagged as a same-name case for a person to check', async ({ page }) => {
+    await importRows(page, SAMPLE);
+    await expect(page.locator('#view tbody tr', { hasText: '測試員甲二' })).toContainText('同名同姓');
   });
 });

@@ -813,7 +813,7 @@ const state = {
   utilOpen:false,
   navOpen:false,
   more:false,
-  svcImp:null, svcMsg:'', svcDay:'',
+  svcImp:null, svcMsg:'', svcDay:'', svcMonth:'',
   lang:'zh', role:'admin', module:'arch', tab:'scope',
   crossOffice:false,          // ASSUMPTION TOGGLE: managers see all offices?
   office:'ALL',               // office filter within the allowed scope
@@ -1700,7 +1700,7 @@ const ORG_TREE = {
         {zh:'日照服務', en:'Day care', kind:'unit', roles:['日照社工','照服員、司機']}]}]},
     {oid:'O4', zh:'誠馨健康股份有限公司', en:'Zengxin Health Co.', kids:[
       {zh:'附設私立誠馨二館社區長照機構', en:'Affiliated Zengxin No. 2 community care facility', head:'業務負責人（日照主管）', headEn:'Head of operations (day care supervisor)', kids:[
-        {zh:'日照服務', en:'Day care', kind:'unit', roles:['日照社工']}]}]},
+        {zh:'日照服務', en:'Day care', kind:'unit', roles:['日照社工','照服員、司機']}]}]},
     {oid:'O2', zh:'誠芯樂活事業股份有限公司', en:'Chengxin Leshuo Co.', kids:[
       {zh:'附設新竹市私立誠芯居家長照機構', en:'Affiliated home care facility (Hsinchu City)', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
         {zh:'社區整合型服務中心', en:'Community integrated service center', kind:'unit', roles:['A個管']},
@@ -4565,10 +4565,18 @@ function viewSvcCase(){
         ${state.svcImp?svcImpView(state.svcImp):''}
       </div>
     </section>
-    <section class="card">
-      <div class="card-h"><h2>${esc(both('待確認','To confirm'))}</h2></div>
+    <section class="card" id="svcDecided">
+      <div class="card-h"><h2>${esc(both('10/20 會議已決定','Decided at the 20 Oct meeting'))}</h2></div>
       <div class="card-b" style="display:grid;gap:10px">
-        <ul style="margin:0;padding-left:20px;line-height:1.8">${['「目前服務個案數」的定義：現在算「這份檔案期間內有服務紀錄的不重複案號」，要不要排除已結案／暫停的個案？','居服員工時以哪個欄位為準：現在用「打卡紀錄」的服務時間長度（分）；排班時數與實際打卡不同時怎麼算？','「忘簽退」「服務未遇」的紀錄是否計入工時','Excel 報表的固定格式、更新頻率與歷史資料範圍；欄位異動時的處理','居服員要對到 Portal 員工：目前用姓名比對，正式版建議在仁寶匯出加員工編號欄','哪一套系統是正式資料來源','服務員可否在個案家打卡並記錄服務項目（9/30 會議提出的需求）'].map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+        <ul style="margin:0;padding-left:20px;line-height:1.8">${[
+          ['「目前服務個案數」改叫「服務人數」：以當月實際使用服務的人數計算，不區分結案或暫停個案。','“Cases served” becomes “people served”: people who actually used a service that month, closed or suspended cases not distinguished.'],
+          ['「忘簽退」與「服務未遇」：先計入居服員工時。','Forgot sign-out and client-not-home rows are counted in workers’ hours for now.'],
+          ['仁寶匯出加「員工編號」欄：目前不行，需額外開發；所以居服員先用姓名對到 Portal 員工。','Adding an employee-number column to the 仁寶 export is not possible now and needs extra development, so workers are matched to portal staff by name.'],
+          ['同名同姓：仁寶目前以後綴「二」區別（例如姓名後面多一個「二」）；匯入時照仁寶的姓名比對，對不上的會標出來請人工確認。','Same names: 仁寶 currently tells them apart with the suffix 二 after the name; matching uses the name as 仁寶 writes it, and unmatched ones are flagged for a person to check.'],
+          ['匯入後先看高階彙整表，優先顯示服務人數與工時；第一版以居家服務為主，日照與公館之後再加；之後做成 dashboard，由 Mindy 先做第一版、收集團隊回饋。','After import the summary table comes first, with people served and hours on top; the first version centres on home care, day care and the facilities come later; it will become a dashboard, with Mindy building the first version and the team giving feedback.']
+        ].map(x=>`<li>${esc(both(x[0],x[1]))}</li>`).join('')}</ul>
+        <div class="eyebrow">${esc(both('仍待確認','Still to confirm'))}</div>
+        <ul style="margin:0;padding-left:20px;line-height:1.8">${['居服員工時以哪個欄位為準：現在用「打卡紀錄」的服務時間長度（分）；排班時數與實際打卡不同時怎麼算','Excel／CSV 報表的固定格式、更新頻率與歷史資料範圍；欄位異動、重複資料與匯入失敗的處理方式','哪一套系統是正式資料來源','日照與公館什麼時候要加進彙整表，要怎麼分','服務員可否在個案家打卡並記錄服務項目（9/30 會議提出的需求）'].map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
         <div class="muted" style="font-size:12.5px">${esc(both('個案敏感資訊留在仁寶，Portal 不存放（v2.0 規格 2.2）。','Sensitive case information stays in 仁寶; the portal does not store it (spec 2.2).'))}</div>
       </div>
     </section>
@@ -4640,24 +4648,29 @@ function svcAggregate(rows){
   /* 表頭可能是兩列（上列 A–R、下列 S 以後），合併後用位置找 */
   const lab=[]; for(let r=h;r<=Math.min(h+1,rows.length-1);r++) (rows[r]||[]).forEach((v,i)=>{ const t=norm(v); if(t) (lab[i]=lab[i]||[]).push(t); });
   const find=(name,nth=0)=>{ let k=0; for(let i=0;i<lab.length;i++) if(lab[i]&&lab[i].includes(name)){ if(k===nth) return i; k++; } return -1; };
-  const C={case:find('案號'), item:find('服務項目類別'), times:find('項目服務次數'), who:find('居服員姓名'), date:find('服務日期',1)>=0?find('服務日期',1):find('服務日期'), mins:find('服務時間長度(分)'), plan:find('排班時間長度(分)'), status:find('服務狀態')};
+  const C={case:find('案號'), item:find('服務項目類別'), times:find('項目服務次數'), who:find('居服員姓名'), date:find('服務日期',1)>=0?find('服務日期',1):find('服務日期'), unit:find('服務單位'), mins:find('服務時間長度(分)'), plan:find('排班時間長度(分)'), status:find('服務狀態')};
   const missing=SVC_NEED.filter((n,i)=>[C.case,C.item,C.times,C.who,C.date,C.mins][i]<0);
   if(missing.length) return {fatal:'缺少必要欄位：'+missing.join('、')};
   const dataStart=h+((rows[h+1]||[]).map(norm).includes('居服員姓名')?2:1);
-  const A={rows:0,skipped:[],cases:new Set(),items:{},who:{},dates:new Set(),odd:{noOut:0,noShow:0}};
+  const A={rows:0,skipped:[],cases:new Set(),items:{},who:{},dates:new Set(),odd:{noOut:0,noShow:0},mon:{},mu:{}};
   const isoDate=v=>{ const m=String(v).trim().match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/); return m?`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`:(/^\d{5}$/.test(String(v).trim())?new Date(Date.UTC(1899,11,30)+ +v*864e5).toISOString().slice(0,10):''); };
   for(let r=dataStart;r<rows.length;r++){
     const x=rows[r]||[]; if(!String(x[C.case]??'').trim()) continue;
     const who=String(x[C.who]??'').trim(), d=isoDate(x[C.date]??''), m=parseFloat(x[C.mins]);
     if(!who||!d||!isFinite(m)){ A.skipped.push(r+1); continue; }
     A.rows++; A.cases.add(String(x[C.case]).trim()); A.dates.add(d);
+    const cid=String(x[C.case]).trim(), mo=d.slice(0,7), un=(C.unit>=0?String(x[C.unit]??'').trim():'')||'（未填服務單位）';
+    const M=A.mon[mo]=A.mon[mo]||{cases:new Set(),rows:0,min:0,who:new Set()}; M.cases.add(cid); M.rows++; M.min+=m; M.who.add(who);
+    const U=((A.mu[mo]=A.mu[mo]||{})[un]=A.mu[mo][un]||{cases:new Set(),rows:0,min:0,who:new Set()}); U.cases.add(cid); U.rows++; U.min+=m; U.who.add(who);
     const it=String(x[C.item]??'').trim()||'（未填）', n=parseFloat(x[C.times])||1;
     const o=A.items[it]=A.items[it]||{n:0,min:0}; o.n+=n; o.min+=m;
     const w=A.who[who]=A.who[who]||{min:0,byDay:{}}; w.min+=m; w.byDay[d]=(w.byDay[d]||0)+m;
     const st=C.status>=0?String(x[C.status]??''):''; if(st.includes('忘簽退')) A.odd.noOut++; if(st.includes('未遇')) A.odd.noShow++;
   }
   const ds=[...A.dates].sort();
-  return {rows:A.rows, skipped:A.skipped, cases:A.cases.size, items:A.items, who:A.who, from:ds[0], to:ds[ds.length-1], odd:A.odd};
+  const sz=o=>({cases:o.cases.size,rows:o.rows,min:o.min,who:o.who.size});   // 只留數字，不留個案編號與姓名集合
+  const mon={}, mu={}; Object.keys(A.mon).forEach(k=>{ mon[k]=sz(A.mon[k]); mu[k]={}; Object.keys(A.mu[k]).forEach(u=>{ mu[k][u]=sz(A.mu[k][u]); }); });
+  return {rows:A.rows, skipped:A.skipped, cases:A.cases.size, items:A.items, who:A.who, from:ds[0], to:ds[ds.length-1], odd:A.odd, mon, mu};
 }
 const svcHr=m=>(m/60).toFixed(1);
 function svcWeekOf(d){ const t=new Date(d+'T00:00:00Z'), k=(t.getUTCDay()+6)%7, a=new Date(t-k*864e5), b=new Date(+a+6*864e5); return [a.toISOString().slice(0,10), b.toISOString().slice(0,10)]; }
@@ -4665,15 +4678,28 @@ function svcImpView(g){
   const day=state.svcDay||g.to, [w0,w1]=svcWeekOf(day);
   const names=Object.keys(g.who);
   const staffBy={}; STAFF.forEach(s=>{ (staffBy[s.name]=staffBy[s.name]||[]).push(s); });
-  const rows=names.map(n=>{ const w=g.who[n]; let dm=w.byDay[day]||0, wm=0; for(const k in w.byDay) if(k>=w0&&k<=w1) wm+=w.byDay[k]; const mt=staffBy[n]||[]; return {n,dm,wm,tm:w.min,days:Object.keys(w.byDay).length,match:mt.length===1?mt[0].no:(mt.length>1?'同名多人，請人工確認':'未對到')}; }).sort((a,b)=>b.tm-a.tm);
+  const rows=names.map(n=>{ const w=g.who[n]; let dm=w.byDay[day]||0, wm=0; for(const k in w.byDay) if(k>=w0&&k<=w1) wm+=w.byDay[k]; const mt=staffBy[n]||[]; return {n,dm,wm,tm:w.min,days:Object.keys(w.byDay).length,match:mt.length===1?mt[0].no:(mt.length>1?'同名多人，請人工確認':(/二$/.test(n)&&n.length>2?'同名同姓（後綴「二」），請人工確認':'未對到'))}; }).sort((a,b)=>b.tm-a.tm);
   const totMin=Object.values(g.items).reduce((a,o)=>a+o.min,0), totN=Object.values(g.items).reduce((a,o)=>a+o.n,0);
   const items=Object.entries(g.items).sort((a,b)=>b[1].min-a[1].min);
   const bar=p=>`<span style="display:inline-block;height:8px;width:${Math.max(2,Math.round(p*1.4))}px;background:var(--accent,#2f6f5e);border-radius:4px;vertical-align:middle"></span>`;
   const matched=rows.filter(r=>/^[^未同]/.test(r.match)).length;
-  return `
-  <div class="eyebrow">${esc(both('匯入結果（彙總）','Import result (summary)'))}</div>
+  const months=Object.keys(g.mon).sort(), mo=months.includes(state.svcMonth)?state.svcMonth:months[months.length-1], M=g.mon[mo]||{cases:0,rows:0,min:0,who:0};
+  const units=Object.entries(g.mu[mo]||{}).sort((a,b)=>b[1].min-a[1].min);
+  const summary=`
+  <div class="eyebrow">${esc(both('高階彙整表（第一版，先看服務人數與工時）','Summary table (first version: people served and hours)'))}</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><label for="svcMonth" class="muted" style="font-size:12.5px">${esc(both('月份','Month'))}</label>
+    <select id="svcMonth">${months.map(m=>`<option value="${m}" ${m===mo?'selected':''}>${m}</option>`).join('')}</select>
+    <span class="muted" style="font-size:12.5px">${esc(both('服務人數 ＝ 當月實際使用服務的人數（不重複），不區分結案或暫停（10/20 會議）','People served = people who actually used a service that month (distinct), closed or suspended cases not distinguished (20 Oct meeting)'))}</span></div>
+  <div class="todostrip"><span class="chip acc">${esc(both('服務人數','People served'))}：${M.cases}</span><span class="chip">${esc(both('工時（小時）','Hours'))}：${svcHr(M.min)}</span><span class="chip">${esc(both('居服員','Workers'))}：${M.who}</span><span class="chip">${esc(both('服務紀錄','Records'))}：${M.rows}</span></div>
+  <div class="tablewrap"><table class="todotbl" id="svcUnits"><thead><tr><th>${bi('服務單位','Service unit')}</th><th>${bi('服務人數','People served')}</th><th>${bi('工時（小時）','Hours')}</th><th>${bi('居服員','Workers')}</th><th>${bi('每位居服員平均工時','Avg hours per worker')}</th></tr></thead>
+    <tbody>${units.map(([u,v])=>`<tr><td>${esc(u)}</td><td class="num">${v.cases}</td><td class="num">${svcHr(v.min)}</td><td class="num">${v.who}</td><td class="num">${v.who?svcHr(v.min/v.who):'—'}</td></tr>`).join('')}
+    <tr><td><b>${esc(both('合計','Total'))}</b></td><td class="num"><b>${M.cases}</b></td><td class="num"><b>${svcHr(M.min)}</b></td><td class="num"><b>${M.who}</b></td><td class="num"><b>${M.who?svcHr(M.min/M.who):'—'}</b></td></tr></tbody></table></div>
+  ${months.length>1?`<div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('月份','Month')}</th><th>${bi('服務人數','People served')}</th><th>${bi('工時（小時）','Hours')}</th></tr></thead><tbody>${months.map(m=>`<tr><td class="mono">${m}</td><td class="num">${g.mon[m].cases}</td><td class="num">${svcHr(g.mon[m].min)}</td></tr>`).join('')}</tbody></table></div>`:''}
+  <div class="muted" style="font-size:12.5px">${esc(both('第一版以居家服務為主；日照與公館先不分開處理（10/20 會議）。之後會做成可直接在 Portal 查看的 dashboard，先給團隊試用、收集回饋。','The first version centres on home care; day care and the facilities are not split out yet (20 Oct meeting). It will later become a dashboard in the portal; the team tries this version first and gives feedback.'))}</div>`;
+  return summary+`
+  <div class="eyebrow">${esc(both('明細（整份檔案）','Detail (whole file)'))}</div>
   <div style="display:flex;flex-wrap:wrap;gap:8px">
-    <span class="chip acc">${esc(both('服務個案數','Cases served'))}：${g.cases}</span>
+    <span class="chip">${esc(both('整份檔案服務人數','People served in the file'))}：${g.cases}</span>
     <span class="chip">${esc(both('服務紀錄','Records'))}：${g.rows}</span>
     <span class="chip">${esc(both('期間','Period'))}：${esc(g.from)} ~ ${esc(g.to)}</span>
     <span class="chip">${esc(both('居服員','Workers'))}：${names.length}</span>
@@ -4718,7 +4744,8 @@ BINDERS['svc:case']=function(){
     }catch(e){ state.svcImp=null; state.svcMsg='無法匯入：'+(e&&e.message||e); }
     render();
   };
-  const c=document.getElementById('svcClear'); if(c) c.onclick=()=>{ state.svcImp=null; state.svcMsg=''; state.svcDay=''; render(); };
+  const c=document.getElementById('svcClear'); if(c) c.onclick=()=>{ state.svcImp=null; state.svcMsg=''; state.svcDay=''; state.svcMonth=''; render(); };
+  const sm=document.getElementById('svcMonth'); if(sm) sm.onchange=()=>{ state.svcMonth=sm.value; render(); };
   const d=document.getElementById('svcDay'); if(d) d.onchange=()=>{ state.svcDay=d.value; render(); };
   const x=document.getElementById('svcXlsx'); if(x) x.onclick=()=>{
     const g=state.svcImp; if(!g) return; const [w0,w1]=svcWeekOf(state.svcDay||g.to), day=state.svcDay||g.to;
@@ -4732,7 +4759,12 @@ BINDERS['svc:assess']=function(){};
 
 /* =============================== 線上申請 Online requests =============================== */
 /* 需求簡報第 11 頁與 v2.0 規格 3.1：共用申請框架，各表單流程如下 */
+/* 10/20 會議：簽核表單目前確認三種，流程相同（照組織圖 V3 逐層往上簽；各職務層級見下方，金額門檻待需求端提供）。
+   下面五種是簡報原案，是否保留待確認。 */
 const APP_TYPES = [
+  {zh:'報價單',       flow:['申請人','依組織圖 V3 逐層往上簽','管理者','老闆'], ok:true},
+  {zh:'出差申請',     flow:['申請人','依組織圖 V3 逐層往上簽','管理者','老闆'], ok:true},
+  {zh:'零佣金申請',   flow:['申請人','依組織圖 V3 逐層往上簽','管理者','老闆'], ok:true},
   {zh:'採購申請',     flow:['申請人','主管審核','會計確認','結案']},
   {zh:'零用金申請',   flow:['申請人','主管審核','會計核准','撥款','結案']},
   {zh:'維修申請',     flow:['申請人','主管確認','維修負責人執行','結案']},
@@ -4821,7 +4853,7 @@ function viewFinProcurement(){
       <div class="tablewrap"><table>
         <thead><tr><th>${bi('申請項目','Request')}</th><th>${bi('流程','Flow')}</th><th>${bi('狀態','Status')}</th></tr></thead>
         <tbody>${APP_TYPES.map(a=>`<tr><td><b>${esc(a.zh)}</b></td><td style="white-space:normal">${a.flow.map(x=>`<span class="chip">${esc(x)}</span>`).join(' → ')}</td>
-          <td><span class="chip">${esc(both('規則待確認','Rules pending'))}</span></td></tr>`).join('')}</tbody>
+          <td>${a.ok?`<span class="chip ok">${esc(both('已確認（三種流程相同）','Confirmed (same flow)'))}</span>`:`<span class="chip">${esc(both('簡報原案，是否保留待確認','From the deck; keep or drop to confirm'))}</span>`}</td></tr>`).join('')}</tbody>
       </table></div>
     </section>
     ${viewApprovalPath()}
