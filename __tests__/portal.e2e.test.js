@@ -237,8 +237,8 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
 
   test('page access follows the title matrix Excel and updates when the admin edits a cell', async ({ page }) => {
     const mods = async () => page.locator('[data-mod]').evaluateAll(n => n.map(x => x.dataset.mod));
-    // admin (系統管理員): everything except payroll
-    expect(await mods()).toEqual(['arch', 'desk', 'ann', 'hr', 'perm', 'doc', 'fin', 'svc', 'rpt', 'set']);
+    // admin (系統管理員): everything, payroll is view-only (confirmed 21 Oct)
+    expect(await mods()).toEqual(['arch', 'desk', 'ann', 'hr', 'perm', 'doc', 'fin', 'svc', 'pay', 'rpt', 'set']);
     // HR (人資主管): no case-system pages, no system settings, payroll yes
     await setRole(page, 'hr');
     await expect(page.locator('[data-mod="pay"]')).toBeVisible();
