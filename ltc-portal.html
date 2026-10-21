@@ -772,13 +772,13 @@ const ROLES = {
   /* 10/20 會議：系統管理員「可檢視所有內容，不可修改」（例外：權限設定與組織圖增刪）；人資可修改人事系統與公告欄、可審核私人秘書表單、不可改權限設定；管理者幾乎全部功能可修改，薪資計算只能檢視 */
   admin:{ id:'admin', zh:'系統管理員', en:'System Admin', persona:'H005', allOffices:true, built:true,
     perms:{ trainView:true, salary:false, editEmp:false, mobile:true, approve:false, finalize:false,
-            annGroup:false, annOffice:false, perms:true, exportAll:true, mgmt:true } },
+            annGroup:false, annOffice:false, perms:true, exportAll:true, mgmt:true, punchLoc:true } },
   hr:{ id:'hr', zh:'人資', en:'HR', persona:'H003', allOffices:true, built:true,
     perms:{ trainView:true, salary:true, editEmp:true, mobile:true, approve:true, finalize:true,
-            annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
+            annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true, punchLoc:true } },
   manager:{ id:'manager', zh:'管理者', en:'Manager', persona:'H002', allOffices:true, built:true,
     perms:{ trainView:true, salary:true, editEmp:true, mobile:true, approve:true, finalize:false,
-            annGroup:true, annOffice:true, perms:true, exportAll:true, mgmt:true } },
+            annGroup:true, annOffice:true, perms:true, exportAll:true, mgmt:true, punchLoc:true } },
   /* 一般員工：只用「私人秘書」自助頁面（對應 104 私人秘書），資料範圍僅限本人 */
   employee:{ id:'employee', zh:'一般員工：照服員', en:'Employee: care attendant', persona:'A004', allOffices:false, selfOnly:true, built:true,
     perms:{ trainView:false, salary:false, editEmp:false, mobile:false, approve:false, finalize:false,
@@ -3765,6 +3765,56 @@ BINDERS['desk:course']=function(){
 <script>
 /* =============================== 出勤管理 Attendance =============================== */
 const ATT_MONTHS=['2026-06','2026-07','2026-08','2026-09','2026-10'];
+/* ---------- 10/20 會議：班別設定（HR 自行定義）與打卡位置（後台 IP） ---------- */
+const SHIFT_DEFAULTS=[
+  {id:'normal',  zh:'一般班', segs:[['08:00','17:00']], who:'一般人員', note:'', builtin:true},
+  {id:'special', zh:'特殊班', segs:[['07:45','16:45']], who:'日照照服員', note:'共九小時，每月輪替', builtin:true},
+  {id:'driver',  zh:'司機班', segs:[['',''],['','']], hours:[2,2], who:'日照司機', note:'分兩段：早上兩小時＋下午兩小時，共四小時；各段上下班時間待 HR 設定', builtin:true}
+];
+const shiftDefs=()=>state.shiftDefs||(state.shiftDefs=SHIFT_DEFAULTS.map(x=>({...x,segs:x.segs.map(g=>[...g])})));
+const canShiftEdit=()=>['hr','manager'].includes(state.role);   // HR 可自行新增班別；管理者幾乎全部可修改；系統管理員只能檢視
+const shiftSpan=sf=>sf.segs.map((g,i)=>g[0]&&g[1]?g[0]+'–'+g[1]:(sf.hours?'（'+sf.hours[i]+' 小時，時間待設定）':'')).join('、');
+const shiftTotal=sf=>sf.segs.reduce((a,g,i)=>a+(g[0]&&g[1]?(toMin(g[1])-toMin(g[0]))/60:(sf.hours?sf.hours[i]:0)),0);
+function shiftCard(){
+  const list=shiftDefs(), ed=canShiftEdit();
+  return `<section class="card" id="shiftCard">
+    <div class="card-h"><h2>${esc(both('班別設定','Shift settings'))}</h2><span class="chip acc">${esc(both('HR 可自行定義','HR can define'))}</span></div>
+    <div class="card-b" style="display:grid;gap:10px">
+      <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('班別','Shift')}</th><th>${bi('時段','Hours')}</th><th>${bi('總時數','Total')}</th><th>${bi('適用','For')}</th><th>${bi('備註','Note')}</th>${ed?'<th></th>':''}</tr></thead>
+        <tbody>${list.map(sf=>`<tr><td><b>${esc(sf.zh)}</b></td><td>${esc(shiftSpan(sf))}</td><td class="num">${shiftTotal(sf)} h</td><td>${esc(sf.who||'')}</td><td style="white-space:normal">${esc(sf.note||'')}</td>${ed?`<td>${sf.builtin?'':`<button class="btn ghost mini" data-shiftdel="${sf.id}">${esc(both('刪除','Delete'))}</button>`}</td>`:''}</tr>`).join('')}</tbody></table></div>
+      ${ed?`<form id="shiftForm" class="frm"><div class="row">
+        <div><label>${esc(both('班別名稱','Shift name'))}</label><input name="zh" required maxlength="20" lang="zh-Hant" placeholder="${esc(both('例如：晚班','e.g. late shift'))}"></div>
+        <div><label>${esc(both('第一段 開始','Segment 1 start'))}</label><input name="s1" type="time" required></div>
+        <div><label>${esc(both('第一段 結束','Segment 1 end'))}</label><input name="e1" type="time" required></div>
+        <div><label>${esc(both('第二段 開始（選填）','Segment 2 start (optional)'))}</label><input name="s2" type="time"></div>
+        <div><label>${esc(both('第二段 結束（選填）','Segment 2 end (optional)'))}</label><input name="e2" type="time"></div></div>
+        <div class="row"><div><label>${esc(both('適用對象','Applies to'))}</label><input name="who" maxlength="30" lang="zh-Hant"></div>
+        <div><label>${esc(both('備註','Note'))}</label><input name="note" maxlength="60" lang="zh-Hant"></div>
+        <div><button class="btn mini" type="submit">${esc(both('新增班別','Add shift'))}</button></div></div>
+        <div class="err" id="shiftErr" role="alert" style="color:var(--crit);font-size:12.5px"></div></form>`
+        :`<div class="muted" style="font-size:12.5px">${esc(both('只有人資與管理者可以新增或刪除班別。','Only HR and the manager can add or remove shifts.'))}</div>`}
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('遲到判定、午休扣除規則：依各班別的開班時間判定，之後再細化（10/20 會議）。這裡的班別目前只用在手機版打卡示範；薪資試算仍用原本的白班／小夜班。','Late and lunch-break rules follow each shift’s start time and will be refined later (20 Oct meeting). These shifts are only used by the phone clock-in demo for now; the payroll run still uses the existing day / evening shifts.'))}</div>
+    </div></section>`;
+}
+/* 打卡位置：正式版打卡記錄 IP 位置、不強制拍照；位置只給後台看，員工的手機介面不顯示（10/20 會議）。下面的 IP 與地點都是虛構的示範（IP 用文件保留網段） */
+function punchLocCard(){
+  if(!can('punchLoc')) return '';
+  const [y,m]=state.attMonth.split('-').map(Number), units=activeUnitIds();
+  const places=[['辦公室網路（示範）',''],['個案家附近的行動網路（示範）',''],['不明網路（示範）','請確認']];
+  const rows=[];
+  STAFF.filter(s=>units.includes(s.unit)&&onRoster(s,state.attMonth)).forEach(s=>{
+    attendance(s.id,y,m).filter(r=>r.in).slice(-2).forEach(r=>{ const k=Math.floor(seed(s.id+'-loc-'+r.d)*100), pl=places[k<70?0:k<92?1:2];
+      rows.push({s,d:r.d,t:r.in,ip:(k<70?'203.0.113.':'198.51.100.')+(10+Math.floor(seed(s.id+'-ip-'+r.d)*200)),pl:pl[0],flag:pl[1]}); });
+  });
+  rows.sort((a,b)=>(b.d-a.d)||b.t.localeCompare(a.t));
+  return `<section class="card" id="punchLoc">
+    <div class="card-h"><h2>${esc(both('打卡位置（後台）','Punch location (back office)'))}</h2><span class="chip warn">${esc(both('只有後台看得到','Back office only'))}</span></div>
+    <div class="card-b" style="display:grid;gap:8px">
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('正式版打卡會記錄網路位置（IP），不強制拍照；位置資訊只顯示在後台，員工的手機介面不顯示位置（10/20 會議）。打卡資料依法規保存五年。照片上傳是選填功能（之後再做，需伺服器端壓縮）。下面的 IP 與地點是虛構的示範。','The real version records the network location (IP) of each punch and does not force a photo; the location shows only in the back office, never on the employee’s phone (20 Oct meeting). Punch data is kept for five years as the law requires. Photo upload is optional and comes later (needs server-side compression). The IPs and places below are fictional demo data.'))}</div>
+      <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('日期','Date')}</th><th>${bi('員工','Employee')}</th><th>${bi('公司','Company')}</th><th>${bi('上班打卡','Punch in')}</th><th>${bi('網路位置','Network location')}</th><th>IP</th><th>${bi('提醒','Flag')}</th></tr></thead>
+        <tbody>${rows.slice(0,12).map(r=>`<tr><td class="mono">${state.attMonth}-${String(r.d).padStart(2,'0')}</td><td>${esc(nameOf(r.s))}</td><td>${esc(both(unit(r.s.unit).zh,unit(r.s.unit).en))}</td><td class="mono">${r.t}</td><td>${esc(r.pl)}</td><td class="mono">${r.ip}</td><td>${r.flag?`<span class="chip warn">${esc(r.flag)}</span>`:''}</td></tr>`).join('')}</tbody></table></div>
+    </div></section>`;
+}
 function viewAttendance(){
   const units=activeUnitIds();
   const list=STAFF.filter(s=>units.includes(s.unit) && onRoster(s,state.attMonth));
@@ -3841,9 +3891,21 @@ function viewAttendance(){
         <span>${esc(both('原型說明：出勤資料為程式產生的示意資料，未串接打卡機或班表。','Prototype note: attendance is generated demo data — no time-clock or roster integration.'))}</span>
       </div>
     </section>
+  ${shiftCard()}
+  ${punchLocCard()}
   </div>`;
 }
 BINDERS['hr:att']=function(){
+  document.querySelectorAll('[data-shiftdel]').forEach(b=>b.onclick=()=>{ if(!canShiftEdit()) return; state.shiftDefs=shiftDefs().filter(x=>x.id!==b.dataset.shiftdel); render(); });
+  const sf=document.getElementById('shiftForm'); if(sf) sf.onsubmit=e=>{ e.preventDefault(); if(!canShiftEdit()) return;
+    const fd=new FormData(sf), g=k=>String(fd.get(k)||'').trim(), err=document.getElementById('shiftErr'), zh=g('zh');
+    const seg1=[g('s1'),g('e1')], seg2=[g('s2'),g('e2')], two=!!(seg2[0]||seg2[1]);
+    let msg='';
+    if(!zh) msg='請填班別名稱'; else if(shiftDefs().some(x=>x.zh===zh)) msg='已有同名的班別';
+    else if(!seg1[0]||!seg1[1]||toMin(seg1[1])<=toMin(seg1[0])) msg='第一段的結束時間要晚於開始時間';
+    else if(two&&(!seg2[0]||!seg2[1]||toMin(seg2[1])<=toMin(seg2[0])||toMin(seg2[0])<toMin(seg1[1]))) msg='第二段要填完整，且晚於第一段結束';
+    if(msg){ err.textContent=msg; return; }
+    shiftDefs().push({id:'c'+(Date.now()%1e7), zh, segs:two?[seg1,seg2]:[seg1], who:g('who'), note:g('note')}); toast(both('已新增班別：'+zh,'Shift added: '+zh)); render(); };
   const s=document.getElementById('attMon'); if(s) s.onchange=e=>{ state.attMonth=e.target.value; render(); };
   document.querySelectorAll('[data-emp]').forEach(r=>r.onclick=()=>openPerson(r.dataset.emp));
 };
@@ -5818,6 +5880,7 @@ const CAPS=[
  {key:'annGroup', zh:'發布全公司公告', en:'Publish company-wide announcements'},
  {key:'annOffice',zh:'發布本公司公告', en:'Publish facility announcements'},
  {key:'trainView', zh:'查看全員繼續教育積分（私人秘書 › 課程）', en:'View everyone’s continuing-education points (My Desk › Courses)'},
+ {key:'punchLoc', zh:'查看打卡位置（IP，只在後台）', en:'View punch location (IP, back office only)'},
  {key:'perms',    zh:'管理角色與權限、系統設定', en:'Manage roles, permissions and settings'},
  {key:'salary', derived:true, zh:'薪資計算與覆核', en:'Run and review payroll', note:{zh:'與「查看薪資」同一權限',en:'Same permission as "View pay"'}}
 ];

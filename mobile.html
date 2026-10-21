@@ -130,6 +130,14 @@ nav.tabs button[aria-current="true"]{color:var(--accent);font-weight:700}
    ========================================================= */
 const APP_VERSION='3.3', APP_REVISION='2026-10-20';   // 修訂日期：部署時自動改成最後一次修改的日期（台北時間）
 const DEMO = {name:'示範員工', title:'照服員', unit:'竹北日照中心（示範）', shiftStart:'08:00', shiftEnd:'17:00', lunchH:1, lateGrace:0};
+/* 10/20 會議的班別：一般班 08:00–17:00；特殊班（日照照服員）07:45–16:45，共九小時，每月輪替；司機班分兩段（早上兩小時＋下午兩小時，共四小時）。
+   HR 可自行新增其他班別（在營運入口「人事系統 › 出勤管理 › 班別設定」；手機版這裡是示範，班別直接內建）。遲到與午休規則依各班別開班時間判定，之後再細化。 */
+const SHIFTS = {
+  normal:  {zh:'一般班', segs:[['08:00','17:00']], lunch:true},
+  special: {zh:'特殊班（日照照服員）', segs:[['07:45','16:45']], lunch:true, note:'每月輪替'},
+  driver:  {zh:'司機班', segs:[['',''],['','']], hours:[2,2], lunch:false, note:'早上兩小時＋下午兩小時，共四小時'}
+};
+const shiftSpan = sh => sh.segs.map((g,i)=>g[0]&&g[1]?`${g[0]}–${g[1]}`:`第 ${i+1} 段 ${sh.hours?sh.hours[i]+' 小時':''}`).join('、');
 const LEAVE_TYPES = ['特休','病假','事假','家庭照顧假','生理假'];
 const TABS = [{id:'punch',zh:'打卡',ic:'⏱'},{id:'hours',zh:'工時',ic:'🗒'},{id:'leave',zh:'請假',ic:'🌴'},{id:'cal',zh:'月曆',ic:'📅'}];
 const pad = n => String(n).padStart(2,'0');
@@ -143,9 +151,9 @@ const fmtH = m => (Math.round(m/6)/10).toFixed(1);       // 分鐘 → 小時（
 
 /* ---------- 狀態（只存在這支手機的瀏覽器） ---------- */
 const KEY='zx-m-state-v1';
-let S = {tab:'punch', punches:{}, ot:[], fix:[], leave:[], sel:null, hoursView:'ot', err:''};
+let S = {tab:'punch', punches:{}, ot:[], fix:[], leave:[], sel:null, hoursView:'ot', err:'', shift:'normal'};
 function load(){ try{ const j=JSON.parse(localStorage.getItem(KEY)||'null'); if(j&&typeof j==='object') S={...S,...j,tab:'punch',err:'',sel:null}; }catch(e){} }
-function save(){ try{ localStorage.setItem(KEY,JSON.stringify({punches:S.punches,ot:S.ot,fix:S.fix,leave:S.leave})); }catch(e){} }
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify({punches:S.punches,ot:S.ot,fix:S.fix,leave:S.leave,shift:S.shift})); }catch(e){} }
 function toast(m){ document.querySelectorAll('.toast').forEach(x=>x.remove()); const t=document.createElement('div'); t.className='toast'; t.setAttribute('role','status'); t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(),2600); }
 
 /* ---------- 示範出勤紀錄：本月、今天以前，依日期固定產生（不是真實資料） ---------- */
@@ -158,8 +166,11 @@ function seeded(date){                                   // date: 'YYYY-MM-DD'�
   if(r<.24) return {in:'08:02'};                       // 只有上班卡 → 缺下班卡
   return {in:`07:${pad(40+Math.floor(hash('i'+date)*19))}`,out:`17:${pad(Math.floor(hash('o'+date)*25))}`};
 }
+/* 一天的打卡可以有好幾段（司機班兩段）；舊資料是 {in,out}，讀的時候轉成 segs */
+function segsOf(rec){ if(!rec) return []; if(rec.segs) return rec.segs; return (rec.in||rec.out)?[{in:rec.in,out:rec.out}]:[]; }
+function normRec(rec){ if(!rec) return {segs:[],shift:S.shift}; if(!rec.segs){ rec.segs=segsOf(rec); delete rec.in; delete rec.out; } return rec; }
 function dayRec(date){
-  const mine=S.punches[date]; if(mine) return {in:mine.in,out:mine.out,src:'me'};
+  const mine=S.punches[date]; if(mine){ const g=segsOf(mine), sh=SHIFTS[mine.shift]||SHIFTS.normal; return {in:g[0]&&g[0].in, out:g.length&&g.length>=sh.segs.length&&g.every(x=>x.out)?g[g.length-1].out:undefined, segs:g, shift:mine.shift||'normal', src:'me'}; }
   const lv=S.leave.find(l=>l.status!=='已撤回'&&l.from<=date&&date<=l.to&&new Date(date+'T00:00:00').getDay()%6!==0);
   if(lv) return {leave:lv.type};
   const t=ymd(now()); if(date>=t) return null;
@@ -175,11 +186,13 @@ function statusOf(date){
   if(!r) return date===t?'future':'miss';
   if(!r.in) return 'miss';
   if(!r.out && date<t) return 'miss';
-  if(toMin(r.in)>toMin(DEMO.shiftStart)+DEMO.lateGrace) return 'late';
+  const start = r.src==='me' ? ((SHIFTS[r.shift]||SHIFTS.normal).segs[0][0]) : DEMO.shiftStart;   // 開班時間還沒設定的班別（司機班）先不判遲到
+  if(start && toMin(r.in)>toMin(start)+DEMO.lateGrace) return 'late';
   return 'ok';
 }
 const STATUS_TXT = {ok:'正常',late:'遲到',leave:'請假',miss:'缺卡',off:'休',future:''};
-function workedMin(r){                                  // 實際在班分鐘，滿 5 小時扣午休（示範規則，待人資確認）
+function workedMin(r){                                  // 實際在班分鐘；單段滿 5 小時扣午休（示範規則，待細化）；司機班的兩段直接加總
+  if(r&&r.segs&&(SHIFTS[r.shift]||{}).segs&&(SHIFTS[r.shift].segs.length>1||!SHIFTS[r.shift].lunch)) return r.segs.reduce((a,g)=>{ if(!g.in||!g.out) return a; let m=toMin(g.out)-toMin(g.in); if(m<0) m+=1440; return a+m; },0);
   if(!r||!r.in||!r.out) return 0; let m=toMin(r.out)-toMin(r.in); if(m<0) m+=1440; return m>300?m-DEMO.lunchH*60:m;
 }
 function monthDays(){ const n=now(), y=n.getFullYear(), m=n.getMonth(), last=new Date(y,m+1,0).getDate(); return Array.from({length:last},(_,i)=>`${y}-${pad(m+1)}-${pad(i+1)}`); }
@@ -190,27 +203,37 @@ function render(){
   document.getElementById('ver').textContent=`手機版 v${APP_VERSION}・修訂 ${APP_REVISION}`;
   document.getElementById('tabs').innerHTML=TABS.map(t=>`<button data-tab="${t.id}" aria-current="${S.tab===t.id}"><span aria-hidden="true">${t.ic}</span>${t.zh}</button>`).join('');
   const v=document.getElementById('view');
-  v.innerHTML=`<div class="demo">示範版：人物與出勤資料是虛構的；打卡不會取用定位或相機，資料只存在這支手機的瀏覽器。</div>`+({punch:vPunch,hours:vHours,leave:vLeave,cal:vCal}[S.tab])();
+  v.innerHTML=`<div class="demo">示範版：人物與出勤資料是虛構的；不會使用手機定位或相機，資料只存在這支手機的瀏覽器。</div>`+({punch:vPunch,hours:vHours,leave:vLeave,cal:vCal}[S.tab])();
   bind();
   const themeLabel={auto:'自動',light:'日間',dark:'夜間'}[themePref()]; document.getElementById('themeBtn').textContent=themeLabel;
 }
+const pendingCount = () => Object.values(S.punches).reduce((a,r)=>a+segsOf(r).filter(g=>g.pending).length,0);
+function nextAction(rec,sh){ const g=segsOf(rec); if(g.length&&!g[g.length-1].out) return {kind:'out',idx:g.length-1}; if(g.length<sh.segs.length) return {kind:'in',idx:g.length}; return null; }
 function vPunch(){
-  const n=now(), today=ymd(n), rec=S.punches[today]||{};
-  const worked=rec.in&&!rec.out ? Math.max(0,toMin(hm(n))-toMin(rec.in)) : (rec.in&&rec.out?workedMin(rec):0);
-  const late = rec.in && toMin(rec.in)>toMin(DEMO.shiftStart)+DEMO.lateGrace;
-  const btn = !rec.in ? `<button class="punch" id="punchBtn" data-kind="in">上班打卡<small>${DEMO.shiftStart} 開始</small></button>`
-    : !rec.out ? `<button class="punch out" id="punchBtn" data-kind="out">下班打卡<small>已上班 ${fmtH(worked)} 小時</small></button>`
-    : `<button class="punch" disabled>今日已完成<small>工時 ${fmtH(workedMin(rec))} 小時</small></button>`;
+  const n=now(), today=ymd(n), rec=S.punches[today]||{}, g=segsOf(rec), sh=SHIFTS[(rec.shift&&g.length)?rec.shift:S.shift]||SHIFTS.normal, act=nextAction(rec,sh), multi=sh.segs.length>1;
+  const done=g.reduce((a,x)=>a+(x.in&&x.out?Math.max(0,toMin(x.out)-toMin(x.in)):0),0), openSeg=g.length&&!g[g.length-1].out?g[g.length-1]:null;
+  const cur=openSeg?Math.max(0,toMin(hm(n))-toMin(openSeg.in)):0, total=workedMin({segs:g,shift:rec.shift||S.shift,in:g[0]&&g[0].in,out:g.length&&g.every(x=>x.out)?g[g.length-1].out:undefined});
+  const start=sh.segs[0][0], late=g[0]&&g[0].in&&start&&toMin(g[0].in)>toMin(start)+DEMO.lateGrace;
+  const btn = !act ? `<button class="punch" disabled>今日已完成<small>工時 ${fmtH(total)} 小時</small></button>`
+    : act.kind==='in' ? `<button class="punch" id="punchBtn" data-kind="in">上班打卡<small>${multi?`第 ${act.idx+1} 段・`:''}${sh.segs[act.idx][0]?sh.segs[act.idx][0]+' 開始':(sh.hours?sh.hours[act.idx]+' 小時':'')}</small></button>`
+    : `<button class="punch out" id="punchBtn" data-kind="out">下班打卡<small>${multi?`第 ${act.idx+1} 段・`:''}已上班 ${fmtH(cur)} 小時</small></button>`;
+  const pend=pendingCount();
+  const rows=sh.segs.map((sg,i)=>{ const x=g[i]||{};
+    return `<div class="row"><div class="l">${multi?`第 ${i+1} 段 `:''}上班</div><div>${x.in?`${x.in} ${i===0&&start?(late?'<span class="chip warn">遲到</span>':'<span class="chip ok">準時</span>'):''} ${x.pending&&!x.out?'<span class="chip warn">待上傳</span>':''}`:'<span class="muted">尚未打卡</span>'}</div></div>
+      <div class="row"><div class="l">${multi?`第 ${i+1} 段 `:''}下班</div><div>${x.out?`${x.out} ${x.pending?'<span class="chip warn">待上傳</span>':''}`:'<span class="muted">尚未打卡</span>'}</div></div>`; }).join('');
   return `
+  ${navigator.onLine?'':`<div class="demo" id="net" role="status" style="background:var(--info-soft);border-color:var(--info)">目前沒有網路：打卡會先存在這支手機，連上網路後自動上傳。</div>`}
   <section class="card"><div class="clock"><div class="t" id="clk">${hm(n)}:${pad(n.getSeconds())}</div><div class="d">${n.getFullYear()} 年 ${n.getMonth()+1} 月 ${n.getDate()} 日（週${WD[n.getDay()]}）</div></div>
     <div class="punchwrap">${btn}
-      <div class="muted" id="loc">📍 示範：未取用定位（正式版要不要記錄位置，待決議）</div></div></section>
+      <div class="muted" id="loc" style="text-align:center">打卡會記錄時間與網路位置，位置只給後台看，這裡不顯示。</div></div></section>
   <section class="card"><h2>今天</h2>
-    <div class="row"><div class="l">班別</div><div>白班 ${DEMO.shiftStart}–${DEMO.shiftEnd}</div></div>
-    <div class="row"><div class="l">上班</div><div>${rec.in?`${rec.in} ${late?'<span class="chip warn">遲到</span>':'<span class="chip ok">準時</span>'}`:'<span class="muted">尚未打卡</span>'}</div></div>
-    <div class="row"><div class="l">下班</div><div>${rec.out?rec.out:'<span class="muted">尚未打卡</span>'}</div></div>
-    ${rec.in||rec.out?`<div style="margin-top:10px"><button class="btn ghost" id="undoPunch">清除今天的示範打卡</button></div>`:''}
-    <div class="muted" style="margin-top:10px">忘記打卡？到「工時」填補刷卡申請。</div></section>`;
+    <div class="row"><div class="l"><label for="shiftSel" style="margin:0">班別</label></div><div><select id="shiftSel" ${g.length?'disabled':''} aria-label="班別（示範）" style="min-height:44px;width:auto">${Object.entries(SHIFTS).map(([k,v])=>`<option value="${k}" ${k===(g.length?(rec.shift||'normal'):S.shift)?'selected':''}>${esc(v.zh)}</option>`).join('')}</select></div></div>
+    <div class="row"><div class="l">時段</div><div>${esc(shiftSpan(sh))}</div></div>
+    ${sh.note?`<div class="muted" style="font-size:12.5px">${esc(sh.note)}</div>`:''}
+    ${rows}
+    ${pend?`<div class="row"><div class="l">待上傳</div><div><span class="chip warn">${pend} 筆</span> <span class="muted" style="font-size:12.5px">連上網路後自動上傳（示範：沒有後端，只會標示為已上傳）</span></div></div>`:''}
+    ${g.length?`<div style="margin-top:10px"><button class="btn ghost" id="undoPunch">清除今天的示範打卡</button></div>`:''}
+    <div class="muted" style="margin-top:10px">忘記打卡？到「工時」填補刷卡申請。班別由人資排定（這裡先讓你選來試）。</div></section>`;
 }
 function vHours(){
   const days=monthDays(), t=ymd(now());
@@ -285,7 +308,12 @@ const need = (v,msg) => v&&String(v).trim() ? '' : msg;
 function bind(){
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ S.tab=b.dataset.tab; S.err=''; S.sel=null; render(); scrollTo(0,0); });
   const pb=document.getElementById('punchBtn');
-  if(pb) pb.onclick=()=>{ const n=now(), d=ymd(n), r=S.punches[d]=S.punches[d]||{}; if(pb.dataset.kind==='in') r.in=hm(n); else r.out=hm(n); save(); render(); toast(`${pb.dataset.kind==='in'?'上班':'下班'}打卡完成 ${hm(n)}`); };
+  if(pb) pb.onclick=()=>{ const n=now(), d=ymd(n), r=S.punches[d]=normRec(S.punches[d]), sh=SHIFTS[r.segs.length?(r.shift||S.shift):S.shift]||SHIFTS.normal, act=nextAction(r,sh); if(!act) return;
+    if(!r.segs.length) r.shift=S.shift;
+    const off=!navigator.onLine;
+    if(act.kind==='in') r.segs.push({in:hm(n),pending:off}); else { const x=r.segs[act.idx]; x.out=hm(n); if(off) x.pending=true; }
+    save(); render(); toast(`${act.kind==='in'?'上班':'下班'}打卡完成 ${hm(n)}${off?'（先存在手機，連上網路後自動上傳）':''}`); };
+  const ss=document.getElementById('shiftSel'); if(ss) ss.onchange=()=>{ S.shift=ss.value; save(); render(); };
   const up=document.getElementById('undoPunch'); if(up) up.onclick=()=>{ delete S.punches[todayStr()]; save(); render(); };
   document.querySelectorAll('[data-hv]').forEach(b=>b.onclick=()=>{ S.hoursView=b.dataset.hv; S.err=''; render(); });
   document.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{ S.sel=b.dataset.day; render(); });
@@ -307,8 +335,12 @@ function bind(){
     S.leave.push({type:val('lvType'),from:val('lvFrom'),to:val('lvTo'),hours:h,reason:val('lvWhy').trim(),status:'待簽核'}); S.err=''; save(); render(); toast('請假已送出，等主管簽核'); };
 }
 /* 時鐘每秒更新（只改文字，不重畫，避免打斷輸入或中文組字） */
+/* 離線打卡：沒有網路時先存在手機，連上網路後自動上傳（參考現行仁寶的做法）。示範版沒有後端，「上傳」只是把待上傳標成已上傳 */
+function syncPending(){ if(!navigator.onLine) return 0; let c=0; Object.values(S.punches).forEach(r=>segsOf(r).forEach(g=>{ if(g.pending){ g.pending=false; g.synced=true; c++; } })); if(c){ save(); toast(`已自動上傳 ${c} 筆打卡`); } return c; }
+window.addEventListener('online',()=>{ syncPending(); render(); });
+window.addEventListener('offline',()=>{ if(S.tab==='punch') render(); });
 setInterval(()=>{ const c=document.getElementById('clk'); if(c){ const n=now(); c.textContent=`${hm(n)}:${pad(n.getSeconds())}`; } },1000);
-load(); render();
+load(); syncPending(); render();
 if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>

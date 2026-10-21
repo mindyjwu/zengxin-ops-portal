@@ -167,7 +167,7 @@ test.describe('Settings & permission matrix', () => {
     await expect(page.locator('[data-perm]')).toHaveCount(0);            // 平常唯讀
     await expect(page.locator('[data-tcell]')).toHaveCount(0);
     await editPerms(page);
-    await expect(page.locator('[data-perm]')).toHaveCount(150);          // 10 editable capabilities × 15 roles
+    await expect(page.locator('[data-perm]')).toHaveCount(165);          // 11 editable capabilities × 15 roles
     await expect(page.locator('[data-tcell]')).toHaveCount(465);         // 31 items × 15 columns
     await expect(page.locator('[data-perm="admin|perms"]')).toBeDisabled();
     await expect(page.locator('[data-perm="admin|mgmt"]')).toBeDisabled();
@@ -180,7 +180,7 @@ test.describe('Settings & permission matrix', () => {
     await expect(page.locator('.permtable thead th')).toHaveCount(16);
     await expect(page.locator('[data-perm]')).toHaveCount(0);
     await editPerms(page);
-    await expect(page.locator('[data-perm]')).toHaveCount(150);
+    await expect(page.locator('[data-perm]')).toHaveCount(165);
     await page.click('[data-perm-cancel]');
     await expect(page.locator('[data-perm]')).toHaveCount(0);
   });
@@ -2145,7 +2145,8 @@ test.describe('Mobile app (PWA) — mobile.html', () => {
     await openM(page);
     await expect(page.locator('#tabs button')).toHaveText([/打卡/, /工時/, /請假/, /月曆/]);
     await expect(page.locator('.demo')).toContainText('虛構');
-    await expect(page.locator('#loc')).toContainText('未取用定位');
+    await expect(page.locator('#loc')).toContainText('位置只給後台看');          // 員工手機介面不顯示位置（10/20）
+    await expect(page.locator('#view')).not.toContainText(/📍|\d+\.\d+\.\d+\.\d+/);
     await page.click('#punchBtn');
     expect(await page.evaluate(() => window.__perm)).toEqual(asked);
   });
@@ -2728,5 +2729,130 @@ test.describe('10/20 payroll categories', () => {
     await page.fill('#calcForm [name="homeRate"]', '220');
     await expect(page.locator('#calcOut')).toContainText('居服時薪收入');
     await expect(page.locator('#calcOut')).toContainText('10');
+  });
+});
+
+
+test.describe('10/20 shifts and punch location (portal)', () => {
+  test('HR defines shifts: three built-in shifts, validation, add and delete a custom one', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'att');
+    const card = page.locator('#shiftCard');
+    await expect(card.locator('tbody tr')).toHaveCount(3);
+    await expect(card).toContainText('08:00–17:00');
+    await expect(card).toContainText('07:45–16:45');
+    await expect(card).toContainText('共九小時，每月輪替');
+    await expect(card).toContainText('早上兩小時＋下午兩小時');
+    await page.fill('#shiftForm [name="zh"]', '晚班');
+    await page.fill('#shiftForm [name="s1"]', '17:00'); await page.fill('#shiftForm [name="e1"]', '16:00');
+    await page.click('#shiftForm button[type="submit"]');
+    await expect(page.locator('#shiftErr')).toContainText('結束時間要晚於開始時間');
+    await page.fill('#shiftForm [name="e1"]', '21:00');
+    await page.fill('#shiftForm [name="s2"]', '22:00');                                  // 第二段只填一半
+    await page.click('#shiftForm button[type="submit"]');
+    await expect(page.locator('#shiftErr')).toContainText('第二段');
+    await page.fill('#shiftForm [name="s2"]', '');
+    await page.click('#shiftForm button[type="submit"]');
+    await expect(card.locator('tbody tr')).toHaveCount(4);
+    await expect(card).toContainText('17:00–21:00');
+    await page.locator('[data-shiftdel]').first().click();
+    await expect(card.locator('tbody tr')).toHaveCount(3);
+    await expect(card.locator('[data-shiftdel]')).toHaveCount(0);                         // 內建三種不能刪
+  });
+  test('shift settings: manager can edit, system admin and day-care supervisor only view', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'manager');
+    await go(page, 'hr', 'att');
+    await expect(page.locator('#shiftForm')).toBeVisible();
+    await setRole(page, 'admin');
+    await go(page, 'hr', 'att');
+    await expect(page.locator('#shiftCard')).toBeVisible();
+    await expect(page.locator('#shiftForm')).toHaveCount(0);
+    await expect(page.locator('#shiftCard')).toContainText('只有人資與管理者可以新增或刪除班別');
+  });
+  test('punch location (IP) is back office only: shown to HR, manager and admin, never to others, all fictional', async ({ page }) => {
+    await openPortal(page);
+    for (const role of ['hr', 'manager', 'admin']) {
+      await setRole(page, role);
+      await go(page, 'hr', 'att');
+      const card = page.locator('#punchLoc');
+      await expect(card).toBeVisible();
+      await expect(card).toContainText('只有後台看得到');
+      await expect(card).toContainText('保存五年');
+      await expect(card).toContainText('不強制拍照');
+      const ips = await card.locator('td.mono').allInnerTexts();
+      const addrs = ips.filter(v => /^\d+\.\d+\.\d+\.\d+$/.test(v));
+      expect(addrs.length).toBeGreaterThan(0);
+      expect(addrs.every(v => /^(203\.0\.113|198\.51\.100)\./.test(v))).toBe(true);     // 文件保留網段，不是真實 IP
+    }
+    await setRole(page, 'daydir');
+    await go(page, 'hr', 'att');
+    await expect(page.locator('#punchLoc')).toHaveCount(0);
+  });
+});
+
+test.describe('10/20 phone clock-in: shifts, offline, no location on the phone', () => {
+  const M = 'file://' + path.resolve(__dirname, '../mobile.html');
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+  test('the shift list matches the meeting: normal, special (07:45–16:45), driver (two segments)', async ({ page }) => {
+    await page.goto(M);
+    await expect(page.locator('#shiftSel option')).toHaveText(['一般班', '特殊班（日照照服員）', '司機班']);
+    await expect(page.locator('#view')).toContainText('08:00–17:00');
+    await page.selectOption('#shiftSel', 'special');
+    await expect(page.locator('#view')).toContainText('07:45–16:45');
+    await expect(page.locator('#view')).toContainText('每月輪替');
+    await page.selectOption('#shiftSel', 'driver');
+    await expect(page.locator('#view')).toContainText('早上兩小時＋下午兩小時，共四小時');
+  });
+  test('driver shift has two segments: four punches in a day', async ({ page }) => {
+    await page.goto(M);
+    await page.selectOption('#shiftSel', 'driver');
+    for (const label of ['上班打卡', '下班打卡', '上班打卡', '下班打卡']) {
+      await expect(page.locator('#punchBtn')).toContainText(label);
+      await page.click('#punchBtn');
+    }
+    await expect(page.locator('.punch[disabled]')).toContainText('今日已完成');
+    await expect(page.locator('#view')).toContainText('第 2 段 下班');
+  });
+  test('late is judged by the shift start: 07:50 is late on the special shift but on time on the normal shift', async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-10-21T07:50:00') });
+    await page.goto(M);
+    await page.click('#punchBtn');
+    await expect(page.locator('#view .chip.ok', { hasText: '準時' })).toBeVisible();      // 一般班 08:00
+    await page.click('#undoPunch');
+    await page.selectOption('#shiftSel', 'special');                                       // 特殊班 07:45
+    await page.click('#punchBtn');
+    await expect(page.locator('#view .chip.warn', { hasText: '遲到' })).toBeVisible();
+  });
+  test('offline punches are kept on the phone and uploaded automatically when the network returns', async ({ page }) => {
+    await page.goto(M);
+    await page.context().setOffline(true);
+    await expect(page.locator('#net')).toContainText('目前沒有網路');
+    await page.click('#punchBtn');
+    await expect(page.locator('.toast')).toContainText('連上網路後自動上傳');
+    await expect(page.locator('#view .chip.warn', { hasText: '待上傳' })).toBeVisible();
+    await page.reload().catch(() => {});                                                  // 離線重開：資料還在
+    await page.context().setOffline(false);
+    await page.goto(M);
+    await expect(page.locator('#view .chip.warn', { hasText: '待上傳' })).toHaveCount(0);    // 連上網路後自動上傳
+    await expect(page.locator('#view')).toContainText(/\d{2}:\d{2}/);
+  });
+  test('old saved punches (single in/out) still load', async ({ page }) => {
+    await page.addInitScript(() => { try { const d = new Date(), k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (!localStorage.getItem('zx-m-state-v1')) localStorage.setItem('zx-m-state-v1', JSON.stringify({ punches: { [k]: { in: '07:55' } }, ot: [], fix: [], leave: [] })); } catch (e) {} });
+    await page.goto(M);
+    await expect(page.locator('#punchBtn')).toContainText('下班打卡');
+    await expect(page.locator('#view')).toContainText('07:55');
+  });
+  test('the phone shows no IP address or place name anywhere', async ({ page }) => {
+    await page.goto(M);
+    await page.click('#punchBtn');
+    for (const t of ['punch', 'hours', 'leave', 'cal']) {
+      await page.click(`[data-tab="${t}"]`);
+      const text = await page.locator('#view').innerText();
+      expect(text).not.toMatch(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);
+      expect(text).not.toMatch(/📍/);
+    }
   });
 });
