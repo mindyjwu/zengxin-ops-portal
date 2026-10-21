@@ -3362,7 +3362,7 @@ function dqSlip(){
       ls.map(l=>`<tr><td>${esc(state.lang==='zh'?l.zh:l.en)}</td><td class="muted mono" style="font-size:11.5px;white-space:normal">${esc(l.formula)}</td>
         <td class="num">${g==='earn'?'':'−'}${money(l.amt)}</td></tr>`).join(''); };
   return `${monthBar('slipMonth', months, mon, `<span class="chip ok">${esc(both('已發放 '+payDay(mon),'Paid '+payDay(mon)))}</span>
-      <span class="chip">${esc(u.type==='part'?both('時薪制','Hourly'):both('月薪制','Monthly'))}</span>${payChip(payMethodOf(u.id))}`)}
+      <span class="chip">${esc(both(PAY_BASIS_LABEL[payBasis(u)].zh,PAY_BASIS_LABEL[payBasis(u)].en))}</span>${payChip(payMethodOf(u.id))}`)}
     <div class="tiles">
       <div class="tile"><span class="k">${esc(both('應發金額','Gross pay'))}</span><span class="v" style="font-size:18px">${money(r.gross)}</span></div>
       <div class="tile"><span class="k">${esc(both('代扣合計','Deductions'))}</span><span class="v" style="font-size:18px">−${money(r.stat+r.adjNeg)}</span></div>
@@ -4969,7 +4969,7 @@ function generateFinancialReport(month){
   const rows=[['員工編號','姓名','公司','部門','計薪方式','應發金額','實發金額','雇主勞保','雇主健保','雇主勞退','人事成本合計','發薪方式']];
   list.forEach(e=>{
     const r=calcPay(e.id, month);
-    rows.push([e.id, empName(e.id), unit(e.unit).zh, DEPTS[e.dept].zh, e.type==='part'?'時薪':'月薪', r.gross, r.net, r.er.labor, r.er.health, r.er.pension, r.gross+r.er.total, PAY_METHOD[payMethodOf(e.id)].zh]);
+    rows.push([e.id, empName(e.id), unit(e.unit).zh, DEPTS[e.dept].zh, PAY_BASIS_LABEL[payBasis(e)].zh, r.gross, r.net, r.er.labor, r.er.health, r.er.pension, r.gross+r.er.total, PAY_METHOD[payMethodOf(e.id)].zh]);
   });
   return toCSV(rows);
 }
@@ -5199,7 +5199,17 @@ const PAY_CFG = {
   eveRate:200, nightRate:400,                // 夜班津貼（每班）
   nightInOTBase:true                         // 夜班津貼屬經常性給與，計入加班費時薪基準
 };
-const HOURLY_WAGE = {A007:220, B006:215, C003:200};  // 部分工時人員時薪
+const HOURLY_WAGE = {A007:220, B006:215, C003:200, A010:220, B009:220, C002:225, A008:215, B007:215};  // 示範時薪（虛構）：部分工時、居服員、司機的居服部分
+/* 10/20 會議：薪資計算分三類 ——
+   一般員工：月薪制（固定月薪）；居服員（全職與兼職）：時薪制，做多少拿多少；
+   日照司機（雙重角色）：開車部分月薪制（固定，不分大小月）＋居服部分時薪制。
+   拆帳制（項目制）另外處理，目前不需修改。 */
+const isHourlyPay = p => p.type==='part' || p.title==='hca';
+const isDriver = p => p.title==='drv';
+const payBasis = p => isHourlyPay(p)?'hourly':isDriver(p)?'driver':'monthly';
+const PAY_BASIS_LABEL = {monthly:{zh:'月薪制',en:'Monthly'}, hourly:{zh:'時薪制',en:'Hourly'}, driver:{zh:'司機：月薪＋居服時薪',en:'Driver: monthly + home-care hourly'}};
+const demoHomeH = id => Math.round(seed('homeh-'+id)*60)/2;   // 司機的居服時數（示範，0–30 小時）；正式版由仁寶服務記錄的居服員工時帶入
+const SPLIT_FACILITIES = ['附設新竹縣私立誠馨綜合式服務類長期照顧服務機構','附設新竹市私立誠芯居家長照機構','附設私立誠芯三館綜合長照機構'];
 const HOLIDAYS = {'2026-09-25':'中秋節','2026-09-28':'孔子誕辰紀念日','2026-10-09':'國慶日補假','2026-10-26':'光復節補假'};
 const PENSION_GRADES = HEALTH_GRADES.filter(g=>g<=150000);
 const PAY_MONTHS = ['2026-06','2026-07','2026-08','2026-09','2026-10'];
@@ -5242,8 +5252,8 @@ function splitOT(o){
 /* 從已核准差勤紀錄帶入計算參數 */
 function payInputs(empId, month){
   const p=person(empId), rec=empRecord(empId), [y,m]=month.split('-').map(Number);
-  const mS=month+'-01', mE=monthEnd(month), part=p.type==='part';
-  const inp={empId, month, part, monthly:part?0:p.salary, hourly:part?(HOURLY_WAGE[empId]||PAY_CFG.minHourly):0,
+  const mS=month+'-01', mE=monthEnd(month), part=isHourlyPay(p);
+  const inp={empId, month, part, driver:isDriver(p), homeH:isDriver(p)?demoHomeH(empId):0, homeRate:HOURLY_WAGE[empId]||PAY_CFG.minHourly, monthly:part?0:p.salary, hourly:part?(HOURLY_WAGE[empId]||PAY_CFG.minHourly):0,
     regH:0, wd1:0, wd2:0, rd1:0, rd2:0, rd3:0, hol:0, compH:0, leave:{}, lateMin:0, lateDays:0, missing:0,
     eve:0, night:0, eveRate:PAY_CFG.eveRate, nightRate:PAY_CFG.nightRate, nightInBase:PAY_CFG.nightInOTBase, shiftDates:{eve:[],night:[]},
     bonus:!part, laborG:0, healthG:0, pensionG:0, dep:rec.dep, selfPct:rec.selfPension,
@@ -5306,7 +5316,8 @@ function payMath(inp){
   (inp.adjust||[]).forEach(a=>{ const v=+a.amount||0;
     if(v>=0) adjPos+=add('earn','人工調整：'+a.label,'Manual: '+a.label,a.reason||'',v);
     else adjNeg+=add('other','人工調整：'+a.label,'Manual: '+a.label,a.reason||'',-v); });
-  const gross = base+night+ot+paidLeave+bonus+adjPos-att;
+  const home = +inp.homeH>0 ? add('earn','居服時薪收入（司機兼居服）','Home-care hourly pay (driver)',`${fmtH(+inp.homeH)} 小時 × 時薪 ${n(+inp.homeRate)}`, inp.homeH*inp.homeRate) : 0;
+  const gross = base+night+ot+paidLeave+bonus+adjPos-att+home;
   const regular = (inp.part ? inp.regH*H : +inp.monthly)+night;
   if(inp.laborG && gradeFor(regular,LABOR_GRADES)>inp.laborG) warn.push({zh:`勞保投保薪資 ${inp.laborG} 低於本月經常性薪資（含夜班津貼）${Math.round(regular)} 的級距 ${gradeFor(regular,LABOR_GRADES)}`,
     en:`Labor insured salary ${inp.laborG} is below the bracket for regular pay incl. shift allowance (${gradeFor(regular,LABOR_GRADES)})`,cls:'warn'});
@@ -5328,7 +5339,7 @@ function payMath(inp){
   const otH=OT_TIERS.reduce((a,t)=>a+(+inp[t.k]||0),0)+(+inp.compH||0);
   if(otH>OT_MONTH_CAP_H) warn.push({zh:`本月加班 ${fmtH(otH)} 小時，超過 ${OT_MONTH_CAP_H} 小時上限`,en:`Overtime ${fmtH(otH)}h exceeds ${OT_MONTH_CAP_H}h cap`,cls:'crit'});
   if(net<0) warn.push({zh:'實發為負數',en:'Net pay is negative',cls:'crit'});
-  return {H, Hot, eveN, nightN, lines, base, night, ot, att, paidLeave, bonus, adjPos, adjNeg, adjNet:adjPos-adjNeg, gross, labor, health, pension, tax, stat, net,
+  return {H, Hot, eveN, nightN, lines, base, home, night, ot, att, paidLeave, bonus, adjPos, adjNeg, adjNet:adjPos-adjNeg, gross, labor, health, pension, tax, stat, net,
     er:{labor:erL, health:erH, pension:erP, total:erL+erH+erP}, warn};
 }
 const calcPay = (empId, month) => payMath(payInputs(empId, month));
@@ -5350,7 +5361,7 @@ function payCSV(res, month){
     '勞保自付','健保自付','勞退自提','所得稅','其他扣款','實發金額','發薪方式','雇主勞保','雇主健保','雇主勞退','警示'];
   const rows=[head];
   STAFF.forEach(s=>{ const r=res[s.id]; if(!r) return;
-    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, s.type==='part'?'時薪':'月薪', r.base, r.eveN, ...(night?[r.nightN]:[]), r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
+    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, PAY_BASIS_LABEL[payBasis(s)].zh, r.base, r.eveN, ...(night?[r.nightN]:[]), r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
       r.labor, r.health, r.pension, r.tax, r.adjNeg, r.net, PAY_METHOD[payMethodOf(s.id)].zh, r.er.labor, r.er.health, r.er.pension, r.warn.map(w=>w.zh).join('; ')]); });
   const t=payTotals(res), tot=head.map(()=>'');
   tot[0]='合計'; tot[head.indexOf('應發金額')]=t.gross; tot[head.indexOf('實發金額')]=t.net;
@@ -5369,6 +5380,30 @@ function cashCSV(res, month, ids){
 function monthPicker(id, val){
   return `<select id="${id}">${PAY_MONTHS.map(m=>`<option ${m===val?'selected':''}>${m}</option>`).join('')}</select>`;
 }
+/* 10/20 會議：薪資計算的分類與規則（放在薪資試算最上面） */
+function payRulesCard(){
+  const rows=[
+    ['一般員工','月薪制','固定月薪。','Monthly: fixed monthly pay.'],
+    ['居服員（全職與兼職）','時薪制','做多少拿多少：工時 × 時薪。','Hourly: hours worked × hourly rate.'],
+    ['日照司機（雙重角色）','月薪＋時薪','開車部分：月薪制，固定、不分大小月；居服部分：時薪制。','Driving: fixed monthly pay, the same in long and short months; home care: hourly.']
+  ];
+  const en=['Regular staff','Home care workers (full and part time)','Day-care drivers (dual role)'];
+  return `<section class="card" id="payRules">
+    <div class="card-h"><h2>${esc(both('薪資分類與規則（10/20 會議）','Pay categories and rules (20 Oct meeting)'))}</h2><span class="chip warn">${esc(both('正式格式待提供','Official format pending'))}</span></div>
+    <div class="card-b" style="display:grid;gap:10px">
+      <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('人員','Staff')}</th><th>${bi('計薪','Basis')}</th><th>${bi('規則','Rule')}</th></tr></thead>
+        <tbody>${rows.map((r,i)=>`<tr><td>${esc(both(r[0],en[i]))}</td><td><span class="chip">${esc(both(r[1],['Monthly','Hourly','Monthly + hourly'][i]))}</span></td><td style="white-space:normal">${esc(both(r[2],r[3]))}</td></tr>`).join('')}</tbody></table></div>
+      <div class="eyebrow">${esc(both('拆帳制（項目制）','Revenue-share (per-item)'))}</div>
+      <ul style="margin:0;padding-left:20px;line-height:1.8">
+        <li>${esc(both('適用居服員，約 20 種項目，各有單價；目前不需修改。','For home care workers: about 20 service items, each with a unit price; no change needed for now.'))}</li>
+        <li>${esc(both('適用機構：','Facilities where it applies: '))}${SPLIT_FACILITIES.map(x=>esc(x)).join('；')}</li>
+        <li>${esc(both('項目單價跟隨政府支付碼，過去十年未調整；若政府或老闆調整則另議。','Unit prices follow the government payment codes, unchanged for ten years; if the government or the owner changes them it will be discussed then.'))}</li>
+        <li>${esc(both('項目清單與單價還沒收到，所以原型還不計算拆帳制（薪資計算機選「拆帳制」只顯示說明）。','The item list and unit prices have not arrived, so the prototype does not calculate revenue-share yet (the calculator only shows a note).'))}</li></ul>
+      <div class="eyebrow">${esc(both('權限','Access'))}</div>
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('管理者與老闆可以檢視所有人的薪資，但不能修改。','The manager and the owner can view everyone’s pay but cannot change it.'))}</div>
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('下面試算裡，居服員（含全職）已照時薪制計；司機是「月薪＋居服時薪」，居服時數目前是示範數字，正式版由仁寶服務記錄的居服員工時帶入。時薪與時數都是虛構的示範資料。薪資計算表的欄位與正式格式要等千玉與思慧（管理者與系統管理員）提供後對照調整。','Below, home care workers (including full time) are calculated as hourly; drivers are “monthly + home-care hourly”, with home-care hours as demo numbers for now (the real version takes them from the 仁寶 worker hours). Rates and hours are fictional demo data. The columns and official format of the payroll sheet will be adjusted once the manager and system administrator supply them.'))}</div>
+    </div></section>`;
+}
 function viewPayRun(){
   const month=payDefault(), run=payrun(month), st=monthState(run);
   const units=activeUnitIds(), res=allPay(month);
@@ -5381,6 +5416,7 @@ function viewPayRun(){
   const pendAll=[...LEAVE,...OT_REQ,...PUNCH_FIX].filter(x=>(x.status==='pending'||x.status==='countersign')&&(x.from||x.date).slice(0,7)===month).length;
   return `
   <div class="grid">
+    ${payRulesCard()}
     <div class="card"><div class="card-b" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
       <span class="ulabel">${esc(both('計薪月份','Pay month'))}</span>${monthPicker('payMonth',month)}
       <span class="chip ${st.cls}">${esc(both(st.zh,st.en))}</span>
@@ -5411,7 +5447,7 @@ function viewPayRun(){
           <th>${bi('代扣','Withheld')}</th><th>${bi('實發','Net')}</th><th>${bi('發薪方式','Pay method')}</th><th>${bi('警示','Flags')}</th></tr></thead>
         <tbody>${list.map(s=>{ const r=res[s.id]; return `<tr class="clickable" data-payemp="${s.id}">
           <td>${esc(empName(s.id))} <span class="muted mono" style="font-size:11px">${s.id}</span><div class="muted" style="font-size:11px">${esc(TITLES[s.title].zh)} · ${esc(unit(s.unit).zh)}</div></td>
-          <td><span class="chip ${s.type==='part'?'warn':''}">${esc(s.type==='part'?both('時薪','Hourly'):both('月薪','Monthly'))}</span></td>
+          <td><span class="chip ${isHourlyPay(s)?'warn':isDriver(s)?'info':''}">${esc(isHourlyPay(s)?both('時薪','Hourly'):isDriver(s)?both('月薪＋居服時薪','Monthly + hourly'):both('月薪','Monthly'))}</span></td>
           <td class="num">${money(r.base+r.paidLeave)}</td><td class="num">${r.night?money(r.night):'—'}</td><td class="num">${r.ot?money(r.ot):'—'}</td>
           <td class="num">${r.att?'−'+money(r.att):'—'}</td><td class="num">${r.bonus?money(r.bonus):'—'}</td>
           <td class="num">${r.adjNet?(r.adjNet>0?'+':'−')+money(Math.abs(r.adjNet)):'—'}</td>
@@ -5484,7 +5520,7 @@ function openPayslip(empId, month){
       <div class="drawer-h">
         <span class="avatar" style="width:40px;height:40px;font-size:15px">${esc(empName(empId).slice(0,1))}</span>
         <div><h2 style="font-size:16px">${esc(empName(empId))} <span class="muted mono" style="font-size:12px">${empId} · ${month}</span></h2>
-          <div class="muted" style="font-size:12px">${esc(TITLES[p.title].zh)} · ${esc(unit(p.unit).zh)} · ${esc(p.type==='part'?both('時薪制 '+inp.hourly+' 元','Hourly '+inp.hourly):both('月薪制','Monthly'))} · ${payChip(payMethodOf(empId))}</div></div>
+          <div class="muted" style="font-size:12px">${esc(TITLES[p.title].zh)} · ${esc(unit(p.unit).zh)} · ${esc(isHourlyPay(p)?both('時薪制 '+inp.hourly+' 元','Hourly '+inp.hourly):isDriver(p)?both('開車月薪制＋居服時薪 '+inp.homeRate+' 元','Driving: monthly + home-care hourly '+inp.homeRate):both('月薪制','Monthly'))} · ${payChip(payMethodOf(empId))}</div></div>
         <button class="x" data-close aria-label="${esc(both('關閉','Close'))}">✕</button>
       </div>
       <div class="drawer-b">
@@ -5555,7 +5591,7 @@ const NIGHT_FIELDS = [
 ];
 function calcDefaults(empId, month){
   if(!empId) return {empId:'', month, part:false, monthly:40000, hourly:PAY_CFG.minHourly, regH:0, wd1:0, wd2:0, rd1:0, rd2:0, rd3:0, hol:0,
-    lv_sick:0, lv_personal:0, lv_family:0, lv_menstrual:0, lv_paid:0, lateMin:0, bonus:true,
+    lv_sick:0, lv_personal:0, lv_family:0, lv_menstrual:0, lv_paid:0, lateMin:0, bonus:true, homeH:0, homeRate:PAY_CFG.minHourly,
     eve:0, night:0, eveRate:PAY_CFG.eveRate, nightRate:PAY_CFG.nightRate, nightInBase:PAY_CFG.nightInOTBase, laborG:gradeFor(40000,LABOR_GRADES), healthG:gradeFor(40000,HEALTH_GRADES), dep:0, selfPct:0, addAmt:0, dedAmt:0};
   const i=payInputs(empId, month), c={...i};
   DEDUCT_LEAVES.forEach(k=>c['lv_'+k]=i.leave[k]||0);
@@ -5593,6 +5629,8 @@ function viewPayCalc(){
           <div><label>${esc(both('計薪方式','Basis'))}</label><select name="part"><option value="false" ${!c.part&&!c.split?'selected':''}>${esc(both('月薪制','Monthly'))}</option><option value="true" ${c.part?'selected':''}>${esc(both('時薪制','Hourly'))}</option><option value="split" ${c.split?'selected':''}>${esc(both('拆帳制（規則待確認）','Revenue-share (rules pending)'))}</option></select></div>
           ${num('monthly','月薪','Monthly pay','NT$')}
           ${num('hourly','時薪','Hourly rate','NT$')}
+          ${num('homeH','居服時數（司機兼居服）','Home-care hours (driver)','h')}
+          ${num('homeRate','居服時薪（司機兼居服）','Home-care hourly rate (driver)','NT$')}
         </div>
         <div class="eyebrow">${esc(both('工時與加班','Hours & overtime'))}</div>
         <div class="row">${CALC_FIELDS.slice(0,7).map(f=>num(...f)).join('')}</div>
@@ -5650,7 +5688,7 @@ BINDERS['pay:calc']=function(){
   const draw=()=>{
     if(f.empId.value!==(state.calcInp.empId||'')){ state.calcEmp=f.empId.value; state.calcInp=calcDefaults(f.empId.value, month()); render(); return; }
     const c={...state.calcInp}, el=k=>f.elements[k].value;
-    ['monthly','hourly','regH','wd1','wd2','rd1','rd2','rd3','hol','lv_sick','lv_personal','lv_family','lv_menstrual','lv_paid','lateMin','laborG','healthG','dep','selfPct','addAmt','dedAmt','eve','night','eveRate','nightRate']
+    ['monthly','hourly','homeH','homeRate','regH','wd1','wd2','rd1','rd2','rd3','hol','lv_sick','lv_personal','lv_family','lv_menstrual','lv_paid','lateMin','laborG','healthG','dep','selfPct','addAmt','dedAmt','eve','night','eveRate','nightRate']
       .forEach(k=>c[k]=Math.max(0,+el(k)||0));
     c.part=el('part')==='true'; c.split=el('part')==='split'; c.bonus=el('bonus')==='true'; c.nightInBase=el('nightInBase')==='true';
     f.monthly.disabled=c.part; f.hourly.disabled=!c.part; f.regH.disabled=!c.part;

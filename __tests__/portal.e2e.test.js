@@ -2696,3 +2696,37 @@ test.describe('10/20 permissions: system admin read-only, HR and manager scopes,
     await page.click('[data-perm-cancel]');
   });
 });
+
+test.describe('10/20 payroll categories', () => {
+  test('three pay categories: monthly staff, hourly home care workers (full and part time), drivers with monthly plus hourly', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'hr');
+    const basis = await page.evaluate(() => ({
+      staff: payBasis(person('A004')), hcaFull: payBasis(person('A010')), hcaPart: payBasis(person('C003')), driver: payBasis(person('A008')),
+      hcaFullType: person('A010').type }));
+    expect(basis).toEqual({ staff: 'monthly', hcaFull: 'hourly', hcaPart: 'hourly', driver: 'driver', hcaFullType: 'full' });
+    const r = await page.evaluate(() => { const d = calcPay('B007', '2026-09'), h = calcPay('A010', '2026-09'); return {
+      driverBase: d.base, driverHome: d.home, driverHasHomeLine: d.lines.some(l => /居服時薪收入/.test(l.zh)), grossAddsUp: d.gross >= d.base + d.home - d.att,
+      hcaBaseLine: h.lines.find(l => l.g === 'earn').zh }; });
+    expect(r.driverBase).toBe(34000);                                   // 開車：固定月薪（不分大小月）
+    expect(r.driverHome).toBeGreaterThan(0);
+    expect(r.driverHasHomeLine).toBe(true);                             // 居服部分另列時薪收入
+    expect(r.hcaBaseLine).toBe('正常工時薪資');                          // 全職居服員也走時薪制
+    await go(page, 'pay', 'run');
+    const card = page.locator('#payRules');
+    for (const s of ['一般員工', '居服員（全職與兼職）', '日照司機（雙重角色）', '不分大小月', '約 20 種項目', '單價跟隨政府支付碼', '附設新竹縣私立誠馨綜合式服務類長期照顧服務機構', '附設新竹市私立誠芯居家長照機構', '附設私立誠芯三館綜合長照機構', '正式格式待提供']) await expect(card).toContainText(s);
+    await expect(page.locator('#view tbody tr', { hasText: 'A008' })).toContainText('月薪＋居服時薪');
+    await expect(page.locator('#view tbody tr', { hasText: 'A010' })).toContainText('時薪');
+  });
+  test('calculator: the driver’s home-care hours and rate add a separate hourly line', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'hr');
+    await go(page, 'pay', 'calc');
+    await page.selectOption('#calcForm [name="empId"]', 'B007');
+    await expect(page.locator('#calcForm [name="homeH"]')).toBeVisible();
+    await page.fill('#calcForm [name="homeH"]', '10');
+    await page.fill('#calcForm [name="homeRate"]', '220');
+    await expect(page.locator('#calcOut')).toContainText('居服時薪收入');
+    await expect(page.locator('#calcOut')).toContainText('10');
+  });
+});
