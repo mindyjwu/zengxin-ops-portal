@@ -2596,7 +2596,7 @@ test.describe('10/20 meeting: org tree, approval forms, 仁寶 summary', () => {
     await expect(page.locator('#svcUnits tbody tr', { hasText: '合計' })).toContainText('1.0');
     await expect(page.locator('#svcDecided')).toContainText('不區分結案或暫停');
     await expect(page.locator('#svcDecided')).toContainText('先計入居服員工時');
-    await expect(page.locator('#svcDecided')).toContainText('後綴「二」');
+    await expect(page.locator('#svcDecided')).toContainText('姓名後加「2」');
     await expect(page.locator('#view')).toContainText('第一版以居家服務為主');
   });
   test('a name with the suffix 二 is flagged as a same-name case for a person to check', async ({ page }) => {
@@ -2895,5 +2895,17 @@ test.describe('Course credits: only the training officer edits (10/20)', () => {
   test('import rows: missing header is a fatal message', async ({ page }) => {
     const out = await page.evaluate(() => ceImportRows([['a', 'b'], [1, 2]]));
     expect(out.fatal).toBeTruthy();
+  });
+});
+
+test.describe('Owner can edit the permission table (21 Oct notes)', () => {
+  test('owner sees the Edit button and HR does not', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'boss');
+    await go(page, 'perm', 'matrix');
+    await expect(page.locator('[data-perm-edit]')).toBeVisible();
+    await setRole(page, 'hr');
+    await go(page, 'perm', 'matrix');
+    await expect(page.locator('[data-perm-edit]')).toHaveCount(0);
   });
 });
