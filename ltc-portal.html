@@ -789,7 +789,7 @@ const ROLES = {
   boss:{ id:'boss', zh:'老闆', en:'Owner', persona:'H001', allOffices:true, built:true, provisional:true,
     perms:{ trainView:true, salary:true, editEmp:false, mobile:true, approve:true, finalize:false, annGroup:true, annOffice:true, perms:false, exportAll:true, mgmt:true } },
   training:{ id:'training', zh:'教育訓練專員', en:'Training officer', persona:'H006', allOffices:true, built:true, provisional:true,
-    perms:{ trainView:true, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
+    perms:{ ceEdit:true, trainView:true, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:false, mgmt:true } },
   accountant:{ id:'accountant', zh:'會計', en:'Accountant', persona:'H004', allOffices:true, built:true, provisional:true,
     perms:{ trainView:false, salary:false, editEmp:false, mobile:false, approve:false, finalize:false, annGroup:false, annOffice:false, perms:false, exportAll:true, mgmt:true } },
   daydir:{ id:'daydir', zh:'日照主管', en:'Day care supervisor', persona:'A001', allOffices:false, built:true, provisional:true,
@@ -3627,6 +3627,56 @@ const ce1 = x => (Math.round(x*100)/100).toString();
 /* 數字可以點：點進去看該類別的課程清單（積分系統的做法） */
 const ceNum = (x,key) => x>0 ? `<button class="btn ghost mini" data-cecat="${key}">${ce1(x)}</button>` : '0';
 function ceEligibleStaff(){ return scopedStaff().filter(s=>ceEligible(s) && onRoster(s,CUR_MONTH)); }
+/* ---------- 課程資料匯入與修改：只有教育訓練專員（10/20 會議）；整份檔案一次匯入，欄位照「匯入範本」 ---------- */
+function ceDateISO(v){ const t=String(v||'').trim(), m=t.match(/^(\d{2,4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/); if(!m) return ''; let y=+m[1]; if(y<200) y+=1911; const mo=+m[2], d=+m[3]; if(mo<1||mo>12||d<1||d>31) return ''; return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function ceImportRows(rows){
+  const norm=v=>String(v??'').split('\n')[0].replace(/\s/g,'');
+  let h=-1; for(let i=0;i<Math.min(rows.length,12);i++){ const f=(rows[i]||[]).map(norm); if(f.includes('員工編號')&&f.some(x=>x.startsWith('課程名稱'))){ h=i; break; } }
+  if(h<0) return {fatal:'找不到表頭：需要有「員工編號」與「課程名稱」欄的那一列（請用「匯入範本」）'};
+  const head=(rows[h]||[]).map(norm), col=name=>head.findIndex(x=>x.startsWith(name));
+  const C={id:col('員工編號'), date:col('課程日期'), name:col('課程名稱'), mode:col('實施方式'), unit:col('開課單位')};
+  const pc=['專業課程','專業品質','專業倫理','專業法規','消防安全','緊急應變','感染管制','性別敏感度','原住民族文化','多元族群文化'].map(n=>col(n));
+  if([C.id,C.date,C.name,C.mode].some(i=>i<0)||pc.some(i=>i<0)) return {fatal:'缺少欄位：需要員工編號、課程日期、課程名稱、實施方式與 10 個積分欄（請用「匯入範本」）'};
+  const ok=new Set(ceEligibleStaff().map(p=>p.id)), out={added:0,dup:0,errors:[],byEmp:{}};
+  for(let r=h+1;r<rows.length;r++){
+    const x=rows[r]||[]; if(!String(x[C.id]??'').trim()&&!String(x[C.name]??'').trim()) continue;
+    const id=String(x[C.id]??'').trim().toUpperCase(), name=String(x[C.name]??'').trim(), d=ceDateISO(x[C.date]), md=String(x[C.mode]??'').trim();
+    const v=pc.map(i=>{ const t=String(x[i]??'').trim(); return t===''?0:Number(t); });
+    const why = !ok.has(id)?'員工編號不在需要積分的名單':!name?'沒有課程名稱':!d?'日期格式不對（民國 115/03/12 或 2026-03-12）':!/^(實體|網路)$/.test(md)?'實施方式要填「實體」或「網路」':v.some(n=>!isFinite(n)||n<0)?'積分要是 0 以上的數字':'';
+    if(why){ out.errors.push({row:r+1,why}); continue; }
+    const rec=ceRecord(id), mode=md==='實體'?'phys':'online', unitName=String(x[C.unit]??'').trim();
+    if(rec.courses.some(c=>c.date===d&&c.name===name&&c.mode===mode)){ out.dup++; continue; }
+    rec.courses.push({name,mode,v,date:d,unit:unitName||'（未填）'}); rec.courses.sort((a,b)=>a.date.localeCompare(b.date)); out.added++; out.byEmp[id]=1;
+  }
+  return out;
+}
+function ceEditCard(id){
+  if(!can('ceEdit')) return '';
+  const rec=ceRecord(id), last=rec.courses.map((c,i)=>({c,i})).slice(-6).reverse();
+  return `<section class="card" id="ceEdit"><div class="card-h"><h2>${esc(both('新增或修改課程（教育訓練專員）','Add or edit courses (training officer)'))}</h2></div>
+    <div class="card-b" style="display:grid;gap:10px">
+      <form id="ceAddForm" class="frm"><div class="row">
+        <div><label>${esc(both('課程','Course'))}</label><select name="cat">${CE_CATALOG.map((c,i)=>`<option value="${i}">${esc(c.name)}</option>`).join('')}</select></div>
+        <div><label>${esc(both('課程日期','Date'))}</label><input name="date" type="date" required value="${ymd(TODAY)}"></div>
+        <div><label>${esc(both('實施方式','Mode'))}</label><select name="mode"><option value="phys">${esc(both('實體','In person'))}</option><option value="online">${esc(both('網路','Online'))}</option></select></div>
+        <div><label>${esc(both('開課單位','Provider'))}</label><input name="unit" maxlength="30" lang="zh-Hant" placeholder="${esc(both('例如：示範開課單位 甲','e.g. a provider'))}"></div>
+        <div><button class="btn mini" type="submit">${esc(both('新增這門課','Add this course'))}</button></div></div></form>
+      <div class="eyebrow">${esc(both('最近的課程（可以刪除輸入錯誤的）','Recent courses (delete a wrong entry)'))}</div>
+      <div class="tablewrap"><table class="todotbl"><tbody>${last.map(({c,i})=>`<tr><td class="mono">${rocDate(c.date)}</td><td style="white-space:normal">${esc(c.name)}</td><td>${esc(c.mode==='phys'?both('實體','In person'):both('網路','Online'))}</td><td><button class="btn ghost mini" data-cedel="${id}|${i}">${esc(both('刪除','Delete'))}</button></td></tr>`).join('')}</tbody></table></div>
+      <div class="muted" style="font-size:12.5px">${esc(both('只有教育訓練專員可以新增、修改或匯入課程資料；其他身分只能檢視（10/20 會議）。原型的資料只存在這次瀏覽。','Only the training officer can add, edit or import course data; other roles can only view (20 Oct meeting). Prototype data lives in this browser session only.'))}</div>
+    </div></section>`;
+}
+function ceImportCard(){
+  const msg=state.ceImpMsg;
+  return `<section class="card" id="ceImport"><div class="card-h"><h2>${esc(both('匯入課程紀錄（一次匯入整份檔案）','Import course records (a whole file at once)'))}</h2><span class="chip acc">${esc(both('只有教育訓練專員','Training officer only'))}</span></div>
+    <div class="card-b" style="display:grid;gap:8px">
+      ${can('ceEdit')?`<div><input type="file" id="ceFile" accept=".xlsx,.csv" aria-label="${esc(both('選擇課程紀錄（.xlsx 或 .csv）','Choose course records (.xlsx or .csv)'))}"></div>
+        <div class="uphint muted">${esc(both('欄位照上面的「匯入範本」：一列一門課。只收 .xlsx 和 .csv。重複的課程（同一人、同一天、同一門課）會略過；有問題的列會列出列號，不會匯入。檔案只在瀏覽器讀取。','Columns follow the import template above: one row per course. Only .xlsx and .csv. Duplicates (same person, day and course) are skipped; problem rows are listed by row number and not imported. The file is read in the browser only.'))}</div>
+        ${msg?`<div class="note ${msg.err?'q':''}" role="status">${esc(msg.text)}</div>`:''}`
+      :`<div class="muted">${esc(both('只有教育訓練專員可以匯入或修改課程資料；你目前的身分只能檢視。','Only the training officer can import or edit course data; your role can only view.'))}</div>`}
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('目標：在網站呈現每位員工的課程進度，可以篩選落後名單，針對性辦課。衛福部的積分系統目前只能逐人查詢、無法批次匯出，需要再研究能不能和網站串接；在那之前先用匯入。','Goal: show each employee’s course progress, filter the people who are behind and run targeted courses. The MOHW points system only allows one-person-at-a-time lookup and has no bulk export, so whether it can be linked still needs research; until then use the import.'))}</div>
+    </div></section>`;
+}
 function ceCourseList(id,key){
   const [kind,sel,mode]=key.split('|'), rec=ceRecord(id);
   const rows=rec.courses.filter(c=>kind==='mode' ? c.mode===sel : (CE_COLS.includes(sel)&&c.v[CE_COLS.indexOf(sel)]>0 && (!mode||c.mode===mode)));
@@ -3730,8 +3780,8 @@ function viewDeskCourse(){
   else if(v==='mine') body = state.ceCat&&state.ceCat.id===u.id ? `<button class="btn ghost mini" data-cemine>${esc(both('← 返回積分總表','← Back to the summary'))}</button>${ceCourseList(u.id,state.ceCat.key)}` : ceSummary(u.id);
   else if(!all) body=`<div class="empty">${esc(both('只有教育訓練、人資、主管等身分可以看全員進度。','Only training, HR, managers and similar roles can see everyone’s progress.'))}</div>`;
   else if(v==='gap') body=ceGap();
-  else if(state.ceEmp && ceEligibleStaff().some(p=>p.id===state.ceEmp)) body=`<button class="btn ghost mini" data-ceback>${esc(both('← 返回全員進度','← Back to everyone'))}</button>`+(state.ceCat&&state.ceCat.id===state.ceEmp?`<button class="btn ghost mini" data-cemine style="margin-left:6px">${esc(both('← 返回積分總表','← Back to the summary'))}</button>${ceCourseList(state.ceEmp,state.ceCat.key)}`:ceSummary(state.ceEmp));
-  else body=ceAll();
+  else if(state.ceEmp && ceEligibleStaff().some(p=>p.id===state.ceEmp)) body=`<button class="btn ghost mini" data-ceback>${esc(both('← 返回全員進度','← Back to everyone'))}</button>`+(state.ceCat&&state.ceCat.id===state.ceEmp?`<button class="btn ghost mini" data-cemine style="margin-left:6px">${esc(both('← 返回積分總表','← Back to the summary'))}</button>${ceCourseList(state.ceEmp,state.ceCat.key)}`:ceSummary(state.ceEmp)+ceEditCard(state.ceEmp));
+  else body=ceAll()+ceImportCard();
   return `<div class="grid">
     ${tabs.length>1?`<div class="seg">${tabs.map(t=>`<button type="button" data-ceview="${t[0]}" aria-pressed="${t[0]===v}">${esc(both(t[1],t[2]))}</button>`).join('')}</div>`:''}
     <div class="note">${esc(both('這裡整理長照人員的繼續教育積分，做法照衛福部積分系統的畫面：總表看各類別的積分，點數字進入該類別的課程清單。「全員進度」給教育訓練、人資與主管看每個人的進度（取代目前用 Excel 一人一張工作表統計的做法），「缺口分析」看大家比較缺哪些積分，用來設計明年度課程。',
@@ -3750,10 +3800,23 @@ BINDERS['desk:course']=function(){
   [['ceUnit','unit'],['ceTitle','title'],['ceStatus','status']].forEach(([id,k])=>{ const e=document.getElementById(id); if(e) e.onchange=()=>{ f[k]=e.value; render(); }; });
   const q=document.getElementById('ceQ'); if(q){ let comp=false; const apply=()=>{ f.q=q.value; const p=q.selectionStart; render(); const j=document.getElementById('ceQ'); if(j){ j.focus(); j.setSelectionRange(p,p);} };
     q.addEventListener('compositionstart',()=>{ comp=true; }); q.addEventListener('compositionend',()=>{ comp=false; apply(); }); q.addEventListener('input',e=>{ if(!(comp||e.isComposing)) apply(); }); }
+  const cf=document.getElementById('ceFile'); if(cf) cf.onchange=async()=>{
+    const file=cf.files[0]; if(!file||!can('ceEdit')) return; const ext=upExt(file.name);
+    if(ext!=='xlsx'&&ext!=='csv'){ state.ceImpMsg={err:true,text:'只收 .xlsx 和 .csv（目前不支援 .'+ext+'）'}; render(); return; }
+    try{
+      const buf=await file.arrayBuffer(), r=ceImportRows(ext==='csv'?csvRead(buf):await xlsxRead(buf));
+      state.ceImpMsg = r.fatal ? {err:true,text:'無法匯入：'+r.fatal}
+        : {err:!!r.errors.length, text:`匯入完成：新增 ${r.added} 筆課程，涉及 ${Object.keys(r.byEmp).length} 位同仁；略過重複 ${r.dup} 筆；有問題 ${r.errors.length} 列`+(r.errors.length?'（'+r.errors.slice(0,8).map(e=>'第 '+e.row+' 列：'+e.why).join('；')+(r.errors.length>8?' …':'')+'）':'')+'。'};
+    }catch(e){ state.ceImpMsg={err:true,text:'無法匯入：'+(e&&e.message||e)}; }
+    render(); };
+  const af=document.getElementById('ceAddForm'); if(af) af.onsubmit=e=>{ e.preventDefault(); if(!can('ceEdit')) return;
+    const fd=new FormData(af), c=CE_CATALOG[+fd.get('cat')], d=String(fd.get('date')||''); if(!c||!d) return;
+    const rec=ceRecord(state.ceEmp); rec.courses.push({name:c.name,mode:fd.get('mode'),v:c.v.slice(),date:d,unit:String(fd.get('unit')||'').trim()||'（未填）'}); rec.courses.sort((a,b)=>a.date.localeCompare(b.date)); toast(both('已新增課程','Course added')); render(); };
+  document.querySelectorAll('[data-cedel]').forEach(b=>b.onclick=()=>{ if(!can('ceEdit')) return; const [id,i]=b.dataset.cedel.split('|'); ceRecord(id).courses.splice(+i,1); toast(both('已刪除','Deleted')); render(); });
   const tp=document.querySelector('[data-cetemplate]'); if(tp) tp.onclick=()=>{
     const head=['員工編號','課程日期（民國）','課程名稱','實施方式（實體／網路）','開課單位','專業課程','專業品質','專業倫理','專業法規','消防安全','緊急應變','感染管制','性別敏感度','原住民族文化','多元族群文化'];
     const ex=(id,d,c,mode,unitName)=>[id,d,c.name,mode,unitName,...c.v];
-    saveBlob(buildXlsx([['繼續教育積分匯入範本（示範）'],['一列一門課；各類積分欄位填該課程在這個類別給的點數（沒有就空白）。範例列是示範，不是真實資料。匯入功能要等需求端確認格式後再做。'],[],head,
+    saveBlob(buildXlsx([['繼續教育積分匯入範本（示範）'],['一列一門課；各類積分欄位填該課程在這個類別給的點數（沒有就空白）。範例列是示範，不是真實資料。整份檔案一次匯入（只有教育訓練專員）。'],[],head,
       ex('A004','115/03/12',CE_CATALOG[1],'實體','示範開課單位 甲'),ex('A004','115/05/20',CE_CATALOG[17],'網路','示範開課單位 乙')]),'繼續教育積分匯入範本.xlsx'); };
   const x=document.querySelector('[data-ceexcel]'); if(x) x.onclick=()=>{
     const rows=[['繼續教育積分總表（示範資料）'],['總積分＝專業課程＋品質、倫理、法規（最多計 36）；規則依 Excel 表頭與衛福部積分系統畫面整理'],[],
@@ -5880,6 +5943,7 @@ const CAPS=[
  {key:'annGroup', zh:'發布全公司公告', en:'Publish company-wide announcements'},
  {key:'annOffice',zh:'發布本公司公告', en:'Publish facility announcements'},
  {key:'trainView', zh:'查看全員繼續教育積分（私人秘書 › 課程）', en:'View everyone’s continuing-education points (My Desk › Courses)'},
+ {key:'ceEdit',   zh:'新增／修改課程資料與匯入（只有教育訓練專員）', en:'Add / edit course data and import (training officer only)'},
  {key:'punchLoc', zh:'查看打卡位置（IP，只在後台）', en:'View punch location (IP, back office only)'},
  {key:'perms',    zh:'管理角色與權限、系統設定', en:'Manage roles, permissions and settings'},
  {key:'salary', derived:true, zh:'薪資計算與覆核', en:'Run and review payroll', note:{zh:'與「查看薪資」同一權限',en:'Same permission as "View pay"'}}

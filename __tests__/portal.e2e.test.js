@@ -167,7 +167,7 @@ test.describe('Settings & permission matrix', () => {
     await expect(page.locator('[data-perm]')).toHaveCount(0);            // 平常唯讀
     await expect(page.locator('[data-tcell]')).toHaveCount(0);
     await editPerms(page);
-    await expect(page.locator('[data-perm]')).toHaveCount(165);          // 11 editable capabilities × 15 roles
+    await expect(page.locator('[data-perm]')).toHaveCount(180);          // 11 editable capabilities × 15 roles
     await expect(page.locator('[data-tcell]')).toHaveCount(465);         // 31 items × 15 columns
     await expect(page.locator('[data-perm="admin|perms"]')).toBeDisabled();
     await expect(page.locator('[data-perm="admin|mgmt"]')).toBeDisabled();
@@ -180,7 +180,7 @@ test.describe('Settings & permission matrix', () => {
     await expect(page.locator('.permtable thead th')).toHaveCount(16);
     await expect(page.locator('[data-perm]')).toHaveCount(0);
     await editPerms(page);
-    await expect(page.locator('[data-perm]')).toHaveCount(165);
+    await expect(page.locator('[data-perm]')).toHaveCount(180);
     await page.click('[data-perm-cancel]');
     await expect(page.locator('[data-perm]')).toHaveCount(0);
   });
@@ -2854,5 +2854,46 @@ test.describe('10/20 phone clock-in: shifts, offline, no location on the phone',
       expect(text).not.toMatch(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/);
       expect(text).not.toMatch(/📍/);
     }
+  });
+});
+
+/* ================================================================ */
+test.describe('Course credits: only the training officer edits (10/20)', () => {
+  test.beforeEach(async ({ page }) => { await openPortal(page); });
+  const gotoCourse = async (page, role) => {
+    await setRole(page, role);
+    await page.evaluate(() => { state.module = 'desk'; state.tab = 'course'; state.ceView = 'all'; state.ceEmp = null; render(); });
+  };
+
+  test('training officer sees the import box; HR and admin do not', async ({ page }) => {
+    await gotoCourse(page, 'training');
+    await expect(page.locator('#ceFile')).toHaveCount(1);
+    for (const r of ['hr', 'admin']) {
+      await gotoCourse(page, r);
+      await expect(page.locator('#ceFile')).toHaveCount(0);
+    }
+  });
+
+  test('import rows: add, skip duplicates, report errors, ROC dates', async ({ page }) => {
+    const res = await page.evaluate(() => {
+      const id = ceEligibleStaff()[0].id;
+      const head = ['員工編號', '課程日期', '課程名稱', '實施方式', '開課單位', '專業課程', '專業品質', '專業倫理', '專業法規', '消防安全', '緊急應變', '感染管制', '性別敏感度', '原住民族文化', '多元族群文化'];
+      const v = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      const rows = [head,
+        [id, '115/03/12', '測試課程甲', '實體', '單位', ...v],
+        [id, '115/03/12', '測試課程甲', '實體', '單位', ...v],
+        ['ZZZ999', '2026-03-12', '測試課程乙', '實體', '單位', ...v],
+        [id, '壞日期', '測試課程丙', '實體', '單位', ...v],
+        [id, '2026-03-13', '測試課程丁', '面對面', '單位', ...v]];
+      const out = ceImportRows(rows);
+      const rec = ceRecord(id).courses.filter(c => c.name === '測試課程甲');
+      return { added: out.added, dup: out.dup, errs: out.errors.length, date: rec[0] && rec[0].date, n: rec.length };
+    });
+    expect(res).toEqual({ added: 1, dup: 1, errs: 3, date: '2026-03-12', n: 1 });
+  });
+
+  test('import rows: missing header is a fatal message', async ({ page }) => {
+    const out = await page.evaluate(() => ceImportRows([['a', 'b'], [1, 2]]));
+    expect(out.fatal).toBeTruthy();
   });
 });
