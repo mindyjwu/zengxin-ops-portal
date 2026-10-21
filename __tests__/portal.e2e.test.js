@@ -2534,7 +2534,7 @@ test.describe('v3.3: org chart V3 approval levels and cloud plan comparison', ()
     await expect(card.locator('#cloudOut')).toContainText('US$28,000');                     // 2,000 人 × US$14
     await expect(card.locator('#cloudOut')).toContainText('US$336,000');                    // 一年
     await expect(card).toContainText('全公司共用');                                          // 我的提醒：空間算法請確認
-    await expect(card).toContainText('每位居服員');
+    await expect(card).toContainText('居服員都要帳號');
   });
   test('the guide records the 20 Oct update and the repaired agenda table', async ({ page }) => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
