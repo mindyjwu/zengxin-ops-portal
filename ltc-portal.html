@@ -811,7 +811,7 @@ const ROLES = {
 };
 
 /* ---------- state ---------- */
-const APP_VERSION='3.3', APP_REVISION='2026-10-20';   // 修訂日期：部署時會自動改成最後一次修改的日期（台北時間）
+const APP_VERSION='3.4', APP_REVISION='2026-10-21';   // 修訂日期：部署時會自動改成最後一次修改的日期（台北時間）
 const state = {
   utilOpen:false,
   navOpen:false,
@@ -1327,23 +1327,23 @@ const PHASES = [
 const ACTION_TYPE = {decide:{zh:'現在決定',en:'Decide now',cls:'acc'}, data:{zh:'等資料',en:'Need material',cls:'warn'}, it:{zh:'IT 研究',en:'IT study',cls:'info'}, later:{zh:'後續',en:'Later',cls:''}};
 const ACTIONS = [
   {type:'decide', zh:'手機打卡存什麼、雲端容量與平台', en:'What a punch stores, cloud capacity and platform',
-   rec:'建議：只存時間與位置座標、不存照片；出勤紀錄保存 5 年（勞基法第 30 條，請人資確認）；以 300 人為基準；平台選 Google，先買小容量、每年續約。照這樣 300 人約 7.5 GB，2–3 TB 綽綽有餘。', need:'IT 與需求端確認：要不要拍照、要不要定位；10/20 收到雲端方案比較（見系統說明），還要確認要開帳號的人數與 Google 空間的算法', owner:'IT／需求端', due:'10/21', go:['文件管理 › 系統說明','doc','sysinfo']},
+   rec:'10/20 已決定：打卡記錄 IP 位置、不強制拍照、位置只給後台看；照片選填（要伺服器壓縮）；離線先暫存、連網自動上傳；保存 5 年。雲端暫定 Google Cloud 按用量計費，待功能確認測試完（約半個月到一個月）再購買並建 backend。', need:'請提供：預計開帳號的人數、預算與上線時程；IT 確認 IP 定位的做法（後台怎麼取得）', owner:'IT／需求端', due:'10/21', go:['文件管理 › 系統說明','doc','sysinfo']},
   {type:'decide', zh:'員工編號格式與前綴', en:'Employee-number format and prefixes',
    rec:'建議：A 協會、B 誠芯、C 牛津、D 誠馨健康、H 共用行政，後面三位數；回任已定「重新編號、不沿用舊編號」；104 舊編號留一欄對照。', need:'104 全部在職同仁的完整匯出（做舊編號對照）', owner:'人事／IT', due:'10/21', go:['系統設定 › 員工編號規則','set',null]},
   {type:'decide', zh:'身分與權限', en:'Roles and permissions',
-   rec:'建議：以 Excel 的 15 個身分為準，不再說「四個暫定身分」；管理者跨單位、日照主管看所屬單位（人事頁面已開放，請同步 Excel）。', need:'需求端填完權限對照表標「暫定」的格子（11 個身分的細項權限）', owner:'需求端／人事', due:'10/21', go:['權限與範圍 › 權限對照表','perm','matrix']},
+   rec:'10/20 已決定：系統管理員可看不可改；人資可改人事系統與公告欄、可審核私人秘書表單、不可改權限；管理者幾乎全可改（薪資計算僅檢視）；權限對照表合併成單一頁，管理者與系統管理員可按右上角編輯並儲存。', need:'請需求端確認新規則與 Excel 一致，並把仍標「暫定」的格子填完', owner:'需求端／人事', due:'10/21', go:['權限與範圍 › 權限對照表','perm','matrix']},
   {type:'decide', zh:'組織圖兩個版本', en:'Two org-chart versions',
    rec:'建議：公告欄放正式全名版（管理與行政用），簡易版（一般員工查閱）就是現在的「組織圖與通訊錄」，改名為「簡易版」對齊正式紀錄。', need:'正式版的職稱全名與地點、內部通訊錄資料', owner:'行政／人事', due:'10/21', go:['公告欄 › 組織圖','ann','org']},
   {type:'decide', zh:'104 要取代、串接還是並行', en:'104: replace, connect or run in parallel',
-   rec:'建議：先並行——連結導向 104，差勤與拆帳制薪資穩定後再談取代；104 費用不是主要考量，重點是能撐 2,000 人。', need:'104 目前實際使用哪些模組', owner:'需求端／IT', due:'10/21', go:['文件管理 › 104 功能對照','doc','cmp104']},
+   rec:'建議：先並行——連結導向 104，差勤與拆帳制薪資穩定後再談取代；104 費用不是主要考量，重點是能撐 2,000 人。', need:'104 先並行；請提供：104 的 demo 讓 Mindy 截圖做筆記、104 在職同仁完整匯出、使用人數／預算／時程', owner:'需求端／IT', due:'10/21', go:['文件管理 › 104 功能對照','doc','cmp104']},
   {type:'data', zh:'簽核流程（Block＋Arrow）', en:'Approval flows (block and arrow)',
-   rec:'', need:'10/20 收到組織圖 V3（職務層級已放進網站）；還要：各表單簽到哪一層、金額門檻、哪些表單要自訂流程、意見反映單的簽核細節；誠芯三館居服主管欄位未填', owner:'行政', due:'10/21 會議前', go:['線上申請 › 簽核路徑預覽','fin','proc']},
+   rec:'', need:'三種簽核表單（報價單、出差申請、零佣金申請）已定為照組織圖 V3 逐層往上簽。請提供：各層級的金額門檻、哪些表單要自訂流程、各機構主管全名與地點（正式組織圖用）、誠芯三館居服主管欄位', owner:'行政', due:'10/21 會議前', go:['線上申請 › 簽核路徑預覽','fin','proc']},
   {type:'data', zh:'仁寶服務記錄 Excel（匯入與工時儀表板）', en:'仁寶 service-record Excel',
-   rec:'', need:'樣本檔已收到、匯入頁已做好。請需求端確認：「服務個案數」怎麼算、忘簽退／服務未遇要不要計入工時、仁寶匯出能否加員工編號欄', owner:'IT／需求端', due:'10/21', go:['業務資料整合 › 居服個案管理系統','svc','case']},
+   rec:'', need:'10/20 已定：服務人數＝當月實際使用服務的人數（不分結案或暫停）、忘簽退與服務未遇先計入、同名同姓加後綴「二」。員編欄需仁寶額外開發。請提供十月份真實仁寶資料用來測試匯入；日照與公館先以居服為主', owner:'IT／需求端', due:'10/21', go:['業務資料整合 › 居服個案管理系統','svc','case']},
   {type:'data', zh:'繼續教育積分匯入', en:'Continuing-education import',
-   rec:'', need:'教育訓練先照匯入範本整理 3–5 位（一列一門課），並確認積分規則；有了才能試匯，讓全員進度顯示真實資料', owner:'教育訓練', due:'10/21', go:['私人秘書 › 課程','desk','course']},
+   rec:'', need:'10/20 已定：只有教育訓練專員可新增、修改與匯入（一次匯入整份檔案）；政府積分系統只能逐人查詢，所以仍用 Excel 匯入。請教育訓練照範本整理資料試匯', owner:'教育訓練', due:'10/21', go:['私人秘書 › 課程','desk','course']},
   {type:'data', zh:'拆帳制薪資規則', en:'Revenue-share pay rules',
-   rec:'', need:'計薪規則、資料來源、例外調整與核准流程（9/20 起一直待提供）', owner:'人資／財務', due:'待訂', go:['薪資計算 › 薪資計算機','pay','calc']},
+   rec:'', need:'10/20 已定三類計薪（一般月薪、居服員時薪、司機月薪＋居服時薪）。請千玉與思慧提供：正式薪資格式、拆帳制約 20 個項目清單、三個機構的單價（跟隨政府支付碼）', owner:'人資／財務', due:'10/27', go:['薪資計算 › 薪資計算機','pay','calc']},
   {type:'it', zh:'衛福部積分系統串接', en:'MOHW points-system connection',
    rec:'', need:'IT 先確認串接是否被允許與技術限制；過渡用現有 Excel 格式匯入；帳號密碼不放進網站或程式庫', owner:'IT', due:'待訂', go:['私人秘書 › 課程','desk','course']},
   {type:'it', zh:'手機打卡上線規格與中文輸入法測試', en:'Mobile clock-in go-live and input-method test',

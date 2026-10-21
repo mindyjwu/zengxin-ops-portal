@@ -1,382 +1,382 @@
-<testsuites id="" name="" tests="189" failures="0" skipped="0" errors="0" time="226.502727">
-<testsuite name="tmpfull.e2e.test.js" timestamp="2026-10-21T04:21:50.591Z" hostname="chromium" tests="189" failures="0" skipped="0" time="222.918" errors="0">
-<testcase name="Shell &amp; role switching › loads with brand and admin as default role" classname="tmpfull.e2e.test.js" time="1.036">
+<testsuites id="" name="" tests="189" failures="0" skipped="0" errors="0" time="229.60987300000002">
+<testsuite name="tmpfull.e2e.test.js" timestamp="2026-10-21T04:26:16.535Z" hostname="chromium" tests="189" failures="0" skipped="0" time="226.054" errors="0">
+<testcase name="Shell &amp; role switching › loads with brand and admin as default role" classname="tmpfull.e2e.test.js" time="0.757">
 </testcase>
-<testcase name="Shell &amp; role switching › role selector offers only the built roles" classname="tmpfull.e2e.test.js" time="0.774">
+<testcase name="Shell &amp; role switching › role selector offers only the built roles" classname="tmpfull.e2e.test.js" time="0.772">
 </testcase>
-<testcase name="Shell &amp; role switching › switching role updates the persona chip" classname="tmpfull.e2e.test.js" time="0.898">
+<testcase name="Shell &amp; role switching › switching role updates the persona chip" classname="tmpfull.e2e.test.js" time="0.878">
 </testcase>
-<testcase name="Shell &amp; role switching › the top bar stays on a single line on desktop widths, in both languages" classname="tmpfull.e2e.test.js" time="2.21">
+<testcase name="Shell &amp; role switching › the top bar stays on a single line on desktop widths, in both languages" classname="tmpfull.e2e.test.js" time="2.27">
 </testcase>
-<testcase name="Shell &amp; role switching › HR module exposes its tabs and opens on the to-do page" classname="tmpfull.e2e.test.js" time="0.786">
+<testcase name="Shell &amp; role switching › HR module exposes its tabs and opens on the to-do page" classname="tmpfull.e2e.test.js" time="0.788">
 </testcase>
-<testcase name="Data scope › admin and hr see all 30 employees" classname="tmpfull.e2e.test.js" time="0.892">
+<testcase name="Data scope › admin and hr see all 30 employees" classname="tmpfull.e2e.test.js" time="0.896">
 </testcase>
-<testcase name="Data scope › manager sees only O1 staff and the office filter is locked" classname="tmpfull.e2e.test.js" time="0.845">
+<testcase name="Data scope › manager sees only O1 staff and the office filter is locked" classname="tmpfull.e2e.test.js" time="0.959">
 </testcase>
-<testcase name="Data scope › assumption toggle opens the manager to every facility" classname="tmpfull.e2e.test.js" time="1.02">
+<testcase name="Data scope › assumption toggle opens the manager to every facility" classname="tmpfull.e2e.test.js" time="0.961">
 </testcase>
-<testcase name="Data scope › office filter narrows admin to one facility" classname="tmpfull.e2e.test.js" time="0.912">
+<testcase name="Data scope › office filter narrows admin to one facility" classname="tmpfull.e2e.test.js" time="0.78">
 </testcase>
-<testcase name="Data scope › manager attendance and leave views are limited to O1" classname="tmpfull.e2e.test.js" time="0.991">
+<testcase name="Data scope › manager attendance and leave views are limited to O1" classname="tmpfull.e2e.test.js" time="1.077">
 </testcase>
-<testcase name="Settings &amp; permission matrix › settings is in the nav for admin only" classname="tmpfull.e2e.test.js" time="0.82">
+<testcase name="Settings &amp; permission matrix › settings is in the nav for admin only" classname="tmpfull.e2e.test.js" time="0.882">
 </testcase>
-<testcase name="Settings &amp; permission matrix › switching away from admin while on settings returns to 原型說明" classname="tmpfull.e2e.test.js" time="0.833">
+<testcase name="Settings &amp; permission matrix › switching away from admin while on settings returns to 原型說明" classname="tmpfull.e2e.test.js" time="0.923">
 </testcase>
-<testcase name="Settings &amp; permission matrix › admin sees the full matrix, read-only until Edit is pressed (one merged tab)" classname="tmpfull.e2e.test.js" time="1.265">
+<testcase name="Settings &amp; permission matrix › admin sees the full matrix, read-only until Edit is pressed (one merged tab)" classname="tmpfull.e2e.test.js" time="1.228">
 </testcase>
-<testcase name="Settings &amp; permission matrix › manager can edit the permission matrix too (20 Oct: manager and system administrator)" classname="tmpfull.e2e.test.js" time="1.416">
+<testcase name="Settings &amp; permission matrix › manager can edit the permission matrix too (20 Oct: manager and system administrator)" classname="tmpfull.e2e.test.js" time="1.369">
 </testcase>
-<testcase name="Settings &amp; permission matrix › hr sees only their own column, read-only, and still gets open questions" classname="tmpfull.e2e.test.js" time="1.192">
+<testcase name="Settings &amp; permission matrix › hr sees only their own column, read-only, and still gets open questions" classname="tmpfull.e2e.test.js" time="1.151">
 </testcase>
-<testcase name="Settings &amp; permission matrix › a change made by admin takes effect for that role and can be restored" classname="tmpfull.e2e.test.js" time="2.538">
+<testcase name="Settings &amp; permission matrix › a change made by admin takes effect for that role and can be restored" classname="tmpfull.e2e.test.js" time="2.537">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › employee lands on 私人秘書 and sees only self-service modules" classname="tmpfull.e2e.test.js" time="0.828">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › employee lands on 私人秘書 and sees only self-service modules" classname="tmpfull.e2e.test.js" time="0.822">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › page access follows the title matrix Excel and updates when the admin edits a cell" classname="tmpfull.e2e.test.js" time="2.191">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › page access follows the title matrix Excel and updates when the admin edits a cell" classname="tmpfull.e2e.test.js" time="2.642">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › every title column in the matrix has a role to switch to, and its pages follow the Excel" classname="tmpfull.e2e.test.js" time="1.806">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › every title column in the matrix has a role to switch to, and its pages follow the Excel" classname="tmpfull.e2e.test.js" time="1.98">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › home calendar shows each day’s status and punch times" classname="tmpfull.e2e.test.js" time="0.828">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › home calendar shows each day’s status and punch times" classname="tmpfull.e2e.test.js" time="0.821">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › an employee has nothing to sign and tracks their own open forms" classname="tmpfull.e2e.test.js" time="0.829">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › an employee has nothing to sign and tracks their own open forms" classname="tmpfull.e2e.test.js" time="0.834">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › withdrawing a pending leave closes it" classname="tmpfull.e2e.test.js" time="0.997">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › withdrawing a pending leave closes it" classname="tmpfull.e2e.test.js" time="0.924">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › clicking a calendar day prefills the leave form for that day" classname="tmpfull.e2e.test.js" time="0.997">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › clicking a calendar day prefills the leave form for that day" classname="tmpfull.e2e.test.js" time="0.813">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › an off-site form goes through director approval and HR countersign" classname="tmpfull.e2e.test.js" time="1.277">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › an off-site form goes through director approval and HR countersign" classname="tmpfull.e2e.test.js" time="1.367">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › cancelling approved leave marks it cancelled once HR countersigns" classname="tmpfull.e2e.test.js" time="1.406">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › cancelling approved leave marks it cancelled once HR countersigns" classname="tmpfull.e2e.test.js" time="1.489">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › certificate requests skip the director and go straight to HR" classname="tmpfull.e2e.test.js" time="1.229">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › certificate requests skip the director and go straight to HR" classname="tmpfull.e2e.test.js" time="1.182">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › payslip shows the employee’s own paid months without employer cost" classname="tmpfull.e2e.test.js" time="1.033">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › payslip shows the employee’s own paid months without employer cost" classname="tmpfull.e2e.test.js" time="0.939">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › only approvers get the 部屬資料 look-ups" classname="tmpfull.e2e.test.js" time="0.928">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › only approvers get the 部屬資料 look-ups" classname="tmpfull.e2e.test.js" time="0.976">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › who-is-out shows only colleagues’ names" classname="tmpfull.e2e.test.js" time="0.786">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › who-is-out shows only colleagues’ names" classname="tmpfull.e2e.test.js" time="0.918">
 </testcase>
-<testcase name="Employee role &amp; 私人秘書 (My Desk) › batch missed punches files one correction per ticked day" classname="tmpfull.e2e.test.js" time="0.869">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › batch missed punches files one correction per ticked day" classname="tmpfull.e2e.test.js" time="1.263">
 </testcase>
-<testcase name="Salary visibility › hr sees monthly pay" classname="tmpfull.e2e.test.js" time="0.929">
+<testcase name="Salary visibility › hr sees monthly pay" classname="tmpfull.e2e.test.js" time="0.994">
 </testcase>
-<testcase name="Salary visibility › admin sees the lock instead of pay" classname="tmpfull.e2e.test.js" time="0.994">
+<testcase name="Salary visibility › admin sees the lock instead of pay" classname="tmpfull.e2e.test.js" time="0.94">
 </testcase>
-<testcase name="Salary visibility › daydir sees the lock instead of pay" classname="tmpfull.e2e.test.js" time="0.925">
+<testcase name="Salary visibility › daydir sees the lock instead of pay" classname="tmpfull.e2e.test.js" time="1.026">
 </testcase>
-<testcase name="Leave approval flow › pending → countersign → approved" classname="tmpfull.e2e.test.js" time="1.291">
+<testcase name="Leave approval flow › pending → countersign → approved" classname="tmpfull.e2e.test.js" time="1.156">
 </testcase>
-<testcase name="Leave approval flow › reject ends the request" classname="tmpfull.e2e.test.js" time="1.037">
+<testcase name="Leave approval flow › reject ends the request" classname="tmpfull.e2e.test.js" time="1.026">
 </testcase>
-<testcase name="Leave approval flow › admin has no approval rights" classname="tmpfull.e2e.test.js" time="0.829">
+<testcase name="Leave approval flow › admin has no approval rights" classname="tmpfull.e2e.test.js" time="0.86">
 </testcase>
-<testcase name="Leave approval flow › an approver cannot sign their own request" classname="tmpfull.e2e.test.js" time="0.985">
+<testcase name="Leave approval flow › an approver cannot sign their own request" classname="tmpfull.e2e.test.js" time="1.261">
 </testcase>
-<testcase name="My Hours › clock in and out records the day and worked hours" classname="tmpfull.e2e.test.js" time="0.922">
+<testcase name="My Hours › clock in and out records the day and worked hours" classname="tmpfull.e2e.test.js" time="1.064">
 </testcase>
-<testcase name="My Hours › clocking in and out in the same minute counts 0 h, not 24" classname="tmpfull.e2e.test.js" time="0.892">
+<testcase name="My Hours › clocking in and out in the same minute counts 0 h, not 24" classname="tmpfull.e2e.test.js" time="1.021">
 </testcase>
-<testcase name="My Hours › half-day leave computes 4 h and is filed as pending" classname="tmpfull.e2e.test.js" time="1.026">
+<testcase name="My Hours › half-day leave computes 4 h and is filed as pending" classname="tmpfull.e2e.test.js" time="1.058">
 </testcase>
-<testcase name="My Hours › rotating staff can request leave for evening shifts; there is no overnight shift" classname="tmpfull.e2e.test.js" time="1.199">
+<testcase name="My Hours › rotating staff can request leave for evening shifts; there is no overnight shift" classname="tmpfull.e2e.test.js" time="1.264">
 </testcase>
-<testcase name="My Hours › overtime hours compute, including across midnight" classname="tmpfull.e2e.test.js" time="0.948">
+<testcase name="My Hours › overtime hours compute, including across midnight" classname="tmpfull.e2e.test.js" time="1.047">
 </testcase>
-<testcase name="My Hours › balance tab reflects entitlement, used and pending hours" classname="tmpfull.e2e.test.js" time="1.151">
+<testcase name="My Hours › balance tab reflects entitlement, used and pending hours" classname="tmpfull.e2e.test.js" time="1.206">
 </testcase>
-<testcase name="Payroll night-shift allowance › rotating nurse is paid per evening shift and OT base includes it" classname="tmpfull.e2e.test.js" time="1.017">
+<testcase name="Payroll night-shift allowance › rotating nurse is paid per evening shift and OT base includes it" classname="tmpfull.e2e.test.js" time="1.066">
 </testcase>
-<testcase name="Payroll night-shift allowance › no overnight shifts are rostered while the center has none" classname="tmpfull.e2e.test.js" time="1.008">
+<testcase name="Payroll night-shift allowance › no overnight shifts are rostered while the center has none" classname="tmpfull.e2e.test.js" time="1.063">
 </testcase>
-<testcase name="Payroll night-shift allowance › day-shift staff get no allowance" classname="tmpfull.e2e.test.js" time="1.017">
+<testcase name="Payroll night-shift allowance › day-shift staff get no allowance" classname="tmpfull.e2e.test.js" time="1.133">
 </testcase>
-<testcase name="Payroll night-shift allowance › calculator adds allowance per shift and can exclude it from the OT base" classname="tmpfull.e2e.test.js" time="1.305">
+<testcase name="Payroll night-shift allowance › calculator adds allowance per shift and can exclude it from the OT base" classname="tmpfull.e2e.test.js" time="1.277">
 </testcase>
-<testcase name="Payroll night-shift allowance › calculator includes a part-timer&apos;s allowance in their OT rate" classname="tmpfull.e2e.test.js" time="1.278">
+<testcase name="Payroll night-shift allowance › calculator includes a part-timer&apos;s allowance in their OT rate" classname="tmpfull.e2e.test.js" time="1.186">
 </testcase>
-<testcase name="Payroll night-shift allowance › leave is counted against the evening or overnight shift worked that day" classname="tmpfull.e2e.test.js" time="0.93">
+<testcase name="Payroll night-shift allowance › leave is counted against the evening or overnight shift worked that day" classname="tmpfull.e2e.test.js" time="0.948">
 </testcase>
-<testcase name="Payroll night-shift allowance › partial leave on an overnight shift keeps the allowance" classname="tmpfull.e2e.test.js" time="0.964">
+<testcase name="Payroll night-shift allowance › partial leave on an overnight shift keeps the allowance" classname="tmpfull.e2e.test.js" time="1.003">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › without a demoDate the demo date is 2026-10-07 and holidays are days off" classname="tmpfull.e2e.test.js" time="0.881">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › without a demoDate the demo date is 2026-10-07 and holidays are days off" classname="tmpfull.e2e.test.js" time="0.849">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › payroll, attendance and reports open on the month of the demo date" classname="tmpfull.e2e.test.js" time="2.085">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › payroll, attendance and reports open on the month of the demo date" classname="tmpfull.e2e.test.js" time="1.96">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › three companies in greater Hsinchu, with the current company labelled" classname="tmpfull.e2e.test.js" time="0.899">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › three companies in greater Hsinchu, with the current company labelled" classname="tmpfull.e2e.test.js" time="0.95">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › no page shows the removed, unsourced content" classname="tmpfull.e2e.test.js" time="8.375">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › no page shows the removed, unsourced content" classname="tmpfull.e2e.test.js" time="8.486">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › meeting minutes, existing-system links and the revenue-share pay system" classname="tmpfull.e2e.test.js" time="1.242">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › meeting minutes, existing-system links and the revenue-share pay system" classname="tmpfull.e2e.test.js" time="1.314">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › a manager fills in a mid-year review from the team reviews page" classname="tmpfull.e2e.test.js" time="1.089">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › a manager fills in a mid-year review from the team reviews page" classname="tmpfull.e2e.test.js" time="1.157">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › a walkthrough switches role and page and highlights each step" classname="tmpfull.e2e.test.js" time="1.141">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › a walkthrough switches role and page and highlights each step" classname="tmpfull.e2e.test.js" time="1.113">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › every walkthrough step finds what it points at" classname="tmpfull.e2e.test.js" time="5.136">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › every walkthrough step finds what it points at" classname="tmpfull.e2e.test.js" time="5.146">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide has the pre-MVP checklist and the follow-up message" classname="tmpfull.e2e.test.js" time="0.974">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide has the pre-MVP checklist and the follow-up message" classname="tmpfull.e2e.test.js" time="0.955">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide links only to walkthroughs that exist" classname="tmpfull.e2e.test.js" time="1.354">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide links only to walkthroughs that exist" classname="tmpfull.e2e.test.js" time="1.325">
 </testcase>
-<testcase name="Updates from the 9/30 meeting › the minutes page holds the 9/30 notes, the next meeting and the follow-ups" classname="tmpfull.e2e.test.js" time="0.986">
+<testcase name="Updates from the 9/30 meeting › the minutes page holds the 9/30 notes, the next meeting and the follow-ups" classname="tmpfull.e2e.test.js" time="1.02">
 </testcase>
-<testcase name="Updates from the 9/30 meeting › decisions page lists the 9/30 decisions with where they are" classname="tmpfull.e2e.test.js" time="0.956">
+<testcase name="Updates from the 9/30 meeting › decisions page lists the 9/30 decisions with where they are" classname="tmpfull.e2e.test.js" time="0.881">
 </testcase>
-<testcase name="Updates from the 9/30 meeting › 104 comparison tab compares item by item and flags job types" classname="tmpfull.e2e.test.js" time="1.142">
+<testcase name="Updates from the 9/30 meeting › 104 comparison tab compares item by item and flags job types" classname="tmpfull.e2e.test.js" time="1.098">
 </testcase>
-<testcase name="Updates from the 9/30 meeting › employment status: three kinds, shown in the table and counted" classname="tmpfull.e2e.test.js" time="0.935">
+<testcase name="Updates from the 9/30 meeting › employment status: three kinds, shown in the table and counted" classname="tmpfull.e2e.test.js" time="0.842">
 </testcase>
-<testcase name="Updates from the 9/30 meeting › unpaid leave and resignation drop out of payroll from the effective month" classname="tmpfull.e2e.test.js" time="1.162">
+<testcase name="Updates from the 9/30 meeting › unpaid leave and resignation drop out of payroll from the effective month" classname="tmpfull.e2e.test.js" time="0.99">
 </testcase>
-<testcase name="Updates from the 9/30 meeting › HR changes a status and the person leaves the roster" classname="tmpfull.e2e.test.js" time="1.428">
+<testcase name="Updates from the 9/30 meeting › HR changes a status and the person leaves the roster" classname="tmpfull.e2e.test.js" time="1.389">
 </testcase>
-<testcase name="Updates from the 9/30 meeting › personnel file: two emergency contacts, license upload and training records" classname="tmpfull.e2e.test.js" time="1.235">
+<testcase name="Updates from the 9/30 meeting › personnel file: two emergency contacts, license upload and training records" classname="tmpfull.e2e.test.js" time="1.238">
 </testcase>
-<testcase name="Updates from the 9/30 meeting › the first emergency contact is required when editing" classname="tmpfull.e2e.test.js" time="1.067">
+<testcase name="Updates from the 9/30 meeting › the first emergency contact is required when editing" classname="tmpfull.e2e.test.js" time="1.086">
 </testcase>
-<testcase name="Updates from the 9/30 meeting › every report lists both the employee number and the Chinese name" classname="tmpfull.e2e.test.js" time="1.04">
+<testcase name="Updates from the 9/30 meeting › every report lists both the employee number and the Chinese name" classname="tmpfull.e2e.test.js" time="1.039">
 </testcase>
-<testcase name="Updates from the 9/30 meeting › reports can be downloaded as a real Excel (.xlsx) file" classname="tmpfull.e2e.test.js" time="0.951">
+<testcase name="Updates from the 9/30 meeting › reports can be downloaded as a real Excel (.xlsx) file" classname="tmpfull.e2e.test.js" time="0.865">
 </testcase>
-<testcase name="Updates from the 9/30 meeting › the HR walkthrough finds its targets" classname="tmpfull.e2e.test.js" time="1.43">
+<testcase name="Updates from the 9/30 meeting › the HR walkthrough finds its targets" classname="tmpfull.e2e.test.js" time="1.169">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › the minutes page holds the official minutes of the third meeting" classname="tmpfull.e2e.test.js" time="1.011">
+<testcase name="Updates from the 7 Oct meeting › the minutes page holds the official minutes of the third meeting" classname="tmpfull.e2e.test.js" time="1.096">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › the minutes page holds the official minutes of the fourth meeting, with decisions and follow-ups" classname="tmpfull.e2e.test.js" time="1.178">
+<testcase name="Updates from the 7 Oct meeting › the minutes page holds the official minutes of the fourth meeting, with decisions and follow-ups" classname="tmpfull.e2e.test.js" time="1.168">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › the recording summary is kept apart, with confirmed and pending wording" classname="tmpfull.e2e.test.js" time="1.03">
+<testcase name="Updates from the 7 Oct meeting › the recording summary is kept apart, with confirmed and pending wording" classname="tmpfull.e2e.test.js" time="0.945">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › decisions and follow-ups carry the 7 Oct items" classname="tmpfull.e2e.test.js" time="0.878">
+<testcase name="Updates from the 7 Oct meeting › decisions and follow-ups carry the 7 Oct items" classname="tmpfull.e2e.test.js" time="0.802">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › wording is cohesive: the same terms everywhere" classname="tmpfull.e2e.test.js" time="8.403">
+<testcase name="Updates from the 7 Oct meeting › wording is cohesive: the same terms everywhere" classname="tmpfull.e2e.test.js" time="8.328">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › the link to 仁寶 is named 居服個案管理系統; data comes in by Excel later" classname="tmpfull.e2e.test.js" time="0.904">
+<testcase name="Updates from the 7 Oct meeting › the link to 仁寶 is named 居服個案管理系統; data comes in by Excel later" classname="tmpfull.e2e.test.js" time="1.041">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › title matrix: loaded from the requester Excel, editable by the admin, Excel worksheet" classname="tmpfull.e2e.test.js" time="1.938">
+<testcase name="Updates from the 7 Oct meeting › title matrix: loaded from the requester Excel, editable by the admin, Excel worksheet" classname="tmpfull.e2e.test.js" time="2.017">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › org chart tab shows the 13 Oct organisation structure: 4 entities, facilities, units and titles" classname="tmpfull.e2e.test.js" time="1.263">
+<testcase name="Updates from the 7 Oct meeting › org chart tab shows the 13 Oct organisation structure: 4 entities, facilities, units and titles" classname="tmpfull.e2e.test.js" time="1.161">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › the admin creates a sub-category under a role category and it becomes a column" classname="tmpfull.e2e.test.js" time="1.924">
+<testcase name="Updates from the 7 Oct meeting › the admin creates a sub-category under a role category and it becomes a column" classname="tmpfull.e2e.test.js" time="1.687">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › the title matrix and sub-categories are read-only for HR" classname="tmpfull.e2e.test.js" time="1.553">
+<testcase name="Updates from the 7 Oct meeting › the title matrix and sub-categories are read-only for HR" classname="tmpfull.e2e.test.js" time="1.462">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › approval path follows the org chart and can be turned into a custom flow" classname="tmpfull.e2e.test.js" time="1.322">
+<testcase name="Updates from the 7 Oct meeting › approval path follows the org chart and can be turned into a custom flow" classname="tmpfull.e2e.test.js" time="1.228">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › only roles that approve can change a flow" classname="tmpfull.e2e.test.js" time="0.923">
+<testcase name="Updates from the 7 Oct meeting › only roles that approve can change a flow" classname="tmpfull.e2e.test.js" time="0.869">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › rejoining after leaving is a new hire with a new number; the old number is not reused" classname="tmpfull.e2e.test.js" time="1.275">
+<testcase name="Updates from the 7 Oct meeting › rejoining after leaving is a new hire with a new number; the old number is not reused" classname="tmpfull.e2e.test.js" time="1.177">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › add employee fills in the number automatically, per company" classname="tmpfull.e2e.test.js" time="1.292">
+<testcase name="Updates from the 7 Oct meeting › add employee fills in the number automatically, per company" classname="tmpfull.e2e.test.js" time="1.353">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › a new employee works in payroll, attendance and reports" classname="tmpfull.e2e.test.js" time="1.585">
+<testcase name="Updates from the 7 Oct meeting › a new employee works in payroll, attendance and reports" classname="tmpfull.e2e.test.js" time="1.533">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › the employee-number rule is editable in settings and drives the next number" classname="tmpfull.e2e.test.js" time="0.893">
+<testcase name="Updates from the 7 Oct meeting › the employee-number rule is editable in settings and drives the next number" classname="tmpfull.e2e.test.js" time="0.878">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › system info says mobile clock-in works and only cloud storage is missing" classname="tmpfull.e2e.test.js" time="1.049">
+<testcase name="Updates from the 7 Oct meeting › system info says mobile clock-in works and only cloud storage is missing" classname="tmpfull.e2e.test.js" time="0.951">
 </testcase>
-<testcase name="Cash pay for staff without a bank account › payroll run lists cash-paid staff with a receipt list to export" classname="tmpfull.e2e.test.js" time="0.954">
+<testcase name="Cash pay for staff without a bank account › payroll run lists cash-paid staff with a receipt list to export" classname="tmpfull.e2e.test.js" time="1.114">
 </testcase>
-<testcase name="Cash pay for staff without a bank account › payroll CSV has a pay-method column and no overnight column" classname="tmpfull.e2e.test.js" time="0.894">
+<testcase name="Cash pay for staff without a bank account › payroll CSV has a pay-method column and no overnight column" classname="tmpfull.e2e.test.js" time="0.951">
 </testcase>
-<testcase name="Cash pay for staff without a bank account › HR can switch an employee to cash in the personnel file" classname="tmpfull.e2e.test.js" time="1.354">
+<testcase name="Cash pay for staff without a bank account › HR can switch an employee to cash in the personnel file" classname="tmpfull.e2e.test.js" time="1.367">
 </testcase>
-<testcase name="Cash pay for staff without a bank account › the employee’s payslip says how they are paid" classname="tmpfull.e2e.test.js" time="1.07">
+<testcase name="Cash pay for staff without a bank account › the employee’s payslip says how they are paid" classname="tmpfull.e2e.test.js" time="0.888">
 </testcase>
-<testcase name="Personnel file drawer › every section renders and the drawer closes" classname="tmpfull.e2e.test.js" time="1.478">
+<testcase name="Personnel file drawer › every section renders and the drawer closes" classname="tmpfull.e2e.test.js" time="1.401">
 </testcase>
-<testcase name="Personnel file drawer › hr sees full ID, pay, bank account and insurance grades" classname="tmpfull.e2e.test.js" time="1.134">
+<testcase name="Personnel file drawer › hr sees full ID, pay, bank account and insurance grades" classname="tmpfull.e2e.test.js" time="1.12">
 </testcase>
-<testcase name="Personnel file drawer › admin gets contact details but masked ID and locked pay" classname="tmpfull.e2e.test.js" time="1.181">
+<testcase name="Personnel file drawer › admin gets contact details but masked ID and locked pay" classname="tmpfull.e2e.test.js" time="1.06">
 </testcase>
-<testcase name="Personnel file drawer › manager can see contact details and pay (20 Oct), but a day-care supervisor cannot" classname="tmpfull.e2e.test.js" time="1.135">
+<testcase name="Personnel file drawer › manager can see contact details and pay (20 Oct), but a day-care supervisor cannot" classname="tmpfull.e2e.test.js" time="1.08">
 </testcase>
-<testcase name="Personnel file drawer › day-care supervisor cannot see contact details or pay" classname="tmpfull.e2e.test.js" time="0.964">
+<testcase name="Personnel file drawer › day-care supervisor cannot see contact details or pay" classname="tmpfull.e2e.test.js" time="1.047">
 </testcase>
-<testcase name="Personnel file drawer › manager opening an out-of-scope person gets no sections" classname="tmpfull.e2e.test.js" time="0.976">
+<testcase name="Personnel file drawer › manager opening an out-of-scope person gets no sections" classname="tmpfull.e2e.test.js" time="1.023">
 </testcase>
-<testcase name="CSV exports › attendance report downloads with a BOM and header" classname="tmpfull.e2e.test.js" time="0.841">
+<testcase name="CSV exports › attendance report downloads with a BOM and header" classname="tmpfull.e2e.test.js" time="0.894">
 </testcase>
-<testcase name="CSV exports › personnel report downloads with a BOM and header" classname="tmpfull.e2e.test.js" time="0.764">
+<testcase name="CSV exports › personnel report downloads with a BOM and header" classname="tmpfull.e2e.test.js" time="0.978">
 </testcase>
-<testcase name="CSV exports › leave report downloads with a BOM and header" classname="tmpfull.e2e.test.js" time="0.935">
+<testcase name="CSV exports › leave report downloads with a BOM and header" classname="tmpfull.e2e.test.js" time="0.913">
 </testcase>
-<testcase name="CSV exports › financial report downloads with a BOM and header" classname="tmpfull.e2e.test.js" time="0.894">
+<testcase name="CSV exports › financial report downloads with a BOM and header" classname="tmpfull.e2e.test.js" time="0.885">
 </testcase>
-<testcase name="CSV exports › month selector changes filename and content" classname="tmpfull.e2e.test.js" time="0.793">
+<testcase name="CSV exports › month selector changes filename and content" classname="tmpfull.e2e.test.js" time="0.903">
 </testcase>
-<testcase name="CSV exports › personnel report masks salary for admin, not for hr" classname="tmpfull.e2e.test.js" time="0.827">
+<testcase name="CSV exports › personnel report masks salary for admin, not for hr" classname="tmpfull.e2e.test.js" time="0.936">
 </testcase>
 <testcase name="CSV exports › admin cannot export the payroll (financial) report" classname="tmpfull.e2e.test.js" time="0.877">
 </testcase>
-<testcase name="CSV exports › daydir cannot export the payroll (financial) report" classname="tmpfull.e2e.test.js" time="0.866">
+<testcase name="CSV exports › daydir cannot export the payroll (financial) report" classname="tmpfull.e2e.test.js" time="0.724">
 </testcase>
-<testcase name="CSV exports › manager exports contain only O1 staff" classname="tmpfull.e2e.test.js" time="0.864">
+<testcase name="CSV exports › manager exports contain only O1 staff" classname="tmpfull.e2e.test.js" time="0.909">
 </testcase>
-<testcase name="CSV exports › leave report reflects an approval made in the session" classname="tmpfull.e2e.test.js" time="1.023">
+<testcase name="CSV exports › leave report reflects an approval made in the session" classname="tmpfull.e2e.test.js" time="1.144">
 </testcase>
-<testcase name="CSV exports › org chart shows the real names for the owner, manager and system administrator" classname="tmpfull.e2e.test.js" time="1.203">
+<testcase name="CSV exports › org chart shows the real names for the owner, manager and system administrator" classname="tmpfull.e2e.test.js" time="1.254">
 </testcase>
-<testcase name="CSV exports › the permission matrix tab shows the Excel format: items × all 15 roles" classname="tmpfull.e2e.test.js" time="1.481">
+<testcase name="CSV exports › the permission matrix tab shows the Excel format: items × all 15 roles" classname="tmpfull.e2e.test.js" time="1.482">
 </testcase>
-<testcase name="CSV exports › finer permissions use the Excel Yes/No format for all 15 roles and download as Excel" classname="tmpfull.e2e.test.js" time="1.727">
+<testcase name="CSV exports › finer permissions use the Excel Yes/No format for all 15 roles and download as Excel" classname="tmpfull.e2e.test.js" time="1.839">
 </testcase>
-<testcase name="CSV exports › 104 export fields are listed without personal data, and the approval path notes the org-chart difference" classname="tmpfull.e2e.test.js" time="1.454">
+<testcase name="CSV exports › 104 export fields are listed without personal data, and the approval path notes the org-chart difference" classname="tmpfull.e2e.test.js" time="1.468">
 </testcase>
-<testcase name="CSV exports › the cloud storage estimator computes from the assumptions and has presets" classname="tmpfull.e2e.test.js" time="1.654">
+<testcase name="CSV exports › the cloud storage estimator computes from the assumptions and has presets" classname="tmpfull.e2e.test.js" time="1.456">
 </testcase>
-<testcase name="CSV exports › the case-system page offers the 仁寶 import and lists what is still to confirm" classname="tmpfull.e2e.test.js" time="1.184">
+<testcase name="CSV exports › the case-system page offers the 仁寶 import and lists what is still to confirm" classname="tmpfull.e2e.test.js" time="1.233">
 </testcase>
-<testcase name="CSV exports › the user guide explains how to estimate cloud storage, with numbers that match the estimator" classname="tmpfull.e2e.test.js" time="1.943">
+<testcase name="CSV exports › the user guide explains how to estimate cloud storage, with numbers that match the estimator" classname="tmpfull.e2e.test.js" time="1.861">
 </testcase>
-<testcase name="CSV exports › 10/14 changes: role names, directory moved with a department filter, org chart in two tabs" classname="tmpfull.e2e.test.js" time="2.01">
+<testcase name="CSV exports › 10/14 changes: role names, directory moved with a department filter, org chart in two tabs" classname="tmpfull.e2e.test.js" time="1.798">
 </testcase>
-<testcase name="CSV exports › 10/14 changes: leave attachment, custom certificate months, no personal work log" classname="tmpfull.e2e.test.js" time="1.852">
+<testcase name="CSV exports › 10/14 changes: leave attachment, custom certificate months, no personal work log" classname="tmpfull.e2e.test.js" time="1.935">
 </testcase>
-<testcase name="CSV exports › the day care supervisor can open the HR pages, limited to their own unit" classname="tmpfull.e2e.test.js" time="1.196">
+<testcase name="CSV exports › the day care supervisor can open the HR pages, limited to their own unit" classname="tmpfull.e2e.test.js" time="1.175">
 </testcase>
-<testcase name="CSV exports › continuing-education points: my summary, clickable categories, course list" classname="tmpfull.e2e.test.js" time="1.613">
+<testcase name="CSV exports › continuing-education points: my summary, clickable categories, course list" classname="tmpfull.e2e.test.js" time="1.581">
 </testcase>
-<testcase name="CSV exports › continuing-education points: the admin sees everyone, filters, drills into a person and sees the gap analysis" classname="tmpfull.e2e.test.js" time="2.208">
+<testcase name="CSV exports › continuing-education points: the admin sees everyone, filters, drills into a person and sees the gap analysis" classname="tmpfull.e2e.test.js" time="2.189">
 </testcase>
-<testcase name="CSV exports › the scope page leads with 12 action items and keeps the long logs collapsed" classname="tmpfull.e2e.test.js" time="1.247">
+<testcase name="CSV exports › the scope page leads with 12 action items and keeps the long logs collapsed" classname="tmpfull.e2e.test.js" time="1.559">
 </testcase>
-<testcase name="仁寶 service-record import (synthetic data only) › summarises cases, item shares and worker hours; skips incomplete rows" classname="tmpfull.e2e.test.js" time="0.91">
+<testcase name="仁寶 service-record import (synthetic data only) › summarises cases, item shares and worker hours; skips incomplete rows" classname="tmpfull.e2e.test.js" time="1.005">
 </testcase>
-<testcase name="仁寶 service-record import (synthetic data only) › day / week hours follow the date picker; clear resets; nothing is stored" classname="tmpfull.e2e.test.js" time="0.983">
+<testcase name="仁寶 service-record import (synthetic data only) › day / week hours follow the date picker; clear resets; nothing is stored" classname="tmpfull.e2e.test.js" time="1.074">
 </testcase>
-<testcase name="仁寶 service-record import (synthetic data only) › a file without the required columns gives a clear message" classname="tmpfull.e2e.test.js" time="0.873">
+<testcase name="仁寶 service-record import (synthetic data only) › a file without the required columns gives a clear message" classname="tmpfull.e2e.test.js" time="0.916">
 </testcase>
-<testcase name="Trimmed menus › rarely used pages sit under 更多頁面 and links still reach them" classname="tmpfull.e2e.test.js" time="1.296">
+<testcase name="Trimmed menus › rarely used pages sit under 更多頁面 and links still reach them" classname="tmpfull.e2e.test.js" time="1.36">
 </testcase>
-<testcase name="Trimmed menus › Chinese mode shows Chinese only; EN switches the whole page to English" classname="tmpfull.e2e.test.js" time="0.815">
+<testcase name="Trimmed menus › Chinese mode shows Chinese only; EN switches the whole page to English" classname="tmpfull.e2e.test.js" time="0.821">
 </testcase>
-<testcase name="Meeting agenda in the guide › guide lists the six agenda items with a message colleagues can copy" classname="tmpfull.e2e.test.js" time="0.825">
+<testcase name="Meeting agenda in the guide › guide lists the six agenda items with a message colleagues can copy" classname="tmpfull.e2e.test.js" time="0.864">
 </testcase>
-<testcase name="Phone width (390px) › no page overflows sideways and buttons are big enough to tap" classname="tmpfull.e2e.test.js" time="1.936">
+<testcase name="Phone width (390px) › no page overflows sideways and buttons are big enough to tap" classname="tmpfull.e2e.test.js" time="2.098">
 </testcase>
-<testcase name="Day / night theme › switch sets the theme, is remembered after reload, and auto follows the device" classname="tmpfull.e2e.test.js" time="1.219">
+<testcase name="Day / night theme › switch sets the theme, is remembered after reload, and auto follows the device" classname="tmpfull.e2e.test.js" time="1.38">
 </testcase>
-<testcase name="Manager to-do › to-do button shows the count and opens a page that follows the role" classname="tmpfull.e2e.test.js" time="0.995">
+<testcase name="Manager to-do › to-do button shows the count and opens a page that follows the role" classname="tmpfull.e2e.test.js" time="1.009">
 </testcase>
-<testcase name="Manager to-do › the to-do page is not a row in the permission matrix" classname="tmpfull.e2e.test.js" time="0.948">
+<testcase name="Manager to-do › the to-do page is not a row in the permission matrix" classname="tmpfull.e2e.test.js" time="1.004">
 </testcase>
-<testcase name="Collapsible main menu on phones › menu is collapsed on a phone, opens with the Menu button and closes after choosing" classname="tmpfull.e2e.test.js" time="0.687">
+<testcase name="Collapsible main menu on phones › menu is collapsed on a phone, opens with the Menu button and closes after choosing" classname="tmpfull.e2e.test.js" time="0.836">
 </testcase>
-<testcase name="Collapsible main menu on phones › on a desktop the menu is always open and the Menu button is hidden" classname="tmpfull.e2e.test.js" time="0.739">
+<testcase name="Collapsible main menu on phones › on a desktop the menu is always open and the Menu button is hidden" classname="tmpfull.e2e.test.js" time="0.77">
 </testcase>
-<testcase name="Collapsible filter bar on phones › filters are collapsed on a phone, the to-do button stays, and the bar opens on tap" classname="tmpfull.e2e.test.js" time="0.859">
+<testcase name="Collapsible filter bar on phones › filters are collapsed on a phone, the to-do button stays, and the bar opens on tap" classname="tmpfull.e2e.test.js" time="0.972">
 </testcase>
-<testcase name="Collapsible filter bar on phones › on a desktop the filter bar is always open and the toggle is hidden" classname="tmpfull.e2e.test.js" time="0.722">
+<testcase name="Collapsible filter bar on phones › on a desktop the filter bar is always open and the toggle is hidden" classname="tmpfull.e2e.test.js" time="0.762">
 </testcase>
-<testcase name="Attendance squares in dark mode › on-time squares stand out from the row background (contrast at least 3:1)" classname="tmpfull.e2e.test.js" time="0.984">
+<testcase name="Attendance squares in dark mode › on-time squares stand out from the row background (contrast at least 3:1)" classname="tmpfull.e2e.test.js" time="0.962">
 </testcase>
-<testcase name="Mobile app (PWA) — mobile.html › four tabs, demo notice, and no real location or camera is requested" classname="tmpfull.e2e.test.js" time="0.413">
+<testcase name="Mobile app (PWA) — mobile.html › four tabs, demo notice, and no real location or camera is requested" classname="tmpfull.e2e.test.js" time="0.384">
 </testcase>
-<testcase name="Mobile app (PWA) — mobile.html › punch in, punch out, survives reload, and can be cleared" classname="tmpfull.e2e.test.js" time="0.628">
+<testcase name="Mobile app (PWA) — mobile.html › punch in, punch out, survives reload, and can be cleared" classname="tmpfull.e2e.test.js" time="0.589">
 </testcase>
-<testcase name="Mobile app (PWA) — mobile.html › overtime form validates, computes hours (also across midnight) and lists the request" classname="tmpfull.e2e.test.js" time="0.562">
+<testcase name="Mobile app (PWA) — mobile.html › overtime form validates, computes hours (also across midnight) and lists the request" classname="tmpfull.e2e.test.js" time="0.569">
 </testcase>
-<testcase name="Mobile app (PWA) — mobile.html › missed-punch request and leave request, including validation and withdraw" classname="tmpfull.e2e.test.js" time="0.872">
+<testcase name="Mobile app (PWA) — mobile.html › missed-punch request and leave request, including validation and withdraw" classname="tmpfull.e2e.test.js" time="0.882">
 </testcase>
-<testcase name="Mobile app (PWA) — mobile.html › calendar: statuses have text (not colour only), tapping a day shows its record" classname="tmpfull.e2e.test.js" time="0.469">
+<testcase name="Mobile app (PWA) — mobile.html › calendar: statuses have text (not colour only), tapping a day shows its record" classname="tmpfull.e2e.test.js" time="0.401">
 </testcase>
-<testcase name="Mobile app (PWA) — mobile.html › Chinese (Zhuyin) composition in a reason box is not interrupted by the clock or re-render" classname="tmpfull.e2e.test.js" time="2.568">
+<testcase name="Mobile app (PWA) — mobile.html › Chinese (Zhuyin) composition in a reason box is not interrupted by the clock or re-render" classname="tmpfull.e2e.test.js" time="2.591">
 </testcase>
-<testcase name="Mobile app (PWA) — mobile.html › no sideways scrolling and every tap target is at least 44px at common phone widths" classname="tmpfull.e2e.test.js" time="1.234">
+<testcase name="Mobile app (PWA) — mobile.html › no sideways scrolling and every tap target is at least 44px at common phone widths" classname="tmpfull.e2e.test.js" time="1.309">
 </testcase>
-<testcase name="Mobile app (PWA) — mobile.html › theme button cycles auto → day → night and shares the portal preference" classname="tmpfull.e2e.test.js" time="0.446">
+<testcase name="Mobile app (PWA) — mobile.html › theme button cycles auto → day → night and shares the portal preference" classname="tmpfull.e2e.test.js" time="0.463">
 </testcase>
 <testcase name="Mobile app (PWA) — mobile.html › install files: manifest, icons of the right size, service worker and iOS tags" classname="tmpfull.e2e.test.js" time="0.007">
 </testcase>
-<testcase name="Formal org chart layout, upload formats, version and revision date › formal org chart is a top-down chart that fits one screen on a normal laptop" classname="tmpfull.e2e.test.js" time="0.92">
+<testcase name="Formal org chart layout, upload formats, version and revision date › formal org chart is a top-down chart that fits one screen on a normal laptop" classname="tmpfull.e2e.test.js" time="0.898">
 </testcase>
-<testcase name="Formal org chart layout, upload formats, version and revision date › on a narrow screen the formal org chart stacks instead of overflowing" classname="tmpfull.e2e.test.js" time="0.699">
+<testcase name="Formal org chart layout, upload formats, version and revision date › on a narrow screen the formal org chart stacks instead of overflowing" classname="tmpfull.e2e.test.js" time="0.729">
 </testcase>
-<testcase name="Formal org chart layout, upload formats, version and revision date › every upload box lists the accepted formats (including HEIC), and an unsupported file is refused" classname="tmpfull.e2e.test.js" time="1.065">
+<testcase name="Formal org chart layout, upload formats, version and revision date › every upload box lists the accepted formats (including HEIC), and an unsupported file is refused" classname="tmpfull.e2e.test.js" time="1.032">
 </testcase>
-<testcase name="Formal org chart layout, upload formats, version and revision date › the 仁寶 import says it reads only .xlsx and explains other formats" classname="tmpfull.e2e.test.js" time="0.881">
+<testcase name="Formal org chart layout, upload formats, version and revision date › the 仁寶 import says it reads only .xlsx and explains other formats" classname="tmpfull.e2e.test.js" time="0.872">
 </testcase>
-<testcase name="Formal org chart layout, upload formats, version and revision date › version is v3.3 and the footer shows the revision date, not the demo date" classname="tmpfull.e2e.test.js" time="0.855">
+<testcase name="Formal org chart layout, upload formats, version and revision date › version is v3.4 and the footer shows the revision date, not the demo date" classname="tmpfull.e2e.test.js" time="0.826">
 </testcase>
-<testcase name="Formal org chart layout, upload formats, version and revision date › guide, index and mobile app show the same version and a revision date" classname="tmpfull.e2e.test.js" time="1.138">
+<testcase name="Formal org chart layout, upload formats, version and revision date › guide, index and mobile app show the same version and a revision date" classname="tmpfull.e2e.test.js" time="1.118">
 </testcase>
-<testcase name="Formal org chart layout, upload formats, version and revision date › the deploy workflow stamps the revision date from the last commit" classname="tmpfull.e2e.test.js" time="0.002">
+<testcase name="Formal org chart layout, upload formats, version and revision date › the deploy workflow stamps the revision date from the last commit" classname="tmpfull.e2e.test.js" time="0.001">
 </testcase>
-<testcase name="仁寶 import accepts .csv › UTF-8 csv with BOM, CRLF, quoted commas and slash dates" classname="tmpfull.e2e.test.js" time="0.833">
+<testcase name="仁寶 import accepts .csv › UTF-8 csv with BOM, CRLF, quoted commas and slash dates" classname="tmpfull.e2e.test.js" time="1.009">
 </testcase>
-<testcase name="仁寶 import accepts .csv › Big5 csv (what Excel saves on Traditional Chinese Windows) reads correctly" classname="tmpfull.e2e.test.js" time="0.76">
+<testcase name="仁寶 import accepts .csv › Big5 csv (what Excel saves on Traditional Chinese Windows) reads correctly" classname="tmpfull.e2e.test.js" time="1.162">
 </testcase>
-<testcase name="仁寶 import accepts .csv › a csv without the required columns gives the same clear message" classname="tmpfull.e2e.test.js" time="0.901">
+<testcase name="仁寶 import accepts .csv › a csv without the required columns gives the same clear message" classname="tmpfull.e2e.test.js" time="0.841">
 </testcase>
-<testcase name="仁寶 import accepts .csv › .xls and other formats are still refused with a pointer to .xlsx / csv" classname="tmpfull.e2e.test.js" time="0.858">
+<testcase name="仁寶 import accepts .csv › .xls and other formats are still refused with a pointer to .xlsx / csv" classname="tmpfull.e2e.test.js" time="0.844">
 </testcase>
-<testcase name="v3.2 section in the guide › records the csv support, upload formats and revision date, with a table of import formats" classname="tmpfull.e2e.test.js" time="0.765">
+<testcase name="v3.2 section in the guide › records the csv support, upload formats and revision date, with a table of import formats" classname="tmpfull.e2e.test.js" time="0.855">
 </testcase>
-<testcase name="To-do grid, employee column filters, org chart with directory › to-do page lays its tables out side by side and fits one screen" classname="tmpfull.e2e.test.js" time="0.932">
+<testcase name="To-do grid, employee column filters, org chart with directory › to-do page lays its tables out side by side and fits one screen" classname="tmpfull.e2e.test.js" time="0.979">
 </testcase>
-<testcase name="To-do grid, employee column filters, org chart with directory › employee records: every row is one line and each column has its own filter" classname="tmpfull.e2e.test.js" time="1.095">
+<testcase name="To-do grid, employee column filters, org chart with directory › employee records: every row is one line and each column has its own filter" classname="tmpfull.e2e.test.js" time="1.113">
 </testcase>
-<testcase name="To-do grid, employee column filters, org chart with directory › employee records: Zhuyin typing in a column filter is not interrupted; pay filter only for roles that see pay" classname="tmpfull.e2e.test.js" time="1.098">
+<testcase name="To-do grid, employee column filters, org chart with directory › employee records: Zhuyin typing in a column filter is not interrupted; pay filter only for roles that see pay" classname="tmpfull.e2e.test.js" time="1.064">
 </testcase>
-<testcase name="To-do grid, employee column filters, org chart with directory › org chart and directory are one page: click a person for extension, phone, mobile and email" classname="tmpfull.e2e.test.js" time="1.117">
+<testcase name="To-do grid, employee column filters, org chart with directory › org chart and directory are one page: click a person for extension, phone, mobile and email" classname="tmpfull.e2e.test.js" time="1.239">
 </testcase>
-<testcase name="To-do grid, employee column filters, org chart with directory › the contact card follows scope and the mobile-number right" classname="tmpfull.e2e.test.js" time="0.853">
+<testcase name="To-do grid, employee column filters, org chart with directory › the contact card follows scope and the mobile-number right" classname="tmpfull.e2e.test.js" time="1.003">
 </testcase>
-<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › approval levels from org chart V3: five chains that all end at the manager and the owner, positions only" classname="tmpfull.e2e.test.js" time="0.889">
+<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › approval levels from org chart V3: five chains that all end at the manager and the owner, positions only" classname="tmpfull.e2e.test.js" time="0.899">
 </testcase>
-<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › cloud plan comparison: both tables, a head-count calculator, and the reminders" classname="tmpfull.e2e.test.js" time="1.105">
+<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › cloud plan comparison: both tables, a head-count calculator, and the reminders" classname="tmpfull.e2e.test.js" time="1.085">
 </testcase>
-<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › the guide records the 20 Oct update and the repaired agenda table" classname="tmpfull.e2e.test.js" time="0.884">
+<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › the guide records the 20 Oct update and the repaired agenda table" classname="tmpfull.e2e.test.js" time="0.99">
 </testcase>
-<testcase name="10/20 meeting: org tree, approval forms, 仁寶 summary › 誠馨健康 has care attendants and drivers under day care, like the other day-care units" classname="tmpfull.e2e.test.js" time="0.821">
+<testcase name="10/20 meeting: org tree, approval forms, 仁寶 summary › 誠馨健康 has care attendants and drivers under day care, like the other day-care units" classname="tmpfull.e2e.test.js" time="0.808">
 </testcase>
-<testcase name="10/20 meeting: org tree, approval forms, 仁寶 summary › three confirmed approval forms with the same flow, and the five deck originals marked as to confirm" classname="tmpfull.e2e.test.js" time="0.847">
+<testcase name="10/20 meeting: org tree, approval forms, 仁寶 summary › three confirmed approval forms with the same flow, and the five deck originals marked as to confirm" classname="tmpfull.e2e.test.js" time="0.858">
 </testcase>
-<testcase name="10/20 meeting: org tree, approval forms, 仁寶 summary › summary table: people served per month and unit, forgot-sign-out rows counted, decisions listed" classname="tmpfull.e2e.test.js" time="0.951">
+<testcase name="10/20 meeting: org tree, approval forms, 仁寶 summary › summary table: people served per month and unit, forgot-sign-out rows counted, decisions listed" classname="tmpfull.e2e.test.js" time="0.946">
 </testcase>
-<testcase name="10/20 meeting: org tree, approval forms, 仁寶 summary › a name with the suffix 二 is flagged as a same-name case for a person to check" classname="tmpfull.e2e.test.js" time="0.908">
+<testcase name="10/20 meeting: org tree, approval forms, 仁寶 summary › a name with the suffix 二 is flagged as a same-name case for a person to check" classname="tmpfull.e2e.test.js" time="0.866">
 </testcase>
-<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › system admin can view but not edit employees; HR and manager can" classname="tmpfull.e2e.test.js" time="1.094">
+<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › system admin can view but not edit employees; HR and manager can" classname="tmpfull.e2e.test.js" time="1.169">
 </testcase>
-<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › manager sees everyone’s pay but cannot change payroll" classname="tmpfull.e2e.test.js" time="1.103">
+<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › manager sees everyone’s pay but cannot change payroll" classname="tmpfull.e2e.test.js" time="1.108">
 </testcase>
-<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › HR cannot change permissions but can approve and finalise leave" classname="tmpfull.e2e.test.js" time="0.751">
+<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › HR cannot change permissions but can approve and finalise leave" classname="tmpfull.e2e.test.js" time="0.815">
 </testcase>
-<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › only the manager and system admin can add or remove people on the org chart" classname="tmpfull.e2e.test.js" time="2.29">
+<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › only the manager and system admin can add or remove people on the org chart" classname="tmpfull.e2e.test.js" time="2.619">
 </testcase>
-<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › the added person shows on the chart for everyone and is marked as a position only" classname="tmpfull.e2e.test.js" time="1.278">
+<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › the added person shows on the chart for everyone and is marked as a position only" classname="tmpfull.e2e.test.js" time="1.395">
 </testcase>
-<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › permission matrix edit: cancel restores, save keeps" classname="tmpfull.e2e.test.js" time="2.128">
+<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › permission matrix edit: cancel restores, save keeps" classname="tmpfull.e2e.test.js" time="2.165">
 </testcase>
-<testcase name="10/20 payroll categories › three pay categories: monthly staff, hourly home care workers (full and part time), drivers with monthly plus hourly" classname="tmpfull.e2e.test.js" time="1.039">
+<testcase name="10/20 payroll categories › three pay categories: monthly staff, hourly home care workers (full and part time), drivers with monthly plus hourly" classname="tmpfull.e2e.test.js" time="0.964">
 </testcase>
-<testcase name="10/20 payroll categories › calculator: the driver’s home-care hours and rate add a separate hourly line" classname="tmpfull.e2e.test.js" time="1.029">
+<testcase name="10/20 payroll categories › calculator: the driver’s home-care hours and rate add a separate hourly line" classname="tmpfull.e2e.test.js" time="1.085">
 </testcase>
-<testcase name="10/20 shifts and punch location (portal) › HR defines shifts: three built-in shifts, validation, add and delete a custom one" classname="tmpfull.e2e.test.js" time="1.358">
+<testcase name="10/20 shifts and punch location (portal) › HR defines shifts: three built-in shifts, validation, add and delete a custom one" classname="tmpfull.e2e.test.js" time="1.272">
 </testcase>
-<testcase name="10/20 shifts and punch location (portal) › shift settings: manager can edit, system admin and day-care supervisor only view" classname="tmpfull.e2e.test.js" time="1.188">
+<testcase name="10/20 shifts and punch location (portal) › shift settings: manager can edit, system admin and day-care supervisor only view" classname="tmpfull.e2e.test.js" time="1.109">
 </testcase>
-<testcase name="10/20 shifts and punch location (portal) › punch location (IP) is back office only: shown to HR, manager and admin, never to others, all fictional" classname="tmpfull.e2e.test.js" time="1.69">
+<testcase name="10/20 shifts and punch location (portal) › punch location (IP) is back office only: shown to HR, manager and admin, never to others, all fictional" classname="tmpfull.e2e.test.js" time="1.627">
 </testcase>
-<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › the shift list matches the meeting: normal, special (07:45–16:45), driver (two segments)" classname="tmpfull.e2e.test.js" time="0.331">
+<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › the shift list matches the meeting: normal, special (07:45–16:45), driver (two segments)" classname="tmpfull.e2e.test.js" time="0.352">
 </testcase>
-<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › driver shift has two segments: four punches in a day" classname="tmpfull.e2e.test.js" time="0.508">
+<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › driver shift has two segments: four punches in a day" classname="tmpfull.e2e.test.js" time="0.514">
 </testcase>
-<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › late is judged by the shift start: 07:50 is late on the special shift but on time on the normal shift" classname="tmpfull.e2e.test.js" time="0.55">
+<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › late is judged by the shift start: 07:50 is late on the special shift but on time on the normal shift" classname="tmpfull.e2e.test.js" time="0.553">
 </testcase>
-<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › offline punches are kept on the phone and uploaded automatically when the network returns" classname="tmpfull.e2e.test.js" time="0.446">
+<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › offline punches are kept on the phone and uploaded automatically when the network returns" classname="tmpfull.e2e.test.js" time="0.475">
 </testcase>
-<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › old saved punches (single in/out) still load" classname="tmpfull.e2e.test.js" time="0.309">
+<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › old saved punches (single in/out) still load" classname="tmpfull.e2e.test.js" time="0.365">
 </testcase>
-<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › the phone shows no IP address or place name anywhere" classname="tmpfull.e2e.test.js" time="0.58">
+<testcase name="10/20 phone clock-in: shifts, offline, no location on the phone › the phone shows no IP address or place name anywhere" classname="tmpfull.e2e.test.js" time="0.525">
 </testcase>
-<testcase name="Course credits: only the training officer edits (10/20) › training officer sees the import box; HR and admin do not" classname="tmpfull.e2e.test.js" time="0.944">
+<testcase name="Course credits: only the training officer edits (10/20) › training officer sees the import box; HR and admin do not" classname="tmpfull.e2e.test.js" time="1.003">
 </testcase>
-<testcase name="Course credits: only the training officer edits (10/20) › import rows: add, skip duplicates, report errors, ROC dates" classname="tmpfull.e2e.test.js" time="0.751">
+<testcase name="Course credits: only the training officer edits (10/20) › import rows: add, skip duplicates, report errors, ROC dates" classname="tmpfull.e2e.test.js" time="0.732">
 </testcase>
-<testcase name="Course credits: only the training officer edits (10/20) › import rows: missing header is a fatal message" classname="tmpfull.e2e.test.js" time="0.78">
+<testcase name="Course credits: only the training officer edits (10/20) › import rows: missing header is a fatal message" classname="tmpfull.e2e.test.js" time="0.733">
 </testcase>
 </testsuite>
 </testsuites>
