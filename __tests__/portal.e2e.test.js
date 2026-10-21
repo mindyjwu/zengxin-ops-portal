@@ -31,6 +31,7 @@ async function go(page, mod, tab) {
   }
 }
 const empRows = page => page.locator('#view tbody tr[data-emp]');
+const editPerms = async page => { await page.click('[data-perm-edit]'); };   // 權限對照表平常唯讀，按右上角「編輯」才能改
 const requestRow = (page, id) =>
   page.locator('#view tbody tr').filter({ has: page.locator('td.mono', { hasText: new RegExp(`^${id}$`) }) });
 const drawer = page => page.locator('aside.drawer');
@@ -158,22 +159,39 @@ test.describe('Settings & permission matrix', () => {
     await expect(page.locator('[data-mod="arch"]')).toHaveAttribute('aria-current', 'true');
   });
 
-  test('admin sees the full matrix with editable permission cells', async ({ page }) => {
+  test('admin sees the full matrix, read-only until Edit is pressed (one merged tab)', async ({ page }) => {
     await go(page, 'perm', 'matrix');
+    await expect(page.locator('[data-tab="titles"]')).toHaveCount(0);     // 10/20：「職稱對照」併入「權限對照表」
     await expect(page.locator('.permtable thead th')).toHaveCount(16);   // capability column + 15 roles
+    await expect(page.locator('table.titlematrix thead th')).toHaveCount(16);
+    await expect(page.locator('[data-perm]')).toHaveCount(0);            // 平常唯讀
+    await expect(page.locator('[data-tcell]')).toHaveCount(0);
+    await editPerms(page);
     await expect(page.locator('[data-perm]')).toHaveCount(150);          // 10 editable capabilities × 15 roles
+    await expect(page.locator('[data-tcell]')).toHaveCount(465);         // 31 items × 15 columns
     await expect(page.locator('[data-perm="admin|perms"]')).toBeDisabled();
     await expect(page.locator('[data-perm="admin|mgmt"]')).toBeDisabled();
     await expect(page.locator('[data-perm="employee|mgmt"]')).toHaveAttribute('aria-pressed', 'false');
   });
 
-  for (const r of ['hr', 'manager']) {
+  test('manager can edit the permission matrix too (20 Oct: manager and system administrator)', async ({ page }) => {
+    await setRole(page, 'manager');
+    await go(page, 'perm', 'matrix');
+    await expect(page.locator('.permtable thead th')).toHaveCount(16);
+    await expect(page.locator('[data-perm]')).toHaveCount(0);
+    await editPerms(page);
+    await expect(page.locator('[data-perm]')).toHaveCount(150);
+    await page.click('[data-perm-cancel]');
+    await expect(page.locator('[data-perm]')).toHaveCount(0);
+  });
+  for (const r of ['hr']) {
     test(`${r} sees only their own column, read-only, and still gets open questions`, async ({ page }) => {
       await setRole(page, r);
       await go(page, 'perm', 'matrix');
       await expect(page.locator('.permtable thead th')).toHaveCount(2);
       await expect(page.locator('[data-perm]')).toHaveCount(0);
-      await expect(page.locator('#view')).toContainText('完整權限對照表僅系統管理員可檢視與調整');
+      await expect(page.locator('[data-perm-edit]')).toHaveCount(0);
+      await expect(page.locator('#view')).toContainText('只有管理者與系統管理員可以編輯');
       await expect(page.locator('[data-tab="open"]')).toHaveCount(0);   // 預設收在「更多頁面」
       await page.click('#moreToggle');
       await expect(page.locator('[data-tab="open"]')).toBeVisible();
@@ -182,20 +200,22 @@ test.describe('Settings & permission matrix', () => {
 
   test('a change made by admin takes effect for that role and can be restored', async ({ page }) => {
     await go(page, 'perm', 'matrix');
-    await page.click('[data-perm="manager|salary"]');
+    await editPerms(page);
+    await page.click('[data-perm="manager|salary"]');                  // 管理者預設可看薪資（10/20）；關掉看看
+    await page.click('[data-perm-save]');
     await expect(page.locator('#view')).toContainText('權限異動紀錄');
 
     await setRole(page, 'manager');
     await go(page, 'hr', 'emp');
-    await expect(empRows(page).first()).toContainText('NT$');
+    await expect(page.locator('#view tbody')).not.toContainText('NT$');
 
     await setRole(page, 'admin');
     await go(page, 'perm', 'matrix');
     await page.click('[data-permreset]');
-    await expect(page.locator('[data-perm="manager|salary"]')).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('[data-perm="manager|salary"]')).toHaveCount(0);
     await setRole(page, 'manager');
     await go(page, 'hr', 'emp');
-    await expect(page.locator('#view tbody')).not.toContainText('NT$');
+    await expect(empRows(page).first()).toContainText('NT$');
   });
 });
 
@@ -233,19 +253,22 @@ test.describe('Employee role & 私人秘書 (My Desk)', () => {
     await expect(page.locator('[data-mod="set"]')).toHaveCount(0);
     // the admin switches a cell off and the employee loses that tab
     await setRole(page, 'admin');
-    await go(page, 'perm', 'titles');
+    await go(page, 'perm', 'matrix');
     const tm = page.locator('table.titlematrix');
     const idx = await tm.locator('thead th').evaluateAll(ths => ths.findIndex(h => h.textContent.includes('一般員工：照服員')));
     const row = tm.locator('tbody tr', { hasText: '私人秘書 › 課程' }).first();
+    await editPerms(page);
     await row.locator('td').nth(idx).locator('button').click();     // 可 → 不可
+    await page.click('[data-perm-save]');
     await setRole(page, 'employee');
     await expect(page.locator('[data-tab="course"]')).toHaveCount(0);
     await expect(page.locator('[data-tab="home"]')).toBeVisible();
     // the admin cannot lock themselves out of the matrix
     await setRole(page, 'admin');
-    await go(page, 'perm', 'titles');
+    await go(page, 'perm', 'matrix');
     const adminIdx = await tm.locator('thead th').evaluateAll(ths => ths.findIndex(h => h.textContent.includes('系統管理員')));
-    await tm.locator('tbody tr', { hasText: '權限與範圍 › 職稱對照' }).first().locator('td').nth(adminIdx).locator('button').click();
+    await editPerms(page);
+    await tm.locator('tbody tr', { hasText: '權限與範圍 › 權限對照表' }).first().locator('td').nth(adminIdx).locator('button').click();
     await expect(page.locator('[data-mod="perm"]')).toBeVisible();
   });
 
@@ -431,7 +454,7 @@ test.describe('Salary visibility', () => {
     await expect(page.locator('#view tbody .lock')).toHaveCount(0);
   });
 
-  for (const role of ['admin', 'manager']) {
+  for (const role of ['admin', 'daydir']) {
     test(`${role} sees the lock instead of pay`, async ({ page }) => {
       await setRole(page, role);
       const pay = page.locator('tr[data-emp="A003"] td').last();
@@ -1165,10 +1188,10 @@ test.describe('Updates from the 7 Oct meeting', () => {
   test('title matrix: loaded from the requester Excel, editable by the admin, Excel worksheet', async ({ page }) => {
     await go(page, 'arch', 'roles');
     await expect(page.locator('#view')).toContainText('職稱對照');
-    await go(page, 'perm', 'titles');
+    await go(page, 'perm', 'matrix');
     const tm = page.locator('#view table.titlematrix');
     await expect(tm.locator('thead th')).toHaveCount(16);            // item column + 12 titles + 3 sub-categories
-    await expect(page.locator('#view')).toContainText('已填 480 / 480');
+    await expect(page.locator('#view')).toContainText('已填 465 / 465');
     const row = name => tm.locator('tbody tr', { hasText: name }).first();
     const cellOf = async (rowName, title) => {
       const idx = await tm.locator('thead th').evaluateAll((ths, t) => ths.findIndex(h => h.textContent.includes(t)), title);
@@ -1180,7 +1203,12 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(await cellOf('薪資計算 › 薪資試算', '人資主管')).toContainText('可編輯');
     await expect(await cellOf('薪資計算 › 薪資試算', '老闆')).toContainText('可檢視');
     await expect(await cellOf('系統設定', '系統管理員')).toContainText('可');
-    // the admin cycles a cell: 不可 → blank → 可 → 不可
+    await expect(await cellOf('人事系統 › 員工資料', '系統管理員')).toContainText('可檢視');   // 10/20：系統管理員可檢視所有內容，不可修改
+    await expect(await cellOf('人事系統 › 員工資料', '管理者')).toContainText('可編輯');       // 管理者幾乎全部可修改
+    await expect(await cellOf('公告欄 › 公告', '人資主管')).toContainText('可編輯');          // 人資：人事系統與公告欄可修改
+    await expect(await cellOf('薪資計算 › 薪資試算', '管理者')).toContainText('可檢視');       // 管理者的薪資計算只能檢視
+    // the admin presses Edit, then cycles a cell: 不可 → blank → 可 → 不可
+    await editPerms(page);
     const cell = await cellOf('人事系統 › 員工資料', '會計');
     await cell.locator('button').click();
     await expect(await cellOf('人事系統 › 員工資料', '會計')).toContainText('—');
@@ -1214,7 +1242,8 @@ test.describe('Updates from the 7 Oct meeting', () => {
   });
 
   test('the admin creates a sub-category under a role category and it becomes a column', async ({ page }) => {
-    await go(page, 'perm', 'titles');
+    await go(page, 'perm', 'matrix');
+    await editPerms(page);
     const heads = page.locator('table.titlematrix thead th');
     await expect(heads).toHaveCount(16);
     await page.selectOption('#subAddForm select[name="parent"]', 'hr');
@@ -1235,13 +1264,13 @@ test.describe('Updates from the 7 Oct meeting', () => {
 
   test('the title matrix and sub-categories are read-only for HR', async ({ page }) => {
     await setRole(page, 'hr');
-    await go(page, 'perm', 'titles');
+    await go(page, 'perm', 'matrix');
     await expect(page.locator('[data-tcell]')).toHaveCount(0);
     await expect(page.locator('[data-titlexlsx]')).toBeVisible();
-    await expect(page.locator('#view')).toContainText('只有系統管理員可以修改');
+    await expect(page.locator('[data-perm-edit]')).toHaveCount(0);
     await setRole(page, 'admin');
     await go(page, 'perm', 'matrix');
-    await expect(page.locator('[data-subdel]')).toHaveCount(0);
+    await expect(page.locator('[data-subdel]')).toHaveCount(0);           // 沒按「編輯」就沒有刪除與建立
     await expect(page.locator('#subAddForm')).toHaveCount(0);
   });
 
@@ -1481,8 +1510,14 @@ test.describe('Personnel file drawer', () => {
     await expect(body(page)).toContainText('投保薪資與保費僅人資可見');
   });
 
-  test('manager cannot see contact details or pay', async ({ page }) => {
+  test('manager can see contact details and pay (20 Oct), but a day-care supervisor cannot', async ({ page }) => {
     await openRecord(page, 'manager', 'A003');
+    const mob = await page.evaluate(() => empRecord('A003').basic.mobile);
+    await openSec(page, 'basic');
+    await expect(body(page)).toContainText(mob);
+  });
+  test('day-care supervisor cannot see contact details or pay', async ({ page }) => {
+    await openRecord(page, 'daydir', 'A003');
     const { mobile } = await page.evaluate(() => empRecord('A003').basic);
     await openSec(page, 'basic');
     await expect(body(page)).not.toContainText(mobile);
@@ -1558,7 +1593,7 @@ test.describe('CSV exports', () => {
     expect(col(lines, '薪資').every(v => /^\d+$/.test(v))).toBe(true);
   });
 
-  for (const role of ['admin', 'manager']) {
+  for (const role of ['admin', 'daydir']) {
     test(`${role} cannot export the payroll (financial) report`, async ({ page }) => {
       await setRole(page, role);
       await go(page, 'rpt');
@@ -1599,19 +1634,20 @@ test.describe('CSV exports', () => {
   test('the permission matrix tab shows the Excel format: items × all 15 roles', async ({ page }) => {
     await openPortal(page);
     await go(page, 'perm', 'matrix');
-    const rm = page.locator('table.rolematrix');
+    const rm = page.locator('table.titlematrix');
     await expect(rm.locator('thead th')).toHaveCount(16);            // item column + 15 roles
-    expect(await rm.locator('tbody tr').count()).toBe(32);   // 內部通訊錄併入組織圖後少一列
+    expect(await rm.locator('tbody tr').count()).toBe(31);           // 通訊錄併入組織圖、職稱對照併入權限對照表後的項目數
     const idx = await rm.locator('thead th').evaluateAll(ths => ths.findIndex(h => h.textContent.includes('老闆')));
     await expect(rm.locator('tbody tr', { hasText: '薪資計算 › 薪資試算' }).first().locator('td').nth(idx)).toContainText('可檢視');
-    await expect(page.locator('.permtable thead th')).toHaveCount(16); // the finer table now covers all 15 roles
+    await expect(page.locator('.permtable thead th')).toHaveCount(16); // the finer table covers all 15 roles
     await setRole(page, 'hr');
-    await expect(page.locator('table.rolematrix thead th')).toHaveCount(2);   // others only see their own column
+    await expect(page.locator('.permtable thead th')).toHaveCount(2);   // others only see their own column in the finer table
   });
 
   test('finer permissions use the Excel Yes/No format for all 15 roles and download as Excel', async ({ page }) => {
     await openPortal(page);
     await go(page, 'perm', 'matrix');
+    await editPerms(page);
     const cell = page.locator('[data-perm="daydir|approve"]');
     await expect(cell).toContainText('可');
     await expect(cell).toHaveAttribute('aria-pressed', 'true');
@@ -1660,7 +1696,7 @@ test.describe('CSV exports', () => {
     await openPortal(page);
     await go(page, 'svc', 'case');
     const v = page.locator('#view');
-    for (const s of ['匯入仁寶服務記錄', '只在你的瀏覽器裡讀取', '忘簽退', '現在算「這份檔案期間內有服務紀錄的不重複案號」']) await expect(v).toContainText(s);
+    for (const s of ['匯入仁寶服務記錄', '只在你的瀏覽器裡讀取', '忘簽退', '10/20 會議已決定']) await expect(v).toContainText(s);
   });
 
   test('the user guide explains how to estimate cloud storage, with numbers that match the estimator', async ({ page }) => {
@@ -1717,7 +1753,7 @@ test.describe('CSV exports', () => {
     await page.click('[data-orgedit-toggle]');
     await expect(page.locator('#view')).toContainText('示範窗口：請找我');
     // all tables keep their first row and column frozen
-    await go(page, 'perm', 'titles');
+    await go(page, 'perm', 'matrix');
     const pos = await page.evaluate(() => [getComputedStyle(document.querySelector('.titlematrix thead th')).position, getComputedStyle(document.querySelector('.titlematrix tbody td')).position]);
     expect(pos).toEqual(['sticky', 'sticky']);
   });
@@ -1886,7 +1922,7 @@ test.describe('仁寶 service-record import (synthetic data only)', () => {
     await importSample(page, [...SAMPLE, ...rows]);
     await expect(page.locator('#svcDay')).toBeVisible();
     const v = page.locator('#view');
-    await expect(v).toContainText('服務個案數：3');      // T-001, T-002, T-003（T-004 缺居服員被略過）
+    await expect(v).toContainText('服務人數：3');      // T-001, T-002, T-003（T-004 缺居服員被略過）
     await expect(v).toContainText('服務紀錄：4');
     await expect(v).toContainText('居服員：2');
     await expect(v).toContainText('總工時：3.5');            // 210 分鐘
@@ -2023,7 +2059,7 @@ test.describe('Manager to-do', () => {
   });
   test('the to-do page is not a row in the permission matrix', async ({ page }) => {
     await openPortal(page);
-    await go(page, 'perm', 'titles');
+    await go(page, 'perm', 'matrix');
     await expect(page.locator('table.titlematrix')).not.toContainText('今日待辦');
   });
 });
@@ -2330,7 +2366,7 @@ test.describe('仁寶 import accepts .csv', () => {
   const openCase = async page => { await openPortal(page); await go(page, 'svc', 'case'); };
   const expectSummary = async page => {
     const v = page.locator('#view');
-    await expect(v).toContainText('服務個案數：2');
+    await expect(v).toContainText('服務人數：2');
     await expect(v).toContainText('服務紀錄：2');
     await expect(v).toContainText('居服員：2');
     await expect(v).toContainText('總工時：2.5');                      // 150 分鐘
@@ -2423,7 +2459,7 @@ test.describe('To-do grid, employee column filters, org chart with directory', (
     await page.evaluate(() => { const i = document.querySelector('[data-cf="name"]'); i.value = '護理師'; i.dispatchEvent(new CompositionEvent('compositionend')); });
     expect(await page.locator('.emptable tbody tr').count()).toBeGreaterThan(0);
     await expect(page.locator('.emptable tr.filters [data-cf="pay"]')).toHaveCount(1);   // 人資看得到月薪，所以有月薪篩選
-    await setRole(page, 'manager');
+    await setRole(page, 'daydir');
     await go(page, 'hr', 'emp');
     await expect(page.locator('.emptable tr.filters [data-cf="pay"]')).toHaveCount(0);
   });
@@ -2508,5 +2544,155 @@ test.describe('v3.3: org chart V3 approval levels and cloud plan comparison', ()
     await expect(page.locator('#agenda tbody tr')).toHaveCount(6);
     await expect(page.locator('#confirm tbody tr').nth(2)).toContainText('員工編號原則');   // 待補齊清單第 3 列是員編，不是議程
     await expect(page.locator('#agenda tbody tr').nth(2)).toContainText('雲端方案比較');
+  });
+});
+
+
+test.describe('10/20 meeting: org tree, approval forms, 仁寶 summary', () => {
+  test('誠馨健康 has care attendants and drivers under day care, like the other day-care units', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'ann', 'org');
+    const col = page.locator('.orgf-row > .orgcol').filter({ hasText: '誠馨健康股份有限公司' });
+    await expect(col).toContainText('照服員、司機');
+    await expect(col).toContainText('日照社工');
+  });
+  test('three confirmed approval forms with the same flow, and the five deck originals marked as to confirm', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'fin', 'proc');
+    const rows = page.locator('#view table').first().locator('tbody tr');
+    for (const [i, name] of ['報價單', '出差申請', '零佣金申請'].entries()) {
+      await expect(rows.nth(i)).toContainText(name);
+      await expect(rows.nth(i)).toContainText('已確認');
+      await expect(rows.nth(i)).toContainText('依組織圖 V3 逐層往上簽');
+    }
+    await expect(rows.nth(3)).toContainText('採購申請');
+    await expect(rows.nth(3)).toContainText('簡報原案');
+  });
+  const SAMPLE = [
+    ['案號', '服務項目類別', '項目服務次數', '居服員姓名', '服務日期', '服務時間長度(分)', '服務單位', '服務狀態'],
+    ['T-001', '陪伴服務', '1', '測試員甲', '2026-09-30', '60', '機構一', '已簽退'],
+    ['T-002', '陪伴服務', '1', '測試員乙', '2026-10-02', '90', '機構一', '忘簽退'],
+    ['T-002', '協助沐浴及洗頭', '1', '測試員乙', '2026-10-03', '30', '機構二', '服務未遇(新制)'],
+    ['T-003', '陪伴服務', '1', '測試員甲二', '2026-10-04', '60', '機構一', '已簽退'],
+  ];
+  async function importRows(page, data) {
+    await openPortal(page);
+    await go(page, 'svc', 'case');
+    const bytes = await page.evaluate(async d => Array.from(new Uint8Array(await buildXlsx(d).arrayBuffer())), data);
+    await page.setInputFiles('#svcFile', { name: 's.xlsx', mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) });
+    await expect(page.locator('#svcMonth')).toBeVisible();
+  }
+  test('summary table: people served per month and unit, forgot-sign-out rows counted, decisions listed', async ({ page }) => {
+    await importRows(page, SAMPLE);
+    await expect(page.locator('#svcMonth option')).toHaveText(['2026-09', '2026-10']);
+    await expect(page.locator('#svcMonth')).toHaveValue('2026-10');                       // 預設最新月份
+    const units = page.locator('#svcUnits tbody tr');
+    await expect(units.filter({ hasText: '機構一' })).toContainText('2');                 // 10 月機構一：T-002、T-003
+    await expect(units.filter({ hasText: '機構二' })).toContainText('1');
+    await expect(units.filter({ hasText: '合計' })).toContainText('2');                   // 當月不重複人數 = 2（T-002 只算一次）
+    await expect(units.filter({ hasText: '合計' })).toContainText('3.0');                 // (90+30+60) 分 = 3.0 小時：忘簽退與服務未遇都計入
+    await page.selectOption('#svcMonth', '2026-09');
+    await expect(page.locator('#svcUnits tbody tr', { hasText: '合計' })).toContainText('1.0');
+    await expect(page.locator('#svcDecided')).toContainText('不區分結案或暫停');
+    await expect(page.locator('#svcDecided')).toContainText('先計入居服員工時');
+    await expect(page.locator('#svcDecided')).toContainText('後綴「二」');
+    await expect(page.locator('#view')).toContainText('第一版以居家服務為主');
+  });
+  test('a name with the suffix 二 is flagged as a same-name case for a person to check', async ({ page }) => {
+    await importRows(page, SAMPLE);
+    await expect(page.locator('#view tbody tr', { hasText: '測試員甲二' })).toContainText('同名同姓');
+  });
+});
+
+test.describe('10/20 permissions: system admin read-only, HR and manager scopes, org chart editing', () => {
+  test('system admin can view but not edit employees; HR and manager can', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'hr', 'emp');
+    await expect(page.locator('[data-newemp]')).toBeDisabled();                       // 系統管理員：可檢視，不可修改
+    await setRole(page, 'hr');
+    await go(page, 'hr', 'emp');
+    await expect(page.locator('[data-newemp]')).toBeEnabled();
+    await setRole(page, 'manager');
+    await go(page, 'hr', 'emp');
+    await expect(page.locator('[data-newemp]')).toBeEnabled();                        // 管理者：幾乎全部可修改
+  });
+  test('manager sees everyone’s pay but cannot change payroll', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'manager');
+    await go(page, 'hr', 'emp');
+    await expect(empRows(page).first()).toContainText('NT$');
+    expect(await page.evaluate(() => payEdit())).toBe(false);
+    await go(page, 'pay', 'run');
+    await expect(page.locator('#view')).toContainText('可檢視');
+    await setRole(page, 'boss');
+    expect(await page.evaluate(() => payEdit())).toBe(false);                          // 老闆也只能檢視
+  });
+  test('HR cannot change permissions but can approve and finalise leave', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'hr');
+    const caps = await page.evaluate(() => ({ perms: can('perms'), approve: can('approve'), finalize: can('finalize'), ann: can('annGroup') }));
+    expect(caps).toEqual({ perms: false, approve: true, finalize: true, ann: true });
+    const sys = await page.evaluate(() => can('perms'));
+    expect(sys).toBe(false);
+  });
+
+  test('only the manager and system admin can add or remove people on the org chart', async ({ page }) => {
+    await openPortal(page);
+    for (const role of ['hr', 'daydir', 'employee']) {
+      await setRole(page, role);
+      await go(page, 'perm', 'orgfn');
+      await expect(page.locator('[data-orgedit-toggle]')).toHaveCount(0);
+      await expect(page.locator('#view')).toContainText('只有管理者與系統管理員可以增減組織圖');
+    }
+    for (const role of ['admin', 'manager']) {
+      await setRole(page, role);
+      await go(page, 'perm', 'orgfn');
+      await page.click('[data-orgedit-toggle]');
+      await expect(page.locator('#orgAddForm')).toBeVisible();
+      const before = await page.locator('.leaf').count();
+      await page.selectOption('#orgAddForm [name="unit"]', 'O1');
+      await page.selectOption('#orgAddForm [name="dept"]', 'day');
+      await page.fill('#orgAddForm [name="label"]', '示範人員 · 照服員');
+      await page.click('#orgAddForm button[type="submit"]');
+      await expect(page.locator('input.leaf[data-orgedit^="X"]')).toHaveCount(1);        // 新增的在編輯模式是輸入框
+      await page.locator('input.leaf[data-orgedit^="X"]').locator('xpath=following-sibling::button').click();
+      await expect(page.locator('input.leaf[data-orgedit^="X"]')).toHaveCount(0);        // 刪除剛加的
+      const first = page.locator('button.orgdel[data-orgdel]').first();
+      const id = await first.getAttribute('data-orgdel');
+      await first.click();
+      await expect(page.locator(`[data-orgedit="${id}"]`)).toHaveCount(0);               // 從圖上移除（不是刪員工資料）
+      expect(await page.evaluate(i => !!STAFF.find(s => s.id === i), id)).toBe(true);
+      await page.click('[data-orgedit-toggle]');
+      expect(await page.locator('.leaf').count()).toBeLessThan(before + 1);
+      await page.evaluate(() => { state.orgHidden = []; state.orgExtra = []; state.orgEditMode = false; });
+    }
+  });
+  test('the added person shows on the chart for everyone and is marked as a position only', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'perm', 'orgfn');
+    await page.click('[data-orgedit-toggle]');
+    await page.fill('#orgAddForm [name="label"]', '新增示範 · 司機');
+    await page.click('#orgAddForm button[type="submit"]');
+    await page.click('[data-orgedit-toggle]');
+    await expect(page.locator('.leaf.extra', { hasText: '新增示範 · 司機' })).toBeVisible();
+    await setRole(page, 'hr');
+    await go(page, 'perm', 'orgfn');
+    await expect(page.locator('.leaf.extra', { hasText: '新增示範 · 司機' })).toBeVisible();
+  });
+
+  test('permission matrix edit: cancel restores, save keeps', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'perm', 'matrix');
+    await editPerms(page);
+    await page.click('[data-perm="daydir|approve"]');
+    await expect(page.locator('[data-perm="daydir|approve"]')).toContainText('不可');
+    await page.click('[data-perm-cancel]');
+    await editPerms(page);
+    await expect(page.locator('[data-perm="daydir|approve"]')).toContainText('可');          // 取消後回到原本
+    await page.click('[data-perm="daydir|approve"]');
+    await page.click('[data-perm-save]');
+    await editPerms(page);
+    await expect(page.locator('[data-perm="daydir|approve"]')).toContainText('不可');        // 儲存後保留
+    await page.click('[data-perm-cancel]');
   });
 });
