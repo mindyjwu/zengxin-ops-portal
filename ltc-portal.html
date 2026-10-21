@@ -4563,12 +4563,12 @@ function cloudCompareCard(){
         ['10/14 的方向是傾向 Google、300 人、估 2–3 TB（上面「雲端儲存空間估算」）。照這份表，Google 的方案（含 Cloud Run 或 e2-medium）和這個方向一致；這是我的建議，還沒有決定。','The 14 Oct direction was Google, 300 people, about 2–3 TB (see the estimate above). On this table the Google options (with Cloud Run or e2-medium) fit that direction; this is my suggestion, not a decision.'],
         ['這份比較沒有包含：開發與維護人力、資料庫實際用量、備份、個資法與資安要求。','Not included: development and maintenance staff, actual database use, backups, and privacy and security requirements.']
       ].map(x=>`<li>${esc(both(x[0],x[1]))}</li>`).join('')}</ul>
-      <div class="eyebrow">${esc(both('上線前要確認的四件事：粗估（以 300 人、Google Cloud 為基準；我的估算，不是報價）','Four things to confirm before go-live: rough estimate (300 people, Google Cloud; my estimate, not a quote)'))}</div>
+      <div class="eyebrow">${esc(both('上線前要確認的四件事：粗估（已確認 300 人、公司用 Google；我的估算，不是報價）','Four things to confirm before go-live: rough estimate (300 people and Google confirmed; my estimate, not a quote)'))}</div>
       ${tbl([['事項','粗估','還要確認'],
-        ['① 預估用量','每月請求約 40 萬次（每人每天約 60 次），在 Cloud Run 每月免費 200 萬次之內；打卡約 2.6 萬筆／月，資料量一年不到 1 GB；照片若全員每天 2 張、壓縮後每張約 150 KB，約 2 GB／月、5 年約 120 GB（照片目前只保留功能，這是上限）','實際人數（300 或 2,000）、照片要不要啟用、居服員是否都要帳號'],
+        ['① 預估用量','每月請求約 40 萬次（每人每天約 60 次），在 Cloud Run 每月免費 200 萬次之內；打卡約 2.6 萬筆／月，資料量一年不到 1 GB；照片若全員每天 2 張、壓縮後每張約 150 KB，約 2 GB／月、5 年約 120 GB（照片目前只保留功能，這是上限）','照片要不要啟用、居服員是否都要帳號（人數已定 300；長期 2,000 另算）'],
         ['② 費用控管','主機近乎免費到 US$5；資料庫（小型正式規格）約 US$10–50；檔案儲存約 US$3；合計約 US$20–60／月（約 NT$630–1,900）。表上也寫小型 Portal 粗估 US$20–50、資料庫另計。做法：設每月預算與 50%／90%／100% 提醒信、限制 Cloud Run 最多幾個執行個體、照片壓縮','每月預算上限、誰收帳單與提醒信'],
         ['③ 備份','資料庫每日自動備份、保留 7–30 天；檔案開版本紀錄；打卡紀錄法定保存 5 年，每年另存一份封存檔；成本約再加 US$5 以內；每季做一次還原演練','備份保留天數、誰負責還原演練'],
-        ['④ 權限設定','兩層：雲端專案（只有 IT 少數人、需雙重驗證、最小權限）與 Portal 內的 15 個身分權限表；員工用 Google 帳號登入（表上寫 Google 帳號 SSO，前提是公司用 Google Workspace）；測試與正式分開成兩個專案；金鑰密碼不放程式庫','公司用 Google 還是 Microsoft、誰有雲端管理權限']])}
+        ['④ 權限設定','兩層：雲端專案（只有 IT 少數人、需雙重驗證、最小權限）與 Portal 內的 15 個身分權限表；公司用 Google，員工用 Google 帳號登入（SSO）；測試與正式分開成兩個專案；金鑰密碼不放程式庫','誰有雲端管理權限（公司已確認使用 Google）']])}
     </div></section>`;
 }
 function viewDocSysInfo(){
