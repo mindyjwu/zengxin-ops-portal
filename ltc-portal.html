@@ -6009,6 +6009,7 @@ function permItems(){
    系統管理員：可檢視所有內容，不可修改；例外是權限設定、組織圖增刪與系統設定。
    人資：人事系統與公告欄可修改；權限設定只能看。管理者：幾乎全部可修改，薪資計算只能檢視。 */
 function meeting1020(itemZh, ck, code){
+  if(ck==='it'&&/^薪資計算/.test(itemZh)) return '可檢視';   // 10/21 確認：系統管理員可以看薪資（Excel 原本是不可），只能看
   if(!code||code==='不可') return code;
   if(ck==='it'){
     if(/^私人秘書/.test(itemZh)) return code;

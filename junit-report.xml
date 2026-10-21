@@ -1,6 +1,6 @@
-<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="2.7978579999999997">
-<testsuite name="portal.e2e.test.js" timestamp="2026-10-21T04:56:28.917Z" hostname="chromium" tests="1" failures="0" skipped="0" time="1.863" errors="0">
-<testcase name="CSV exports › the scope page leads with 12 action items and keeps the long logs collapsed" classname="portal.e2e.test.js" time="1.863">
+<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="5.3517719999999995">
+<testsuite name="portal.e2e.test.js" timestamp="2026-10-21T15:20:04.932Z" hostname="chromium" tests="1" failures="0" skipped="0" time="3.478" errors="0">
+<testcase name="Employee role &amp; 私人秘書 (My Desk) › page access follows the title matrix Excel and updates when the admin edits a cell" classname="portal.e2e.test.js" time="3.478">
 </testcase>
 </testsuite>
 </testsuites>
