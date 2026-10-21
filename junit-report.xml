@@ -1,26 +1,20 @@
-<testsuites id="" name="" tests="11" failures="0" skipped="0" errors="0" time="19.349315999999998">
-<testsuite name="portal.e2e.test.js" timestamp="2026-10-21T21:48:15.867Z" hostname="chromium" tests="11" failures="0" skipped="0" time="17.231" errors="0">
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide has the pre-MVP checklist and the follow-up message" classname="portal.e2e.test.js" time="1.614">
+<testsuites id="" name="" tests="8" failures="0" skipped="0" errors="0" time="17.624276000000002">
+<testsuite name="portal.e2e.test.js" timestamp="2026-10-21T22:02:44.242Z" hostname="chromium" tests="8" failures="0" skipped="0" time="13.725" errors="0">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide has the pre-MVP checklist and the follow-up message" classname="portal.e2e.test.js" time="2.665">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide links only to walkthroughs that exist" classname="portal.e2e.test.js" time="1.606">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide links only to walkthroughs that exist" classname="portal.e2e.test.js" time="1.741">
 </testcase>
-<testcase name="Updates from the 7 Oct meeting › system info says mobile clock-in works and only cloud storage is missing" classname="portal.e2e.test.js" time="1.311">
+<testcase name="CSV exports › the user guide explains how to estimate cloud storage, with numbers that match the estimator" classname="portal.e2e.test.js" time="2.867">
 </testcase>
-<testcase name="CSV exports › the cloud storage estimator computes from the assumptions and has presets" classname="portal.e2e.test.js" time="1.862">
+<testcase name="Meeting agenda in the guide › guide lists the six agenda items with a message colleagues can copy" classname="portal.e2e.test.js" time="1.302">
 </testcase>
-<testcase name="CSV exports › the user guide explains how to estimate cloud storage, with numbers that match the estimator" classname="portal.e2e.test.js" time="2.653">
+<testcase name="Formal org chart layout, upload formats, version and revision date › version is v3.4 and the footer shows the revision date, not the demo date" classname="portal.e2e.test.js" time="1.233">
 </testcase>
-<testcase name="Meeting agenda in the guide › guide lists the six agenda items with a message colleagues can copy" classname="portal.e2e.test.js" time="1.343">
+<testcase name="Formal org chart layout, upload formats, version and revision date › guide, index and mobile app show the same version and a revision date" classname="portal.e2e.test.js" time="1.399">
 </testcase>
-<testcase name="Formal org chart layout, upload formats, version and revision date › guide, index and mobile app show the same version and a revision date" classname="portal.e2e.test.js" time="1.412">
+<testcase name="v3.2 section in the guide › records the csv support, upload formats and revision date, with a table of import formats" classname="portal.e2e.test.js" time="1.311">
 </testcase>
-<testcase name="v3.2 section in the guide › records the csv support, upload formats and revision date, with a table of import formats" classname="portal.e2e.test.js" time="1.17">
-</testcase>
-<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › approval levels from org chart V3: five chains that all end at the manager and the owner, positions only" classname="portal.e2e.test.js" time="1.27">
-</testcase>
-<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › cloud plan comparison: both tables, a head-count calculator, and the reminders" classname="portal.e2e.test.js" time="1.699">
-</testcase>
-<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › the guide records the 20 Oct update and the repaired agenda table" classname="portal.e2e.test.js" time="1.291">
+<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › the guide records the 20 Oct update and the repaired agenda table" classname="portal.e2e.test.js" time="1.207">
 </testcase>
 </testsuite>
 </testsuites>
