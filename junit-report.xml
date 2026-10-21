@@ -1,18 +1,18 @@
-<testsuites id="" name="" tests="7" failures="0" skipped="0" errors="0" time="17.27866">
-<testsuite name="portal.e2e.test.js" timestamp="2026-10-21T15:41:41.474Z" hostname="chromium" tests="7" failures="0" skipped="0" time="13.166" errors="0">
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide has the pre-MVP checklist and the follow-up message" classname="portal.e2e.test.js" time="2.646">
+<testsuites id="" name="" tests="7" failures="0" skipped="0" errors="0" time="16.482722999999996">
+<testsuite name="portal.e2e.test.js" timestamp="2026-10-21T17:22:54.597Z" hostname="chromium" tests="7" failures="0" skipped="0" time="12.694" errors="0">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide has the pre-MVP checklist and the follow-up message" classname="portal.e2e.test.js" time="2.607">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide links only to walkthroughs that exist" classname="portal.e2e.test.js" time="2.202">
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide links only to walkthroughs that exist" classname="portal.e2e.test.js" time="1.988">
 </testcase>
-<testcase name="CSV exports › the user guide explains how to estimate cloud storage, with numbers that match the estimator" classname="portal.e2e.test.js" time="2.964">
+<testcase name="CSV exports › the user guide explains how to estimate cloud storage, with numbers that match the estimator" classname="portal.e2e.test.js" time="2.912">
 </testcase>
-<testcase name="Meeting agenda in the guide › guide lists the six agenda items with a message colleagues can copy" classname="portal.e2e.test.js" time="1.304">
+<testcase name="Meeting agenda in the guide › guide lists the six agenda items with a message colleagues can copy" classname="portal.e2e.test.js" time="1.167">
 </testcase>
-<testcase name="Formal org chart layout, upload formats, version and revision date › guide, index and mobile app show the same version and a revision date" classname="portal.e2e.test.js" time="1.437">
+<testcase name="Formal org chart layout, upload formats, version and revision date › guide, index and mobile app show the same version and a revision date" classname="portal.e2e.test.js" time="1.422">
 </testcase>
-<testcase name="v3.2 section in the guide › records the csv support, upload formats and revision date, with a table of import formats" classname="portal.e2e.test.js" time="1.275">
+<testcase name="v3.2 section in the guide › records the csv support, upload formats and revision date, with a table of import formats" classname="portal.e2e.test.js" time="1.304">
 </testcase>
-<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › the guide records the 20 Oct update and the repaired agenda table" classname="portal.e2e.test.js" time="1.338">
+<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › the guide records the 20 Oct update and the repaired agenda table" classname="portal.e2e.test.js" time="1.294">
 </testcase>
 </testsuite>
 </testsuites>
