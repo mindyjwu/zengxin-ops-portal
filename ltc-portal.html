@@ -4559,13 +4559,13 @@ function cloudCompareCard(){
       <div class="eyebrow">${esc(both('我的提醒（請需求端與 IT 確認）','My reminders (for the requester side and IT to confirm)'))}</div>
       <ul style="margin:0;padding-left:20px;line-height:1.8">${[
         ['表上寫 Google「雲端空間 30GB／2TB（全公司共用）」。我的了解是 Google 的空間是「每位使用者各有配額、整個組織加總共用」，不是全公司只有 2TB；兩種算法差很多，請向 Google 或官網確認。','The table says Google storage is 30GB / 2TB “shared company-wide”. My understanding is that Google gives each user a quota and pools them across the organisation, not 2TB for the whole company; the two readings differ a lot, so please confirm with Google or its site.'],
-        ['是不是每位居服員、照服員都需要一個授權帳號？如果只有管理與行政人員需要，費用會低很多；這會直接決定上面「人數」填多少。','Does every home-care worker and care attendant need a licensed account? If only management and admin staff do, the cost is much lower; this decides the head count above.'],
+        ['10/21 已確認：居服員都要帳號，所以 300 人全部都要。辦公室套件 300 人約 US$2,100／月（Starter，約 NT$66,000）到 US$4,200／月（Standard），遠高於 Portal 主機的 US$20–60，是雲端費用的大頭；要不要全員都買授權（或有沒有只用 Portal 登入的做法）值得跟 Google 報價確認。','Confirmed 21 Oct: all home-care workers need accounts, so all 300 do. At 300 people the office suite is about US$2,100/month (Starter, about NT$66,000) to US$4,200 (Standard), far above the US$20–60 for portal hosting, so it is the bulk of the cloud bill. Ask Google whether every account needs a full licence or whether a login-only option exists.'],
         ['10/14 的方向是傾向 Google、300 人、估 2–3 TB（上面「雲端儲存空間估算」）。照這份表，Google 的方案（含 Cloud Run 或 e2-medium）和這個方向一致；這是我的建議，還沒有決定。','The 14 Oct direction was Google, 300 people, about 2–3 TB (see the estimate above). On this table the Google options (with Cloud Run or e2-medium) fit that direction; this is my suggestion, not a decision.'],
         ['這份比較沒有包含：開發與維護人力、資料庫實際用量、備份、個資法與資安要求。','Not included: development and maintenance staff, actual database use, backups, and privacy and security requirements.']
       ].map(x=>`<li>${esc(both(x[0],x[1]))}</li>`).join('')}</ul>
       <div class="eyebrow">${esc(both('上線前要確認的四件事：粗估（已確認 300 人、公司用 Google；我的估算，不是報價）','Four things to confirm before go-live: rough estimate (300 people and Google confirmed; my estimate, not a quote)'))}</div>
       ${tbl([['事項','粗估','還要確認'],
-        ['① 預估用量','每月請求約 40 萬次（每人每天約 60 次），在 Cloud Run 每月免費 200 萬次之內；打卡約 2.6 萬筆／月，資料量一年不到 1 GB；照片若全員每天 2 張、壓縮後每張約 150 KB，約 2 GB／月、5 年約 120 GB（照片目前只保留功能，這是上限）','照片要不要啟用、居服員是否都要帳號（人數已定 300；長期 2,000 另算）'],
+        ['① 預估用量','每月請求約 40 萬次（每人每天約 60 次），在 Cloud Run 每月免費 200 萬次之內；打卡約 2.6 萬筆／月，資料量一年不到 1 GB；照片若全員每天 2 張、壓縮後每張約 150 KB，約 2 GB／月、5 年約 120 GB（照片目前只保留功能，這是上限）','照片要不要啟用、全員授權費用要跟 Google 報價（人數已定 300、居服員都要帳號；長期 2,000 另算）'],
         ['② 費用控管','主機近乎免費到 US$5；資料庫（小型正式規格）約 US$10–50；檔案儲存約 US$3；合計約 US$20–60／月（約 NT$630–1,900）。表上也寫小型 Portal 粗估 US$20–50、資料庫另計。做法：設每月預算與 50%／90%／100% 提醒信、限制 Cloud Run 最多幾個執行個體、照片壓縮','每月預算上限、誰收帳單與提醒信'],
         ['③ 備份','資料庫每日自動備份、保留 7–30 天；檔案開版本紀錄；打卡紀錄法定保存 5 年，每年另存一份封存檔；成本約再加 US$5 以內；每季做一次還原演練','備份保留天數、誰負責還原演練'],
         ['④ 權限設定','兩層：雲端專案（只有 IT 少數人、需雙重驗證、最小權限）與 Portal 內的 15 個身分權限表；公司用 Google，員工用 Google 帳號登入（SSO）；測試與正式分開成兩個專案；金鑰密碼不放程式庫','誰有雲端管理權限（公司已確認使用 Google）']])}
