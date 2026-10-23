@@ -2934,3 +2934,49 @@ test.describe('仁寶 dashboard, first version (22 Oct)', () => {
     await expect(d).not.toContainText('測試員');                          // 儀表板不顯示姓名
   });
 });
+
+test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () => {
+  const csvOf = rows => '\ufeff' + rows.map(r => r.join(',')).join('\r\n') + '\r\n';
+  const importCsv = async (page, rows) => {
+    await go(page, 'svc', 'case');
+    await page.setInputFiles('#svcFile', { name: 'oct.csv', mimeType: 'text/csv', buffer: Buffer.from(csvOf(rows), 'utf8') });
+    await expect(page.locator('#svcDash')).toBeVisible();
+  };
+  const HEAD = ['案號', '服務項目類別', '項目服務次數', '居服員姓名', '服務日期', '服務時間長度(分)', '項目單價'];
+
+  test('revenue-share draft: unit price x count x ratio, default and per-item ratios', async ({ page }) => {
+    await openPortal(page);
+    await importCsv(page, [HEAD,
+      ['T-1', '陪伴服務', '1', '測試員甲', '2026-10-05', '60', '175'],
+      ['T-2', '陪伴服務', '2', '測試員甲', '2026-10-06', '60', '175'],
+      ['T-3', '協助沐浴及洗頭', '1', '測試員乙', '2026-10-07', '30', '325']]);
+    await go(page, 'pay', 'calc');
+    const card = page.locator('#paySplit');
+    await expect(card).toContainText('申報金額合計：NT$850');
+    await expect(card).toContainText('拆帳金額合計：NT$510');                     // 850 × 60%
+    await card.locator('#splitRatio').fill('50');
+    await card.locator('#splitRatio').dispatchEvent('change');
+    await expect(page.locator('#paySplit')).toContainText('拆帳金額合計：NT$425');
+    const it = page.locator('#paySplit [data-splititem="陪伴服務"]');
+    await it.fill('100');
+    await it.dispatchEvent('change');
+    await expect(page.locator('#paySplit')).toContainText('拆帳金額合計：NT$688');   // 525×100% + 325×50% = 687.5，四捨五入
+    await expect(page.locator('#paySplit')).toContainText('草稿');
+  });
+
+  test('without an import the draft asks for the 仁寶 file', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'pay', 'calc');
+    await expect(page.locator('#paySplit')).toContainText('先到「業務資料整合');
+  });
+
+  test('imported 仁寶 hours replace the demo hours for a matching hourly worker', async ({ page }) => {
+    await openPortal(page);
+    const name = await page.evaluate(() => person('A007').zh);
+    const before = await page.evaluate(() => payInputs('A007', '2026-10').regH);
+    await importCsv(page, [HEAD, ['T-1', '陪伴服務', '1', name, '2026-10-05', '150', '175']]);
+    const after = await page.evaluate(() => { const i = payInputs('A007', '2026-10'); return { h: i.regH, src: i.sources.includes('仁寶') }; });
+    expect(after).toEqual({ h: 2.5, src: true });                              // 150 分鐘 = 2.5 小時
+    expect(before).not.toBe(2.5);
+  });
+});
