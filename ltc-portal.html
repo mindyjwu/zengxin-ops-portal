@@ -4796,11 +4796,11 @@ function svcAggregate(rows){
   /* 表頭可能是兩列（上列 A–R、下列 S 以後），合併後用位置找 */
   const lab=[]; for(let r=h;r<=Math.min(h+1,rows.length-1);r++) (rows[r]||[]).forEach((v,i)=>{ const t=norm(v); if(t) (lab[i]=lab[i]||[]).push(t); });
   const find=(name,nth=0)=>{ let k=0; for(let i=0;i<lab.length;i++) if(lab[i]&&lab[i].includes(name)){ if(k===nth) return i; k++; } return -1; };
-  const C={case:find('案號'), item:find('服務項目類別'), times:find('項目服務次數'), who:find('居服員姓名'), date:find('服務日期',1)>=0?find('服務日期',1):find('服務日期'), unit:find('服務單位'), mins:find('服務時間長度(分)'), plan:find('排班時間長度(分)'), status:find('服務狀態')};
+  const C={case:find('案號'), item:find('服務項目類別'), times:find('項目服務次數'), who:find('居服員姓名'), date:find('服務日期',1)>=0?find('服務日期',1):find('服務日期'), unit:find('服務單位'), mins:find('服務時間長度(分)'), plan:find('排班時間長度(分)'), status:find('服務狀態'), late:find('是否遲到'), short:find('是否時數不足'), otype:find('加班類型')};
   const missing=SVC_NEED.filter((n,i)=>[C.case,C.item,C.times,C.who,C.date,C.mins][i]<0);
   if(missing.length) return {fatal:'缺少必要欄位：'+missing.join('、')};
   const dataStart=h+((rows[h+1]||[]).map(norm).includes('居服員姓名')?2:1);
-  const A={rows:0,skipped:[],cases:new Set(),items:{},who:{},dates:new Set(),odd:{noOut:0,noShow:0},mon:{},mu:{}};
+  const A={rows:0,skipped:[],cases:new Set(),items:{},who:{},dates:new Set(),odd:{noOut:0,noShow:0,late:0,short:0,zero:0},mon:{},mu:{},day:{},planMin:0,ot:{}};
   const isoDate=v=>{ const m=String(v).trim().match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/); return m?`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`:(/^\d{5}$/.test(String(v).trim())?new Date(Date.UTC(1899,11,30)+ +v*864e5).toISOString().slice(0,10):''); };
   for(let r=dataStart;r<rows.length;r++){
     const x=rows[r]||[]; if(!String(x[C.case]??'').trim()) continue;
@@ -4814,19 +4814,59 @@ function svcAggregate(rows){
     const o=A.items[it]=A.items[it]||{n:0,min:0}; o.n+=n; o.min+=m;
     const w=A.who[who]=A.who[who]||{min:0,byDay:{}}; w.min+=m; w.byDay[d]=(w.byDay[d]||0)+m;
     const st=C.status>=0?String(x[C.status]??''):''; if(st.includes('忘簽退')) A.odd.noOut++; if(st.includes('未遇')) A.odd.noShow++;
+    if(C.late>=0&&String(x[C.late]??'').trim()==='是') A.odd.late++; if(C.short>=0&&String(x[C.short]??'').trim()==='是') A.odd.short++;
+    if(m===0) A.odd.zero++; const dd=A.day[d]=A.day[d]||{min:0,rows:0}; dd.min+=m; dd.rows++; const pm=C.plan>=0?parseFloat(x[C.plan]):NaN; if(isFinite(pm)) A.planMin+=pm;
+    const ot=C.otype>=0?(String(x[C.otype]??'').trim()||'（未填）'):'（無此欄）'; A.ot[ot]=(A.ot[ot]||0)+m;
   }
   const ds=[...A.dates].sort();
   const sz=o=>({cases:o.cases.size,rows:o.rows,min:o.min,who:o.who.size});   // 只留數字，不留個案編號與姓名集合
   const mon={}, mu={}; Object.keys(A.mon).forEach(k=>{ mon[k]=sz(A.mon[k]); mu[k]={}; Object.keys(A.mu[k]).forEach(u=>{ mu[k][u]=sz(A.mu[k][u]); }); });
-  return {rows:A.rows, skipped:A.skipped, cases:A.cases.size, items:A.items, who:A.who, from:ds[0], to:ds[ds.length-1], odd:A.odd, mon, mu};
+  return {rows:A.rows, skipped:A.skipped, cases:A.cases.size, items:A.items, who:A.who, from:ds[0], to:ds[ds.length-1], odd:A.odd, mon, mu, day:A.day, planMin:A.planMin, ot:A.ot};
 }
 const svcHr=m=>(m/60).toFixed(1);
 function svcWeekOf(d){ const t=new Date(d+'T00:00:00Z'), k=(t.getUTCDay()+6)%7, a=new Date(t-k*864e5), b=new Date(+a+6*864e5); return [a.toISOString().slice(0,10), b.toISOString().slice(0,10)]; }
+function svcDash(g,mo){
+  const M=g.mon[mo]; if(!M) return '';
+  const days=Object.keys(g.day||{}).filter(d=>d.startsWith(mo)).sort(), mx=Math.max(1,...days.map(d=>g.day[d].min));
+  const wk=Object.keys(g.who).map(n=>g.who[n].min/60).filter(h=>h>0), ws=[[0,20],[20,40],[40,60],[60,80],[80,1e9]];
+  const hist=ws.map(([a,b])=>({a,b,n:wk.filter(h=>h>=a&&h<b).length})), hm=Math.max(1,...hist.map(h=>h.n));
+  const items=Object.entries(g.items).sort((a,b)=>b[1].min-a[1].min), top=items.slice(0,8), tm=Math.max(1,...top.map(([,o])=>o.min));
+  const tile=(zh,en,v,sub)=>`<div class="card" style="padding:12px 14px"><div class="muted" style="font-size:12px">${esc(both(zh,en))}</div><div style="font-size:26px;font-weight:700;line-height:1.3">${v}</div>${sub?`<div class="muted" style="font-size:12px">${esc(sub)}</div>`:''}</div>`;
+  const planH=g.planMin?g.planMin/60:0, diff=planH?((M.min/60)-planH):0;
+  const flags=[[both('忘簽退','Forgot sign-out'),g.odd.noOut],[both('服務未遇','Client not met'),g.odd.noShow],[both('遲到','Late'),g.odd.late],[both('時數不足','Short hours'),g.odd.short],[both('服務時間為 0','Zero service minutes'),g.odd.zero],[both('缺時數或居服員、未計入','Missing hours/worker, not counted'),g.skipped.length]];
+  const hbar=(w,t)=>`<div style="background:var(--accent,#2f6f5e);height:10px;border-radius:5px;width:${Math.max(2,Math.round(w))}%" title="${esc(t)}"></div>`;
+  const last=days[days.length-1]||'', [yy,mm]=mo.split('-').map(Number), eom=`${mo}-${String(new Date(Date.UTC(yy,mm,0)).getUTCDate()).padStart(2,'0')}`, part=last&&last<eom;
+  return `<section id="svcDash" class="card"><div class="card-h"><h2>${esc(both('居家服務儀表板（第一版）','Home-care dashboard (first version)'))} · ${esc(mo)}</h2><span class="chip warn">${esc(both('草稿：版面與項目待團隊回饋','Draft: layout and items await team feedback'))}</span></div>
+    <div class="card-b" style="display:grid;gap:14px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px">
+      ${tile('服務人數','People served',M.cases,both('當月實際使用服務的人數','distinct people that month'))}
+      ${tile('工時（小時）','Hours',svcHr(M.min),planH?both(`排班 ${planH.toFixed(1)}，差 ${diff>=0?'+':''}${diff.toFixed(1)}`,`planned ${planH.toFixed(1)}, diff ${diff>=0?'+':''}${diff.toFixed(1)}`):'')}
+      ${tile('居服員','Workers',M.who,'')}
+      ${tile('每位居服員平均工時','Avg hours per worker',M.who?svcHr(M.min/M.who):'—','')}
+      ${tile('每位個案平均工時','Avg hours per person',M.cases?svcHr(M.min/M.cases):'—','')}
+      ${tile('服務紀錄','Records',M.rows,'')}
+    </div>
+    ${part?`<div class="note warn">${esc(both(`注意：這份檔案只到 ${last}，不是整個月（月底 ${eom}）。人數與工時都只是到這天為止的累計，不能和整月比。`,`Note: this file ends on ${last}, not the end of the month (${eom}). People and hours are totals up to that day and not comparable with a full month.`))}</div>`:''}
+    <div class="eyebrow">${esc(both('每日工時（小時）','Hours per day'))}</div>
+    <div role="img" aria-label="${esc(both('每日工時長條圖','Bar chart of hours per day'))}" style="display:flex;align-items:flex-end;gap:2px;height:120px;border-bottom:1px solid var(--line,#ccc)">
+      ${days.map(d=>`<div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;height:100%" title="${esc(d+'：'+svcHr(g.day[d].min)+' 小時')}"><div style="background:var(--accent,#2f6f5e);height:${Math.max(2,Math.round(g.day[d].min/mx*100))}%;border-radius:3px 3px 0 0"></div></div>`).join('')}</div>
+    <div style="display:flex;justify-content:space-between;font-size:11px" class="muted"><span>${esc(days[0]||'')}</span><span>${esc(both('最高','Peak'))} ${svcHr(mx)} ${esc(both('小時','h'))}</span><span>${esc(days[days.length-1]||'')}</span></div>
+    <div class="eyebrow">${esc(both('服務項目：工時前 8 名','Top 8 service items by hours'))}</div>
+    <div style="display:grid;grid-template-columns:minmax(80px,140px) 1fr auto;gap:6px 10px;align-items:center;font-size:13px">
+      ${top.map(([k,o])=>`<span>${esc(k)}</span>${hbar(o.min/tm*100,k+' '+svcHr(o.min))}<span class="num">${svcHr(o.min)}</span>`).join('')}</div>
+    <div class="eyebrow">${esc(both('居服員工時分布（每人當月小時）','Workers by monthly hours'))}</div>
+    <div style="display:grid;grid-template-columns:minmax(80px,140px) 1fr auto;gap:6px 10px;align-items:center;font-size:13px">
+      ${hist.map(h=>`<span>${h.b>1e8?h.a+'+':h.a+'–'+h.b} ${esc(both('小時','h'))}</span>${hbar(h.n/hm*100,h.n+' 位')}<span class="num">${h.n} ${esc(both('位','workers'))}</span>`).join('')}</div>
+    <div class="eyebrow">${esc(both('資料品質與異常（整份檔案）','Data quality and exceptions (whole file)'))}</div>
+    <div class="todostrip">${flags.map(([l,n])=>`<span class="chip ${n?'warn':''}">${esc(l)}：${n}</span>`).join('')}</div>
+    <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('工時＝打卡紀錄的服務時間長度加總；忘簽退與服務未遇先計入（10/20 會議）。個案姓名與身分證字號不顯示也不儲存，這裡只有彙總數字。','Hours = sum of clock-in service minutes; forgot-sign-out and client-not-met rows are counted for now. Client names and ID numbers are neither shown nor stored; only totals appear here.'))}</div>
+    </div></section>`;
+}
 function svcImpView(g){
   const day=state.svcDay||g.to, [w0,w1]=svcWeekOf(day);
   const names=Object.keys(g.who);
   const staffBy={}; STAFF.forEach(s=>{ (staffBy[s.name]=staffBy[s.name]||[]).push(s); });
-  const rows=names.map(n=>{ const w=g.who[n]; let dm=w.byDay[day]||0, wm=0; for(const k in w.byDay) if(k>=w0&&k<=w1) wm+=w.byDay[k]; const mt=staffBy[n]||[]; return {n,dm,wm,tm:w.min,days:Object.keys(w.byDay).length,match:mt.length===1?mt[0].no:(mt.length>1?'同名多人，請人工確認':(/二$/.test(n)&&n.length>2?'同名同姓（後綴「二」），請人工確認':'未對到'))}; }).sort((a,b)=>b.tm-a.tm);
+  const rows=names.map(n=>{ const w=g.who[n]; let dm=w.byDay[day]||0, wm=0; for(const k in w.byDay) if(k>=w0&&k<=w1) wm+=w.byDay[k]; const mt=staffBy[n]||[]; return {n,dm,wm,tm:w.min,days:Object.keys(w.byDay).length,match:mt.length===1?mt[0].no:(mt.length>1?'同名多人，請人工確認':(/\d$/.test(n)&&n.length>2?'同名同姓（姓名後加「2」），請人工確認':'未對到'))}; }).sort((a,b)=>b.tm-a.tm);
   const totMin=Object.values(g.items).reduce((a,o)=>a+o.min,0), totN=Object.values(g.items).reduce((a,o)=>a+o.n,0);
   const items=Object.entries(g.items).sort((a,b)=>b[1].min-a[1].min);
   const bar=p=>`<span style="display:inline-block;height:8px;width:${Math.max(2,Math.round(p*1.4))}px;background:var(--accent,#2f6f5e);border-radius:4px;vertical-align:middle"></span>`;
@@ -4844,7 +4884,7 @@ function svcImpView(g){
     <tr><td><b>${esc(both('合計','Total'))}</b></td><td class="num"><b>${M.cases}</b></td><td class="num"><b>${svcHr(M.min)}</b></td><td class="num"><b>${M.who}</b></td><td class="num"><b>${M.who?svcHr(M.min/M.who):'—'}</b></td></tr></tbody></table></div>
   ${months.length>1?`<div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('月份','Month')}</th><th>${bi('服務人數','People served')}</th><th>${bi('工時（小時）','Hours')}</th></tr></thead><tbody>${months.map(m=>`<tr><td class="mono">${m}</td><td class="num">${g.mon[m].cases}</td><td class="num">${svcHr(g.mon[m].min)}</td></tr>`).join('')}</tbody></table></div>`:''}
   <div class="muted" style="font-size:12.5px">${esc(both('第一版以居家服務為主；日照與 A 個管之後階段再導入（10/21 會議紀錄）。之後會做成可直接在 Portal 查看的 dashboard，先給團隊試用、收集回饋。','The first version centres on home care; day care and A-unit case management come in a later phase (21 Oct meeting notes). It will later become a dashboard in the portal; the team tries this version first and gives feedback.'))}</div>`;
-  return summary+`
+  return svcDash(g,mo)+summary+`
   <div class="eyebrow">${esc(both('明細（整份檔案）','Detail (whole file)'))}</div>
   <div style="display:flex;flex-wrap:wrap;gap:8px">
     <span class="chip">${esc(both('整份檔案服務人數','People served in the file'))}：${g.cases}</span>
