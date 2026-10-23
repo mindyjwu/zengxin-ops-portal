@@ -1,18 +1,97 @@
-<testsuites id="" name="" tests="7" failures="0" skipped="0" errors="0" time="19.774282">
-<testsuite name="portal.e2e.test.js" timestamp="2026-10-23T20:58:16.425Z" hostname="chromium" tests="7" failures="0" skipped="0" time="14.948" errors="0">
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide has the pre-MVP checklist and the follow-up message" classname="portal.e2e.test.js" time="3.761">
+<testsuites id="" name="" tests="28" failures="1" skipped="0" errors="0" time="39.953483999999996">
+<testsuite name="portal.e2e.test.js" timestamp="2026-10-23T22:10:24.337Z" hostname="chromium" tests="28" failures="1" skipped="0" time="36.955" errors="0">
+<testcase name="Payroll night-shift allowance › rotating nurse is paid per evening shift and OT base includes it" classname="portal.e2e.test.js" time="1.351">
 </testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide links only to walkthroughs that exist" classname="portal.e2e.test.js" time="2.134">
+<testcase name="Payroll night-shift allowance › no overnight shifts are rostered while the center has none" classname="portal.e2e.test.js" time="1.204">
 </testcase>
-<testcase name="CSV exports › the user guide explains how to estimate cloud storage, with numbers that match the estimator" classname="portal.e2e.test.js" time="2.916">
+<testcase name="Payroll night-shift allowance › day-shift staff get no allowance" classname="portal.e2e.test.js" time="1.237">
 </testcase>
-<testcase name="Meeting agenda in the guide › guide lists the six agenda items with a message colleagues can copy" classname="portal.e2e.test.js" time="1.565">
+<testcase name="Payroll night-shift allowance › calculator adds allowance per shift and can exclude it from the OT base" classname="portal.e2e.test.js" time="1.421">
 </testcase>
-<testcase name="Formal org chart layout, upload formats, version and revision date › guide, index and mobile app show the same version and a revision date" classname="portal.e2e.test.js" time="1.877">
+<testcase name="Payroll night-shift allowance › calculator includes a part-timer&apos;s allowance in their OT rate" classname="portal.e2e.test.js" time="1.367">
 </testcase>
-<testcase name="v3.2 section in the guide › records the csv support, upload formats and revision date, with a table of import formats" classname="portal.e2e.test.js" time="1.4">
+<testcase name="Payroll night-shift allowance › leave is counted against the evening or overnight shift worked that day" classname="portal.e2e.test.js" time="1.112">
 </testcase>
-<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › the guide records the 20 Oct update and the repaired agenda table" classname="portal.e2e.test.js" time="1.295">
+<testcase name="Payroll night-shift allowance › partial leave on an overnight shift keeps the allowance" classname="portal.e2e.test.js" time="1.203">
+</testcase>
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › payroll, attendance and reports open on the month of the demo date" classname="portal.e2e.test.js" time="2.246">
+</testcase>
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide has the pre-MVP checklist and the follow-up message" classname="portal.e2e.test.js" time="1.117">
+</testcase>
+<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide links only to walkthroughs that exist" classname="portal.e2e.test.js" time="1.498">
+</testcase>
+<testcase name="Updates from the 9/30 meeting › unpaid leave and resignation drop out of payroll from the effective month" classname="portal.e2e.test.js" time="1.177">
+</testcase>
+<testcase name="Updates from the 7 Oct meeting › a new employee works in payroll, attendance and reports" classname="portal.e2e.test.js" time="1.678">
+</testcase>
+<testcase name="Cash pay for staff without a bank account › payroll run lists cash-paid staff with a receipt list to export" classname="portal.e2e.test.js" time="1.335">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/video.webm]]
+
+[[ATTACHMENT|test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/error-context.md]]
+]]>
+</system-out>
+<failure message="expect(received).toBe(expected) // Object.is equality" type="expect.toBe">
+<![CDATA[  [chromium] › portal.e2e.test.js:1404:3 › Cash pay for staff without a bank account › payroll run lists cash-paid staff with a receipt list to export 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "現金發薪簽收清冊_2026-08.csv"
+    Received: "download"
+
+      1413 |     await expect(list.locator('tbody tr')).toHaveCount(3);          // 2 staff + total
+      1414 |     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-cashcsv]')]);
+    > 1415 |     expect(dl.suggestedFilename()).toBe('現金發薪簽收清冊_2026-08.csv');
+           |                                    ^
+      1416 |     const lines = fs.readFileSync(await dl.path(), 'utf8').replace(/^﻿/, '').trim().split('\n');
+      1417 |     expect(lines[0]).toContain('領款人簽名');
+      1418 |     expect(lines.length).toBe(4);
+        at /home/user/zengxin-ops-portal/__tests__/portal.e2e.test.js:1415:36
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/error-context.md
+]]>
+</failure>
+</testcase>
+<testcase name="Cash pay for staff without a bank account › payroll CSV has a pay-method column and no overnight column" classname="portal.e2e.test.js" time="1.395">
+</testcase>
+<testcase name="CSV exports › admin cannot export the payroll (financial) report" classname="portal.e2e.test.js" time="1.003">
+</testcase>
+<testcase name="CSV exports › daydir cannot export the payroll (financial) report" classname="portal.e2e.test.js" time="0.95">
+</testcase>
+<testcase name="CSV exports › the user guide explains how to estimate cloud storage, with numbers that match the estimator" classname="portal.e2e.test.js" time="2.417">
+</testcase>
+<testcase name="CSV exports › the scope page leads with 12 action items and keeps the long logs collapsed" classname="portal.e2e.test.js" time="1.61">
+</testcase>
+<testcase name="Meeting agenda in the guide › guide lists the six agenda items with a message colleagues can copy" classname="portal.e2e.test.js" time="1.068">
+</testcase>
+<testcase name="Formal org chart layout, upload formats, version and revision date › guide, index and mobile app show the same version and a revision date" classname="portal.e2e.test.js" time="1.24">
+</testcase>
+<testcase name="v3.2 section in the guide › records the csv support, upload formats and revision date, with a table of import formats" classname="portal.e2e.test.js" time="1.003">
+</testcase>
+<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › the guide records the 20 Oct update and the repaired agenda table" classname="portal.e2e.test.js" time="1.103">
+</testcase>
+<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › manager sees everyone’s pay but cannot change payroll" classname="portal.e2e.test.js" time="1.277">
+</testcase>
+<testcase name="10/20 payroll categories › three pay categories: monthly staff, hourly home care workers (full and part time), drivers with monthly plus hourly" classname="portal.e2e.test.js" time="1.153">
+</testcase>
+<testcase name="10/20 payroll categories › calculator: the driver’s home-care hours and rate add a separate hourly line" classname="portal.e2e.test.js" time="1.238">
+</testcase>
+<testcase name="Payroll: 仁寶 hours and the revenue-share draft (22 Oct) › revenue-share draft: unit price x count x ratio, default and per-item ratios" classname="portal.e2e.test.js" time="1.441">
+</testcase>
+<testcase name="Payroll: 仁寶 hours and the revenue-share draft (22 Oct) › without an import the draft asks for the 仁寶 file" classname="portal.e2e.test.js" time="1.065">
+</testcase>
+<testcase name="Payroll: 仁寶 hours and the revenue-share draft (22 Oct) › imported 仁寶 hours replace the demo hours for a matching hourly worker" classname="portal.e2e.test.js" time="1.046">
 </testcase>
 </testsuite>
 </testsuites>
