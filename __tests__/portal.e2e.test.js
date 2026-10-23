@@ -2574,7 +2574,7 @@ test.describe('10/20 meeting: org tree, approval forms, 仁寶 summary', () => {
     ['T-001', '陪伴服務', '1', '測試員甲', '2026-09-30', '60', '機構一', '已簽退'],
     ['T-002', '陪伴服務', '1', '測試員乙', '2026-10-02', '90', '機構一', '忘簽退'],
     ['T-002', '協助沐浴及洗頭', '1', '測試員乙', '2026-10-03', '30', '機構二', '服務未遇(新制)'],
-    ['T-003', '陪伴服務', '1', '測試員甲二', '2026-10-04', '60', '機構一', '已簽退'],
+    ['T-003', '陪伴服務', '1', '測試員甲2', '2026-10-04', '60', '機構一', '已簽退'],
   ];
   async function importRows(page, data) {
     await openPortal(page);
@@ -2599,9 +2599,9 @@ test.describe('10/20 meeting: org tree, approval forms, 仁寶 summary', () => {
     await expect(page.locator('#svcDecided')).toContainText('姓名後加「2」');
     await expect(page.locator('#view')).toContainText('第一版以居家服務為主');
   });
-  test('a name with the suffix 二 is flagged as a same-name case for a person to check', async ({ page }) => {
+  test('a name ending in the digit 2 is flagged as a same-name case for a person to check', async ({ page }) => {
     await importRows(page, SAMPLE);
-    await expect(page.locator('#view tbody tr', { hasText: '測試員甲二' })).toContainText('同名同姓');
+    await expect(page.locator('#view tbody tr', { hasText: '測試員甲2' })).toContainText('同名同姓');
   });
 });
 
@@ -2907,5 +2907,30 @@ test.describe('Owner can edit the permission table (21 Oct notes)', () => {
     await setRole(page, 'hr');
     await go(page, 'perm', 'matrix');
     await expect(page.locator('[data-perm-edit]')).toHaveCount(0);
+  });
+});
+
+test.describe('仁寶 dashboard, first version (22 Oct)', () => {
+  const HEAD = ['案號', '服務項目類別', '項目服務次數', '居服員姓名', '服務日期', '服務時間長度(分)', '服務單位', '服務狀態', '是否遲到'];
+  const ROWS = [HEAD,
+    ['T-001', '陪伴服務', '1', '測試員甲', '2026-10-01', '60', '機構一', '已簽退', '否'],
+    ['T-002', '陪伴服務', '1', '測試員乙', '2026-10-02', '90', '機構一', '忘簽退', '是'],
+    ['T-002', '協助沐浴及洗頭', '1', '測試員乙', '2026-10-03', '30', '機構一', '服務未遇(新制)', '否'],
+    ['T-003', '陪伴服務', '1', '測試員甲2', '2026-10-04', '0', '機構一', '已簽退', '否']];
+  test('tiles, charts and exception counts from the import, with a partial-month warning', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'svc', 'case');
+    const csv = '\ufeff' + ROWS.map(r => r.join(',')).join('\r\n') + '\r\n';
+    await page.setInputFiles('#svcFile', { name: 'oct.csv', mimeType: 'text/csv', buffer: Buffer.from(csv, 'utf8') });
+    const d = page.locator('#svcDash');
+    await expect(d).toContainText('居家服務儀表板（第一版）');
+    await expect(d).toContainText('3');                                  // 服務人數
+    await expect(d).toContainText('3.0');                                // (60+90+30+0) 分 = 3.0 小時
+    await expect(d).toContainText('忘簽退：1');
+    await expect(d).toContainText('服務未遇：1');
+    await expect(d).toContainText('遲到：1');
+    await expect(d).toContainText('服務時間為 0：1');
+    await expect(d).toContainText('不是整個月');                            // 資料只到 10/4
+    await expect(d).not.toContainText('測試員');                          // 儀表板不顯示姓名
   });
 });
