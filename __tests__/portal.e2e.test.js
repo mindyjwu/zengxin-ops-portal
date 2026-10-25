@@ -1989,6 +1989,7 @@ test.describe('Meeting agenda in the guide', () => {
     await expect(sec).toContainText('簽核層級');
     await expect(sec).toContainText('仁寶匯入');
     await expect(sec).toContainText('會前請準備');
+    await expect(sec.locator('.note').last().locator('li')).toHaveCount(12);        // 訊息用條列：6 項議程 + 6 項請補資料
     await expect(sec).toContainText('請用自己的手機試一下手機版');
     await expect(sec).toContainText('謝謝提供組織圖 V3 與雲端方案比較');
     await expect(sec).toContainText('各表單簽到哪一層與金額門檻');
