@@ -5844,15 +5844,20 @@ function viewPayCalc(){
   </div>
   ${payRulesNote()}${paySplitCard()}`;
 }
-function paySplitCard(){
-  const g=state.svcImp, ratio=state.splitRatio??60, ir=state.splitItem||(state.splitItem={});
-  const head=`<section class="card" id="paySplit" style="margin-top:14px"><div class="card-h"><h2>${esc(both('拆帳制草稿（居服員）','Revenue-share draft (home care)'))}</h2><span class="chip warn">${esc(both('草稿：分帳比例是假設，待千玉與思慧確認','Draft: split ratio is an assumption, to be confirmed'))}</span></div><div class="card-b" style="display:grid;gap:10px">`;
-  if(!g||!g.sp) return head+`<div class="muted">${esc(both('先到「業務資料整合 › 居服個案管理系統」匯入仁寶檔，這裡就會用檔案裡的服務項目、次數與政府單價試算。','Import the 仁寶 file first (Business data › Home-care case system); this draft then uses its service items, counts and government unit prices.'))}</div></div></section>`;
+function splitData(g){
+  const ratio=state.splitRatio??60, ir=state.splitItem||(state.splitItem={});
   const months=Object.keys(g.sp).sort(), mo=months.includes(state.splitMonth)?state.splitMonth:months[months.length-1], W=g.sp[mo]||{};
   const itemAgg={}; Object.values(W).forEach(it=>Object.entries(it).forEach(([k,v])=>{ const o=itemAgg[k]=itemAgg[k]||{n:0,amt:0}; o.n+=v.n; o.amt+=v.amt; }));
   const pct=k=>{ const v=ir[k]; return (v===undefined||v==='')?ratio:+v; };
   const workers=Object.entries(W).map(([n,it])=>{ let amt=0,pay=0; Object.entries(it).forEach(([k,v])=>{ amt+=v.amt; pay+=v.amt*pct(k)/100; }); return {n,amt,pay}; }).sort((a,b)=>b.pay-a.pay);
   const tot=workers.reduce((a,w)=>({amt:a.amt+w.amt,pay:a.pay+w.pay}),{amt:0,pay:0}), nt=Object.keys(itemAgg).length;
+  return {months,mo,itemAgg,pct,workers,tot,nt,ratio};
+}
+function paySplitCard(){
+  const g=state.svcImp, ratio=state.splitRatio??60, ir=state.splitItem||(state.splitItem={});
+  const head=`<section class="card" id="paySplit" style="margin-top:14px"><div class="card-h"><h2>${esc(both('拆帳制草稿（居服員）','Revenue-share draft (home care)'))}</h2><span class="chip warn">${esc(both('草稿：分帳比例是假設，待千玉與思慧確認','Draft: split ratio is an assumption, to be confirmed'))}</span></div><div class="card-b" style="display:grid;gap:10px">`;
+  if(!g||!g.sp) return head+`<div class="muted">${esc(both('先到「業務資料整合 › 居服個案管理系統」匯入仁寶檔，這裡就會用檔案裡的服務項目、次數與政府單價試算。','Import the 仁寶 file first (Business data › Home-care case system); this draft then uses its service items, counts and government unit prices.'))}</div></div></section>`;
+  const {months,mo,itemAgg,pct,workers,tot,nt}=splitData(g);
   return head+`
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
       <label class="muted" for="splitMonth" style="font-size:12.5px">${esc(both('月份','Month'))}</label><select id="splitMonth">${months.map(m=>`<option value="${m}" ${m===mo?'selected':''}>${m}</option>`).join('')}</select>
@@ -5864,6 +5869,7 @@ function paySplitCard(){
     <div class="eyebrow">${esc(both('服務項目與比例','Items and ratios'))}</div>
     <div class="tablewrap" style="max-height:300px;overflow:auto"><table class="todotbl"><thead><tr><th>${bi('服務項目','Item')}</th><th>${bi('次數','Count')}</th><th>${bi('平均單價','Avg unit price')}</th><th>${bi('申報金額','Billed')}</th><th>${bi('分帳比例（%）','Ratio (%)')}</th></tr></thead><tbody>
       ${Object.entries(itemAgg).sort((a,b)=>b[1].amt-a[1].amt).map(([k,o])=>`<tr><td style="white-space:normal">${esc(k)}</td><td class="num">${o.n}</td><td class="num">${o.n?money(Math.round(o.amt/o.n)):'—'}</td><td class="num">${money(o.amt)}</td><td><input data-splititem="${esc(k)}" type="number" min="0" max="100" step="1" value="${ir[k]??''}" placeholder="${ratio}" style="width:70px" aria-label="${esc(k)}"></td></tr>`).join('')}</tbody></table></div>
+    <div><button class="btn" id="splitXlsx">${esc(both('匯出拆帳制草稿 Excel','Export revenue-share draft (Excel)'))}</button></div>
     <div class="eyebrow">${esc(both('每位居服員的拆帳金額','Split amount per worker'))}</div>
     <div class="tablewrap" style="max-height:340px;overflow:auto"><table class="todotbl"><thead><tr><th>${bi('居服員','Worker')}</th><th>${bi('申報金額','Billed')}</th><th>${bi('拆帳金額','Split amount')}</th></tr></thead><tbody>
       ${workers.map(w=>`<tr><td>${esc(w.n)}</td><td class="num">${money(w.amt)}</td><td class="num">${money(Math.round(w.pay))}</td></tr>`).join('')}
@@ -5890,6 +5896,16 @@ function payRulesNote(){
     </div></section>`;
 }
 BINDERS['pay:calc']=function(){
+  const sx=document.getElementById('splitXlsx'); if(sx) sx.onclick=()=>{
+    const g=state.svcImp; if(!g||!g.sp) return; const d=splitData(g), ratio=state.splitRatio??60, ir=state.splitItem||{};
+    const out=[['拆帳制草稿（'+d.mo+'）'],['草稿：分帳比例是假設（預設 '+ratio+'%），正式比例待確認；算法＝政府單價 × 次數 × 分帳比例；單價取自仁寶檔的「項目單價」。仁寶檔期間：'+g.from+' ~ '+g.to+'。'],[],
+      ['服務項目','次數','平均單價','申報金額','分帳比例（%）']];
+    Object.entries(d.itemAgg).sort((a,b)=>b[1].amt-a[1].amt).forEach(([k,o])=>out.push([k,o.n,o.n?Math.round(o.amt/o.n):0,o.amt,d.pct(k)+(ir[k]===undefined||ir[k]===''?'（預設）':'')]));
+    out.push([],['居服員','申報金額','拆帳金額']);
+    d.workers.forEach(w=>out.push([w.n,w.amt,Math.round(w.pay)]));
+    out.push(['合計',d.tot.amt,Math.round(d.tot.pay)]);
+    saveBlob(buildXlsx(out),'拆帳制草稿_'+d.mo+'.xlsx');
+  };
   const sm=document.getElementById('splitMonth'); if(sm) sm.onchange=()=>{ state.splitMonth=sm.value; render(); };
   const sr=document.getElementById('splitRatio'); if(sr) sr.onchange=()=>{ const v=Math.min(100,Math.max(0,parseFloat(sr.value))); state.splitRatio=isFinite(v)?v:60; render(); };
   document.querySelectorAll('[data-splititem]').forEach(i=>i.onchange=()=>{ const v=parseFloat(i.value); (state.splitItem||(state.splitItem={}))[i.dataset.splititem]=isFinite(v)?Math.min(100,Math.max(0,v)):''; render(); });

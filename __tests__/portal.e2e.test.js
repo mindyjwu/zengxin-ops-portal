@@ -2965,6 +2965,20 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
     await expect(page.locator('#paySplit')).toContainText('草稿');
   });
 
+  test('the draft exports to Excel with the current ratios', async ({ page }) => {
+    await openPortal(page);
+    await importCsv(page, [HEAD, ['T-1', '陪伴服務', '2', '測試員甲', '2026-10-05', '60', '175']]);
+    await go(page, 'pay', 'calc');
+    await page.locator('#splitRatio').fill('50');
+    await page.locator('#splitRatio').dispatchEvent('change');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#splitXlsx')]);
+    expect(dl.suggestedFilename()).toBe('拆帳制草稿_2026-10.xlsx');
+    const buf = fs.readFileSync(await dl.path());
+    expect(buf.subarray(0, 2).toString()).toBe('PK');
+    const text = buf.toString('utf8');
+    for (const s of ['拆帳制草稿（2026-10）', '草稿：分帳比例是假設（預設 50%）', '陪伴服務', '測試員甲', '350', '175']) expect(text).toContain(s);   // 175×2 = 350，50% = 175
+  });
+
   test('without an import the draft asks for the 仁寶 file', async ({ page }) => {
     await openPortal(page);
     await go(page, 'pay', 'calc');
