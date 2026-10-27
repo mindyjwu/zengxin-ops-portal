@@ -641,7 +641,7 @@ test.describe('My Hours', () => {
     await go(page, 'hr', 'mylog');
     await page.click('[data-mytab="balance"]');
     const rows = page.locator('#view table').first().locator('tbody tr');
-    await expect(rows).toHaveCount(9);
+    await expect(rows).toHaveCount(19);                  // 27 Oct: 104 leave list (the 2 designated-staff types are hidden)
 
     const cells = rows.filter({ hasText: '特休' }).locator('td');
     await expect(cells.nth(1)).toContainText('120 h');   // 15 days
@@ -2993,5 +2993,27 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
     const after = await page.evaluate(() => { const i = payInputs('A007', '2026-10'); return { h: i.regH, src: i.sources.includes('仁寶') }; });
     expect(after).toEqual({ h: 2.5, src: true });                              // 150 分鐘 = 2.5 小時
     expect(before).not.toBe(2.5);
+  });
+});
+
+test.describe('Leave types from the 104 setting (27 Oct)', () => {
+  test('new leave types, grouped caps, and designated-staff types hidden', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => {
+      const bal = leaveBalance('H005'), keys = bal.map(b => b.k);
+      return { keys, hasInd: keys.includes('indigenous'), hasCo: keys.includes('companyPersonal'),
+        types: ['bereave1', 'bereave2', 'bereave3', 'maternity', 'prenatal', 'paternity', 'injury', 'disaster'].every(k => keys.includes(k)),
+        grp: LEAVE_GROUPS.persgrp.h, sickgrp: LEAVE_GROUPS.sickgrp.h };
+    });
+    expect(r.types).toBe(true);
+    expect(r.hasInd || r.hasCo).toBe(false);
+    expect([r.grp, r.sickgrp]).toEqual([112, 264]);
+  });
+  test('the leave form lists the new types', async ({ page }) => {
+    await openPortal(page);
+    await go(page, 'desk', 'forms');
+    await page.click('[data-dform="leave"]');
+    const opts = await page.locator('#leaveForm select[name="type"] option').allTextContents();
+    for (const s of ['一類喪假（8 日）', '產假（女）', '陪產檢及陪產假（男）', '公傷病假', '天災停班']) expect(opts.join('|')).toContain(s);
   });
 });
