@@ -1347,7 +1347,7 @@ const ACTIONS = [
   {type:'decide', zh:'手機打卡存什麼、雲端容量與平台', en:'What a punch stores, cloud capacity and platform',
    rec:'10/20 已決定：打卡記錄 IP 位置、不強制拍照、位置只給後台看；照片選填（要伺服器壓縮）；離線先暫存、連網自動上傳；保存 5 年。雲端暫定 Google Cloud 按用量計費，待功能確認測試完（約半個月到一個月）再購買並建 backend。', need:'請提供：預計開帳號的人數、預算與上線時程；IT 確認 IP 定位的做法（後台怎麼取得）', owner:'IT／需求端', due:'11/4', go:['文件管理 › 系統說明','doc','sysinfo']},
   {type:'decide', zh:'員工編號格式與前綴', en:'Employee-number format and prefixes',
-   rec:'建議：A 協會、B 誠芯、C 牛津、D 誠馨健康、H 共用行政，後面三位數；回任已定「重新編號、不沿用舊編號」；104 舊編號留一欄對照。', need:'104 全部在職同仁的完整匯出（做舊編號對照）', owner:'人事／IT', due:'10/28', go:['系統設定 › 員工編號規則','set',null]},
+   rec:'10/28 已定：員編＝公司代號（3 碼：公司所在地英文代碼＋2 碼流水號，如 J02）＋ 4 碼流水號，例如 J020001；9 個公司／機構代號已放進系統設定。回任已定重新編號。', need:'確認：共用行政人員、各單位員工要用公司層級還是附設機構的代號；104 舊編號（如 CSHR150）留一欄對照；104 在職完整匯出', owner:'人事／IT', due:'10/28', go:['系統設定 › 員工編號規則','set',null]},
   {type:'decide', zh:'身分與權限', en:'Roles and permissions',
    rec:'10/20 已決定：系統管理員可看不可改；人資可改人事系統與公告欄、可審核私人秘書表單、不可改權限；管理者幾乎全可改（薪資計算僅檢視）；權限對照表合併成單一頁，管理者與系統管理員可按右上角編輯並儲存。', need:'請需求端確認新規則與 Excel 一致，並把仍標「暫定」的格子填完', owner:'需求端／人事', due:'10/28', go:['權限與範圍 › 權限對照表','perm','matrix']},
   {type:'decide', zh:'組織圖兩個版本', en:'Two org-chart versions',
@@ -1361,7 +1361,7 @@ const ACTIONS = [
   {type:'data', zh:'繼續教育積分匯入', en:'Continuing-education import',
    rec:'', need:'10/20 已定：只有教育訓練專員可新增、修改與匯入（一次匯入整份檔案）；政府積分系統只能逐人查詢，所以仍用 Excel 匯入。請教育訓練照範本整理資料試匯', owner:'教育訓練', due:'10/28', go:['私人秘書 › 課程','desk','course']},
   {type:'data', zh:'拆帳制薪資規則', en:'Revenue-share pay rules',
-   rec:'', need:'10/22 已定算法＝政府單價 × 次數 × 分帳比例；原型已用仁寶十月檔做出草稿（23 個服務項目、單價取自檔案）。請千玉與思慧提供：正式分帳比例（是否每項目不同）、拆帳基準（單價×次數，或檔案的「申報費用」欄；自費項目算不算）、正式薪資格式', owner:'人資／財務', due:'11/11', go:['薪資計算 › 薪資計算機','pay','calc']},
+   rec:'', need:'10/28 已收到給付表與制度：拆帳制＝誠馨綜合式、誠芯居家、誠芯三館的居服員（方案 A）；牛津居服員時薪；其他月薪；日照司機月薪＋拆帳 B。原型已用九月檔算拆帳薪資、業績獎金、偏鄉津貼。請確認：業績獎金區間以「服務金額」為準、AA 碼與多人分配、交通津貼與加扣項怎麼匯入；月薪與時薪規則（HR 整理中）', owner:'人資／財務', due:'11/11', go:['薪資計算 › 薪資計算機','pay','calc']},
   {type:'it', zh:'衛福部積分系統串接', en:'MOHW points-system connection',
    rec:'', need:'IT 先確認串接是否被允許與技術限制；過渡用現有 Excel 格式匯入；帳號密碼不放進網站或程式庫', owner:'IT', due:'待訂', go:['私人秘書 › 課程','desk','course']},
   {type:'it', zh:'手機打卡上線規格與中文輸入法測試', en:'Mobile clock-in go-live and input-method test',
@@ -1903,7 +1903,19 @@ function viewEmployees(){
   </div>`;
 }
 /* 員工編號規則（10/7 會議：依設定邏輯自動帶入，減少人工錯誤；目前是暫定，需求端可提供自訂格式） */
-const NUM_RULES_DEFAULT = {HQ:{prefix:'H',digits:3}, O1:{prefix:'A',digits:3}, O2:{prefix:'B',digits:3}, O3:{prefix:'C',digits:3}, O4:{prefix:'D',digits:3}};
+/* 10/28 需求端提供的正式規則：員編 ＝ 公司代號（3 碼：公司所在地英文代碼＋2 碼流水號）＋ 流水號 4 碼。下面預設用公司層級的代號；附設機構的員工改用機構代號（見下方對照表）。示範人員的舊編號（A001…）維持不變。 */
+const COMPANY_CODES = [
+  ['社團法人中華民國誠馨照顧協會','J01','新竹縣竹東鎮興農街119號'],
+  ['社團法人中華民國誠馨照顧協會附設新竹縣私立誠馨綜合式服務類長期照顧服務機構','J02','新竹縣竹東鎮興農街119號'],
+  ['牛津樂活事業股份有限公司','J03','新竹縣北埔鄉光復街9巷12號'],
+  ['牛津樂活事業股份有限公司附設新竹縣私立牛津居家長照機構','J04','新竹縣北埔鄉光復街9巷12號'],
+  ['誠芯樂活事業股份有限公司','O01','新竹市東區光復路二段962號6樓之6'],
+  ['誠芯樂活事業股份有限公司附設新竹市私立誠芯居家長照機構','O02','新竹市東區光復路二段962號6樓之6'],
+  ['誠芯樂活事業股份有限公司附設私立誠芯三館綜合長照機構','O03','新竹市東區南大路428號3樓'],
+  ['誠馨健康股份有限公司','O04','新竹市東區南大路428號2樓'],
+  ['誠馨健康股份有限公司附設私立誠馨二館社區長照機構','O05','新竹市東區南大路428號2樓']
+];
+const NUM_RULES_DEFAULT = {HQ:{prefix:'J01',digits:4}, O1:{prefix:'J01',digits:4}, O2:{prefix:'O01',digits:4}, O3:{prefix:'J03',digits:4}, O4:{prefix:'O04',digits:4}};
 const numRules = () => state.numRules || (state.numRules=JSON.parse(JSON.stringify(NUM_RULES_DEFAULT)));
 function nextEmpNo(unitId){
   const r=numRules()[unitId]||{prefix:'N',digits:3}; let max=0;
@@ -3380,7 +3392,7 @@ function dqSlip(){
       ls.map(l=>`<tr><td>${esc(state.lang==='zh'?l.zh:l.en)}</td><td class="muted mono" style="font-size:11.5px;white-space:normal">${esc(l.formula)}</td>
         <td class="num">${g==='earn'?'':'−'}${money(l.amt)}</td></tr>`).join(''); };
   return `${monthBar('slipMonth', months, mon, `<span class="chip ok">${esc(both('已發放 '+payDay(mon),'Paid '+payDay(mon)))}</span>
-      <span class="chip">${esc(both(PAY_BASIS_LABEL[payBasis(u)].zh,PAY_BASIS_LABEL[payBasis(u)].en))}</span>${payChip(payMethodOf(u.id))}`)}
+      <span class="chip">${esc(both(payLabel(u).zh,payLabel(u).en))}</span>${payChip(payMethodOf(u.id))}`)}
     <div class="tiles">
       <div class="tile"><span class="k">${esc(both('應發金額','Gross pay'))}</span><span class="v" style="font-size:18px">${money(r.gross)}</span></div>
       <div class="tile"><span class="k">${esc(both('代扣合計','Deductions'))}</span><span class="v" style="font-size:18px">−${money(r.stat+r.adjNeg)}</span></div>
@@ -4749,7 +4761,7 @@ function viewSvcCase(){
   </div>`;
 }
 /* ---------- 仁寶服務記錄匯入：瀏覽器內讀 .xlsx（zip + sharedStrings + sheet），只留彙總 ---------- */
-async function xlsxRead(buf){
+async function xlsxRead(buf, prefer){   // prefer：優先選名稱符合的工作表（例如整份薪資活頁簿裡的「服務紀錄總表」），找不到就用第一個
   const u8=new Uint8Array(buf), dv=new DataView(buf);
   let e=-1; for(let i=u8.length-22;i>=Math.max(0,u8.length-70000);i--){ if(dv.getUint32(i,true)===0x06054b50){ e=i; break; } }
   if(e<0) throw new Error('不是有效的 .xlsx 檔案');
@@ -4772,7 +4784,7 @@ async function xlsxRead(buf){
   /* 第一個工作表 */
   let sheetPath='xl/worksheets/sheet1.xml';
   try{
-    const wb=dom(files['xl/workbook.xml']), rid=wb.querySelector('sheet').getAttribute('r:id')||wb.querySelector('sheet').getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id');
+    const wb=dom(files['xl/workbook.xml']), shs=[...wb.querySelectorAll('sheet')], sh=(prefer&&shs.find(x=>prefer.test(x.getAttribute('name')||'')))||shs[0], rid=sh.getAttribute('r:id')||sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id');
     const rel=[...dom(files['xl/_rels/workbook.xml.rels']).querySelectorAll('Relationship')].find(r=>r.getAttribute('Id')===rid);
     if(rel) sheetPath='xl/'+rel.getAttribute('Target').replace(/^\/?(xl\/)?/,'');
   }catch(_){}
@@ -4814,7 +4826,7 @@ function svcAggregate(rows){
   /* 表頭可能是兩列（上列 A–R、下列 S 以後），合併後用位置找 */
   const lab=[]; for(let r=h;r<=Math.min(h+1,rows.length-1);r++) (rows[r]||[]).forEach((v,i)=>{ const t=norm(v); if(t) (lab[i]=lab[i]||[]).push(t); });
   const find=(name,nth=0)=>{ let k=0; for(let i=0;i<lab.length;i++) if(lab[i]&&lab[i].includes(name)){ if(k===nth) return i; k++; } return -1; };
-  const C={case:find('案號'), item:find('服務項目類別'), times:find('項目服務次數'), who:find('居服員姓名'), date:find('服務日期',1)>=0?find('服務日期',1):find('服務日期'), unit:find('服務單位'), mins:find('服務時間長度(分)'), plan:find('排班時間長度(分)'), status:find('服務狀態'), late:find('是否遲到'), price:find('項目單價'), bill:find('申報費用'), short:find('是否時數不足'), otype:find('加班類型')};
+  const C={case:find('案號'), item:find('服務項目類別'), times:find('項目服務次數'), who:find('居服員姓名'), date:find('服務日期',1)>=0?find('服務日期',1):find('服務日期'), unit:find('服務單位'), mins:find('服務時間長度(分)'), plan:find('排班時間長度(分)'), status:find('服務狀態'), late:find('是否遲到'), price:find('項目單價'), bill:find('申報費用'), code:find('服務項目代碼'), live:find('居住(區)'), short:find('是否時數不足'), otype:find('加班類型')};
   const missing=SVC_NEED.filter((n,i)=>[C.case,C.item,C.times,C.who,C.date,C.mins][i]<0);
   if(missing.length) return {fatal:'缺少必要欄位：'+missing.join('、')};
   const dataStart=h+((rows[h+1]||[]).map(norm).includes('居服員姓名')?2:1);
@@ -4835,14 +4847,17 @@ function svcAggregate(rows){
     if(C.late>=0&&String(x[C.late]??'').trim()==='是') A.odd.late++; if(C.short>=0&&String(x[C.short]??'').trim()==='是') A.odd.short++;
     if(m===0) A.odd.zero++;
     { const pr=C.price>=0?parseFloat(String(x[C.price]??'').replace(/,/g,'')):NaN; if(!isFinite(pr)) A.noPrice++;
-      const SW=((A.sp[mo]=A.sp[mo]||{})[who]=A.sp[mo][who]||{}), SI=SW[it]=SW[it]||{n:0,amt:0}; SI.n+=n; SI.amt+=(isFinite(pr)?pr:0)*n;
+      const code=C.code>=0?String(x[C.code]??'').trim():'', otv=C.otype>=0?String(x[C.otype]??'').trim():'', hol=!!otv&&otv!=='正常班', amt1=(isFinite(pr)?pr:0)*n;
+      const SW=((A.sp[mo]=A.sp[mo]||{})[who]=A.sp[mo][who]||{it:{},rem:new Set(),amt:0}), SI=SW.it[code||'（無代碼）']=SW.it[code||'（無代碼）']||{name:it,n:0,nh:0,amt:0};
+      SI.n+=n; if(hol) SI.nh+=n; SI.amt+=amt1; SW.amt+=amt1; if(C.live>=0&&REMOTE_AREAS.some(a=>String(x[C.live]??'').includes(a))) SW.rem.add(cid);
       const bl=C.bill>=0?parseFloat(String(x[C.bill]??'').replace(/,/g,'')):NaN; if(isFinite(bl)){ A.bill+=bl; A.hasBill=true; } } const dd=A.day[d]=A.day[d]||{min:0,rows:0}; dd.min+=m; dd.rows++; const pm=C.plan>=0?parseFloat(x[C.plan]):NaN; if(isFinite(pm)) A.planMin+=pm;
     const ot=C.otype>=0?(String(x[C.otype]??'').trim()||'（未填）'):'（無此欄）'; A.ot[ot]=(A.ot[ot]||0)+m;
   }
+  const spOut={}; Object.keys(A.sp).forEach(mo=>{ spOut[mo]={}; Object.keys(A.sp[mo]).forEach(w=>{ const o=A.sp[mo][w]; spOut[mo][w]={it:o.it,rem:o.rem.size,amt:o.amt}; }); });   // 個案編號只用來數人，不留在彙總裡
   const ds=[...A.dates].sort();
   const sz=o=>({cases:o.cases.size,rows:o.rows,min:o.min,who:o.who.size});   // 只留數字，不留個案編號與姓名集合
   const mon={}, mu={}; Object.keys(A.mon).forEach(k=>{ mon[k]=sz(A.mon[k]); mu[k]={}; Object.keys(A.mu[k]).forEach(u=>{ mu[k][u]=sz(A.mu[k][u]); }); });
-  return {rows:A.rows, skipped:A.skipped, cases:A.cases.size, items:A.items, who:A.who, from:ds[0], to:ds[ds.length-1], odd:A.odd, mon, mu, day:A.day, planMin:A.planMin, ot:A.ot, sp:A.sp, noPrice:A.noPrice, bill:A.hasBill?A.bill:null};
+  return {rows:A.rows, skipped:A.skipped, cases:A.cases.size, items:A.items, who:A.who, from:ds[0], to:ds[ds.length-1], odd:A.odd, mon, mu, day:A.day, planMin:A.planMin, ot:A.ot, sp:spOut, noPrice:A.noPrice, bill:A.hasBill?A.bill:null};
 }
 const svcHr=m=>(m/60).toFixed(1);
 function svcWeekOf(d){ const t=new Date(d+'T00:00:00Z'), k=(t.getUTCDay()+6)%7, a=new Date(t-k*864e5), b=new Date(+a+6*864e5); return [a.toISOString().slice(0,10), b.toISOString().slice(0,10)]; }
@@ -4947,7 +4962,7 @@ BINDERS['svc:case']=function(){
     if(ext!=='xlsx'&&ext!=='csv'){ state.svcImp=null; state.svcMsg='無法匯入：只收 .xlsx 和 .csv（目前不支援 .'+ext+'）。舊版 .xls 請在 Excel 另存成 .xlsx 或 CSV。'; render(); return; }
     const msg=document.getElementById('svcMsg'); msg.textContent='讀取中…';
     try{
-      const buf=await file.arrayBuffer(), g=svcAggregate(ext==='csv'?csvRead(buf):await xlsxRead(buf));
+      const buf=await file.arrayBuffer(), g=svcAggregate(ext==='csv'?csvRead(buf):await xlsxRead(buf,/服務紀錄/));
       if(g.fatal){ state.svcImp=null; state.svcMsg='無法匯入：'+g.fatal; }
       else{ state.svcImp=g; state.svcDay=''; state.svcMsg='已匯入：'+file.name.replace(/[^一-鿿A-Za-z0-9._-]/g,'')+'（原始列已丟棄，只留彙總）'; }
     }catch(e){ state.svcImp=null; state.svcMsg='無法匯入：'+(e&&e.message||e); }
@@ -5161,7 +5176,7 @@ function generateFinancialReport(month){
   const rows=[['員工編號','姓名','公司','部門','計薪方式','應發金額','實發金額','雇主勞保','雇主健保','雇主勞退','人事成本合計','發薪方式']];
   list.forEach(e=>{
     const r=calcPay(e.id, month);
-    rows.push([e.id, empName(e.id), unit(e.unit).zh, DEPTS[e.dept].zh, PAY_BASIS_LABEL[payBasis(e)].zh, r.gross, r.net, r.er.labor, r.er.health, r.er.pension, r.gross+r.er.total, PAY_METHOD[payMethodOf(e.id)].zh]);
+    rows.push([e.id, empName(e.id), unit(e.unit).zh, DEPTS[e.dept].zh, payLabel(e).zh, r.gross, r.net, r.er.labor, r.er.health, r.er.pension, r.gross+r.er.total, PAY_METHOD[payMethodOf(e.id)].zh]);
   });
   return toCSV(rows);
 }
@@ -5329,7 +5344,7 @@ function viewSettings(){
       <div class="muted" style="font-size:12.5px;margin-top:8px">${esc(both('原型沒有真實登入，請用上方「身分」選單切換角色。','The prototype has no real login; use the Role selector to switch.'))}</div></div>
     </section>
     <section class="card">
-      <div class="card-h"><h2>${esc(both('員工編號規則','Employee-number rule'))}</h2><span class="en">${esc(both('10/7 會議；暫定','7 Oct meeting; provisional'))}</span></div>
+      <div class="card-h"><h2>${esc(both('員工編號規則','Employee-number rule'))}</h2><span class="en">${esc(both('10/28 提供正式規則','Official rule from 28 Oct'))}</span></div>
       <div class="card-b" style="padding-bottom:0"><div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('系統依這個規則自動帶入員工編號（在「人事系統 › 員工資料 › 新增員工」），減少人工輸入的錯誤。目前的前綴與位數只是暫定；需求端可以提供自訂格式，改動只影響之後新增的員工，現有員工的編號不變。',
         'The system fills in employee numbers from this rule (HR › Employee records › Add employee) to avoid typing errors. The prefixes and length are provisional; the requester side can supply a custom format. Changes only affect people added later; existing numbers stay.'))}</div></div>
       <div class="tablewrap"><table>
@@ -5339,6 +5354,10 @@ function viewSettings(){
           <td><input data-numdigits="${u.id}" type="number" min="2" max="6" value="${r.digits}" style="width:70px"></td>
           <td class="mono">${nextEmpNo(u.id)}</td></tr>`; }).join('')}</tbody>
       </table></div>
+      <div class="eyebrow">${esc(both('公司代號對照（10/28 需求端提供）','Company codes (provided 28 Oct)'))}</div>
+      <div class="muted" style="font-size:12.5px;line-height:1.7;padding:0 16px">${esc(both('員工編號 ＝ 公司代號（3 碼：公司所在地的英文代碼＋2 碼流水號）＋ 4 碼流水號，例如 J020001。上面的預設是公司層級代號；附設機構的員工用機構代號。','Employee number = company code (3 characters: a letter for the company location plus a 2-digit serial) + a 4-digit serial, e.g. J020001. The defaults above are company-level codes; staff of an affiliated facility use the facility code.'))}</div>
+      <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('全名','Full name')}</th><th>${bi('公司代號','Code')}</th><th>${bi('地址','Address')}</th></tr></thead><tbody>
+        ${COMPANY_CODES.map(c=>`<tr><td style="white-space:normal">${esc(c[0])}</td><td class="mono"><b>${c[1]}</b></td><td style="white-space:normal">${esc(c[2])}</td></tr>`).join('')}</tbody></table></div>
       <div class="legend"><button class="btn ghost mini" data-numreset>${esc(both('還原預設','Restore defaults'))}</button></div>
     </section>
     <section class="card">
@@ -5399,8 +5418,52 @@ const HOURLY_WAGE = {A007:220, B006:215, C003:200, A010:220, B009:220, C002:225,
 const isHourlyPay = p => p.type==='part' || p.title==='hca';
 const isDriver = p => p.title==='drv';
 const payBasis = p => isHourlyPay(p)?'hourly':isDriver(p)?'driver':'monthly';
+/* 10/28：拆帳制＝誠馨綜合式、誠芯居家、誠芯三館的居服員；時薪制＝牛津居家的居服員；其他月薪；日照司機月薪＋拆帳 B 方案。計算引擎仍用示範時薪估算居服員，正式拆帳見薪資計算機頁底 */
+const payLabel = p => (p.title==='hca'&&p.unit!=='O3') ? {zh:'拆帳制（示範以時薪估算）',en:'Revenue-share (demo estimated hourly)'} : isDriver(p) ? {zh:'司機：月薪＋拆帳（方案 B）',en:'Driver: monthly + revenue-share (plan B)'} : PAY_BASIS_LABEL[payBasis(p)];
 const PAY_BASIS_LABEL = {monthly:{zh:'月薪制',en:'Monthly'}, hourly:{zh:'時薪制',en:'Hourly'}, driver:{zh:'司機：月薪＋居服時薪',en:'Driver: monthly + home-care hourly'}};
 const demoHomeH = id => Math.round(seed('homeh-'+id)*60)/2;   // 司機的居服時數（示範，0–30 小時）；正式版由仁寶服務記錄的居服員工時帶入
+/* 拆帳制給付表（需求端 10/28 提供，居服員拆帳金額）：碼別、項目、一般區給付額、原民區給付額、計薪-A、假日津貼-A、假日總薪-A、計薪-B、假日津貼-B、假日總薪-B、組長津貼 */
+const SPLIT_RATES = [
+  ['AA04','於臨終日提供服務加計',1200,1440,720,0,720,720,0,720,0],
+  ['AA05','照顧困難之服務加給',200,240,110,0,110,110,0,110,0],
+  ['AA06','身體照顧困難加計',200,240,110,0,110,110,0,110,0],
+  ['AA07','家庭照顧功能微弱之服務加計',760,915,420,0,420,420,0,420,0],
+  ['AA08','晚間服務',385,465,220,0,220,220,0,220,0],
+  ['AA09','例假日服務',770,925,0,0,0,0,0,0,0],
+  ['AA11','照顧服務員進階訓練',50,60,30,0,30,30,0,30,0],
+  ['BA01','基本身體清潔',260,310,130,26,156,143,0,143,10],
+  ['BA02','基本日常照顧',195,235,97,20,117,108,0,108,8],
+  ['BA03','測量生命徵象',35,40,16,3,19,20,0,20,1],
+  ['BA04','協助餵食或灌食',130,155,65,13,78,72,0,72,5],
+  ['BA05-1','餐食照顧',310,370,155,33,188,171,0,171,12],
+  ['BA07','協助沐浴及洗頭',325,385,163,32,195,179,0,179,13],
+  ['BA08','足部照護',500,600,250,50,300,275,0,275,20],
+  ['BA10','翻身拍背',155,190,77,16,93,86,0,86,6],
+  ['BA11','肢體關節活動',195,235,97,20,117,108,0,108,8],
+  ['BA12','協助上下樓梯',130,155,65,13,78,72,0,72,5],
+  ['BA13','陪同外出',195,235,98,22,120,108,0,108,8],
+  ['BA14','陪同就醫',685,825,345,70,415,377,0,377,27],
+  ['BA15-1','家務協助',195,235,98,22,120,108,0,108,8],
+  ['BA15-2','家務協助(共用)',195,235,98,22,120,108,0,108,8],
+  ['BA16-1','代購或代領或代送服務',130,155,65,13,78,72,0,72,5],
+  ['BA16-2','代購或代領或代送服務(共用)',130,155,65,13,78,72,0,72,5],
+  ['BA17c','尿管及鼻胃管之清潔與固定',50,60,25,5,30,28,0,28,2],
+  ['BA17d1','血糖機驗血糖',50,60,25,5,30,28,0,28,2],
+  ['BA17d2','甘油球通便',50,60,25,5,30,28,0,28,2],
+  ['BA17e','依指示置入藥盒',50,60,25,5,30,28,0,28,2],
+  ['BA18','安全看視',200,240,100,20,120,110,0,110,8],
+  ['BA20','陪伴服務',175,210,100,20,120,97,0,97,7],
+  ['BA22','巡視服務',130,160,85,10,95,72,0,72,5],
+  ['BA23','協助洗頭',200,240,100,20,120,110,0,110,8],
+  ['BA24','協助排泄',220,265,110,22,132,121,0,121,9],
+  ['GA09','居家喘息服務',770,925,440,257,697,440,257,697,0],
+  ['SC09','短照服務',770,925,440,257,697,440,257,697,0],
+  ['服務未遇','服務未遇',200,200,100,0,100,100,0,100,0],
+  ['服務未遇','服務未遇(緊急狀況)',100,100,100,0,100,100,0,100,0]
+].map(a=>({code:a[0],name:a[1],price:a[2],priceN:a[3],A:a[4],hA:a[6],B:a[7],hB:a[9],lead:a[10]}));
+const SPLIT_BONUS = [[0,19999,0],[20000,29999,1000],[30000,39999,3000],[40000,49999,4000],[50000,100000,5000]];   // 業績獎金：區間（月服務金額）→ 獎金
+const splitBonus = amt => { for(const [lo,hi,b] of SPLIT_BONUS) if(amt>=lo&&amt<=hi) return b; return amt>100000?SPLIT_BONUS[SPLIT_BONUS.length-1][2]:0; };
+const REMOTE_AREAS = ['五峰','尖石','關西','峨眉'], REMOTE_ALLOW = 600;   // 服務偏遠區：每案每月補貼 600 元
 const SPLIT_FACILITIES = ['附設新竹縣私立誠馨綜合式服務類長期照顧服務機構','附設新竹市私立誠芯居家長照機構','附設私立誠芯三館綜合長照機構'];
 const HOLIDAYS = {'2026-09-25':'中秋節','2026-09-28':'孔子誕辰紀念日','2026-10-09':'國慶日補假','2026-10-26':'光復節補假'};
 const PENSION_GRADES = HEALTH_GRADES.filter(g=>g<=150000);
@@ -5560,7 +5623,7 @@ function payCSV(res, month){
     '勞保自付','健保自付','勞退自提','所得稅','其他扣款','實發金額','發薪方式','雇主勞保','雇主健保','雇主勞退','警示'];
   const rows=[head];
   STAFF.forEach(s=>{ const r=res[s.id]; if(!r) return;
-    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, PAY_BASIS_LABEL[payBasis(s)].zh, r.base, r.eveN, ...(night?[r.nightN]:[]), r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
+    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, payLabel(s).zh, r.base, r.eveN, ...(night?[r.nightN]:[]), r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
       r.labor, r.health, r.pension, r.tax, r.adjNeg, r.net, PAY_METHOD[payMethodOf(s.id)].zh, r.er.labor, r.er.health, r.er.pension, r.warn.map(w=>w.zh).join('; ')]); });
   const t=payTotals(res), tot=head.map(()=>'');
   tot[0]='合計'; tot[head.indexOf('應發金額')]=t.gross; tot[head.indexOf('實發金額')]=t.net;
@@ -5582,25 +5645,27 @@ function monthPicker(id, val){
 /* 10/20 會議：薪資計算的分類與規則（放在薪資試算最上面） */
 function payRulesCard(){
   const rows=[
-    ['一般員工','月薪制','固定月薪。','Monthly: fixed monthly pay.'],
-    ['居服員（全職與兼職）','時薪制','做多少拿多少：工時 × 時薪。','Hourly: hours worked × hourly rate.'],
-    ['日照司機（雙重角色）','月薪＋時薪','開車部分：月薪制，固定、不分大小月；居服部分：時薪制。','Driving: fixed monthly pay, the same in long and short months; home care: hourly.']
+    ['一般員工（含督導、行政、日照人員）','月薪制','固定月薪（月薪與時薪的細則 HR 整理中）。','Monthly: fixed monthly pay (HR is still compiling monthly and hourly rules).'],
+    ['居服員：誠馨綜合式、誠芯居家、誠芯三館','拆帳制','每個服務項目有固定計薪金額（給付表），依服務量計算。','Revenue-share: a fixed pay amount per service item (pay table).'],
+    ['居服員：牛津居家','時薪制','做多少拿多少：工時 × 時薪（HR 整理中）。','Hourly: hours × hourly rate (HR is compiling the rules).'],
+    ['日照司機（誠馨綜合式，兼居服）','月薪＋拆帳（方案 B）','開車部分：月薪；居服部分：拆帳，用方案 B 的計薪金額。','Driving: monthly pay; home care: revenue-share on plan B amounts.']
   ];
-  const en=['Regular staff','Home care workers (full and part time)','Day-care drivers (dual role)'];
+  const en=['Regular staff','Home care: Zengxin, Chengxin home care and Chengxin No. 3','Home care: Oxford','Day-care drivers (dual role)'];
   return `<section class="card" id="payRules">
     <div class="card-h"><h2>${esc(both('薪資分類與規則（10/20 會議）','Pay categories and rules (20 Oct meeting)'))}</h2><span class="chip warn">${esc(both('正式格式待提供','Official format pending'))}</span></div>
     <div class="card-b" style="display:grid;gap:10px">
       <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('人員','Staff')}</th><th>${bi('計薪','Basis')}</th><th>${bi('規則','Rule')}</th></tr></thead>
-        <tbody>${rows.map((r,i)=>`<tr><td>${esc(both(r[0],en[i]))}</td><td><span class="chip">${esc(both(r[1],['Monthly','Hourly','Monthly + hourly'][i]))}</span></td><td style="white-space:normal">${esc(both(r[2],r[3]))}</td></tr>`).join('')}</tbody></table></div>
+        <tbody>${rows.map((r,i)=>`<tr><td>${esc(both(r[0],en[i]))}</td><td><span class="chip">${esc(both(r[1],['Monthly','Revenue-share','Hourly','Monthly + revenue-share (B)'][i]))}</span></td><td style="white-space:normal">${esc(both(r[2],r[3]))}</td></tr>`).join('')}</tbody></table></div>
       <div class="eyebrow">${esc(both('拆帳制（項目制）','Revenue-share (per-item)'))}</div>
       <ul style="margin:0;padding-left:20px;line-height:1.8">
-        <li>${esc(both('適用居服員，約 20 種項目，各有單價；目前不需修改。','For home care workers: about 20 service items, each with a unit price; no change needed for now.'))}</li>
+        <li>${esc(both('給付表有 36 個碼別（10/28 提供）：每項有政府單價（一般區、原民區）和計薪金額，方案 A（一般居服員）、方案 B（日照司機的居服部分），國定假日與休息日另有「假日總薪」。各單位的拆帳金額目前一樣。','The pay table has 36 codes (provided 28 Oct): each with the government price (general and indigenous area) and pay amounts for plan A (ordinary home care workers) and plan B (day-care drivers’ home care), plus holiday total pay. The amounts are the same across units for now.'))}</li>
         <li>${esc(both('適用機構：','Facilities where it applies: '))}${SPLIT_FACILITIES.map(x=>esc(x)).join('；')}</li>
         <li>${esc(both('項目單價跟隨政府支付碼，過去十年未調整；若政府或老闆調整則另議。','Unit prices follow the government payment codes, unchanged for ten years; if the government or the owner changes them it will be discussed then.'))}</li>
-        <li>${esc(both('分帳算法確認為「政府單價 × 次數 × 分帳比例」；原型在「薪資計算機」頁底有拆帳制草稿，用仁寶檔的項目與單價試算，分帳比例是假設，正式比例待千玉與思慧提供。','The formula is confirmed as government unit price × count × split ratio; the pay calculator page has a draft below that uses the 仁寶 items and prices, with an assumed ratio until the real one arrives.'))}</li></ul>
+        <li>${esc(both('其他項目：業績獎金（依當月服務金額區間 0／1,000／3,000／4,000／5,000）、偏鄉津貼（五峰、尖石、關西、峨眉，每案每月 600）、交通津貼（10、20 公里以上）、其他加項與扣項、勞健保代扣、服務獎勵金（AA 碼）。','Other items: performance bonus by monthly billed-amount bracket, remote allowance (五峰, 尖石, 關西, 峨眉; 600 per case per month), transport allowance (10 and 20 km), other additions and deductions, insurance withholding, and AA-code government incentives.'))}</li>
+        <li>${esc(both('原型在「薪資計算機」頁底，用仁寶檔算拆帳薪資、業績獎金與偏鄉津貼（其餘項目還沒算）。','The prototype calculates item pay, bonus and remote allowance from the 仁寶 file at the bottom of the pay calculator page (the other items are not calculated yet).'))}</li></ul>
       <div class="eyebrow">${esc(both('權限','Access'))}</div>
       <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('管理者與老闆可以檢視所有人的薪資，但不能修改。','The manager and the owner can view everyone’s pay but cannot change it.'))}</div>
-      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('下面試算裡，居服員（含全職）已照時薪制計；司機是「月薪＋居服時薪」，居服時數目前是示範數字，正式版由仁寶服務記錄的居服員工時帶入。時薪與時數都是虛構的示範資料。薪資計算表的欄位與正式格式要等千玉與思慧（管理者與系統管理員）提供後對照調整。','Below, home care workers (including full time) are calculated as hourly; drivers are “monthly + home-care hourly”, with home-care hours as demo numbers for now (the real version takes them from the 仁寶 worker hours). Rates and hours are fictional demo data. The columns and official format of the payroll sheet will be adjusted once the manager and system administrator supply them.'))}</div>
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('下面的薪資試算表是示範：居服員（含拆帳制的）先以時薪估算，司機是「月薪＋居服時薪」，居服時數是示範數字；匯入仁寶檔後，名字對得到的人會帶入仁寶工時。時薪與時數都是虛構的示範資料，正式拆帳請看薪資計算機頁底。薪資計算表的欄位與正式格式要等千玉與思慧（管理者與系統管理員）提供後對照調整。','Below, home care workers (including full time) are calculated as hourly; drivers are “monthly + home-care hourly”, with home-care hours as demo numbers for now (the real version takes them from the 仁寶 worker hours). Rates and hours are fictional demo data. The columns and official format of the payroll sheet will be adjusted once the manager and system administrator supply them.'))}</div>
     </div></section>`;
 }
 function viewPayRun(){
@@ -5646,7 +5711,7 @@ function viewPayRun(){
           <th>${bi('代扣','Withheld')}</th><th>${bi('實發','Net')}</th><th>${bi('發薪方式','Pay method')}</th><th>${bi('警示','Flags')}</th></tr></thead>
         <tbody>${list.map(s=>{ const r=res[s.id]; return `<tr class="clickable" data-payemp="${s.id}">
           <td>${esc(empName(s.id))} <span class="muted mono" style="font-size:11px">${s.id}</span><div class="muted" style="font-size:11px">${esc(TITLES[s.title].zh)} · ${esc(unit(s.unit).zh)}</div></td>
-          <td><span class="chip ${isHourlyPay(s)?'warn':isDriver(s)?'info':''}">${esc(isHourlyPay(s)?both('時薪','Hourly'):isDriver(s)?both('月薪＋居服時薪','Monthly + hourly'):both('月薪','Monthly'))}</span></td>
+          <td><span class="chip ${isHourlyPay(s)?'warn':isDriver(s)?'info':''}">${esc(isHourlyPay(s)?(s.title==='hca'&&s.unit!=='O3'?both('拆帳制（估）','Revenue-share (est.)'):both('時薪','Hourly')):isDriver(s)?both('月薪＋拆帳 B','Monthly + share (B)'):both('月薪','Monthly'))}</span></td>
           <td class="num">${money(r.base+r.paidLeave)}</td><td class="num">${r.night?money(r.night):'—'}</td><td class="num">${r.ot?money(r.ot):'—'}</td>
           <td class="num">${r.att?'−'+money(r.att):'—'}</td><td class="num">${r.bonus?money(r.bonus):'—'}</td>
           <td class="num">${r.adjNet?(r.adjNet>0?'+':'−')+money(Math.abs(r.adjNet)):'—'}</td>
@@ -5863,35 +5928,46 @@ function viewPayCalc(){
   ${payRulesNote()}${paySplitCard()}`;
 }
 function splitData(g){
-  const ratio=state.splitRatio??60, ir=state.splitItem||(state.splitItem={});
   const months=Object.keys(g.sp).sort(), mo=months.includes(state.splitMonth)?state.splitMonth:months[months.length-1], W=g.sp[mo]||{};
-  const itemAgg={}; Object.values(W).forEach(it=>Object.entries(it).forEach(([k,v])=>{ const o=itemAgg[k]=itemAgg[k]||{n:0,amt:0}; o.n+=v.n; o.amt+=v.amt; }));
-  const pct=k=>{ const v=ir[k]; return (v===undefined||v==='')?ratio:+v; };
-  const workers=Object.entries(W).map(([n,it])=>{ let amt=0,pay=0; Object.entries(it).forEach(([k,v])=>{ amt+=v.amt; pay+=v.amt*pct(k)/100; }); return {n,amt,pay}; }).sort((a,b)=>b.pay-a.pay);
-  const tot=workers.reduce((a,w)=>({amt:a.amt+w.amt,pay:a.pay+w.pay}),{amt:0,pay:0}), nt=Object.keys(itemAgg).length;
-  return {months,mo,itemAgg,pct,workers,tot,nt,ratio};
+  const plan=state.splitPlan||(state.splitPlan={}), dflt=state.splitDefault||'A', byCode=new Map(SPLIT_RATES.map(r=>[r.code,r])), byName=new Map(SPLIT_RATES.map(r=>[r.name,r]));
+  /* 先用碼別；服務未遇的碼別在仁寶是空白或 RA01，改用名稱（去掉「處理費」）對給付表 */
+  const rateOf={get:(code,name)=>byCode.get(code)||byName.get(String(name||'').replace('處理費',''))};
+  const items={};
+  const workers=Object.entries(W).map(([n,w])=>{
+    const pl=plan[n]||dflt; let pay=0, un=0;
+    Object.entries(w.it).forEach(([code,v])=>{
+      const r=rateOf.get(code,v.name), o=items[code]=items[code]||{name:r?r.name:v.name,n:0,nh:0,amt:0,r};
+      o.n+=v.n; o.nh+=v.nh; o.amt+=v.amt;
+      if(!r){ un+=v.n; return; }
+      pay+=(v.n-v.nh)*(pl==='B'?r.B:r.A)+v.nh*(pl==='B'?r.hB:r.hA);
+    });
+    const bonus=splitBonus(w.amt), rem=w.rem*REMOTE_ALLOW;
+    return {n,pl,amt:w.amt,pay,bonus,rem,remN:w.rem,un,total:pay+bonus+rem};
+  }).sort((a,b)=>b.total-a.total);
+  const sum=k=>workers.reduce((a,w)=>a+w[k],0);
+  return {months,mo,items,workers,dflt,tot:{amt:sum('amt'),pay:sum('pay'),bonus:sum('bonus'),rem:sum('rem'),total:sum('total'),un:sum('un')}};
 }
 function paySplitCard(){
-  const g=state.svcImp, ratio=state.splitRatio??60, ir=state.splitItem||(state.splitItem={});
-  const head=`<section class="card" id="paySplit" style="margin-top:14px"><div class="card-h"><h2>${esc(both('拆帳制草稿（居服員）','Revenue-share draft (home care)'))}</h2><span class="chip warn">${esc(both('草稿：分帳比例是假設，待千玉與思慧確認','Draft: split ratio is an assumption, to be confirmed'))}</span></div><div class="card-b" style="display:grid;gap:10px">`;
-  if(!g||!g.sp) return head+`<div class="muted">${esc(both('先到「業務資料整合 › 居服個案管理系統」匯入仁寶檔，這裡就會用檔案裡的服務項目、次數與政府單價試算。','Import the 仁寶 file first (Business data › Home-care case system); this draft then uses its service items, counts and government unit prices.'))}</div></div></section>`;
-  const {months,mo,itemAgg,pct,workers,tot,nt}=splitData(g);
+  const g=state.svcImp;
+  const head=`<section class="card" id="paySplit" style="margin-top:14px"><div class="card-h"><h2>${esc(both('拆帳制計薪（居服員）','Revenue-share pay (home care)'))}</h2><span class="chip warn">${esc(both('草稿：只算服務拆帳、業績獎金與偏鄉津貼','Draft: item pay, bonus and remote allowance only'))}</span></div><div class="card-b" style="display:grid;gap:10px">`;
+  if(!g||!g.sp) return head+`<div class="muted">${esc(both('先到「業務資料整合 › 居服個案管理系統」匯入仁寶檔，這裡就會用給付表（10/28 提供）算每位居服員的拆帳薪資。','Import the 仁寶 file first (Business data › Home-care case system); this section then uses the pay table (provided 28 Oct) to calculate each worker.'))}</div></div></section>`;
+  const d=splitData(g), mo=d.mo, items=Object.entries(d.items).sort((a,b)=>b[1].amt-a[1].amt), un=items.filter(([,o])=>!o.r);
   return head+`
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
-      <label class="muted" for="splitMonth" style="font-size:12.5px">${esc(both('月份','Month'))}</label><select id="splitMonth">${months.map(m=>`<option value="${m}" ${m===mo?'selected':''}>${m}</option>`).join('')}</select>
-      <label class="muted" for="splitRatio" style="font-size:12.5px">${esc(both('預設分帳比例（%）','Default split ratio (%)'))}</label><input id="splitRatio" type="number" min="0" max="100" step="1" value="${ratio}" style="width:80px"></div>
-    <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('算法：政府單價 × 次數 × 分帳比例（10/22 確認）。單價取自仁寶檔的「項目單價」欄；比例預設 60% 只是暫時的假設，下表可以每個項目各填一個，空白就用預設。金額只在這個畫面試算，不會寫入薪資試算表。','Formula: government unit price × count × split ratio (confirmed 22 Oct). Unit prices come from the 仁寶 file; 60% is only a placeholder, set a ratio per item below, blank uses the default. Figures are shown here only and do not enter the payroll run.'))}</div>
-    ${g.bill!==null&&Math.abs(g.bill-tot.amt)>0.5?`<div class="note warn">${esc(both(`注意：檔案的「申報費用」欄整份加總是 ${money(Math.round(g.bill))}，和「單價 × 次數」的 ${money(tot.amt)} 差 ${money(Math.round(tot.amt-g.bill))}（多半是自費項目或金額調整）。拆帳要以哪一個為基準、自費項目要不要算，待確認；目前用單價 × 次數。（這個比較是整份檔案，不分月份）`,`The file's “billed” column totals ${money(Math.round(g.bill))}, ${money(Math.round(tot.amt-g.bill))} below unit price × count (${money(tot.amt)}), mostly self-pay items or adjustments. Which base to use and whether self-pay counts is to be confirmed; this draft uses unit price × count. (File-wide comparison, not per month.)`))}</div>`:''}
-    ${g.noPrice?`<div class="note warn">${esc(both(`有 ${g.noPrice} 列沒有項目單價，金額以 0 計。`,`${g.noPrice} rows have no unit price and count as 0.`))}</div>`:''}
-    <div class="todostrip"><span class="chip acc">${esc(both('申報金額合計','Billed total'))}：${money(tot.amt)}</span><span class="chip">${esc(both('拆帳金額合計','Split total'))}：${money(Math.round(tot.pay))}</span><span class="chip">${esc(both('居服員','Workers'))}：${workers.length}</span><span class="chip">${esc(both('服務項目','Items'))}：${nt}（${esc(both('會議紀錄寫約 20 項','notes say about 20'))}）</span></div>
-    <div class="eyebrow">${esc(both('服務項目與比例','Items and ratios'))}</div>
-    <div class="tablewrap" style="max-height:300px;overflow:auto"><table class="todotbl"><thead><tr><th>${bi('服務項目','Item')}</th><th>${bi('次數','Count')}</th><th>${bi('平均單價','Avg unit price')}</th><th>${bi('申報金額','Billed')}</th><th>${bi('分帳比例（%）','Ratio (%)')}</th></tr></thead><tbody>
-      ${Object.entries(itemAgg).sort((a,b)=>b[1].amt-a[1].amt).map(([k,o])=>`<tr><td style="white-space:normal">${esc(k)}</td><td class="num">${o.n}</td><td class="num">${o.n?money(Math.round(o.amt/o.n)):'—'}</td><td class="num">${money(o.amt)}</td><td><input data-splititem="${esc(k)}" type="number" min="0" max="100" step="1" value="${ir[k]??''}" placeholder="${ratio}" style="width:70px" aria-label="${esc(k)}"></td></tr>`).join('')}</tbody></table></div>
-    <div><button class="btn" id="splitXlsx">${esc(both('匯出拆帳制草稿 Excel','Export revenue-share draft (Excel)'))}</button></div>
-    <div class="eyebrow">${esc(both('每位居服員的拆帳金額','Split amount per worker'))}</div>
-    <div class="tablewrap" style="max-height:340px;overflow:auto"><table class="todotbl"><thead><tr><th>${bi('居服員','Worker')}</th><th>${bi('申報金額','Billed')}</th><th>${bi('拆帳金額','Split amount')}</th></tr></thead><tbody>
-      ${workers.map(w=>`<tr><td>${esc(w.n)}</td><td class="num">${money(w.amt)}</td><td class="num">${money(Math.round(w.pay))}</td></tr>`).join('')}
-      <tr><td><b>${esc(both('合計','Total'))}</b></td><td class="num"><b>${money(tot.amt)}</b></td><td class="num"><b>${money(Math.round(tot.pay))}</b></td></tr></tbody></table></div>
+      <label class="muted" for="splitMonth" style="font-size:12.5px">${esc(both('月份','Month'))}</label><select id="splitMonth">${d.months.map(m=>`<option value="${m}" ${m===mo?'selected':''}>${m}</option>`).join('')}</select>
+      <label class="muted" for="splitDefault" style="font-size:12.5px">${esc(both('預設方案','Default plan'))}</label><select id="splitDefault"><option value="A" ${d.dflt==='A'?'selected':''}>A</option><option value="B" ${d.dflt==='B'?'selected':''}>B</option></select></div>
+    <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('算法（10/28 給付表）：每個服務項目有固定的計薪金額，平日用「計薪」、國定假日與休息日用「假日總薪」；方案 A 是一般居服員，方案 B 是兼居服的日照司機。業績獎金依當月服務金額（單價 × 次數）的區間給；偏鄉津貼＝服務五峰、尖石、關西、峨眉的個案數 × 600 元。','Rule (28 Oct pay table): each service item has a fixed pay amount; weekday pay on normal days and holiday total pay on national holidays and rest days. Plan A is for ordinary home care workers, plan B for day-care drivers who also do home care. Bonus follows the month’s billed amount (unit price × count) bracket; remote allowance = cases in 五峰, 尖石, 關西 or 峨眉 × 600.'))}</div>
+    <div class="note warn">${esc(both('還沒算進來：交通津貼（10 公里、20 公里以上）、其他加項與扣項（見習、新進、介紹、開案、組長津貼、強制執行、責任險）、勞健保代扣、服務獎勵金（AA 碼）與多人分配。業績獎金以「服務金額」為區間基準是我依表格推測（最高服務金額約 98,000 對應區間上限 100,000），待確認。','Not included yet: transport allowance, other additions and deductions, insurance withholding, AA-code government incentives and shared splits. Using the billed amount for the bonus bracket is my reading of the table, to be confirmed.'))}</div>
+    ${d.tot.un?`<div class="note warn">${esc(both(`有 ${d.tot.un} 筆服務的碼別不在給付表（${un.map(([k,o])=>k+'：'+o.name).join('、')}），沒有計薪，請確認。`,`${d.tot.un} service lines have codes missing from the pay table (${un.map(([k])=>k).join(', ')}) and are not paid; please check.`))}</div>`:''}
+    <div class="todostrip"><span class="chip acc">${esc(both('居服員','Workers'))}：${d.workers.length}</span><span class="chip">${esc(both('服務金額','Billed'))}：${money(Math.round(d.tot.amt))}</span><span class="chip">${esc(both('拆帳薪資','Item pay'))}：${money(Math.round(d.tot.pay))}</span><span class="chip">${esc(both('業績獎金','Bonus'))}：${money(d.tot.bonus)}</span><span class="chip">${esc(both('偏鄉津貼','Remote allowance'))}：${money(d.tot.rem)}</span><span class="chip acc">${esc(both('合計','Total'))}：${money(Math.round(d.tot.total))}</span></div>
+    <div><button class="btn" id="splitXlsx">${esc(both('匯出拆帳制 Excel','Export revenue-share Excel'))}</button></div>
+    <div class="eyebrow">${esc(both('每位居服員','Per worker'))}</div>
+    <div class="tablewrap" style="max-height:360px;overflow:auto"><table class="todotbl"><thead><tr><th>${bi('居服員','Worker')}</th><th>${bi('方案','Plan')}</th><th>${bi('服務金額','Billed')}</th><th>${bi('拆帳薪資','Item pay')}</th><th>${bi('業績獎金','Bonus')}</th><th>${bi('偏鄉津貼','Remote')}</th><th>${bi('合計','Total')}</th></tr></thead><tbody>
+      ${d.workers.map(w=>`<tr><td>${esc(w.n)}</td><td><select data-splitplan="${esc(w.n)}" aria-label="${esc(w.n)}"><option value="A" ${w.pl==='A'?'selected':''}>A</option><option value="B" ${w.pl==='B'?'selected':''}>B</option></select></td><td class="num">${money(Math.round(w.amt))}</td><td class="num">${money(Math.round(w.pay))}</td><td class="num">${money(w.bonus)}</td><td class="num">${w.remN?money(w.rem)+'（'+w.remN+' 案）':'—'}</td><td class="num"><b>${money(Math.round(w.total))}</b></td></tr>`).join('')}
+      <tr><td><b>${esc(both('合計','Total'))}</b></td><td></td><td class="num"><b>${money(Math.round(d.tot.amt))}</b></td><td class="num"><b>${money(Math.round(d.tot.pay))}</b></td><td class="num"><b>${money(d.tot.bonus)}</b></td><td class="num"><b>${money(d.tot.rem)}</b></td><td class="num"><b>${money(Math.round(d.tot.total))}</b></td></tr></tbody></table></div>
+    <div class="eyebrow">${esc(both('服務項目與給付','Items and pay'))}</div>
+    <div class="tablewrap" style="max-height:300px;overflow:auto"><table class="todotbl"><thead><tr><th>${bi('碼別','Code')}</th><th>${bi('服務項目','Item')}</th><th>${bi('平日次數','Weekday')}</th><th>${bi('假日次數','Holiday')}</th><th>${bi('政府單價','Gov. price')}</th><th>${bi('計薪 A／B','Pay A / B')}</th></tr></thead><tbody>
+      ${items.map(([k,o])=>`<tr><td class="mono">${esc(k)}</td><td style="white-space:normal">${esc(o.name)}</td><td class="num">${o.n-o.nh}</td><td class="num">${o.nh}</td><td class="num">${o.r?money(o.r.price):'—'}</td><td class="num">${o.r?o.r.A+' / '+o.r.B:'<span class="chip warn">不在給付表</span>'}</td></tr>`).join('')}</tbody></table></div>
   </div></section>`;
 }
 function payRulesNote(){
@@ -5915,18 +5991,17 @@ function payRulesNote(){
 }
 BINDERS['pay:calc']=function(){
   const sx=document.getElementById('splitXlsx'); if(sx) sx.onclick=()=>{
-    const g=state.svcImp; if(!g||!g.sp) return; const d=splitData(g), ratio=state.splitRatio??60, ir=state.splitItem||{};
-    const out=[['拆帳制草稿（'+d.mo+'）'],['草稿：分帳比例是假設（預設 '+ratio+'%），正式比例待確認；算法＝政府單價 × 次數 × 分帳比例；單價取自仁寶檔的「項目單價」。仁寶檔期間：'+g.from+' ~ '+g.to+'。'],[],
-      ['服務項目','次數','平均單價','申報金額','分帳比例（%）']];
-    Object.entries(d.itemAgg).sort((a,b)=>b[1].amt-a[1].amt).forEach(([k,o])=>out.push([k,o.n,o.n?Math.round(o.amt/o.n):0,o.amt,d.pct(k)+(ir[k]===undefined||ir[k]===''?'（預設）':'')]));
-    out.push([],['居服員','申報金額','拆帳金額']);
-    d.workers.forEach(w=>out.push([w.n,w.amt,Math.round(w.pay)]));
-    out.push(['合計',d.tot.amt,Math.round(d.tot.pay)]);
-    saveBlob(buildXlsx(out),'拆帳制草稿_'+d.mo+'.xlsx');
+    const g=state.svcImp; if(!g||!g.sp) return; const d=splitData(g);
+    const out=[['拆帳制計薪（'+d.mo+'）'],['草稿：依 10/28 給付表；只算服務拆帳、業績獎金與偏鄉津貼，未含交通津貼、其他加扣項、勞健保代扣與 AA 碼獎勵金。仁寶檔期間：'+g.from+' ~ '+g.to+'。'],[],
+      ['居服員','方案','服務金額','拆帳薪資','業績獎金','偏鄉津貼','合計']];
+    d.workers.forEach(w=>out.push([w.n,w.pl,Math.round(w.amt),Math.round(w.pay),w.bonus,w.rem,Math.round(w.total)]));
+    out.push(['合計','',Math.round(d.tot.amt),Math.round(d.tot.pay),d.tot.bonus,d.tot.rem,Math.round(d.tot.total)],[],['碼別','服務項目','平日次數','假日次數','政府單價','計薪A','計薪B']);
+    Object.entries(d.items).sort((a,b)=>b[1].amt-a[1].amt).forEach(([k,o])=>out.push([k,o.name,o.n-o.nh,o.nh,o.r?o.r.price:'不在給付表',o.r?o.r.A:'',o.r?o.r.B:'']));
+    saveBlob(buildXlsx(out),'拆帳制計薪_'+d.mo+'.xlsx');
   };
   const sm=document.getElementById('splitMonth'); if(sm) sm.onchange=()=>{ state.splitMonth=sm.value; render(); };
-  const sr=document.getElementById('splitRatio'); if(sr) sr.onchange=()=>{ const v=Math.min(100,Math.max(0,parseFloat(sr.value))); state.splitRatio=isFinite(v)?v:60; render(); };
-  document.querySelectorAll('[data-splititem]').forEach(i=>i.onchange=()=>{ const v=parseFloat(i.value); (state.splitItem||(state.splitItem={}))[i.dataset.splititem]=isFinite(v)?Math.min(100,Math.max(0,v)):''; render(); });
+  const sd=document.getElementById('splitDefault'); if(sd) sd.onchange=()=>{ state.splitDefault=sd.value; state.splitPlan={}; render(); };
+  document.querySelectorAll('[data-splitplan]').forEach(i=>i.onchange=()=>{ (state.splitPlan||(state.splitPlan={}))[i.dataset.splitplan]=i.value; render(); });
   const f=document.getElementById('calcForm'); if(!f) return;
   const month=()=>f.month.value;
   const draw=()=>{
