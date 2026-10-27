@@ -655,9 +655,23 @@ const LEAVE_TYPES = {
   menstrual:{pay:0.5, att:false, zh:'生理假',     en:'Menstrual',       quota:12,   basis:{zh:'每月 1 日',en:'1 day per month'}},
   comp:     {pay:1, att:false, zh:'補休',       en:'Comp time',       quota:null, basis:{zh:'依核准加班時數換休',en:'Earned from approved overtime'}},
   marriage: {pay:1, att:false, zh:'婚假',       en:'Marriage',        quota:8,    basis:{zh:'8 日，給薪',en:'8 days, paid'}},
-  bereave:  {pay:1, att:false, zh:'喪假',       en:'Bereavement',     quota:null, basis:{zh:'3–8 日，依親等核給',en:'3–8 days by relationship'}},
-  official: {pay:1, att:false, zh:'公假',       en:'Official',        quota:null, basis:{zh:'依實際需要核給',en:'As required'}}
+  bereave1: {pay:1, att:false, zh:'一類喪假（8 日）', en:'Funeral type 1 (8 days)', quota:8, basis:{zh:'每次 8 日，事件發生日起 100 日曆天內',en:'8 days per event, within 100 calendar days'}},
+  bereave2: {pay:1, att:false, zh:'二類喪假（6 日）', en:'Funeral type 2 (6 days)', quota:6, basis:{zh:'每次 6 日，事件發生日起 100 日曆天內',en:'6 days per event, within 100 calendar days'}},
+  bereave3: {pay:1, att:false, zh:'三類喪假（3 日）', en:'Funeral type 3 (3 days)', quota:3, basis:{zh:'每次 3 日，事件發生日起 100 日曆天內',en:'3 days per event, within 100 calendar days'}},
+  maternity:{pay:1, att:false, zh:'產假（女）', en:'Maternity (female)', quota:56, basis:{zh:'每次 56 日，含假日；事件發生日起 3 個月內',en:'56 days per event incl. holidays, within 3 months'}},
+  maternity4:{pay:1, att:false, zh:'產假 4 週（女）', en:'Maternity 4 weeks (female)', quota:28, basis:{zh:'每次 28 日，含假日；事件發生日起 28 日曆天內',en:'28 days per event incl. holidays'}},
+  maternity1:{pay:1, att:false, zh:'產假 1 週（女）', en:'Maternity 1 week (female)', quota:7, basis:{zh:'每次 7 日，含假日；事件發生日起 7 日曆天內',en:'7 days per event incl. holidays'}},
+  maternity5:{pay:1, att:false, zh:'產假 5 日（女）', en:'Maternity 5 days (female)', quota:5, basis:{zh:'每次 5 日，含假日；事件發生日起 5 日曆天內',en:'5 days per event incl. holidays'}},
+  prenatal: {pay:1, att:false, zh:'產檢假（女）', en:'Prenatal check-up (female)', quota:7, basis:{zh:'每次 7 日；事件發生日起 10 個月內',en:'7 days per event, within 10 months'}},
+  paternity:{pay:1, att:false, zh:'陪產檢及陪產假（男）', en:'Paternity check-up & leave (male)', quota:7, basis:{zh:'每次 7 日；事件發生日起 15 日曆天內',en:'7 days per event, within 15 calendar days'}},
+  injury:   {pay:1, att:false, zh:'公傷病假', en:'Work-injury sick leave', quota:null, basis:{zh:'無上限，依職災醫療期間',en:'No cap, by the medical period'}},
+  official: {pay:1, att:false, zh:'公假',       en:'Official',        quota:null, basis:{zh:'依實際需要核給',en:'As required'}},
+  indigenous:{pay:1, att:false, zh:'歲時祭儀假', en:'Indigenous festival leave', quota:3, only:true, basis:{zh:'每年 3 日，每次最少 1 日；只有指定員工（原住民戶籍，名單在 104，原型不放真實名單）',en:'3 days per year, at least 1 day each; designated staff only (list kept in 104, not in the prototype)'}},
+  companyPersonal:{pay:1, att:false, zh:'事假（公司給予）', en:'Personal leave (company-granted)', quota:15, only:true, basis:{zh:'每年 15 日（= 120 小時），可用天或小時；只有指定員工（名單在 104）',en:'15 days (= 120 h) per year, in days or hours; designated staff only (list in 104)'}},
+  disaster: {pay:0, att:false, zh:'天災停班', en:'Natural-disaster closure', quota:null, basis:{zh:'無上限；停班日依公司公告',en:'No cap; per company notice'}}
 };
+/* 合併上限（104 假勤設定，10/27）：病假類 = 病假 + 生理假 每年 264 小時；事假類 = 事假 + 家庭照顧假 每年 112 小時 */
+const LEAVE_GROUPS = {sickgrp:{zh:'病假類',en:'Sick group',h:264,members:['sick','menstrual']}, persgrp:{zh:'事假類',en:'Personal group',h:112,members:['personal','family']}};
 /* 特休天數（勞基法第 38 條） */
 function annualDays(hired, asOf){
   const y=(asOf-new Date(hired))/31557600000;
@@ -755,11 +769,15 @@ function leaveBalance(empId){
   const p=person(empId), yr=String(TODAY.getFullYear());
   const mine=LEAVE.filter(l=>l.emp===empId && l.from.startsWith(yr));
   const compEarned=OT_REQ.filter(o=>o.emp===empId&&o.comp==='comp'&&o.status==='approved').reduce((a,o)=>a+o.hours,0);
-  return Object.entries(LEAVE_TYPES).map(([k,t])=>{
+  const grpUsed=g=>LEAVE_GROUPS[g].members.reduce((a,m)=>a+mine.filter(l=>l.type===m&&['approved','pending','countersign'].includes(l.status)).reduce((x,l)=>x+l.hours,0),0);
+  return Object.entries(LEAVE_TYPES).filter(([,t])=>!t.only).map(([k,t])=>{
     const quotaH = k==='annual' ? annualDays(p.hired,TODAY)*WORK_DAY_H : k==='comp' ? compEarned : (t.quota==null?null:t.quota*WORK_DAY_H);
     const used = mine.filter(l=>l.type===k&&l.status==='approved').reduce((a,l)=>a+l.hours,0);
     const pend = mine.filter(l=>l.type===k&&(l.status==='pending'||l.status==='countersign')).reduce((a,l)=>a+l.hours,0);
-    return {k, t, quotaH, used, pend, left: quotaH==null?null:Math.max(0,quotaH-used-pend)};
+    let left=quotaH==null?null:Math.max(0,quotaH-used-pend);
+    const gk=Object.keys(LEAVE_GROUPS).find(g=>LEAVE_GROUPS[g].members.includes(k));
+    if(gk){ const gl=Math.max(0,LEAVE_GROUPS[gk].h-grpUsed(gk)); left=left==null?gl:Math.min(left,gl); }
+    return {k, t, quotaH, used, pend, left};
   });
 }
 const nextId = (prefix, arr) => prefix+(Math.max(0,...arr.map(x=>+x.id.replace(/\D/g,'')))+1);
@@ -5886,8 +5904,8 @@ function payRulesNote(){
         ['夜班津貼：小夜（16:00–24:00）每班 '+PAY_CFG.eveRate+' 元'+(NIGHT_SHIFT?'、大夜（00:00–08:00）每班 '+PAY_CFG.nightRate+' 元':'（目前沒有大夜班）')+'（示意，依公司規定）；當日請假滿班不發。津貼屬經常性給與，計入應發、所得與投保薪資，並計入加班費時薪基準。',
           'Shift allowance: evening '+PAY_CFG.eveRate+(NIGHT_SHIFT?' / overnight '+PAY_CFG.nightRate:' (no overnight shift at present)')+' per shift (illustrative); none for shifts taken as leave. It is regular pay: counted in gross, taxable income, the insured-salary bracket and the overtime base.'],
         ['國定假日／例假出勤：工資加倍發給（月薪已含當日工資，故加發 1 倍）；選擇換補休者不計加班費。','Holiday work is paid double (monthly pay already includes the day, so one extra day is added). Overtime taken as comp time is not paid.'],
-        ['請假：特休、婚假、喪假、公假、補休給薪；病假、生理假半薪；事假、家庭照顧假不給薪。','Leave: annual, marriage, bereavement, official and comp are paid; sick and menstrual are half pay; personal and family care are unpaid.'],
-        ['遲到僅按實際未出勤時間比例扣薪，不得額外罰款。全勤獎金不因生理假、家庭照顧假、婚喪假、公假、特休而扣除。','Lateness is deducted only for time actually missed. Menstrual, family care, marriage, bereavement, official and annual leave cannot cost the attendance bonus.'],
+        ['請假：特休、婚假、三類喪假、產假與產檢假、陪產檢及陪產假、公傷病假、公假、補休給薪；病假、生理假半薪；事假、家庭照顧假、天災停班不給薪。病假類（病假＋生理假）合計每年 264 小時、事假類（事假＋家庭照顧假）合計每年 112 小時。產假、公傷病假、歲時祭儀假、公司給予事假、天災停班的給薪方式是依法規與常見做法暫設，待人資確認。','Leave: annual, marriage, the three funeral types, maternity and prenatal, paternity, work-injury, official and comp are paid; sick and menstrual are half pay; personal, family care and natural-disaster closure are unpaid. Sick group (sick + menstrual) is capped at 264 h/yr and personal group (personal + family care) at 112 h/yr. Pay for maternity, work-injury, indigenous-festival, company-granted personal leave and disaster closure is provisional, to be confirmed by HR.'],
+        ['遲到僅按實際未出勤時間比例扣薪，不得額外罰款。全勤獎金不因生理假、家庭照顧假、婚喪假、產假與產檢假、公假、特休而扣除。','Lateness is deducted only for time actually missed. Menstrual, family care, marriage, bereavement, official and annual leave cannot cost the attendance bonus.'],
         ['勞保 12.5%（含就保）個人 20%、雇主 70%；健保 5.17% 個人 30%（眷屬最多 3 口）、雇主 60%；勞退雇主提繳 6%，員工可自提 0–6%。','Labor insurance 12.5% (employee 20%, employer 70%); health 5.17% (employee 30% ×(1+dependants ≤3), employer 60%); employer pension 6%, employee voluntary 0–6%.'],
         ['所得稅為簡化示意：應發扣除勞退自提後超過 '+money(PAY_CFG.taxThreshold)+' 以 5% 預扣。正式計算依財政部扣繳稅額表。','Income tax is simplified: 5% when taxable pay exceeds '+money(PAY_CFG.taxThreshold)+'. Production must use the official withholding table.']
       ].map(([zh,en])=>`<div>• ${esc(state.lang==='zh'?zh:en)}</div>`).join('')}

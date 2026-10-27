@@ -138,7 +138,7 @@ const SHIFTS = {
   driver:  {zh:'司機班', segs:[['',''],['','']], hours:[2,2], lunch:false, note:'早上兩小時＋下午兩小時，共四小時'}
 };
 const shiftSpan = sh => sh.segs.map((g,i)=>g[0]&&g[1]?`${g[0]}–${g[1]}`:`第 ${i+1} 段 ${sh.hours?sh.hours[i]+' 小時':''}`).join('、');
-const LEAVE_TYPES = ['特休','病假','事假','家庭照顧假','生理假'];
+const LEAVE_TYPES = ['特休','病假','事假','家庭照顧假','生理假','婚假','一類喪假（8 日）','二類喪假（6 日）','三類喪假（3 日）','產假（女）','產假 4 週（女）','產假 1 週（女）','產假 5 日（女）','產檢假（女）','陪產檢及陪產假（男）','公傷病假','公假','天災停班'];
 const TABS = [{id:'punch',zh:'打卡',ic:'⏱'},{id:'hours',zh:'工時',ic:'🗒'},{id:'leave',zh:'請假',ic:'🌴'},{id:'cal',zh:'月曆',ic:'📅'}];
 const pad = n => String(n).padStart(2,'0');
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
