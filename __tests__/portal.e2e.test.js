@@ -1321,11 +1321,11 @@ test.describe('Updates from the 7 Oct meeting', () => {
     // the rejoin is entered as a new hire, with the old number noted for reference only
     await page.click('[data-newemp]');
     await page.selectOption('#neUnit', 'O3');
-    await expect(page.locator('#neNo')).toHaveValue('C004');
+    await expect(page.locator('#neNo')).toHaveValue('J030001');
     await page.fill('#newEmpForm input[name="name"]', '回任示範');
     await page.fill('#newEmpForm input[name="prevNo"]', 'C003');
     await page.click('#newEmpForm button[type="submit"]');
-    await expect(drawer(page)).toContainText('C004');
+    await expect(drawer(page)).toContainText('J030001');
     await expect(drawer(page)).toContainText('前員編 C003（不沿用）');
     await expect(drawer(page)).toContainText('0 年 0 個月');
   });
@@ -1335,27 +1335,27 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await page.click('[data-newemp]');
     await expect(drawer(page)).toBeVisible();
     await expect(page.locator('#neNo')).toHaveAttribute('readonly', '');
-    await expect(page.locator('#neNo')).toHaveValue('A011');        // opens on 誠馨, which has A001–A010
+    await expect(page.locator('#neNo')).toHaveValue('J010001');     // opens on 誠馨協會（公司代號 J01）
     await page.selectOption('#neUnit', 'O2');
-    await expect(page.locator('#neNo')).toHaveValue('B010');        // 誠芯 has B001–B009
+    await expect(page.locator('#neNo')).toHaveValue('O010001');     // 28 Oct rule: company code + 4-digit serial
     await page.selectOption('#neUnit', 'O3');
-    await expect(page.locator('#neNo')).toHaveValue('C004');
+    await expect(page.locator('#neNo')).toHaveValue('J030001');
     await page.selectOption('#neUnit', 'O4');
-    await expect(page.locator('#neNo')).toHaveValue('D003');        // 誠馨健康 has D001–D002
+    await expect(page.locator('#neNo')).toHaveValue('O040001');
     await page.selectOption('#neUnit', 'HQ');
-    await expect(page.locator('#neNo')).toHaveValue('H007');
+    await expect(page.locator('#neNo')).toHaveValue('J010001');
     await page.selectOption('#neUnit', 'O1');
-    await expect(page.locator('#neNo')).toHaveValue('A011');
+    await expect(page.locator('#neNo')).toHaveValue('J010001');
     await page.fill('#newEmpForm input[name="name"]', '示範新人');
     await page.click('#newEmpForm button[type="submit"]');
     await expect(drawer(page)).toContainText('示範新人');
-    await expect(drawer(page)).toContainText('A011');
+    await expect(drawer(page)).toContainText('J010001');
     await page.click('aside.drawer button.x');
     await expect(empRows(page)).toHaveCount(31);
-    await expect(page.locator('tr[data-emp="A011"]')).toHaveCount(1);
+    await expect(page.locator('tr[data-emp="J010001"]')).toHaveCount(1);
     // the next one gets the next number
     await page.click('[data-newemp]');
-    await expect(page.locator('#neNo')).toHaveValue('A012');
+    await expect(page.locator('#neNo')).toHaveValue('J010002');
   });
 
   test('a new employee works in payroll, attendance and reports', async ({ page }) => {
@@ -1369,11 +1369,11 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await page.click('#newEmpForm button[type="submit"]');
     await page.click('aside.drawer button.x');
     await go(page, 'pay', 'run');
-    await expect(page.locator('tr[data-payemp="B010"]')).toHaveCount(1);
+    await expect(page.locator('tr[data-payemp="O010001"]')).toHaveCount(1);
     await go(page, 'hr', 'att');
     await go(page, 'rpt');
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-export="personnel"]')]);
-    expect(fs.readFileSync(await dl.path(), 'utf8')).toContain('B010,示範新人');
+    expect(fs.readFileSync(await dl.path(), 'utf8')).toContain('O010001,示範新人');
     expect(errors).toEqual([]);
   });
 
@@ -1381,12 +1381,13 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await go(page, 'set');
     await expect(page.locator('#view')).toContainText('員工編號規則');
     const next = id => page.locator('#view tbody tr', { has: page.locator(`[data-numprefix="${id}"]`) }).locator('td.mono').last();
-    await expect(next('O1')).toHaveText('A011');
+    await expect(next('O1')).toHaveText('J010001');                      // 公司代號 J01 + 4 碼流水號
     await page.fill('[data-numprefix="O1"]', 'q');
     await page.locator('[data-numprefix="O1"]').blur();
-    await expect(next('O1')).toHaveText('Q001');
+    await expect(next('O1')).toHaveText('Q0001');
     await page.click('[data-numreset]');
-    await expect(next('O1')).toHaveText('A011');
+    await expect(next('O1')).toHaveText('J010001');
+    await expect(page.locator('#view')).toContainText('新竹縣竹東鎮興農街119號');   // 公司代號對照表
   });
 
   test('system info says mobile clock-in works and only cloud storage is missing', async ({ page }) => {
@@ -2716,9 +2717,9 @@ test.describe('10/20 payroll categories', () => {
     expect(r.hcaBaseLine).toBe('正常工時薪資');                          // 全職居服員也走時薪制
     await go(page, 'pay', 'run');
     const card = page.locator('#payRules');
-    for (const s of ['一般員工', '居服員（全職與兼職）', '日照司機（雙重角色）', '不分大小月', '約 20 種項目', '單價跟隨政府支付碼', '附設新竹縣私立誠馨綜合式服務類長期照顧服務機構', '附設新竹市私立誠芯居家長照機構', '附設私立誠芯三館綜合長照機構', '正式格式待提供']) await expect(card).toContainText(s);
-    await expect(page.locator('#view tbody tr', { hasText: 'A008' })).toContainText('月薪＋居服時薪');
-    await expect(page.locator('#view tbody tr', { hasText: 'A010' })).toContainText('時薪');
+    for (const s of ['一般員工', '居服員：誠馨綜合式', '牛津居家', '日照司機', '方案 B', '36 個碼別', '單價跟隨政府支付碼', '附設新竹縣私立誠馨綜合式服務類長期照顧服務機構', '附設新竹市私立誠芯居家長照機構', '附設私立誠芯三館綜合長照機構', '正式格式待提供']) await expect(card).toContainText(s);
+    await expect(page.locator('#view tbody tr', { hasText: 'A008' })).toContainText('月薪＋拆帳 B');
+    await expect(page.locator('#view tbody tr', { hasText: 'A010' })).toContainText('拆帳制');
   });
   test('calculator: the driver’s home-care hours and rate add a separate hourly line', async ({ page }) => {
     await openPortal(page);
@@ -2945,38 +2946,47 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
   };
   const HEAD = ['案號', '服務項目類別', '項目服務次數', '居服員姓名', '服務日期', '服務時間長度(分)', '項目單價'];
 
-  test('revenue-share draft: unit price x count x ratio, default and per-item ratios', async ({ page }) => {
+  const HEAD2 = ['案號', '服務項目代碼', '服務項目類別', '項目服務次數', '居服員姓名', '服務日期', '服務時間長度(分)', '項目單價', '加班類型', '居住(區)'];
+  const ROWS2 = [HEAD2,
+    ['T-1', 'BA07', '協助沐浴及洗頭', '1', '測試員甲', '2026-10-05', '60', '325', '正常班', '竹北市'],
+    ['T-2', 'BA07', '協助沐浴及洗頭', '1', '測試員甲', '2026-10-06', '60', '325', '國定假日', '五峰鄉'],
+    ['T-3', 'BA20', '陪伴服務', '2', '測試員乙', '2026-10-07', '30', '175', '正常班', '竹北市'],
+    ['T-4', 'XX99', '未知項目', '1', '測試員乙', '2026-10-08', '30', '100', '正常班', '竹北市']];
+
+  test('revenue-share pay uses the 28 Oct pay table: weekday vs holiday, plans A/B, bonus bracket, remote allowance', async ({ page }) => {
     await openPortal(page);
-    await importCsv(page, [HEAD,
-      ['T-1', '陪伴服務', '1', '測試員甲', '2026-10-05', '60', '175'],
-      ['T-2', '陪伴服務', '2', '測試員甲', '2026-10-06', '60', '175'],
-      ['T-3', '協助沐浴及洗頭', '1', '測試員乙', '2026-10-07', '30', '325']]);
+    await importCsv(page, ROWS2);
     await go(page, 'pay', 'calc');
     const card = page.locator('#paySplit');
-    await expect(card).toContainText('申報金額合計：NT$850');
-    await expect(card).toContainText('拆帳金額合計：NT$510');                     // 850 × 60%
-    await card.locator('#splitRatio').fill('50');
-    await card.locator('#splitRatio').dispatchEvent('change');
-    await expect(page.locator('#paySplit')).toContainText('拆帳金額合計：NT$425');
-    const it = page.locator('#paySplit [data-splititem="陪伴服務"]');
-    await it.fill('100');
-    await it.dispatchEvent('change');
-    await expect(page.locator('#paySplit')).toContainText('拆帳金額合計：NT$688');   // 525×100% + 325×50% = 687.5，四捨五入
+    await expect(card).toContainText('拆帳薪資：NT$558');             // 甲：163（平日）+ 195（假日總薪）；乙：100 × 2
+    await expect(card).toContainText('偏鄉津貼：NT$600');             // 甲服務五峰的 1 個案 × 600
+    await expect(card).toContainText('合計：NT$1,158');               // 558 + 業績獎金 0 + 600
+    await expect(card).toContainText('XX99');                         // 不在給付表的碼別會列出
+    await card.locator('#splitDefault').selectOption('B');
+    await expect(page.locator('#paySplit')).toContainText('拆帳薪資：NT$552');   // B：甲 179 + 179；乙 97 × 2
     await expect(page.locator('#paySplit')).toContainText('草稿');
   });
 
-  test('the draft exports to Excel with the current ratios', async ({ page }) => {
+  test('bonus follows the monthly billed-amount bracket and a worker plan can be set individually', async ({ page }) => {
     await openPortal(page);
-    await importCsv(page, [HEAD, ['T-1', '陪伴服務', '2', '測試員甲', '2026-10-05', '60', '175']]);
+    const r = await page.evaluate(() => [splitBonus(19999), splitBonus(20000), splitBonus(39999), splitBonus(45000), splitBonus(98010), SPLIT_RATES.length]);
+    expect(r).toEqual([0, 1000, 3000, 4000, 5000, 36]);
+    await importCsv(page, ROWS2);
     await go(page, 'pay', 'calc');
-    await page.locator('#splitRatio').fill('50');
-    await page.locator('#splitRatio').dispatchEvent('change');
+    await page.locator('[data-splitplan="測試員乙"]').selectOption('B');
+    await expect(page.locator('#paySplit')).toContainText('拆帳薪資：NT$552');   // 甲 A 358 + 乙 B 194
+  });
+
+  test('the revenue-share section exports to Excel', async ({ page }) => {
+    await openPortal(page);
+    await importCsv(page, ROWS2);
+    await go(page, 'pay', 'calc');
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#splitXlsx')]);
-    expect(dl.suggestedFilename()).toBe('拆帳制草稿_2026-10.xlsx');
+    expect(dl.suggestedFilename()).toBe('拆帳制計薪_2026-10.xlsx');
     const buf = fs.readFileSync(await dl.path());
     expect(buf.subarray(0, 2).toString()).toBe('PK');
     const text = buf.toString('utf8');
-    for (const s of ['拆帳制草稿（2026-10）', '草稿：分帳比例是假設（預設 50%）', '陪伴服務', '測試員甲', '350', '175']) expect(text).toContain(s);   // 175×2 = 350，50% = 175
+    for (const s of ['拆帳制計薪（2026-10）', '測試員甲', '測試員乙', 'BA07', '協助沐浴及洗頭', '1158']) expect(text).toContain(s);
   });
 
   test('without an import the draft asks for the 仁寶 file', async ({ page }) => {
