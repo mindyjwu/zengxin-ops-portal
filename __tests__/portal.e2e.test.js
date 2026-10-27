@@ -2331,29 +2331,29 @@ test.describe('Formal org chart layout, upload formats, version and revision dat
     await expect(page.locator('#svcMsg')).toContainText('只收 .xlsx');
   });
 
-  test('version is v3.4 and the footer shows the revision date, not the demo date', async ({ page }) => {
+  test('version is v3.5 and the footer shows the revision date, not the demo date', async ({ page }) => {
     await openPortal(page);
-    await expect(page.locator('.brand')).toContainText('v3.4');
+    await expect(page.locator('.brand')).toContainText('v3.5');
     const foot = page.locator('.rail-foot');
-    await expect(foot).toContainText('v3.4');
+    await expect(foot).toContainText('v3.5');
     await expect(foot).toContainText('修訂');
     await expect(foot).toContainText(/\d{4}-\d{2}-\d{2}/);
     await expect(foot).not.toContainText('展示日期');
     await go(page, 'set');
     await expect(page.locator('#view')).toContainText('修訂日期');
-    await expect(page.locator('#view')).toContainText('v3.4');
+    await expect(page.locator('#view')).toContainText('v3.5');
     const rev = await page.evaluate(() => [APP_VERSION, APP_REVISION]);
-    expect(rev[0]).toBe('3.4');
+    expect(rev[0]).toBe('3.5');
     expect(rev[1]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
   test('guide, index and mobile app show the same version and a revision date', async ({ page }) => {
     for (const f of ['guide.html', 'index.html']) {
       await page.goto('file://' + path.resolve(__dirname, '../' + f));
-      await expect(page.locator('body')).toContainText('v3.4');
+      await expect(page.locator('body')).toContainText('v3.5');
       await expect(page.locator('[data-rev]').first()).toHaveText(/^\d{4}-\d{2}-\d{2}$/);
     }
     await page.goto('file://' + path.resolve(__dirname, '../mobile.html'));
-    await expect(page.locator('#ver')).toContainText(/v3\.4・修訂 \d{4}-\d{2}-\d{2}/);
+    await expect(page.locator('#ver')).toContainText(/v3\.5・修訂 \d{4}-\d{2}-\d{2}/);
   });
   test('the deploy workflow stamps the revision date from the last commit', async () => {
     const w = fs.readFileSync(path.resolve(__dirname, '../.github/workflows/deploy.yml'), 'utf8');
