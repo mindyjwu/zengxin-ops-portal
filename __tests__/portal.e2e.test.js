@@ -910,7 +910,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await expect(sec.locator('.note.warn li')).toHaveCount(3);
     await expect(page.locator('#ce')).toContainText('匯入範本怎麼用');
     await expect(page.locator('#ce')).toContainText('一列一門課');
-    await expect(sec).toContainText('下次會議（10/21 週三 10:00）前想請你幫忙');
+    await expect(sec).toContainText('下次會議（11/4 週三 11:00）前想請你幫忙');
     const msg = (await sec.locator('.note').last().innerText()).length;
     expect(msg).toBeLessThan(400);                                   // the message stays short
     await expect(page.locator('.toc a[href="#confirm"]')).toBeVisible();
@@ -1343,7 +1343,7 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await page.selectOption('#neUnit', 'O4');
     await expect(page.locator('#neNo')).toHaveValue('O040001');
     await page.selectOption('#neUnit', 'HQ');
-    await expect(page.locator('#neNo')).toHaveValue('J010001');
+    await expect(page.locator('#neNo')).toHaveValue('J020001');      // 28 Oct: shared administration uses J02
     await page.selectOption('#neUnit', 'O1');
     await expect(page.locator('#neNo')).toHaveValue('J010001');
     await page.fill('#newEmpForm input[name="name"]', '示範新人');
@@ -1994,6 +1994,7 @@ test.describe('Meeting agenda in the guide', () => {
     await expect(sec).toContainText('請用自己的手機試一下手機版');
     await expect(sec).toContainText('謝謝提供組織圖 V3 與雲端方案比較');
     await expect(sec).toContainText('各表單簽到哪一層與金額門檻');
+    await expect(sec).toContainText('11 月 4 日（週三）上午 11 點');
     await expect(sec.locator('a[href="mobile.html"], .mono')).not.toHaveCount(0);
     await expect(page.locator('.toc a[href="#agenda"]')).toBeVisible();
   });
@@ -2987,6 +2988,16 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
     expect(buf.subarray(0, 2).toString()).toBe('PK');
     const text = buf.toString('utf8');
     for (const s of ['拆帳制計薪（2026-10）', '測試員甲', '測試員乙', 'BA07', '協助沐浴及洗頭', '1158']) expect(text).toContain(s);
+  });
+
+  test('a service line with count 0 (scheduled but not done) is not paid', async ({ page }) => {
+    await openPortal(page);
+    await importCsv(page, [HEAD2,
+      ['T-1', 'BA07', '協助沐浴及洗頭', '1', '測試員甲', '2026-10-05', '60', '325', '正常班', '竹北市'],
+      ['T-2', 'BA07', '協助沐浴及洗頭', '0', '測試員甲', '2026-10-06', '0', '325', '正常班', '竹北市']]);
+    await go(page, 'pay', 'calc');
+    await expect(page.locator('#paySplit')).toContainText('拆帳薪資：NT$163');      // 只算 1 次（0 次不當成 1 次）
+    await expect(page.locator('#paySplit')).toContainText('服務金額：NT$325');
   });
 
   test('without an import the draft asks for the 仁寶 file', async ({ page }) => {
