@@ -1345,9 +1345,9 @@ const PHASES = [
 const ACTION_TYPE = {decide:{zh:'現在決定',en:'Decide now',cls:'acc'}, data:{zh:'等資料',en:'Need material',cls:'warn'}, it:{zh:'IT 研究',en:'IT study',cls:'info'}, later:{zh:'後續',en:'Later',cls:''}};
 const ACTIONS = [
   {type:'decide', zh:'手機打卡存什麼、雲端容量與平台', en:'What a punch stores, cloud capacity and platform',
-   rec:'10/20 已決定：打卡記錄 IP 位置、不強制拍照、位置只給後台看；照片選填（要伺服器壓縮）；離線先暫存、連網自動上傳；保存 5 年。雲端暫定 Google Cloud 按用量計費，待功能確認測試完（約半個月到一個月）再購買並建 backend。', need:'請提供：預計開帳號的人數、預算與上線時程；IT 確認 IP 定位的做法（後台怎麼取得）', owner:'IT／需求端', due:'11/4', go:['文件管理 › 系統說明','doc','sysinfo']},
+   rec:'10/20 已決定：打卡記錄 IP 位置、不強制拍照、位置只給後台看；照片選填（要伺服器壓縮）；離線先暫存、連網自動上傳；保存 5 年。雲端暫定 Google Cloud 按用量計費，待功能確認測試完（約半個月到一個月）再購買並建 backend。', need:'10/28：公司是浮動 IP（沒有固定 IP），WiFi 名稱抓得到；網頁版讀不到 WiFi 名稱、也看不到內網 192.168.x.x，要改用固定公網 IP 或其他做法（見使用指南）。請提供：各類員工打卡流程（辦公室、外訪）、104 現在顯示的打卡位置是什麼、各員工打卡告知同意書；Google Cloud 採購與訂閱流程', owner:'IT／需求端', due:'11/4', go:['文件管理 › 系統說明','doc','sysinfo']},
   {type:'decide', zh:'員工編號格式與前綴', en:'Employee-number format and prefixes',
-   rec:'10/28 已定：員編＝公司代號（3 碼：公司所在地英文代碼＋2 碼流水號，如 J02）＋ 4 碼流水號，例如 J020001；9 個公司／機構代號已放進系統設定。回任已定重新編號。', need:'確認：共用行政人員、各單位員工要用公司層級還是附設機構的代號；104 舊編號（如 CSHR150）留一欄對照；104 在職完整匯出', owner:'人事／IT', due:'10/28', go:['系統設定 › 員工編號規則','set',null]},
+   rec:'10/28 已定：員編＝公司代號（3 碼，如 J02）＋ 4 碼流水號，例如 J020001；公司、協會、附設機構各有代號，依勞保投保單位決定；共用行政人員統一用 J02。', need:'舊員編與新員編對照表（需求端整理中，完成後提供）；104 在職完整匯出', owner:'人事／IT', due:'10/28', go:['系統設定 › 員工編號規則','set',null]},
   {type:'decide', zh:'身分與權限', en:'Roles and permissions',
    rec:'10/20 已決定：系統管理員可看不可改；人資可改人事系統與公告欄、可審核私人秘書表單、不可改權限；管理者幾乎全可改（薪資計算僅檢視）；權限對照表合併成單一頁，管理者與系統管理員可按右上角編輯並儲存。', need:'請需求端確認新規則與 Excel 一致，並把仍標「暫定」的格子填完', owner:'需求端／人事', due:'10/28', go:['權限與範圍 › 權限對照表','perm','matrix']},
   {type:'decide', zh:'組織圖兩個版本', en:'Two org-chart versions',
@@ -1361,7 +1361,7 @@ const ACTIONS = [
   {type:'data', zh:'繼續教育積分匯入', en:'Continuing-education import',
    rec:'', need:'10/20 已定：只有教育訓練專員可新增、修改與匯入（一次匯入整份檔案）；政府積分系統只能逐人查詢，所以仍用 Excel 匯入。請教育訓練照範本整理資料試匯', owner:'教育訓練', due:'10/28', go:['私人秘書 › 課程','desk','course']},
   {type:'data', zh:'拆帳制薪資規則', en:'Revenue-share pay rules',
-   rec:'', need:'10/28 已收到給付表與制度：拆帳制＝誠馨綜合式、誠芯居家、誠芯三館的居服員（方案 A）；牛津居服員時薪；其他月薪；日照司機月薪＋拆帳 B。原型已用九月檔算拆帳薪資、業績獎金、偏鄉津貼。請確認：業績獎金區間以「服務金額」為準、AA 碼與多人分配、交通津貼與加扣項怎麼匯入；月薪與時薪規則（HR 整理中）', owner:'人資／財務', due:'11/11', go:['薪資計算 › 薪資計算機','pay','calc']},
+   rec:'', need:'10/28 已確認：平日／假日依加班類型（正常班＝平日，休息日與國定假日＝假日總薪）、自費項目同樣計入、次數為 0 的紀錄不計、申報費用欄可忽略。請確認：業績獎金區間的「拆帳金額」是用給付表的計薪金額還是服務單價（目前用服務金額）；AA 碼與多人分配、交通津貼與加扣項怎麼匯入；月薪與時薪資料（需求端整理中）', owner:'人資／財務', due:'11/11', go:['薪資計算 › 薪資計算機','pay','calc']},
   {type:'it', zh:'衛福部積分系統串接', en:'MOHW points-system connection',
    rec:'', need:'IT 先確認串接是否被允許與技術限制；過渡用現有 Excel 格式匯入；帳號密碼不放進網站或程式庫', owner:'IT', due:'待訂', go:['私人秘書 › 課程','desk','course']},
   {type:'it', zh:'手機打卡上線規格與中文輸入法測試', en:'Mobile clock-in go-live and input-method test',
@@ -1915,7 +1915,7 @@ const COMPANY_CODES = [
   ['誠馨健康股份有限公司','O04','新竹市東區南大路428號2樓'],
   ['誠馨健康股份有限公司附設私立誠馨二館社區長照機構','O05','新竹市東區南大路428號2樓']
 ];
-const NUM_RULES_DEFAULT = {HQ:{prefix:'J01',digits:4}, O1:{prefix:'J01',digits:4}, O2:{prefix:'O01',digits:4}, O3:{prefix:'J03',digits:4}, O4:{prefix:'O04',digits:4}};
+const NUM_RULES_DEFAULT = {HQ:{prefix:'J02',digits:4}, O1:{prefix:'J01',digits:4}, O2:{prefix:'O01',digits:4}, O3:{prefix:'J03',digits:4}, O4:{prefix:'O04',digits:4}};
 const numRules = () => state.numRules || (state.numRules=JSON.parse(JSON.stringify(NUM_RULES_DEFAULT)));
 function nextEmpNo(unitId){
   const r=numRules()[unitId]||{prefix:'N',digits:3}; let max=0;
@@ -4840,7 +4840,7 @@ function svcAggregate(rows){
     const cid=String(x[C.case]).trim(), mo=d.slice(0,7), un=(C.unit>=0?String(x[C.unit]??'').trim():'')||'（未填服務單位）';
     const M=A.mon[mo]=A.mon[mo]||{cases:new Set(),rows:0,min:0,who:new Set()}; M.cases.add(cid); M.rows++; M.min+=m; M.who.add(who);
     const U=((A.mu[mo]=A.mu[mo]||{})[un]=A.mu[mo][un]||{cases:new Set(),rows:0,min:0,who:new Set()}); U.cases.add(cid); U.rows++; U.min+=m; U.who.add(who);
-    const it=String(x[C.item]??'').trim()||'（未填）', n=parseFloat(x[C.times])||1;
+    const it=String(x[C.item]??'').trim()||'（未填）', nt0=parseFloat(x[C.times]), n=isFinite(nt0)?nt0:1;   // 次數 0＝排班已排但當天沒做（仁寶仍會建立記錄），不能當成 1 次
     const o=A.items[it]=A.items[it]||{n:0,min:0}; o.n+=n; o.min+=m;
     const w=A.who[who]=A.who[who]||{min:0,byDay:{}}; w.min+=m; w.byDay[d]=(w.byDay[d]||0)+m;
     const st=C.status>=0?String(x[C.status]??''):''; if(st.includes('忘簽退')) A.odd.noOut++; if(st.includes('未遇')) A.odd.noShow++;
@@ -5355,7 +5355,7 @@ function viewSettings(){
           <td class="mono">${nextEmpNo(u.id)}</td></tr>`; }).join('')}</tbody>
       </table></div>
       <div class="eyebrow">${esc(both('公司代號對照（10/28 需求端提供）','Company codes (provided 28 Oct)'))}</div>
-      <div class="muted" style="font-size:12.5px;line-height:1.7;padding:0 16px">${esc(both('員工編號 ＝ 公司代號（3 碼：公司所在地的英文代碼＋2 碼流水號）＋ 4 碼流水號，例如 J020001。上面的預設是公司層級代號；附設機構的員工用機構代號。','Employee number = company code (3 characters: a letter for the company location plus a 2-digit serial) + a 4-digit serial, e.g. J020001. The defaults above are company-level codes; staff of an affiliated facility use the facility code.'))}</div>
+      <div class="muted" style="font-size:12.5px;line-height:1.7;padding:0 16px">${esc(both('員工編號 ＝ 公司代號（3 碼：公司所在地的英文代碼＋2 碼流水號）＋ 4 碼流水號，例如 J020001。公司、協會、附設機構各有代號，依勞保投保單位決定；共用行政人員目前掛在誠馨綜合式機構下，統一用 J02。上面的預設是公司層級代號，附設機構的員工用機構代號。舊員編與新員編的對照表還在整理中。','Employee number = company code (3 characters: a letter for the company location plus a 2-digit serial) + a 4-digit serial, e.g. J020001. Each company, association and facility has its own code, set by the labour-insurance unit; shared administrative staff currently sit under the Zengxin comprehensive facility and all use J02. The defaults above are company-level codes; facility staff use the facility code. The old-to-new number mapping is still being compiled.'))}</div>
       <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('全名','Full name')}</th><th>${bi('公司代號','Code')}</th><th>${bi('地址','Address')}</th></tr></thead><tbody>
         ${COMPANY_CODES.map(c=>`<tr><td style="white-space:normal">${esc(c[0])}</td><td class="mono"><b>${c[1]}</b></td><td style="white-space:normal">${esc(c[2])}</td></tr>`).join('')}</tbody></table></div>
       <div class="legend"><button class="btn ghost mini" data-numreset>${esc(both('還原預設','Restore defaults'))}</button></div>
