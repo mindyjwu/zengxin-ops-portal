@@ -129,6 +129,7 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
     <a href="#cmp104">104 功能對照</a>
     <a href="#perms">權限、職稱對照與簽核路徑</a>
     <b>參考</b>
+    <a href="#plan30">第一版一個月上線計畫</a>
     <a href="#newv35">v3.5 更新（10/22–10/28）</a>
     <a href="#newv34">v3.4 更新（10/20 會議）</a>
     <a href="#newv33">v3.3 更新（10/20）</a>
@@ -431,6 +432,53 @@ footer{max-width:1080px;margin:0 auto;padding:0 16px 40px;font-size:13px;color:v
     <section id="cmp104">
       <h2>104 功能對照</h2>
       <p><span class="path">文件管理 › 104 功能對照</span>：依你提供的 104 截圖，逐項比對 104 的功能和原型現在有什麼。分為「原型已有」「部分」「原型尚無」「104 未啟用」四種，另有 104 職務類別與原型職稱的對照。這是 9/30 會議待辦「評估 Portal 能否取代 104 差勤功能」的輸入資料，不是評估結論。</p>
+    </section>
+
+    <section id="plan30">
+      <h2>第一版一個月上線計畫（草案，給 11/4 會議）</h2>
+      <p><b>目標</b>：一個月內讓<b>一個據點（約 10–20 人）</b>每天實際使用；全公司 300 人第二個月再開；薪資與取代 104 放<b>第二版</b>。登入走 Google 帳號，雲端用 Google Cloud 按用量計費，全職維護的人負責上線後的維運。</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>第一版要做</th><th>第一版不做（第二版，一至兩個月後）</th></tr></thead>
+        <tbody><tr>
+          <td style="white-space:normal">Google 登入與 15 個身分權限（伺服器端把關）；手機打卡（IP 位置、離線暫存、班別）；請假（19 種假別）與加班簽核；仁寶匯入與儀表板；公告欄、員工資料、組織圖</td>
+          <td style="white-space:normal">正式發薪（先在 Portal <b>並行試算</b>，與 104 比對 2–3 個月）；取代 104；原生 App（先用網頁版加到主畫面）；衛福部積分系統串接（維持 Excel 匯入）</td>
+        </tr></tbody></table></div>
+      <h3>四週安排</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>週</th><th>重點</th><th>完成標準</th></tr></thead>
+        <tbody>
+          <tr><td style="white-space:nowrap">第 1 週</td><td style="white-space:normal">Google Cloud 開通（測試與正式環境分開）、資料庫、Google 登入、備份、預算提醒</td><td style="white-space:normal">測試環境能登入、能存資料、備份可還原</td></tr>
+          <tr><td style="white-space:nowrap">第 2 週</td><td style="white-space:normal">把原型的打卡、請假、簽核、員工資料接上資料庫；權限規則改在伺服器端執行</td><td style="white-space:normal">一個身分能完整走完一次打卡與請假流程</td></tr>
+          <tr><td style="white-space:nowrap">第 3 週</td><td style="white-space:normal">匯入真實員工資料（104 匯出、新舊員編對照）、仁寶匯入正式化、個資告知與存取紀錄、資安檢查</td><td style="white-space:normal">用真實資料測過，資安檢查清單通過</td></tr>
+          <tr><td style="white-space:nowrap">第 4 週</td><td style="white-space:normal">試用據點上線、教育訓練、每天收問題並修正</td><td style="white-space:normal">試用者連續一週每天實際打卡，沒有重大問題</td></tr>
+        </tbody></table></div>
+      <h3>這週就要決定或提供（沒有就會卡住）</h3>
+      <ul>
+        <li><b>104 在職完整匯出</b>與<b>新舊員編對照表</b>（需求端，匯入員工資料用）</li>
+        <li><b>各類員工打卡流程</b>（辦公室、外訪）與 <b>104 現在顯示的打卡位置</b>（決定要支援幾種模式）</li>
+        <li><b>辦公室判斷做法</b>：固定 IP、DDNS 或掃碼（公司是浮動 IP，鎖 192.168 與讀 WiFi 名稱都做不到）</li>
+        <li><b>員工打卡告知同意書</b>（需法遵或律師確認文字）</li>
+        <li><b>Google Cloud 採購與訂閱流程</b>、雲端管理權限由誰持有；全員授權費約每月 US$2,100–4,200 的預算</li>
+        <li><b>試用據點</b>是哪一個，以及<b>全職維護者</b>是誰</li>
+      </ul>
+      <h3>可以開始試用的條件（缺一不可）</h3>
+      <ul>
+        <li>權限在伺服器端驗證過：員工看不到別人的資料，系統管理員可看不可改</li>
+        <li>個資告知同意書已簽，位置資料只有後台看得到，存取有紀錄</li>
+        <li>資料庫每日備份，並做過一次還原演練</li>
+        <li>試用期間 104 照常使用，Portal 出問題不影響發薪與出勤</li>
+      </ul>
+      <h3>主要風險</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>風險</th><th>怎麼降低</th></tr></thead>
+        <tbody>
+          <tr><td>員工資料與員編對照遲到</td><td style="white-space:normal">用 104 匯出先匯入，員編先用新編號；對照表之後補欄</td></tr>
+          <tr><td>仁寶沒有員編，靠姓名比對，同名會錯</td><td style="white-space:normal">同名加「2」先人工確認；系統標出對不到與同名的人</td></tr>
+          <tr><td>個資與位置資料外洩</td><td style="white-space:normal">Google 登入加雙重驗證、最小權限、存取紀錄、傳輸與儲存加密</td></tr>
+          <tr><td>一個月太趕</td><td style="white-space:normal">範圍已縮到差勤；第 2 週結束時檢查進度，必要時把仁寶儀表板移到試用後</td></tr>
+        </tbody></table></div>
+      <div class="note warn"><b>如果老闆希望第一版就含薪資</b>：建議答覆是「第一版先<b>並行試算、不實際發薪</b>」，千玉與思慧用 Portal 的算法對照 104 的結果；連續兩個月核對無誤，再切換。算錯薪水是最大的信任風險，這段並行期不建議縮短。拆帳制計薪草稿已經可以用真實九月檔試算，可以在會議上示範。</div>
+      <p class="muted">這份是我依 10/28 會議紀錄與已定事項整理的草案，人力、時程與預算要在 11/4 會議確認；一個月的起算日，從上面「這週就要決定或提供」的資料到齊那天算起。</p>
     </section>
 
     <section id="newv35">
