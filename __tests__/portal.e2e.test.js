@@ -3038,3 +3038,15 @@ test.describe('Leave types from the 104 setting (27 Oct)', () => {
     for (const s of ['一類喪假（8 日）', '產假（女）', '陪產檢及陪產假（男）', '公傷病假', '天災停班']) expect(opts.join('|')).toContain(s);
   });
 });
+
+test.describe('One-month plan in the guide (30 Oct)', () => {
+  test('the plan section has scope, four weeks, decisions needed, go criteria and the payroll answer', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    const sec = page.locator('#plan30');
+    await expect(sec.locator('h2')).toContainText('第一版一個月上線計畫');
+    for (const s of ['第 1 週', '第 2 週', '第 3 週', '第 4 週', '並行試算', '還原演練', '告知同意書', '固定 IP', '全職維護者']) await expect(sec).toContainText(s);
+    await expect(page.locator('.toc a[href="#plan30"]')).toBeVisible();
+    const h = await sec.evaluate(n => n.getBoundingClientRect().height);
+    expect(h).toBeLessThan(2400);                                       // 約一頁到一頁半，不是長篇大論
+  });
+});
