@@ -691,7 +691,7 @@ test.describe('Payroll night-shift allowance', () => {
   test('day-shift staff get no allowance', async ({ page }) => {
     await page.click('[data-payemp="H003"]');
     const d = drawer(page);
-    await expect(d.locator('tr', { hasText: '本薪（月薪）' })).toBeVisible();
+    await expect(d.locator('tr', { hasText: '底薪' }).first()).toBeVisible();
     await expect(d.locator('tr', { hasText: '小夜班津貼' })).toHaveCount(0);
     await expect(d.locator('tr', { hasText: '大夜班津貼' })).toHaveCount(0);
   });
@@ -842,7 +842,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await setRole(page, 'hr');
     await go(page, 'pay', 'calc');
     await page.selectOption('#calcForm [name=part]', 'split');
-    await expect(page.locator('#calcOut')).toContainText('拆帳制的計薪規則');
+    await expect(page.locator('#calcOut')).toContainText('拆帳制請看薪資計算機頁底');
   });
 
   test('a manager fills in a mid-year review from the team reviews page', async ({ page }) => {
@@ -3048,5 +3048,88 @@ test.describe('One-month plan in the guide (30 Oct)', () => {
     await expect(page.locator('.toc a[href="#plan30"]')).toBeVisible();
     const h = await sec.evaluate(n => n.getBoundingClientRect().height);
     expect(h).toBeLessThan(2400);                                       // 約一頁到一頁半，不是長篇大論
+  });
+});
+
+test.describe('Monthly pay: bonus import, A-code reward and allowances (4 Nov)', () => {
+  const csv = rows => '﻿' + rows.map(r => r.join(',')).join('\r\n') + '\r\n';
+  const BH = ['公司別', '部門別', '姓名', '工號', '獎金類別', '數量', '金額', '說明'];
+  const goRun = async page => { await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'run'); };
+
+  test('monthly pay shows base and professional allowance separately and still adds up', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => { const m = payDefault(), p = person('A004'), c = calcPay('A004', m);
+      return { base: c.base, sal: p.salary, allow: proAllow(p), names: c.lines.filter(l => l.g === 'earn').map(l => l.zh).slice(0, 2) }; });
+    expect(r.base).toBe(r.sal);                                         // 底薪 + 專業加給 = 月薪
+    expect(r.names).toEqual(['底薪', '專業加給']);
+    expect(r.allow).toBeGreaterThan(0);
+  });
+
+  test('bonus Excel: visits x 50, over-cases x 100, incentive lump sum, bad rows reported', async ({ page }) => {
+    await goRun(page);
+    const month = await page.evaluate(() => payDefault());
+    const before = await page.evaluate(m => calcPay('A004', m).gross, month);
+    await page.setInputFiles('#bonusFile', { name: 'bonus.csv', mimeType: 'text/csv', buffer: Buffer.from(csv([BH,
+      ['誠馨協會', '日照', '甲', 'A004', '訪案津貼', '10', '', ''],
+      ['誠馨協會', '日照', '甲', 'A004', '超案獎金', '2', '', ''],
+      ['誠馨協會', '日照', '甲', 'A004', '激勵獎金', '', '3000', ''],
+      ['', '', '', 'ZZZ999', '訪案津貼', '3', '', ''],
+      ['', '', '', 'A004', '亂填', '1', '', '']]), 'utf8') });
+    await expect(page.locator('#monthlyImp')).toContainText('已匯入獎金：3 筆');
+    await expect(page.locator('#monthlyImp')).toContainText('2 列有問題');
+    const after = await page.evaluate(m => { const c = calcPay('A004', m); return { gross: c.gross, lines: c.lines.map(l => l.zh + ':' + l.amt) }; }, month);
+    expect(after.lines).toContain('訪案津貼:500');                       // 10 × 50
+    expect(after.lines).toContain('超案津貼:200');                       // 2 × 100
+    expect(after.lines).toContain('激勵獎金:3000');
+    expect(after.gross - before).toBeGreaterThanOrEqual(3700);          // 稅額不影響應發
+  });
+
+  test('A-code roster: only AA11, 50% pool, split by day-care care attendants’ workdays', async ({ page }) => {
+    await goRun(page);
+    await page.setInputFiles('#aFile', { name: 'a.csv', mimeType: 'text/csv', buffer: Buffer.from(csv([['序號', '服務代碼', '小計', '服務日期'],
+      ['1', 'AA05', '4000', '"115/09/01,115/09/02"'], ['2', 'AA11', '800', '"115/09/01,115/09/02"'], ['3', 'AA11', '1200', '115/09/03']]), 'utf8') });
+    await expect(page.locator('#monthlyImp')).toContainText('AA11 小計 NT$2,000');
+    const r = await page.evaluate(() => { const s = aShares('2026-09'); return { pool: s.pool, sum: Math.round(s.rows.reduce((a, x) => a + x.amt, 0)), n: s.rows.length, month: payDefault() }; });
+    expect(r.pool).toBe(1000);                                          // (800 + 1200) × 50%
+    expect(r.n).toBeGreaterThan(0);
+    expect(r.sum).toBe(1000);                                           // 全部分配完
+    expect(r.month).toBe('2026-09');
+    const hasLine = await page.evaluate(() => { const s = aShares('2026-09'), who = s.rows.find(x => x.amt > 0); return calcPay(who.id, '2026-09').lines.some(l => /日照 A 碼獎勵/.test(l.zh)); });
+    expect(hasLine).toBe(true);
+  });
+
+  test('only HR can import; the manager only views; the template is downloadable', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'manager');
+    await go(page, 'pay', 'run');
+    await expect(page.locator('#bonusFile')).toHaveCount(0);
+    await expect(page.locator('#bonusTpl')).toBeVisible();
+    await setRole(page, 'hr');
+    await go(page, 'pay', 'run');
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bonusTpl')]);
+    expect(dl.suggestedFilename()).toMatch(/^月薪制獎金匯入範本_\d{4}-\d{2}\.xlsx$/);
+    const text = fs.readFileSync(await dl.path()).toString('utf8');
+    for (const s of ['公司別', '獎金類別', 'A004', '訪案津貼', '金額等於數量 × 50']) expect(text).toContain(s);   // 範本帶入員工
+  });
+
+  test('settlement hours and allowances flow through the calculator', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => { const i = { ...payInputs('A004', payDefault()), settleComp: 8, settleAnnual: 4, visits: 4, overN: 1, incentive: 1000, aReward: 500, aMeta: 'x' };
+      const m = payMath(i), H = i.monthly / 240; return { lines: Object.fromEntries(m.lines.map(l => [l.zh, l.amt])), H }; });
+    expect(r.lines['補休結算']).toBe(Math.round(8 * r.H));
+    expect(r.lines['特休結算']).toBe(Math.round(4 * r.H));
+    expect(r.lines['訪案津貼']).toBe(200);
+    expect(r.lines['超案津貼']).toBe(100);
+    expect(r.lines['日照 A 碼獎勵（AA11）']).toBe(500);
+  });
+});
+
+test.describe('Completion status report in the guide (4 Nov)', () => {
+  test('shows overall, prototype and production-readiness percentages', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    const sec = page.locator('#status');
+    await expect(sec.locator('h2')).toContainText('完成度報告');
+    for (const s of ['整體約 40%', '71%', '10%', '後端與資料庫', '薪資計算', '還缺的決定與資料']) await expect(sec).toContainText(s);
+    await expect(page.locator('.toc a[href="#status"]')).toBeVisible();
   });
 });

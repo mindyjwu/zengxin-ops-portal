@@ -1361,7 +1361,7 @@ const ACTIONS = [
   {type:'data', zh:'繼續教育積分匯入', en:'Continuing-education import',
    rec:'', need:'10/20 已定：只有教育訓練專員可新增、修改與匯入（一次匯入整份檔案）；政府積分系統只能逐人查詢，所以仍用 Excel 匯入。請教育訓練照範本整理資料試匯', owner:'教育訓練', due:'10/28', go:['私人秘書 › 課程','desk','course']},
   {type:'data', zh:'拆帳制薪資規則', en:'Revenue-share pay rules',
-   rec:'', need:'10/28 已確認：平日／假日依加班類型（正常班＝平日，休息日與國定假日＝假日總薪）、自費項目同樣計入、次數為 0 的紀錄不計、申報費用欄可忽略。請確認：業績獎金區間的「拆帳金額」是用給付表的計薪金額還是服務單價（目前用服務金額）；AA 碼與多人分配、交通津貼與加扣項怎麼匯入；月薪與時薪資料（需求端整理中）', owner:'人資／財務', due:'11/11', go:['薪資計算 › 薪資計算機','pay','calc']},
+   rec:'', need:'10/28、11/4 已收到給付表與月薪制規則並放進原型。請確認：業績獎金區間的金額基準；月薪制是否還有全勤獎金與夜班津貼（新規則沒列）；生理假與家庭照顧假是否扣薪（新規則只列病假、事假）；補休與特休結算的時間點；底薪與專業加給每人的金額；AA 碼與多人分配、交通津貼與加扣項怎麼匯入；時薪制規則（HR 整理中）', owner:'人資／財務', due:'11/11', go:['薪資計算 › 薪資計算機','pay','calc']},
   {type:'it', zh:'衛福部積分系統串接', en:'MOHW points-system connection',
    rec:'', need:'IT 先確認串接是否被允許與技術限制；過渡用現有 Excel 格式匯入；帳號密碼不放進網站或程式庫', owner:'IT', due:'待訂', go:['私人秘書 › 課程','desk','course']},
   {type:'it', zh:'手機打卡上線規格與中文輸入法測試', en:'Mobile clock-in go-live and input-method test',
@@ -5401,6 +5401,23 @@ BINDERS['set']=function(){
 <script>
 /* =============================== 薪資計算 Payroll =============================== */
 /* 參數為示意值：正式上線前請依當年度勞動部、勞保局、健保署、財政部公告更新 */
+/* 月薪制規則（需求端 10/28 提供）：訪案津貼每案 50、超案津貼每案 100（Excel 匯入）；日照 A 碼獎勵 ＝ AA11 小計 × 50%，依出工天數比例分配 */
+const MONTHLY_RULES = {visit:50, over:100, aPool:0.5, aCode:'AA11'};
+/* 專業加給（示範）：月薪＝底薪＋專業加給；底薪與專業加給在正式版由人資在 Portal 設定，這裡以月薪的 12% 湊整示範 */
+const proAllow = p => Math.round(p.salary*0.12/100)*100;
+/* 日照 A 碼獎勵：A 碼項目清冊（衛福部）只取服務代碼 AA11 的小計加總，乘 50% 當獎勵池，依各照服員出工天數 ÷ 全體照服員出工天數分配 */
+function aShares(month){
+  const a=state.aImp; if(!a||a.month!==month) return null;
+  if(a._c&&a._c.month===month&&a._c.aa11===a.aa11) return a._c;
+  const [y,m]=month.split('-').map(Number), pool=a.aa11*MONTHLY_RULES.aPool;
+  const rec=STAFF.filter(x=>x.title==='ca'&&x.dept==='day'&&onRoster(x,month)&&!isHourlyPay(x)).map(x=>({id:x.id,d:attendance(x.id,y,m).filter(r=>['present','late','miss'].includes(r.status)).length}));
+  const tot=rec.reduce((q,o)=>q+o.d,0);
+  return (a._c={month,aa11:a.aa11,pool,tot,rows:rec.map(o=>({...o,share:tot?o.d/tot:0,amt:tot?pool*o.d/tot:0}))});
+}
+function aCodeReward(empId, month){
+  const sh=aShares(month), r=sh&&sh.rows.find(x=>x.id===empId); if(!r||!(r.amt>0)) return null;
+  return {amt:r.amt, meta:`${MONTHLY_RULES.aCode} 小計 ${money(Math.round(sh.aa11))} × 50% = ${money(Math.round(sh.pool))}；出工 ${r.d} 天 ÷ 全體照服員 ${sh.tot} 天 = ${(r.share*100).toFixed(1)}%`};
+}
 const PAY_CFG = {
   minMonthly:29500, minHourly:196,          // 2026 基本工資
   fullAttBonus:2000,                         // 全勤獎金（全職）
@@ -5518,7 +5535,8 @@ function payInputs(empId, month){
     regH:0, wd1:0, wd2:0, rd1:0, rd2:0, rd3:0, hol:0, compH:0, leave:{}, lateMin:0, lateDays:0, missing:0,
     eve:0, night:0, eveRate:PAY_CFG.eveRate, nightRate:PAY_CFG.nightRate, nightInBase:PAY_CFG.nightInOTBase, shiftDates:{eve:[],night:[]},
     bonus:!part, laborG:0, healthG:0, pensionG:0, dep:rec.dep, selfPct:rec.selfPension,
-    adjust:(payrun(month).adj[empId]||[]).slice(), pending:0, otOver:[], sources:[]};
+    adjust:(payrun(month).adj[empId]||[]).slice(), pending:0, otOver:[], sources:[],
+    allow:part?0:proAllow(p), visits:0, overN:0, incentive:0, aReward:0, aMeta:'', settleComp:0, settleAnnual:0};
   LEAVE.filter(l=>l.emp===empId&&l.status==='approved'&&l.from<=mE&&l.to>=mS).forEach(l=>{
     const h=leaveHours(l.from<mS?mS:l.from, l.from<mS?SHIFT.start:l.fromT, l.to>mE?mE:l.to, l.to>mE?SHIFT.end:l.toT, empId);
     inp.leave[l.type]=(inp.leave[l.type]||0)+h; inp.sources.push(l.id);
@@ -5544,6 +5562,8 @@ function payInputs(empId, month){
   const ev=rec.ins.filter(x=>x.date<=mE).slice(-1)[0];
   if(ev && ev.kind!=='quit'){ inp.laborG=ev.labor; inp.healthG=ev.health; }
   inp.pensionG = inp.laborG ? gradeFor(part ? inp.hourly*WORK_DAY_H*22 : p.salary, PENSION_GRADES) : 0;
+  { const bi=((state.bonusImp||{})[month]||{})[empId]; if(bi){ inp.visits=bi.visits||0; inp.overN=bi.over||0; inp.incentive=bi.incentive||0; inp.sources.push('獎金匯入'); } }
+  { const ar=part?null:aCodeReward(empId,month); if(ar){ inp.aReward=ar.amt; inp.aMeta=ar.meta; inp.sources.push('A碼'); } }
   { const sv=svcHoursFor(p.zh, month); if(sv!==null&&(inp.driver||part)){ if(inp.driver) inp.homeH=sv; else inp.regH=sv; inp.svcHours=sv; inp.sources.push('仁寶'); } }
   return inp;
 }
@@ -5558,8 +5578,10 @@ function payMath(inp){
   const eveN=+inp.eve||0, nightN=+inp.night||0, nightAmt=eveN*(+inp.eveRate||0)+nightN*(+inp.nightRate||0);
   const inBase = inp.nightInBase && nightAmt>0 && (!inp.part || +inp.regH>0);
   const Hot = !inBase ? H : inp.part ? (inp.regH*H+nightAmt)/inp.regH : (+inp.monthly+nightAmt)/240, HotS = Hot.toFixed(2);
+  const allow=inp.part?0:Math.min(+inp.allow||0,+inp.monthly||0);
   base = inp.part ? add('earn','正常工時薪資','Regular hours pay',`${fmtH(inp.regH)} 小時 × 時薪 ${n(H)}`, inp.regH*H)
-                  : add('earn','本薪（月薪）','Base salary',`月薪 ${n(inp.monthly)}；時薪基準 = 月薪 ÷ 30 ÷ 8 = ${Hs}`, +inp.monthly);
+                  : add('earn','底薪','Base pay',`底薪 ${n(+inp.monthly-allow)}（底薪＋專業加給 = 月薪 ${n(+inp.monthly)}；時薪基準 = 月薪 ÷ 30 ÷ 8 = ${Hs}）`, +inp.monthly-allow)
+                    + (allow ? add('earn','專業加給','Professional allowance',`專業加給 ${n(allow)}（請假、遲到扣薪與加班費都以底薪＋專業加給計）`, allow) : 0);
   let night=0;
   if(eveN) night+=add('earn','小夜班津貼','Evening shift allowance',`${eveN} 班 × ${n(+inp.eveRate)}`, eveN*inp.eveRate);
   if(nightN) night+=add('earn','大夜班津貼','Overnight shift allowance',`${nightN} 班 × ${n(+inp.nightRate)}`, nightN*inp.nightRate);
@@ -5579,7 +5601,14 @@ function payMath(inp){
     if(v>=0) adjPos+=add('earn','人工調整：'+a.label,'Manual: '+a.label,a.reason||'',v);
     else adjNeg+=add('other','人工調整：'+a.label,'Manual: '+a.label,a.reason||'',-v); });
   const home = +inp.homeH>0 ? add('earn','居服時薪收入（司機兼居服）','Home-care hourly pay (driver)',`${fmtH(+inp.homeH)} 小時 × 時薪 ${n(+inp.homeRate)}`, inp.homeH*inp.homeRate) : 0;
-  const gross = base+night+ot+paidLeave+bonus+adjPos-att+home;
+  let extra=0;
+  if(+inp.visits>0) extra+=add('earn','訪案津貼','Visit allowance',`${+inp.visits} 案 × ${MONTHLY_RULES.visit}（Excel 匯入）`, inp.visits*MONTHLY_RULES.visit);
+  if(+inp.overN>0) extra+=add('earn','超案津貼','Over-case allowance',`${+inp.overN} 案 × ${MONTHLY_RULES.over}（Excel 匯入）`, inp.overN*MONTHLY_RULES.over);
+  if(+inp.aReward>0) extra+=add('earn','日照 A 碼獎勵（AA11）','Day-care A-code reward',inp.aMeta||'AA11 小計 × 50% 依出工比例分配', +inp.aReward);
+  if(+inp.incentive>0) extra+=add('earn','激勵獎金','Incentive bonus','Excel 匯入，一筆金額', +inp.incentive);
+  if(+inp.settleComp>0) extra+=add('earn','補休結算','Comp-time settlement',`${fmtH(+inp.settleComp)} 小時 × ${Hs}`, inp.settleComp*H);
+  if(+inp.settleAnnual>0) extra+=add('earn','特休結算','Annual-leave settlement',`${fmtH(+inp.settleAnnual)} 小時 × ${Hs}`, inp.settleAnnual*H);
+  const gross = base+night+ot+paidLeave+bonus+adjPos-att+home+extra;
   const regular = (inp.part ? inp.regH*H : +inp.monthly)+night;
   if(inp.laborG && gradeFor(regular,LABOR_GRADES)>inp.laborG) warn.push({zh:`勞保投保薪資 ${inp.laborG} 低於本月經常性薪資（含夜班津貼）${Math.round(regular)} 的級距 ${gradeFor(regular,LABOR_GRADES)}`,
     en:`Labor insured salary ${inp.laborG} is below the bracket for regular pay incl. shift allowance (${gradeFor(regular,LABOR_GRADES)})`,cls:'warn'});
@@ -5601,7 +5630,7 @@ function payMath(inp){
   const otH=OT_TIERS.reduce((a,t)=>a+(+inp[t.k]||0),0)+(+inp.compH||0);
   if(otH>OT_MONTH_CAP_H) warn.push({zh:`本月加班 ${fmtH(otH)} 小時，超過 ${OT_MONTH_CAP_H} 小時上限`,en:`Overtime ${fmtH(otH)}h exceeds ${OT_MONTH_CAP_H}h cap`,cls:'crit'});
   if(net<0) warn.push({zh:'實發為負數',en:'Net pay is negative',cls:'crit'});
-  return {H, Hot, eveN, nightN, lines, base, home, night, ot, att, paidLeave, bonus, adjPos, adjNeg, adjNet:adjPos-adjNeg, gross, labor, health, pension, tax, stat, net,
+  return {H, Hot, eveN, nightN, lines, base, home, night, ot, att, paidLeave, bonus, extra, adjPos, adjNeg, adjNet:adjPos-adjNeg, gross, labor, health, pension, tax, stat, net,
     er:{labor:erL, health:erH, pension:erP, total:erL+erH+erP}, warn};
 }
 const calcPay = (empId, month) => payMath(payInputs(empId, month));
@@ -5619,11 +5648,11 @@ const monthState = run => {
 };
 function payCSV(res, month){
   const night=NIGHT_SHIFT;   // 沒有大夜班時不輸出「大夜班次」欄
-  const head=['員工編號','姓名','職稱','公司','計薪方式','本薪/正常工時薪資','小夜班次',...(night?['大夜班次']:[]),'夜班津貼','加班費','給薪假(時薪制)','差勤扣款','全勤獎金','人工調整淨額','應發金額',
+  const head=['員工編號','姓名','職稱','公司','計薪方式','本薪/正常工時薪資','小夜班次',...(night?['大夜班次']:[]),'夜班津貼','加班費','給薪假(時薪制)','差勤扣款','全勤獎金','訪案超案A碼激勵結算','人工調整淨額','應發金額',
     '勞保自付','健保自付','勞退自提','所得稅','其他扣款','實發金額','發薪方式','雇主勞保','雇主健保','雇主勞退','警示'];
   const rows=[head];
   STAFF.forEach(s=>{ const r=res[s.id]; if(!r) return;
-    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, payLabel(s).zh, r.base, r.eveN, ...(night?[r.nightN]:[]), r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.adjNet, r.gross,
+    rows.push([s.id, empName(s.id), TITLES[s.title].zh, unit(s.unit).zh, payLabel(s).zh, r.base, r.eveN, ...(night?[r.nightN]:[]), r.night, r.ot, r.paidLeave, -r.att, r.bonus, r.extra, r.adjNet, r.gross,
       r.labor, r.health, r.pension, r.tax, r.adjNeg, r.net, PAY_METHOD[payMethodOf(s.id)].zh, r.er.labor, r.er.health, r.er.pension, r.warn.map(w=>w.zh).join('; ')]); });
   const t=payTotals(res), tot=head.map(()=>'');
   tot[0]='合計'; tot[head.indexOf('應發金額')]=t.gross; tot[head.indexOf('實發金額')]=t.net;
@@ -5663,9 +5692,71 @@ function payRulesCard(){
         <li>${esc(both('項目單價跟隨政府支付碼，過去十年未調整；若政府或老闆調整則另議。','Unit prices follow the government payment codes, unchanged for ten years; if the government or the owner changes them it will be discussed then.'))}</li>
         <li>${esc(both('其他項目：業績獎金（依當月服務金額區間 0／1,000／3,000／4,000／5,000）、偏鄉津貼（五峰、尖石、關西、峨眉，每案每月 600）、交通津貼（10、20 公里以上）、其他加項與扣項、勞健保代扣、服務獎勵金（AA 碼）。','Other items: performance bonus by monthly billed-amount bracket, remote allowance (五峰, 尖石, 關西, 峨眉; 600 per case per month), transport allowance (10 and 20 km), other additions and deductions, insurance withholding, and AA-code government incentives.'))}</li>
         <li>${esc(both('原型在「薪資計算機」頁底，用仁寶檔算拆帳薪資、業績獎金與偏鄉津貼（其餘項目還沒算）。','The prototype calculates item pay, bonus and remote allowance from the 仁寶 file at the bottom of the pay calculator page (the other items are not calculated yet).'))}</li></ul>
+      <div class="eyebrow">${esc(both('月薪制（11/4 需求端提供）','Monthly pay (provided 4 Nov)'))}</div>
+      <ul style="margin:0;padding-left:20px;line-height:1.8">
+        <li>${esc(both('底薪、專業加給：在 Portal 設定（示範以月薪的 12% 當專業加給）；請假、遲到與加班費都以底薪＋專業加給計。','Base pay and professional allowance are set in the portal (the demo uses 12% of monthly pay as allowance); leave, lateness and overtime use base + allowance.'))}</li>
+        <li>${esc(both('訪案津貼每案 50、超案津貼每案 100（Excel 匯入）；激勵獎金一筆金額（Excel 匯入）；日照 A 碼獎勵：A 碼項目清冊只取 AA11 小計，× 50%，依各照服員出工天數比例分配。','Visit allowance 50 per case, over-case allowance 100 per case (Excel); incentive bonus is a lump sum (Excel); day-care A-code reward: AA11 subtotals × 50%, split by care attendants’ workdays.'))}</li>
+        <li>${esc(both('病假扣半薪、事假扣全薪（由請假單帶入）；遲到按分鐘不支薪；加班費由加班單帶入；補休與特休結算依 Portal 時數；勞健保勞退依 Portal 設定的級距代扣。','Sick leave deducts half pay, personal leave full pay (from leave requests); lateness is unpaid by the minute; overtime comes from overtime requests; comp-time and annual-leave settlement use portal hours; insurance and pension follow the portal brackets.'))}</li></ul>
       <div class="eyebrow">${esc(both('權限','Access'))}</div>
       <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('管理者與老闆可以檢視所有人的薪資，但不能修改。','The manager and the owner can view everyone’s pay but cannot change it.'))}</div>
       <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('下面的薪資試算表是示範：居服員（含拆帳制的）先以時薪估算，司機是「月薪＋居服時薪」，居服時數是示範數字；匯入仁寶檔後，名字對得到的人會帶入仁寶工時。時薪與時數都是虛構的示範資料，正式拆帳請看薪資計算機頁底。薪資計算表的欄位與正式格式要等千玉與思慧（管理者與系統管理員）提供後對照調整。','Below, home care workers (including full time) are calculated as hourly; drivers are “monthly + home-care hourly”, with home-care hours as demo numbers for now (the real version takes them from the 仁寶 worker hours). Rates and hours are fictional demo data. The columns and official format of the payroll sheet will be adjusted once the manager and system administrator supply them.'))}</div>
+    </div></section>`;
+}
+/* ---------- 月薪制：獎金 Excel 與 A 碼項目清冊匯入（10/28 需求端） ---------- */
+const BONUS_TYPES = {'訪案津貼':'visit','超案獎金':'over','超案津貼':'over','激勵獎金':'incentive'};
+function bonusParse(rows){
+  const norm=v=>String(v??'').split('\n')[0].replace(/\s/g,'');
+  let h=-1; for(let i=0;i<Math.min(rows.length,12);i++){ const f=(rows[i]||[]).map(norm); if(f.includes('工號')&&f.includes('獎金類別')){ h=i; break; } }
+  if(h<0) return {fatal:'找不到表頭：需要有「工號」與「獎金類別」欄的那一列（請用「下載獎金範本」）'};
+  const head=(rows[h]||[]).map(norm), col=n=>head.indexOf(n), C={id:col('工號'),type:col('獎金類別'),qty:col('數量'),amt:col('金額')};
+  const ids=new Set(STAFF.map(x=>x.id)), out={by:{},rows:0,errors:[],tot:{visit:0,over:0,incentive:0}};
+  for(let r=h+1;r<rows.length;r++){
+    const x=rows[r]||[], type=String(x[C.type]??'').trim(), id=String(x[C.id]??'').trim().toUpperCase();
+    if(!type&&!id) continue; if(!type) continue;      // 範本裡只列了員工、沒填獎金的列直接略過
+    const k=BONUS_TYPES[type], qty=parseFloat(x[C.qty]), amt=parseFloat(String(x[C.amt]??'').replace(/,/g,''));
+    const why = !ids.has(id)?'工號不在員工名單':!k?'獎金類別要是訪案津貼、超案獎金或激勵獎金':(k==='incentive'?(!isFinite(amt)||amt<0?'激勵獎金要填金額':''):(!isFinite(qty)||qty<0?'數量要是 0 以上的數字':''));
+    if(why){ out.errors.push({row:r+1,why}); continue; }
+    const e=out.by[id]=out.by[id]||{visits:0,over:0,incentive:0};
+    if(k==='visit'){ e.visits+=qty; out.tot.visit+=qty; } else if(k==='over'){ e.over+=qty; out.tot.over+=qty; } else { e.incentive+=amt; out.tot.incentive+=amt; }
+    out.rows++;
+  }
+  return out;
+}
+function aParse(rows){
+  const norm=v=>String(v??'').split('\n')[0].replace(/\s/g,'');
+  let h=-1; for(let i=0;i<Math.min(rows.length,15);i++){ const f=(rows[i]||[]).map(norm); if(f.includes('服務代碼')&&f.includes('小計')){ h=i; break; } }
+  if(h<0) return {fatal:'找不到表頭：需要有「服務代碼」與「小計」欄的那一列（A 碼項目清冊）'};
+  const head=(rows[h]||[]).map(norm), C={code:head.indexOf('服務代碼'),sub:head.indexOf('小計'),date:head.indexOf('服務日期')};
+  const out={byCode:{},rows:0,skipped:0}, months={};
+  for(let r=h+1;r<rows.length;r++){
+    const x=rows[r]||[], code=String(x[C.code]??'').trim(), v=parseFloat(String(x[C.sub]??'').replace(/,/g,''));
+    if(!code) continue; if(!isFinite(v)){ out.skipped++; continue; }
+    out.byCode[code]=(out.byCode[code]||0)+v; out.rows++;
+    const d=String(x[C.date]??'').split(',')[0].trim(), m=d.match(/^(\d{2,4})[\/-](\d{1,2})/); if(m){ let y=+m[1]; if(y<200) y+=1911; const k=y+'-'+String(m[2]).padStart(2,'0'); months[k]=(months[k]||0)+1; }
+  }
+  const ks=Object.keys(months).sort((a,b)=>months[b]-months[a]);
+  if(!ks.length) return {fatal:'讀不到服務日期，無法判斷月份'};
+  out.month=ks[0]; out.aa11=out.byCode[MONTHLY_RULES.aCode]||0;
+  return out;
+}
+function monthlyImportCard(month){
+  const bimp=(state.bonusImp||{})[month], a=state.aImp&&state.aImp.month===month?state.aImp:null, sh=a?aShares(month):null, can_=payEdit();
+  const msg=state.payImpMsg?`<div class="note ${/無法|找不到/.test(state.payImpMsg)?'warn':''}">${esc(state.payImpMsg)}</div>`:'';
+  const tot=bimp?Object.values(bimp).reduce((q,e)=>({v:q.v+e.visits,o:q.o+e.over,i:q.i+e.incentive}),{v:0,o:0,i:0}):null;
+  return `<section class="card" id="monthlyImp"><div class="card-h"><h2>${esc(both('月薪制獎金與 A 碼獎勵（Excel 匯入）','Monthly staff: bonus import and A-code reward'))}</h2><span class="chip">${esc(month)}</span></div>
+    <div class="card-b" style="display:grid;gap:10px">
+      <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('訪案津貼＝訪案數 × 50；超案津貼＝超案數 × 100；激勵獎金＝一筆金額。一位員工可以有多筆。範本會帶入 Portal 的員工資料（公司別、部門別、姓名、工號），填數量或金額後匯入；檔案只在瀏覽器讀取，只留彙總。日照 A 碼獎勵：匯入 A 碼項目清冊，只加總 AA11 的小計，乘 50% 當獎勵池，依各照服員出工天數 ÷ 全體照服員出工天數分配。','Visit allowance = visits × 50; over-case allowance = cases × 100; incentive is a lump sum; one person can have several rows. The template is pre-filled with employees from the portal. Day-care A-code reward: import the A-code roster, sum only AA11 subtotals, take 50% as the pool and split by workdays.'))}</div>
+      ${msg}
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <button class="btn ghost mini" id="bonusTpl">${esc(both('下載獎金範本（帶入員工）','Download bonus template (with staff)'))}</button>
+        ${can_?`<label class="muted" style="font-size:12.5px">${esc(both('匯入獎金 Excel','Import bonus Excel'))} <input type="file" id="bonusFile" accept=".xlsx,.csv"></label>
+        <label class="muted" style="font-size:12.5px">${esc(both('匯入 A 碼項目清冊','Import A-code roster'))} <input type="file" id="aFile" accept=".xlsx,.csv"></label>`:`<span class="muted" style="font-size:12.5px">${esc(both('匯入只有人資可以做（管理者與系統管理員只能檢視）','Only HR can import; managers and administrators can view'))}</span>`}
+      </div>
+      <div class="todostrip">${bimp?`<span class="chip acc">${esc(both('獎金匯入','Bonus import'))}：${Object.keys(bimp).length} ${esc(both('人','people'))}</span><span class="chip">${esc(both('訪案','Visits'))} ${tot.v}</span><span class="chip">${esc(both('超案','Over'))} ${tot.o}</span><span class="chip">${esc(both('激勵','Incentive'))} ${money(Math.round(tot.i))}</span>`:`<span class="chip">${esc(both('本月還沒匯入獎金','No bonus import for this month'))}</span>`}
+        ${a?`<span class="chip acc">${esc(both('A 碼 AA11 小計','AA11 subtotal'))} ${money(Math.round(a.aa11))}</span><span class="chip">${esc(both('獎勵池 50%','Pool 50%'))} ${money(Math.round(sh.pool))}</span><span class="chip">${esc(both('分配對象','Recipients'))} ${sh.rows.length}</span>`:`<span class="chip">${esc(both('本月還沒匯入 A 碼清冊','No A-code roster for this month'))}</span>`}</div>
+      ${sh&&sh.rows.length?`<div class="tablewrap" style="max-height:240px;overflow:auto"><table class="todotbl"><thead><tr><th>${bi('員工','Employee')}</th><th>${bi('出工天數','Workdays')}</th><th>${bi('比例','Share')}</th><th>${bi('獎勵金額','Reward')}</th></tr></thead><tbody>
+        ${sh.rows.map(r=>`<tr><td>${esc(r.id)} ${esc(empName(r.id))}</td><td class="num">${r.d}</td><td class="num">${(r.share*100).toFixed(1)}%</td><td class="num">${money(Math.round(r.amt))}</td></tr>`).join('')}</tbody></table></div>`:''}
+      ${a&&!(sh&&sh.rows.length)?`<div class="note warn">${esc(both('本月沒有可分配的日照照服員（月薪制、有出勤）。','No eligible monthly day-care care attendants with attendance this month.'))}</div>`:''}
     </div></section>`;
 }
 function viewPayRun(){
@@ -5681,6 +5772,7 @@ function viewPayRun(){
   return `
   <div class="grid">
     ${payRulesCard()}
+    ${monthlyImportCard(month)}
     <div class="card"><div class="card-b" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
       <span class="ulabel">${esc(both('計薪月份','Pay month'))}</span>${monthPicker('payMonth',month)}
       <span class="chip ${st.cls}">${esc(both(st.zh,st.en))}</span>
@@ -5741,6 +5833,31 @@ function viewPayRun(){
 }
 BINDERS['pay:run']=function(){
   const month=payDefault();
+  const tpl=document.getElementById('bonusTpl'); if(tpl) tpl.onclick=()=>{
+    const rows=[['公司別','部門別','姓名','工號','獎金類別','數量','金額','說明'],
+      ...STAFF.filter(x=>onRoster(x,month)&&!isHourlyPay(x)).map(x=>[unit(x.unit).zh,DEPTS[x.dept].zh,empName(x.id),x.id,'','','','']),
+      [],['','','','','訪案津貼','','','金額等於數量 × 50'],['','','','','超案獎金','','','金額等於數量 × 100'],['','','','','激勵獎金','','','與數量無關，直接填一筆金額'],['','','','','','','','*一位員工可以有多筆獎金；獎金類別空白的列不會匯入']];
+    saveBlob(buildXlsx(rows),'月薪制獎金匯入範本_'+month+'.xlsx');
+  };
+  const bf=document.getElementById('bonusFile'); if(bf) bf.onchange=async()=>{
+    const f=bf.files[0]; if(!f||!payEdit()) return; const ext=upExt(f.name);
+    if(ext!=='xlsx'&&ext!=='csv'){ state.payImpMsg='無法匯入：只收 .xlsx 和 .csv'; render(); return; }
+    try{ const buf=await f.arrayBuffer(), r=bonusParse(ext==='csv'?csvRead(buf):await xlsxRead(buf));
+      if(r.fatal){ state.payImpMsg='無法匯入：'+r.fatal; }
+      else{ (state.bonusImp||(state.bonusImp={}))[month]=r.by; state.payImpMsg=`已匯入獎金：${r.rows} 筆、${Object.keys(r.by).length} 位員工`+(r.errors.length?`；${r.errors.length} 列有問題沒有匯入（列號 ${r.errors.slice(0,10).map(e=>e.row+'：'+e.why).join('、')}）`:'')+'。原始列已丟棄。'; }
+    }catch(err){ state.payImpMsg='無法匯入：'+(err.message||'讀檔失敗'); }
+    render();
+  };
+  const af=document.getElementById('aFile'); if(af) af.onchange=async()=>{
+    const f=af.files[0]; if(!f||!payEdit()) return; const ext=upExt(f.name);
+    if(ext!=='xlsx'&&ext!=='csv'){ state.payImpMsg='無法匯入：只收 .xlsx 和 .csv'; render(); return; }
+    try{ const buf=await f.arrayBuffer(), r=aParse(ext==='csv'?csvRead(buf):await xlsxRead(buf,/A碼|項目清冊/));
+      if(r.fatal){ state.payImpMsg='無法匯入：'+r.fatal; }
+      else{ state.aImp={month:r.month,aa11:r.aa11,byCode:r.byCode,rows:r.rows}; if(PAY_MONTHS.includes(r.month)) state.payMonth=r.month;
+        state.payImpMsg=`已匯入 A 碼清冊：${r.month}，${r.rows} 列，AA11 小計 ${money(Math.round(r.aa11))}`+(r.month!==month?`（清冊是 ${r.month}，已切換到該月份）`:'')+'。個案資料已丟棄，只留小計。'; }
+    }catch(err){ state.payImpMsg='無法匯入：'+(err.message||'讀檔失敗'); }
+    render();
+  };
   document.getElementById('payMonth').onchange=e=>{ state.payMonth=e.target.value; render(); };
   document.querySelectorAll('[data-payemp]').forEach(r=>r.onclick=()=>openPayslip(r.dataset.payemp, month));
   const sv=document.querySelector('[data-savever]'); if(sv&&!sv.disabled) sv.onclick=()=>saveVersion(month);
@@ -5855,7 +5972,7 @@ const NIGHT_FIELDS = [
 ];
 function calcDefaults(empId, month){
   if(!empId) return {empId:'', month, part:false, monthly:40000, hourly:PAY_CFG.minHourly, regH:0, wd1:0, wd2:0, rd1:0, rd2:0, rd3:0, hol:0,
-    lv_sick:0, lv_personal:0, lv_family:0, lv_menstrual:0, lv_paid:0, lateMin:0, bonus:true, homeH:0, homeRate:PAY_CFG.minHourly,
+    lv_sick:0, lv_personal:0, lv_family:0, lv_menstrual:0, lv_paid:0, lateMin:0, bonus:true, homeH:0, homeRate:PAY_CFG.minHourly, allow:0, visits:0, overN:0, aReward:0, incentive:0, settleComp:0, settleAnnual:0,
     eve:0, night:0, eveRate:PAY_CFG.eveRate, nightRate:PAY_CFG.nightRate, nightInBase:PAY_CFG.nightInOTBase, laborG:gradeFor(40000,LABOR_GRADES), healthG:gradeFor(40000,HEALTH_GRADES), dep:0, selfPct:0, addAmt:0, dedAmt:0};
   const i=payInputs(empId, month), c={...i};
   DEDUCT_LEAVES.forEach(k=>c['lv_'+k]=i.leave[k]||0);
@@ -5907,6 +6024,8 @@ function viewPayCalc(){
         <div class="row">${CALC_FIELDS.slice(7).map(f=>num(...f)).join('')}
           <div><label>${esc(both('全勤獎金','Attendance bonus'))}</label><select name="bonus"><option value="true" ${c.bonus?'selected':''}>${esc(both('符合','Eligible'))}</option><option value="false" ${!c.bonus?'selected':''}>${esc(both('不符合','Not eligible'))}</option></select></div>
         </div>
+        <div class="eyebrow">${esc(both('月薪制加項（專業加給、津貼、獎金、結算）','Monthly staff additions (allowance, bonuses, settlement)'))}</div>
+        <div class="row">${num('allow','專業加給（含在月薪內）','Professional allowance (within monthly pay)','NT$')}${num('visits','訪案數（每案 50）','Visits (50 each)','案')}${num('overN','超案數（每案 100）','Over-cases (100 each)','案')}${num('aReward','日照 A 碼獎勵','Day-care A-code reward','NT$')}${num('incentive','激勵獎金','Incentive bonus','NT$')}${num('settleComp','補休結算','Comp-time settlement','h')}${num('settleAnnual','特休結算','Annual-leave settlement','h')}</div>
         <div class="eyebrow">${esc(both('勞健保與勞退','Insurance & pension'))}</div>
         <div class="row">
           <div><label>${esc(both('勞保投保薪資','Labor grade'))}</label><select name="laborG"><option value="0">${esc(both('未投保','None'))}</option>${LABOR_GRADES.map(g=>`<option ${g==c.laborG?'selected':''}>${g}</option>`).join('')}</select></div>
@@ -6007,7 +6126,7 @@ BINDERS['pay:calc']=function(){
   const draw=()=>{
     if(f.empId.value!==(state.calcInp.empId||'')){ state.calcEmp=f.empId.value; state.calcInp=calcDefaults(f.empId.value, month()); render(); return; }
     const c={...state.calcInp}, el=k=>f.elements[k].value;
-    ['monthly','hourly','homeH','homeRate','regH','wd1','wd2','rd1','rd2','rd3','hol','lv_sick','lv_personal','lv_family','lv_menstrual','lv_paid','lateMin','laborG','healthG','dep','selfPct','addAmt','dedAmt','eve','night','eveRate','nightRate']
+    ['monthly','hourly','homeH','homeRate','regH','wd1','wd2','rd1','rd2','rd3','hol','lv_sick','lv_personal','lv_family','lv_menstrual','lv_paid','lateMin','laborG','healthG','dep','selfPct','addAmt','dedAmt','eve','night','eveRate','nightRate','allow','visits','overN','aReward','incentive','settleComp','settleAnnual']
       .forEach(k=>c[k]=Math.max(0,+el(k)||0));
     c.part=el('part')==='true'; c.split=el('part')==='split'; c.bonus=el('bonus')==='true'; c.nightInBase=el('nightInBase')==='true';
     f.monthly.disabled=c.part; f.hourly.disabled=!c.part; f.regH.disabled=!c.part;
@@ -6015,8 +6134,8 @@ BINDERS['pay:calc']=function(){
     if(c.split){   // 9/20 會議決議：拆帳制規則待人事與相關單位確認，原型不計算
       document.getElementById('calcHead').textContent=both('拆帳制','Revenue-share');
       document.getElementById('calcOut').innerHTML=`<div class="note q">${esc(both(
-        '拆帳制的計薪規則、資料來源、例外調整及核准流程，待人事與相關單位確認（9/20 會議決議）。確認前不提供試算。',
-        'Revenue-share pay rules, data sources, exceptions and approval flow are pending confirmation by HR (20 Sept decision). No calculation until then.'))}</div>`;
+        '拆帳制請看薪資計算機頁底的「拆帳制計薪」（用仁寶檔與 10/28 給付表計算）；這個計算機只處理月薪制與時薪制。',
+        'For revenue-share pay see the “Revenue-share pay” section at the bottom of this page (it uses the 仁寶 file and the 28 Oct pay table); this calculator handles monthly and hourly pay only.'))}</div>`;
       return;
     }
     const r=payMath(calcToInput(c));
