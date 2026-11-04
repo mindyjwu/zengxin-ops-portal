@@ -205,3 +205,4 @@ Type: **Decide** = can be decided now (recommendation given, not yet a decision)
 - 技術選擇：Node.js + Express、PostgreSQL（正式用 Cloud SQL；本機與測試用 PGlite）、Google ID token 登入、簽章 cookie 工作階段、Cloud Run 容器。
 - 已完成並測試：資料表、Google 登入驗證、伺服器端權限（與網站 ROLES 一致）、打卡 API（伺服器讀 IP、位置只給後台）、稽核紀錄。尚未部署。
 - 分工：程式、測試、文件由 Claude 寫；Google Cloud 帳號、付款、OAuth 與雲端設定由專案負責人操作。完成度報告更新為整體約 44%（正式上線所需約 16%）。
+- 2026-11-04 — 學習計畫：專案負責人先做第 1 課練習，並自己設計請假、加班、簽核的資料庫（第 2 課作業），Claude 以問題引導與審查，不直接給答案；每週約 3–4 小時。
