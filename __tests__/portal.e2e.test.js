@@ -3129,7 +3129,17 @@ test.describe('Completion status report in the guide (4 Nov)', () => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     const sec = page.locator('#status');
     await expect(sec.locator('h2')).toContainText('完成度報告');
-    for (const s of ['整體約 40%', '71%', '10%', '後端與資料庫', '薪資計算', '還缺的決定與資料']) await expect(sec).toContainText(s);
+    for (const s of ['整體約 44%', '71%', '16%', '後端與資料庫', '薪資計算', '還缺的決定與資料']) await expect(sec).toContainText(s);
     await expect(page.locator('.toc a[href="#status"]')).toBeVisible();
+  });
+});
+
+test.describe('Server-side permission rules match the website (4 Nov)', () => {
+  test('server/roles.json has the same permissions as the ROLES on the website', async ({ page }) => {
+    await openPortal(page);
+    const site = await page.evaluate(() => Object.fromEntries(Object.keys(ROLES).map(k => [k, { ...ROLES[k].perms }])));
+    const srv = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../server/roles.json'), 'utf8')).roles;
+    expect(Object.keys(srv).sort()).toEqual(Object.keys(site).sort());
+    for (const k of Object.keys(site)) expect(srv[k].perms, k).toEqual(site[k]);
   });
 });

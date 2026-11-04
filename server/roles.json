@@ -1,0 +1,249 @@
+{
+ "generatedFrom": "ltc-portal.html 的 ROLES（網站上的權限規則）；改了網站規則要重新產生，測試會檢查兩邊一致",
+ "roles": {
+  "admin": {
+   "zh": "系統管理員",
+   "perms": {
+    "trainView": true,
+    "salary": false,
+    "editEmp": false,
+    "mobile": true,
+    "approve": false,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": false,
+    "perms": true,
+    "exportAll": true,
+    "mgmt": true,
+    "punchLoc": true
+   }
+  },
+  "hr": {
+   "zh": "人資",
+   "perms": {
+    "trainView": true,
+    "salary": true,
+    "editEmp": true,
+    "mobile": true,
+    "approve": true,
+    "finalize": true,
+    "annGroup": true,
+    "annOffice": true,
+    "perms": false,
+    "exportAll": true,
+    "mgmt": true,
+    "punchLoc": true
+   }
+  },
+  "manager": {
+   "zh": "管理者",
+   "perms": {
+    "trainView": true,
+    "salary": true,
+    "editEmp": true,
+    "mobile": true,
+    "approve": true,
+    "finalize": false,
+    "annGroup": true,
+    "annOffice": true,
+    "perms": true,
+    "exportAll": true,
+    "mgmt": true,
+    "punchLoc": true
+   }
+  },
+  "employee": {
+   "zh": "一般員工：照服員",
+   "perms": {
+    "trainView": false,
+    "salary": false,
+    "editEmp": false,
+    "mobile": false,
+    "approve": false,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": false,
+    "perms": false,
+    "exportAll": false,
+    "mgmt": false
+   }
+  },
+  "boss": {
+   "zh": "老闆",
+   "perms": {
+    "trainView": true,
+    "salary": true,
+    "editEmp": false,
+    "mobile": true,
+    "approve": true,
+    "finalize": false,
+    "annGroup": true,
+    "annOffice": true,
+    "perms": true,
+    "exportAll": true,
+    "mgmt": true
+   }
+  },
+  "training": {
+   "zh": "教育訓練專員",
+   "perms": {
+    "ceEdit": true,
+    "trainView": true,
+    "salary": false,
+    "editEmp": false,
+    "mobile": false,
+    "approve": false,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": false,
+    "perms": false,
+    "exportAll": false,
+    "mgmt": true
+   }
+  },
+  "accountant": {
+   "zh": "會計",
+   "perms": {
+    "trainView": false,
+    "salary": false,
+    "editEmp": false,
+    "mobile": false,
+    "approve": false,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": false,
+    "perms": false,
+    "exportAll": true,
+    "mgmt": true
+   }
+  },
+  "daydir": {
+   "zh": "日照主管",
+   "perms": {
+    "trainView": true,
+    "salary": false,
+    "editEmp": false,
+    "mobile": false,
+    "approve": true,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": true,
+    "perms": false,
+    "exportAll": false,
+    "mgmt": true
+   }
+  },
+  "daysw": {
+   "zh": "日照社工/護理師",
+   "perms": {
+    "trainView": false,
+    "salary": false,
+    "editEmp": false,
+    "mobile": false,
+    "approve": false,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": false,
+    "perms": false,
+    "exportAll": false,
+    "mgmt": true
+   }
+  },
+  "homelead": {
+   "zh": "居服主管",
+   "perms": {
+    "trainView": true,
+    "salary": false,
+    "editEmp": false,
+    "mobile": false,
+    "approve": true,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": true,
+    "perms": false,
+    "exportAll": false,
+    "mgmt": true
+   }
+  },
+  "homesup": {
+   "zh": "居家服務督導",
+   "perms": {
+    "trainView": true,
+    "salary": false,
+    "editEmp": false,
+    "mobile": false,
+    "approve": true,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": true,
+    "perms": false,
+    "exportAll": false,
+    "mgmt": true
+   }
+  },
+  "cmlead": {
+   "zh": "A個管主管",
+   "perms": {
+    "trainView": true,
+    "salary": false,
+    "editEmp": false,
+    "mobile": false,
+    "approve": true,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": true,
+    "perms": false,
+    "exportAll": false,
+    "mgmt": true
+   }
+  },
+  "cm": {
+   "zh": "A個管",
+   "perms": {
+    "trainView": false,
+    "salary": false,
+    "editEmp": false,
+    "mobile": false,
+    "approve": false,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": false,
+    "perms": false,
+    "exportAll": false,
+    "mgmt": true
+   }
+  },
+  "driver": {
+   "zh": "一般員工：司機",
+   "perms": {
+    "trainView": false,
+    "salary": false,
+    "editEmp": false,
+    "mobile": false,
+    "approve": false,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": false,
+    "perms": false,
+    "exportAll": false,
+    "mgmt": false
+   }
+  },
+  "hca": {
+   "zh": "一般員工：居服員",
+   "perms": {
+    "trainView": false,
+    "salary": false,
+    "editEmp": false,
+    "mobile": false,
+    "approve": false,
+    "finalize": false,
+    "annGroup": false,
+    "annOffice": false,
+    "perms": false,
+    "exportAll": false,
+    "mgmt": false
+   }
+  }
+ }
+}
