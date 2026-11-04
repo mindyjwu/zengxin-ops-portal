@@ -1,0 +1,10 @@
+node_modules
+__tests__
+docs
+*.html
+icons
+test-results
+playwright-report
+.git
+.github
+junit-report.xml
