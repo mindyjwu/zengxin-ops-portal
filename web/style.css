@@ -23,3 +23,8 @@ header nav a[aria-current=page]{font-weight:700;text-decoration:none}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
 tr.click{cursor:pointer}tr.click:hover{background:var(--bg)}
 textarea{min-height:60px}dl.kv{display:grid;grid-template-columns:8em 1fr;gap:4px 10px;margin:0}dl.kv dt{color:var(--muted)}dl.kv dd{margin:0}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}.tile .big{font-size:24px;font-weight:700;line-height:1.3}
+svg.chart{width:100%;height:auto;max-height:160px;border-bottom:1px solid var(--line)}svg.chart .bar{fill:var(--accent)}
+.bars{display:grid;grid-template-columns:minmax(80px,150px) 1fr auto;gap:6px 10px;align-items:center;font-size:13px}.bars progress{width:100%;height:10px}
+progress{accent-color:var(--accent)}.chips{display:flex;gap:8px;flex-wrap:wrap}.msg.warn{border-color:var(--warn);color:var(--warn)}
+.num{text-align:right;font-variant-numeric:tabular-nums}

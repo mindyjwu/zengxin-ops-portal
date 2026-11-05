@@ -245,5 +245,25 @@
     "mgmt": false
    }
   }
- }
+ },
+ "pages": {
+  "svc.case": {
+   "admin": "可檢視",
+   "hr": "不可",
+   "manager": "可編輯",
+   "employee": "不可",
+   "boss": "可",
+   "training": "不可",
+   "accountant": "不可",
+   "daydir": "不可",
+   "daysw": "不可",
+   "homelead": "可",
+   "homesup": "可",
+   "cmlead": "不可",
+   "cm": "不可",
+   "driver": "不可",
+   "hca": "不可"
+  }
+ },
+ "pagesNote": "頁面權限：不可／可檢視／可／可編輯（取自網站的職稱權限對照表，含 10/20–10/28 決定）；key 是頁面代號"
 }

@@ -24,7 +24,7 @@
     leave_type_for_designated_staff_only: '這個假別只有指定員工可以使用。', exceeds_per_event_limit: '超過每次事件的上限。', quota_exceeded: '超過額度。', leave_overlaps: '這段時間已經有請假申請。',
     bad_date_or_time: '日期或時間格式不對。', comp_must_be_pay_or_comp: '請選擇換加班費或補休。', hours_must_be_half_hours_up_to_12: '加班時數要是 0.5 小時為單位，最多 12 小時。', hours_exceed_time_range: '加班時數超過起訖時間。',
     monthly_overtime_cap: '本月加班已超過上限（46 小時）。', cannot_fix_the_future: '不能補未來的打卡。', bad_kind: '請選擇上班或下班。', forbidden: '你沒有這個權限。', not_found: '找不到。', not_open: '這張單已經處理過了。',
-    reject_needs_reason: '駁回要寫理由。', only_approved_can_be_cancelled: '只有已核准的才能銷假。', login_required: '請重新登入。', server_error: '伺服器出錯，請稍後再試。'
+    reject_needs_reason: '駁回要寫理由。', bad_summary: '匯入的內容格式不對。', no_data_for_month: '這個月還沒有資料。', bad_month: '月份格式不對。', only_approved_can_be_cancelled: '只有已核准的才能銷假。', login_required: '請重新登入。', server_error: '伺服器出錯，請稍後再試。'
   };
   const errText = (d) => { const base = ERR[d && d.error] || '失敗，請再試一次。'; return d && d.error === 'quota_exceeded' ? `${base}剩 ${hrs(d.left)} 小時，你申請 ${hrs(d.requested)} 小時。` : d && d.limitHours ? `${base}上限 ${hrs(d.limitHours)} 小時。` : base; };
   const msgBox = () => h('div', { class: 'msg hidden', role: 'status' });
@@ -43,6 +43,7 @@
     const link = (text, href, extra) => h('a', { href, 'aria-current': current === href ? 'page' : false }, text, extra);
     nav.append(link('首頁', '#/home'), link('申請', '#/apply/leave'), link('我的申請', '#/mine'),
       link('待我簽核', '#/inbox', inboxCount ? h('span', { class: 'badge', 'aria-label': inboxCount + ' 件待簽' }, inboxCount) : null));
+    if (me.canSvcView) nav.append(link('仁寶', '#/svc'));
     if (me.canListEmployees) nav.append(h('a', { href: '/admin.html' }, '員工管理'));
     if (me.canSeeAudit) nav.append(link('稽核紀錄', '#/audit'));
     nav.append(h('a', { href: '#', onclick: async e => { e.preventDefault(); await post('/auth/logout'); location.href = '/'; } }, '登出'));
@@ -154,11 +155,19 @@
   }
 
   /* ---------- 路由 ---------- */
+  let routing = false, again = false;                       // 連續切換頁面時，一次只畫一個，避免兩頁內容疊在一起
   async function route() {
+    if (routing) { again = true; return; }
+    routing = true;
+    do { again = false; await routeOnce(); } while (again);
+    routing = false;
+  }
+  async function routeOnce() {
     const hash = location.hash || '#/home', [, name, arg] = hash.split('/');
-    view.textContent = ''; await drawNav(name === 'apply' ? '#/apply/leave' : '#/' + name);
+    view.textContent = ''; await drawNav(name === 'apply' ? '#/apply/leave' : name === 'svc' ? '#/svc' : '#/' + name);
     if (name === 'apply') await apply(arg || 'leave'); else if (name === 'mine') await mine(); else if (name === 'inbox') await inbox();
-    else if (name === 'request') await detail(+arg); else if (name === 'audit') await audit(); else await home();
+    else if (name === 'request') await detail(+arg); else if (name === 'audit') await audit();
+    else if (name === 'svc') await ZXViews.svc({ view, h, api, post, fmt, hrs, say, msgBox, me, errText }, arg); else await home();
   }
   window.addEventListener('hashchange', route);
   route();
