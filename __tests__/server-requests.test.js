@@ -98,6 +98,7 @@ describe('approval flow', () => {
     expect((await hr.post(`/api/requests/${id}/approve`).send({ comment: '複核' })).body.status).toBe('approved');
     const d = (await emp.get(`/api/requests/${id}`)).body;
     expect(d.status).toBe('approved');
+    expect(d.leave_type_name).toBe('事假');                                                  // 畫面顯示中文假別名稱
     expect(d.history.map(h => h.step + ':' + h.action)).toEqual(['applicant:submit', 'manager:approve', 'hr:approve']);
     expect((await hr.post(`/api/requests/${id}/approve`).send({})).status).toBe(409);        // 已核准不能再簽
     expect((await emp.post(`/api/requests/${id}/cancel`).send({})).body.status).toBe('cancelled');   // 未來的請假可以銷假
