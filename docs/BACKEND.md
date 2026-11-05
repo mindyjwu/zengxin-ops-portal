@@ -11,14 +11,16 @@
 - `server/permissions.js` + `server/roles.json`：**伺服器端**權限（規則取自網站的 ROLES，測試檢查兩邊一致）
 - `server/db.js` + `server/migrations/`：資料庫連線與建表（正式用 PostgreSQL；本機與測試用 PGlite，同一套 SQL）
 - `backend/punch-ip.js`：伺服器自己讀 IP、辦公室網段比對、五年保存日
+- `server/employees.js`：員工與角色管理 API（新增、修改、停用、改角色、CSV 批次匯入）
+- `web/`：登入頁（`index.html`）與員工管理頁（`admin.html`），沒有行內腳本與樣式，內容安全政策才能收緊
 - `Dockerfile`：打包成容器
 
 ## 本機執行
 ```bash
 npm install
 npm run test:unit        # 後端測試（含資料庫，用 PGlite，不用另外裝資料庫）
-npm run server:dev       # http://localhost:8080 ，DEV_LOGIN=1 可用 /auth/dev-login 假登入
-DEV_LOGIN=1 node server/seed.js   # 寫入虛構示範員工（只有用檔案型資料庫時才留得住，見 PGLITE_DIR）
+npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@example.test）、員工管理頁 /admin.html
+                         # 會自動寫入虛構示範員工；資料只在記憶體，重啟就清空
 ```
 
 ## 環境變數
@@ -42,3 +44,10 @@ DEV_LOGIN=1 node server/seed.js   # 寫入虛構示範員工（只有用檔案�
 
 ## 下一步（我來寫）
 員工資料與請假、加班、簽核的 API；網頁前端改成呼叫 API（目前網站的資料還在瀏覽器）；匯入 104 與仁寶的正式流程；備份腳本與監控；更多伺服器端權限規則。
+
+## 用真實 Google 登入測試（本機，用個人測試專案、虛構資料）
+1. 在 Google Cloud 測試專案建立 OAuth 用戶端 ID（網頁應用程式），「已授權的 JavaScript 來源」加入 `http://localhost:8080`；同意畫面保持「測試中」，把你的 Gmail 加進測試使用者。
+2. 在 repo 資料夾執行：`GOOGLE_CLIENT_ID=你的用戶端ID SEED=1 DEV_LOGIN=1 node server/index.js`
+3. 因為登入用 email 對到員工，先把你的測試 Gmail 加成員工：用假登入以 `manager@example.test` 進 `/admin.html` 新增，或改 `server/seed.js` 的示範 email。
+4. 開 http://localhost:8080 ，按「用 Google 登入」。
+**正式環境不要設 `DEV_LOGIN`，也不要用個人專案放真實員工資料。**

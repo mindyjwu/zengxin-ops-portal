@@ -11,7 +11,7 @@
     "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:e2e": "playwright test",
     "server": "node server/index.js",
-    "server:dev": "DEV_LOGIN=1 node server/index.js"
+    "server:dev": "SEED=1 DEV_LOGIN=1 node server/index.js"
   },
   "repository": {
     "type": "git",

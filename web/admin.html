@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>員工管理</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header><h1>員工管理</h1><nav><a href="/">首頁</a></nav></header>
+<main>
+  <div id="denied" class="msg bad hidden" role="alert"></div>
+  <section id="addBox" class="card hidden">
+    <h2>新增員工</h2>
+    <form id="addForm">
+      <div class="row">
+        <div><label for="aName">姓名</label><input id="aName" required></div>
+        <div><label for="aEmail">公司 Google 帳號（email）</label><input id="aEmail" type="email" required></div>
+        <div><label for="aUnit">單位（公司或機構）</label><select id="aUnit" required></select></div>
+        <div><label for="aHired">到職日</label><input id="aHired" type="date"></div>
+        <div id="aRoleWrap"><label for="aRole">角色</label><select id="aRole"></select></div>
+      </div>
+      <button type="submit">新增（員編自動產生）</button>
+    </form>
+    <div id="addMsg" class="msg hidden" role="status"></div>
+  </section>
+  <section id="importBox" class="card hidden">
+    <h2>批次匯入（CSV）</h2>
+    <p class="muted">欄位：員編（可空白）、姓名、email、單位代號、角色（可空白）、到職日、舊員編。先預覽，沒有錯誤再確認匯入。檔案只傳到你們自己的伺服器。</p>
+    <input id="csvFile" type="file" accept=".csv,text/csv" aria-label="選擇 CSV 檔案">
+    <div class="mt8"><button id="previewBtn" class="ghost" disabled>預覽</button> <button id="commitBtn" disabled>確認匯入</button></div>
+    <div id="importMsg" class="msg hidden" role="status"></div>
+    <div class="tablewrap"><table id="previewTbl" class="hidden"><thead><tr><th>列</th><th>動作</th><th>員編</th><th>姓名</th><th>email</th><th>單位</th><th>角色</th><th>問題</th></tr></thead><tbody></tbody></table></div>
+  </section>
+  <section id="listBox" class="card hidden">
+    <h2>員工名單 <span id="count" class="chip"></span></h2>
+    <div class="tablewrap"><table><thead><tr><th>員編</th><th>姓名</th><th>email</th><th>單位</th><th>角色</th><th>狀態</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+</main>
+<script src="/admin.js"></script>
+</body>
+</html>

@@ -24,7 +24,8 @@ describe('database', () => {
     for (const n of ['units', 'employees', 'offices', 'punches', 'audit_log', 'schema_migrations']) expect(t).toContain(n);
     const { migrate } = require('../server/db');
     await migrate(db);
-    expect((await db.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n).toBe(1);
+    const files = require('fs').readdirSync(require('path').join(__dirname, '../server/migrations')).filter(x => x.endsWith('.sql')).length;
+    expect((await db.query('SELECT count(*)::int AS n FROM schema_migrations')).rows[0].n).toBe(files);
   });
   test('a punch cannot be stored for an unknown employee or a bad kind', async () => {
     await expect(db.query("INSERT INTO punches (emp_id,kind,keep_until) VALUES ('NOPE','in','2031-01-01')")).rejects.toThrow();
