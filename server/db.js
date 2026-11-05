@@ -38,10 +38,22 @@ async function migrate(db) {
   const done = new Set((await db.query('SELECT name FROM schema_migrations')).rows.map(r => r.name));
   for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.sql')).sort()) {
     if (done.has(f)) continue;
-    // 一個檔案裡有多個語句，逐句執行（簡單切法：分號結尾，適用我們的 migration 寫法）
-    for (const stmt of fs.readFileSync(path.join(dir, f), 'utf8').split(/;\s*(?:\n|$)/).map(x => x.replace(/^\s*--.*$/gm, '').trim()).filter(Boolean)) await db.query(stmt);
+    for (const stmt of splitSql(fs.readFileSync(path.join(dir, f), 'utf8'))) await db.query(stmt);
     await db.query('INSERT INTO schema_migrations (name) VALUES ($1)', [f]);
   }
 }
 
-module.exports = { createDb, migrate };
+/** 把 SQL 檔切成一句一句：分號結尾才算一句，但 $$ ... $$ 之間（函式內容）的分號不算；整行註解先拿掉 */
+function splitSql(text) {
+  const t = text.replace(/^\s*--.*$/gm, '');
+  const out = []; let cur = '', dollar = false;
+  for (let i = 0; i < t.length; i++) {
+    if (t.startsWith('$$', i)) { dollar = !dollar; cur += '$$'; i++; continue; }
+    if (t[i] === ';' && !dollar) { if (cur.trim()) out.push(cur.trim()); cur = ''; continue; }
+    cur += t[i];
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
+}
+
+module.exports = { createDb, migrate, splitSql };
