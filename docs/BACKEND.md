@@ -53,3 +53,9 @@ npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@exam
 3. 因為登入用 email 對到員工，先把你的測試 Gmail 加成員工：用假登入以 `manager@example.test` 進 `/admin.html` 新增，或改 `server/seed.js` 的示範 email。
 4. 開 http://localhost:8080 ，按「用 Google 登入」。
 **正式環境不要設 `DEV_LOGIN`，也不要用個人專案放真實員工資料。**
+
+## 仁寶匯入與儀表板（/api/svc）
+- `POST /api/svc/imports`：瀏覽器解析後只送彙總（需「居服個案」可編輯）；取代同月份舊資料；稽核 `svc_import`。
+- `GET /api/svc/imports`、`/months`、`/dashboard?month=`、`/workers?month=&day=`（需可檢視）。
+- `GET /api/svc/pay?month=&plan=A|B`：拆帳制計薪草稿（需薪資權限；稽核 `svc_pay_view`）；給付表在 `server/svc-config.json`。
+- 網頁：`#/svc`（儀表板）、`#/svc/workers`、`#/svc/import`、`#/svc/pay`；解析程式 `web/svc-parse.js` 與展示版同源。

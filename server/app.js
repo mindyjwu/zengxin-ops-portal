@@ -4,10 +4,11 @@
  */
 const express = require('express');
 const { makeSession, readSession, parseCookies, limiter } = require('./auth');
-const { can, requireCap } = require('./permissions');
+const { can, requireCap, canViewPage, canEditPage } = require('./permissions');
 const { clientIp, punchRecord } = require('../backend/punch-ip');
 const { employeesRouter } = require('./employees');
 const { requestsRouter } = require('./requests');
+const { svcRouter } = require('./svc');
 const path = require('path');
 
 function createApp({ db, verifyGoogle, config }) {
@@ -15,7 +16,8 @@ function createApp({ db, verifyGoogle, config }) {
   if (cfg.production && cfg.sessionSecret.length < 32) throw new Error('正式環境必須設定至少 32 字元的 SESSION_SECRET');
   const app = express();
   app.disable('x-powered-by');
-  app.use(express.json({ limit: '50kb' }));
+  // 一般請求上限 50KB；仁寶彙總那一條路由自己放寬到 4MB（在 svc.js）
+  app.use((req, res, next) => req.path === '/api/svc/imports' ? next() : express.json({ limit: '50kb' })(req, res, next));
 
   /* 安全標頭：不讓別的網站把我們嵌進去、不讓瀏覽器亂猜檔案類型 */
   app.use((req, res, next) => {
@@ -86,7 +88,8 @@ function createApp({ db, verifyGoogle, config }) {
 
   const needLogin = (req, res, next) => req.user ? next() : res.status(401).json({ error: 'login_required' });
   app.get('/api/me', needLogin, (req, res) => res.json({ id: req.user.id, name: req.user.name, role: req.user.role, unit: req.user.unit_id, canSeeLocation: can(req.user.role, 'punchLoc'),
-    canListEmployees: can(req.user.role, 'mgmt') && can(req.user.role, 'exportAll'), canEditEmployees: can(req.user.role, 'editEmp'), canChangeRole: can(req.user.role, 'perms'), canSeeAudit: can(req.user.role, 'perms') }));
+    canListEmployees: can(req.user.role, 'mgmt') && can(req.user.role, 'exportAll'), canEditEmployees: can(req.user.role, 'editEmp'), canChangeRole: can(req.user.role, 'perms'), canSeeAudit: can(req.user.role, 'perms'),
+    canSvcView: canViewPage(req.user.role, 'svc.case'), canSvcImport: canEditPage(req.user.role, 'svc.case'), canSvcPay: can(req.user.role, 'salary') }));
 
   /* 打卡：IP 由伺服器自己讀；回傳給手機的內容不含位置（位置只給後台） */
   app.post('/api/punch', needLogin, async (req, res) => {
@@ -119,6 +122,7 @@ function createApp({ db, verifyGoogle, config }) {
   });
 
   app.use('/api/employees', needLogin, employeesRouter({ db, audit }));
+  app.use('/api/svc', needLogin, svcRouter({ db, audit }));
   app.use('/api', needLogin, requestsRouter({ db, audit }));
   app.use(express.static(path.join(__dirname, '..', 'web'), { index: 'index.html', maxAge: 0 }));
 

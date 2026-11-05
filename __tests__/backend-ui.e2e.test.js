@@ -125,4 +125,29 @@ test.describe('connected web app', () => {
     expect(errs).toEqual([]);
     await ctx.close();
   });
+  test('仁寶: a manager imports a CSV in the browser, dashboard and pay show, an employee sees no menu', async ({ browser }) => {
+    const head = '案號,服務項目代碼,服務項目類別,項目服務次數,居服員姓名,服務日期,服務時間長度(分),項目單價,加班類型,居住(區),服務單位,服務狀態';
+    const csv = [head, 'T-1,BA20,陪伴服務,1,測試員甲,2031-06-03,60,175,正常班,竹北市,機構一,已簽退', 'T-2,BA20,陪伴服務,1,測試員甲,2031-06-04,60,175,正常班,竹北市,機構一,已簽退'].join('\n');
+    const errs = [], hr = await login(browser, 'manager@example.test');
+    hr.page.on('pageerror', e => errs.push(e.message));
+    hr.page.on('console', m => { if (m.type() === 'error' && /Content Security Policy/.test(m.text())) errs.push(m.text()); });
+    await hr.page.goto(BASE + '/app.html#/svc/import');
+    await hr.page.setInputFiles('#svcFile', { name: 'svc.csv', mimeType: 'text/csv', buffer: Buffer.from('\ufeff' + csv, 'utf8') });
+    await expect(hr.page.locator('.tiles')).toContainText('2031-06');
+    await expect(hr.page.locator('body')).not.toContainText('T-1');            // 案號不會顯示、也不會送出
+    await hr.page.click('#svcCommit');
+    await expect(hr.page.locator('.msg.ok')).toContainText('2031-06');
+    await hr.page.goto(BASE + '/app.html#/svc');
+    await hr.page.selectOption('#dmonth', '2031-06');
+    await expect(hr.page.locator('svg.chart rect.bar').first()).toBeVisible();
+    await expect(hr.page.locator('.tiles')).toContainText('服務人數');
+    await hr.page.goto(BASE + '/app.html#/svc/workers');
+    await hr.page.selectOption('#wmonth', '2031-06');
+    await expect(hr.page.locator('tbody')).toContainText('測試員甲');
+    expect(errs).toEqual([]);
+    await hr.ctx.close();
+    const emp = await login(browser, 'a@example.test');
+    await expect(emp.page.locator('#nav')).not.toContainText('仁寶');
+    await emp.ctx.close();
+  });
 });

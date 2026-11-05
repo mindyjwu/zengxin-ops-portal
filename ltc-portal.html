@@ -4848,8 +4848,8 @@ function svcAggregate(rows){
     if(m===0) A.odd.zero++;
     { const pr=C.price>=0?parseFloat(String(x[C.price]??'').replace(/,/g,'')):NaN; if(!isFinite(pr)) A.noPrice++;
       const code=C.code>=0?String(x[C.code]??'').trim():'', otv=C.otype>=0?String(x[C.otype]??'').trim():'', hol=!!otv&&otv!=='正常班', amt1=(isFinite(pr)?pr:0)*n;
-      const SW=((A.sp[mo]=A.sp[mo]||{})[who]=A.sp[mo][who]||{it:{},rem:new Set(),amt:0}), SI=SW.it[code||'（無代碼）']=SW.it[code||'（無代碼）']||{name:it,n:0,nh:0,amt:0};
-      SI.n+=n; if(hol) SI.nh+=n; SI.amt+=amt1; SW.amt+=amt1; if(C.live>=0&&REMOTE_AREAS.some(a=>String(x[C.live]??'').includes(a))) SW.rem.add(cid);
+      const SW=((A.sp[mo]=A.sp[mo]||{})[who]=A.sp[mo][who]||{it:{},rem:new Set(),amt:0}), SI=SW.it[code||'（無代碼）']=SW.it[code||'（無代碼）']||{name:it,n:0,nh:0,amt:0,min:0};
+      SI.n+=n; if(hol) SI.nh+=n; SI.amt+=amt1; SI.min+=m; SW.amt+=amt1; if(C.live>=0&&REMOTE_AREAS.some(a=>String(x[C.live]??'').includes(a))) SW.rem.add(cid);
       const bl=C.bill>=0?parseFloat(String(x[C.bill]??'').replace(/,/g,'')):NaN; if(isFinite(bl)){ A.bill+=bl; A.hasBill=true; } } const dd=A.day[d]=A.day[d]||{min:0,rows:0}; dd.min+=m; dd.rows++; const pm=C.plan>=0?parseFloat(x[C.plan]):NaN; if(isFinite(pm)) A.planMin+=pm;
     const ot=C.otype>=0?(String(x[C.otype]??'').trim()||'（未填）'):'（無此欄）'; A.ot[ot]=(A.ot[ot]||0)+m;
   }
