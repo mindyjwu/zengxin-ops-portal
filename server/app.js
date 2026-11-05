@@ -19,9 +19,11 @@ function createApp({ db, verifyGoogle, config }) {
 
   /* 安全標頭：不讓別的網站把我們嵌進去、不讓瀏覽器亂猜檔案類型 */
   app.use((req, res, next) => {
+    const loginPage = req.path === '/' || req.path === '/index.html';
     res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store',
-      /* 只允許自己的程式碼與 Google 登入的腳本，擋掉別人注入的腳本 */
-      'Content-Security-Policy': "default-src 'self'; script-src 'self' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self'; style-src 'self' https://accounts.google.com; img-src 'self' data:; base-uri 'none'; form-action 'self'" });
+      /* 只允許自己的程式碼與 Google 登入的腳本，擋掉別人注入的腳本。
+         登入頁多放行「style 屬性」（style-src-attr）：Google 登入按鈕會替自己的元素加行內樣式；屬性不能執行程式，所以影響很小，其他頁面不放行 */
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://accounts.google.com; style-src 'self' https://accounts.google.com; " + (loginPage ? "style-src-attr 'unsafe-inline'; " : '') + "img-src 'self' data:; base-uri 'none'; form-action 'self'" });
     next();
   });
   /* 會改資料的請求：如果帶了 Origin，必須是我們允許的網站（擋跨站偽造請求） */

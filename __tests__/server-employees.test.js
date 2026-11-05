@@ -115,8 +115,11 @@ describe('web pages', () => {
   test('the login page is served with the Google script and strict security headers', async () => {
     const r = await request(app).get('/');
     expect(r.status).toBe(200);
-    expect(r.text).toContain('https://accounts.google.com/gsi/client');
+    expect(r.text).not.toContain('accounts.google.com');                 // Google 腳本只在設定用戶端 ID 後由 login.js 載入
+    expect((await request(app).get('/login.js')).text).toContain('https://accounts.google.com/gsi/client');
     expect(r.headers['content-security-policy']).toMatch(/script-src 'self' https:\/\/accounts\.google\.com/);
+    expect(r.headers['content-security-policy']).toMatch(/style-src-attr 'unsafe-inline'/);   // 只有登入頁放行 style 屬性
+    expect((await request(app).get('/admin.html')).headers['content-security-policy']).not.toMatch(/unsafe-inline/);
     expect(r.headers['x-frame-options']).toBe('DENY');
     expect(r.text).not.toMatch(/<script>[^<]/);                          // 沒有行內腳本（CSP 才擋得住注入）
     expect(r.text).not.toMatch(/style="/);                               // 也沒有行內樣式（CSP 的 style-src 才不用放寬）

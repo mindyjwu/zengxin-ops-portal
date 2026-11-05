@@ -13,6 +13,8 @@
   show($('loginBox'), true);
 
   if (cfg.googleClientId) {
+    /* 只有設定了 Google 用戶端 ID 才載入 Google 的腳本（開發環境不載入第三方程式） */
+    const gs = document.createElement('script'); gs.src = 'https://accounts.google.com/gsi/client'; gs.async = true; gs.defer = true; document.head.appendChild(gs);
     const init = () => {
       if (!window.google || !google.accounts) return setTimeout(init, 200);
       google.accounts.id.initialize({ client_id: cfg.googleClientId, callback: async resp => {

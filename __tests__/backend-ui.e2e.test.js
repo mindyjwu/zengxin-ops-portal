@@ -119,6 +119,7 @@ test.describe('connected web app', () => {
     page.on('pageerror', e => errs.push(e.message));
     page.on('console', m => { if (m.type() === 'error' && /Content Security Policy/.test(m.text())) errs.push(m.text()); });
     await page.goto(BASE + '/'); await page.fill('#devEmail', 'hr@example.test'); await page.click('#devForm button');
+    await expect(page.locator('#who')).toBeVisible();                    // 等登入後的跳轉完成，再開始逐頁檢查
     for (const h of ['#/home', '#/apply/leave', '#/apply/overtime', '#/apply/punchfix', '#/mine', '#/inbox']) { await page.goto(BASE + '/app.html' + h); await expect(page.locator('main')).not.toBeEmpty(); }
     await page.goto(BASE + '/admin.html'); await expect(page.locator('#rows tr').first()).toBeVisible();
     expect(errs).toEqual([]);
