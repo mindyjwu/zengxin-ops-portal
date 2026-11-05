@@ -30,7 +30,7 @@ function requestsRouter({ db, audit }) {
 
   const load = async (q, id) => (await q(`SELECT r.*, e.manager_id, e.name AS emp_name FROM requests r JOIN employees e ON e.id=r.emp_id WHERE r.id=$1`, [id])).rows[0];
   const detail = async (q, row) => {
-    const d = row.kind === 'leave' ? (await q('SELECT leave_type, start_at, end_at, hours FROM leave_requests WHERE request_id=$1', [row.id])).rows[0]
+    const d = row.kind === 'leave' ? (await q('SELECT l.leave_type, t.name AS leave_type_name, l.start_at, l.end_at, l.hours FROM leave_requests l JOIN leave_types t ON t.code=l.leave_type WHERE l.request_id=$1', [row.id])).rows[0]
       : row.kind === 'overtime' ? (await q('SELECT work_date, start_time, end_time, hours, comp FROM overtime_requests WHERE request_id=$1', [row.id])).rows[0]
         : (await q('SELECT fix_date, punch_kind, fix_time FROM punch_fix_requests WHERE request_id=$1', [row.id])).rows[0];
     return { no: display(row), id: +row.id, kind: row.kind, empId: row.emp_id, empName: row.emp_name, status: row.status, reason: row.reason, filedAt: row.filed_at, ...d };

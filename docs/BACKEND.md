@@ -12,7 +12,7 @@
 - `server/db.js` + `server/migrations/`：資料庫連線與建表（正式用 PostgreSQL；本機與測試用 PGlite，同一套 SQL）
 - `backend/punch-ip.js`：伺服器自己讀 IP、辦公室網段比對、五年保存日
 - `server/employees.js`：員工與角色管理 API（新增、修改、停用、改角色、CSV 批次匯入）
-- `web/`：登入頁（`index.html`）與員工管理頁（`admin.html`），沒有行內腳本與樣式，內容安全政策才能收緊
+- `web/`：**連後端版網站**。登入頁（`index.html`）→ 應用程式（`app.html`＋`main.js`：首頁、申請、我的申請、待我簽核、稽核紀錄）；員工管理頁（`admin.html`）。沒有行內腳本與樣式，內容安全政策才能收緊。和展示版（`ltc-portal.html`，放在 GitHub Pages）完全分開
 - `server/requests.js`、`server/leave-rules.js`：請假、加班、補打卡與簽核 API（`/api/leave`、`/api/overtime`、`/api/punch-fix`、`/api/requests`、`/api/requests/inbox`、`/api/requests/:id/approve|reject|withdraw|cancel`、`/api/leave/balance`）；設計說明見 `docs/learn/03-requests-design.md`
 - `Dockerfile`：打包成容器
 
@@ -20,7 +20,8 @@
 ```bash
 npm install
 npm run test:unit        # 後端測試（含資料庫，用 PGlite，不用另外裝資料庫）
-npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@example.test）、員工管理頁 /admin.html
+npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@example.test、hr@example.test、a@example.test＝員工、admin@example.test）
+                         # 登入後是 /app.html；員工管理頁 /admin.html
                          # 會自動寫入虛構示範員工；資料只在記憶體，重啟就清空
 ```
 
