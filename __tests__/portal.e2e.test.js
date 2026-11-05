@@ -3129,7 +3129,7 @@ test.describe('Completion status report in the guide (4 Nov)', () => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     const sec = page.locator('#status');
     await expect(sec.locator('h2')).toContainText('完成度報告');
-    for (const s of ['整體約 44%', '71%', '16%', '後端與資料庫', '薪資計算', '還缺的決定與資料']) await expect(sec).toContainText(s);
+    for (const s of ['整體約 46%', '71%', '21%', '後端與資料庫', '薪資計算', '還缺的決定與資料']) await expect(sec).toContainText(s);
     await expect(page.locator('.toc a[href="#status"]')).toBeVisible();
   });
 });

@@ -7,20 +7,26 @@ const fs = require('fs');
 const path = require('path');
 
 async function createDb({ url, dataDir } = {}) {
-  let q, close;
+  let q, close, tx;
   if (url) {
     const { Pool } = require('pg');
     const pool = new Pool({ connectionString: url, max: 5 });
     q = (sql, params) => pool.query(sql, params);
     close = () => pool.end();
+    tx = async fn => {   // 同一條連線上的交易：全部成功才寫入，中途失敗就全部復原
+      const c = await pool.connect();
+      try { await c.query('BEGIN'); const r = await fn((sql, params) => c.query(sql, params)); await c.query('COMMIT'); return r; }
+      catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
+    };
   } else {
     const { PGlite } = require('@electric-sql/pglite');
     const pg = new PGlite(dataDir);   // 沒給資料夾就只存在記憶體
     await pg.waitReady;
     q = (sql, params) => pg.query(sql, params);
     close = () => pg.close();
+    tx = fn => pg.transaction(t => fn((sql, params) => t.query(sql, params)));
   }
-  const db = { query: q, close };
+  const db = { query: q, close, tx };
   await migrate(db);
   return db;
 }

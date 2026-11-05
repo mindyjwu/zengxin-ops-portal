@@ -6,9 +6,11 @@ const express = require('express');
 const { makeSession, readSession, parseCookies, limiter } = require('./auth');
 const { can, requireCap } = require('./permissions');
 const { clientIp, punchRecord } = require('../backend/punch-ip');
+const { employeesRouter } = require('./employees');
+const path = require('path');
 
 function createApp({ db, verifyGoogle, config }) {
-  const cfg = { sessionSecret: '', allowedDomain: '', allowedOrigins: [], trustedHops: 1, devLogin: false, production: false, ...config };
+  const cfg = { sessionSecret: '', allowedDomain: '', allowedOrigins: [], trustedHops: 1, devLogin: false, production: false, googleClientId: '', ...config };
   if (cfg.production && cfg.sessionSecret.length < 32) throw new Error('正式環境必須設定至少 32 字元的 SESSION_SECRET');
   const app = express();
   app.disable('x-powered-by');
@@ -16,7 +18,9 @@ function createApp({ db, verifyGoogle, config }) {
 
   /* 安全標頭：不讓別的網站把我們嵌進去、不讓瀏覽器亂猜檔案類型 */
   app.use((req, res, next) => {
-    res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' });
+    res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store',
+      /* 只允許自己的程式碼與 Google 登入的腳本，擋掉別人注入的腳本 */
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self'; style-src 'self' https://accounts.google.com; img-src 'self' data:; base-uri 'none'; form-action 'self'" });
     next();
   });
   /* 會改資料的請求：如果帶了 Origin，必須是我們允許的網站（擋跨站偽造請求） */
@@ -53,6 +57,8 @@ function createApp({ db, verifyGoogle, config }) {
   };
 
   app.get('/healthz', (req, res) => res.json({ ok: true }));
+  /* 登入頁需要知道 Google 用戶端 ID（公開識別碼，不是密碼）與有沒有開假登入 */
+  app.get('/auth/config', (req, res) => res.json({ googleClientId: cfg.googleClientId || '', devLogin: !!(cfg.devLogin && !cfg.production) }));
 
   app.post('/auth/google', async (req, res) => {
     if (!loginOk(ipOf(req))) return res.status(429).json({ error: 'too_many_attempts' });
@@ -76,7 +82,8 @@ function createApp({ db, verifyGoogle, config }) {
   });
 
   const needLogin = (req, res, next) => req.user ? next() : res.status(401).json({ error: 'login_required' });
-  app.get('/api/me', needLogin, (req, res) => res.json({ id: req.user.id, name: req.user.name, role: req.user.role, unit: req.user.unit_id, canSeeLocation: can(req.user.role, 'punchLoc') }));
+  app.get('/api/me', needLogin, (req, res) => res.json({ id: req.user.id, name: req.user.name, role: req.user.role, unit: req.user.unit_id, canSeeLocation: can(req.user.role, 'punchLoc'),
+    canListEmployees: can(req.user.role, 'mgmt') && can(req.user.role, 'exportAll'), canEditEmployees: can(req.user.role, 'editEmp'), canChangeRole: can(req.user.role, 'perms'), canSeeAudit: can(req.user.role, 'perms') }));
 
   /* 打卡：IP 由伺服器自己讀；回傳給手機的內容不含位置（位置只給後台） */
   app.post('/api/punch', needLogin, async (req, res) => {
@@ -107,6 +114,9 @@ function createApp({ db, verifyGoogle, config }) {
     const r = await db.query('SELECT id, at, actor_id, action, target, detail, ip FROM audit_log ORDER BY id DESC LIMIT 200');
     res.json(r.rows);
   });
+
+  app.use('/api/employees', needLogin, employeesRouter({ db, audit }));
+  app.use(express.static(path.join(__dirname, '..', 'web'), { index: 'index.html', maxAge: 0 }));
 
   app.use((err, req, res, next) => { console.error(err); res.status(500).json({ error: 'server_error' }); });   // eslint-disable-line no-unused-vars
   return app;
