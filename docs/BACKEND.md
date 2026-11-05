@@ -13,6 +13,7 @@
 - `backend/punch-ip.js`：伺服器自己讀 IP、辦公室網段比對、五年保存日
 - `server/employees.js`：員工與角色管理 API（新增、修改、停用、改角色、CSV 批次匯入）
 - `web/`：登入頁（`index.html`）與員工管理頁（`admin.html`），沒有行內腳本與樣式，內容安全政策才能收緊
+- `server/requests.js`、`server/leave-rules.js`：請假、加班、補打卡與簽核 API（`/api/leave`、`/api/overtime`、`/api/punch-fix`、`/api/requests`、`/api/requests/inbox`、`/api/requests/:id/approve|reject|withdraw|cancel`、`/api/leave/balance`）；設計說明見 `docs/learn/03-requests-design.md`
 - `Dockerfile`：打包成容器
 
 ## 本機執行

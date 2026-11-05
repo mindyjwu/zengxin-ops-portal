@@ -7,6 +7,7 @@ const { makeSession, readSession, parseCookies, limiter } = require('./auth');
 const { can, requireCap } = require('./permissions');
 const { clientIp, punchRecord } = require('../backend/punch-ip');
 const { employeesRouter } = require('./employees');
+const { requestsRouter } = require('./requests');
 const path = require('path');
 
 function createApp({ db, verifyGoogle, config }) {
@@ -116,6 +117,7 @@ function createApp({ db, verifyGoogle, config }) {
   });
 
   app.use('/api/employees', needLogin, employeesRouter({ db, audit }));
+  app.use('/api', needLogin, requestsRouter({ db, audit }));
   app.use(express.static(path.join(__dirname, '..', 'web'), { index: 'index.html', maxAge: 0 }));
 
   app.use((err, req, res, next) => { console.error(err); res.status(500).json({ error: 'server_error' }); });   // eslint-disable-line no-unused-vars
