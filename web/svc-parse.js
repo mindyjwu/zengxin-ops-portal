@@ -1,7 +1,7 @@
 /* 仁寶服務紀錄解析（和展示版 ltc-portal.html 的同名函式相同，端到端測試會比對兩邊結果一致）。
    在瀏覽器裡讀檔、只產生彙總；個案編號與身分證字號只用來數人，不會送到伺服器。 */
 const REMOTE_AREAS = ['五峰','尖石','關西','峨眉'];
-async function xlsxRead(buf, prefer){   // prefer：優先選名稱符合的工作表（例如整份薪資活頁簿裡的「服務紀錄總表」），找不到就用第一個
+async function xlsxRead(buf, prefer, all){   // prefer：優先選名稱符合的工作表（例如整份薪資活頁簿裡的「服務紀錄總表」），找不到就用第一個
   const u8=new Uint8Array(buf), dv=new DataView(buf);
   let e=-1; for(let i=u8.length-22;i>=Math.max(0,u8.length-70000);i--){ if(dv.getUint32(i,true)===0x06054b50){ e=i; break; } }
   if(e<0) throw new Error('不是有效的 .xlsx 檔案');
@@ -21,24 +21,31 @@ async function xlsxRead(buf, prefer){   // prefer：優先選名稱符合的工�
   }
   const dom=x=>new DOMParser().parseFromString(x,'application/xml');
   const sst=[]; if(files['xl/sharedStrings.xml']) dom(files['xl/sharedStrings.xml']).querySelectorAll('si').forEach(si=>sst.push([...si.querySelectorAll('t')].map(t=>t.textContent).join('')));
-  /* 第一個工作表 */
-  let sheetPath='xl/worksheets/sheet1.xml';
-  try{
-    const wb=dom(files['xl/workbook.xml']), shs=[...wb.querySelectorAll('sheet')], sh=(prefer&&shs.find(x=>prefer.test(x.getAttribute('name')||'')))||shs[0], rid=sh.getAttribute('r:id')||sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id');
-    const rel=[...dom(files['xl/_rels/workbook.xml.rels']).querySelectorAll('Relationship')].find(r=>r.getAttribute('Id')===rid);
-    if(rel) sheetPath='xl/'+rel.getAttribute('Target').replace(/^\/?(xl\/)?/,'');
-  }catch(_){}
-  if(!files[sheetPath]) throw new Error('找不到工作表');
   const colIdx=ref=>{ let c=0; for(const ch of ref.replace(/\d+/g,'')) c=c*26+ch.charCodeAt(0)-64; return c-1; };
-  const rows=[];
-  dom(files[sheetPath]).querySelectorAll('row').forEach(r=>{
-    const arr=[]; r.querySelectorAll('c').forEach(c=>{
-      const t=c.getAttribute('t'), v=c.querySelector('v'); let val='';
-      if(t==='s'&&v) val=sst[+v.textContent]??''; else if(t==='inlineStr') val=[...c.querySelectorAll('t')].map(x=>x.textContent).join(''); else if(v) val=v.textContent;
-      arr[colIdx(c.getAttribute('r'))]=val;
-    }); rows.push(arr);
-  });
-  return rows;
+  const readSheet=(path, sparse)=>{
+    const rows=[];
+    dom(files[path]).querySelectorAll('row').forEach(r=>{
+      const arr=[]; r.querySelectorAll('c').forEach(c=>{
+        const t=c.getAttribute('t'), v=c.querySelector('v'); let val='';
+        if(t==='s'&&v) val=sst[+v.textContent]??''; else if(t==='inlineStr') val=[...c.querySelectorAll('t')].map(x=>x.textContent).join(''); else if(v) val=v.textContent;
+        arr[colIdx(c.getAttribute('r'))]=val;
+      });
+      if(sparse) rows[(+r.getAttribute('r')||rows.length+1)-1]=arr; else rows.push(arr);   // 全部工作表模式照列號放，空列留空，才能用「第幾列第幾欄」讀固定格子
+    });
+    return rows;
+  };
+  let shs=[], relOf={};
+  try{
+    const wb=dom(files['xl/workbook.xml']); shs=[...wb.querySelectorAll('sheet')];
+    [...dom(files['xl/_rels/workbook.xml.rels']).querySelectorAll('Relationship')].forEach(r=>relOf[r.getAttribute('Id')]=r.getAttribute('Target'));
+  }catch(_){}
+  const pathOf=sh=>{ const rid=sh&&(sh.getAttribute('r:id')||sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')), t=relOf[rid]; return t?'xl/'+t.replace(/^\/?(xl\/)?/,''):'xl/worksheets/sheet1.xml'; };
+  if(all) return shs.map(sh=>({name:sh.getAttribute('name')||'', path:pathOf(sh)})).filter(x=>files[x.path]).map(x=>({name:x.name, rows:readSheet(x.path,true)}));
+  /* 第一個工作表（或名稱符合 prefer 的） */
+  const pick=(prefer&&shs.find(x=>prefer.test(x.getAttribute('name')||'')))||shs[0];
+  const sheetPath=shs.length?pathOf(pick):'xl/worksheets/sheet1.xml';
+  if(!files[sheetPath]) throw new Error('找不到工作表');
+  return readSheet(sheetPath,false);
 }
 /* CSV：支援引號、引號內的逗號與換行、CRLF、UTF-8（含 BOM）；Excel 在繁中 Windows 存的 CSV 常是 Big5，讀不了 UTF-8 時改用 Big5 */
 function csvRead(buf){
@@ -105,4 +112,53 @@ function toPayload(g, sourceName) {
   const who = {}; Object.keys(g.who).forEach(n => { who[n] = { byDay: g.who[n].byDay }; });
   return { sourceName: sourceName || '', from: g.from, to: g.to, rows: g.rows, skipped: g.skipped.length, cases: g.cases, odd: g.odd, noPrice: g.noPrice || 0, mon: g.mon, mu: g.mu, who, sp: g.sp };
 }
-window.SvcParse = { xlsxRead, csvRead, svcAggregate, toPayload };
+
+/* ---- 牛津居家時薪制：解析程式（規則欄位名稱由伺服器送來的設定決定，日別與時段固定） ---- */
+const OX_NUM = v => { const n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(n) ? n : 0; };
+const OX_YES = v => /^(是|y|yes|true|1|v|✓|✔)$/i.test(String(v == null ? '' : v).trim());
+const OX_NUMERIC = ['regMin', 'trWd', 'trHol', 'trNh', 'aa05', 'aa06', 'aa11', 'rural', 'intro', 'open', 'other', 'short', 'labor', 'health', 'pension', 'otherDed'];
+function oxBlank(){ return { empNo: '', name: '', early: false, regMin: 0, trWd: 0, trHol: 0, trNh: 0, ot: Array(14).fill(0), aa05: 0, aa06: 0, aa11: 0, aaFixed: 0, rural: 0, intro: 0, open: 0, other: 0, short: 0, labor: 0, health: 0, pension: 0, otherDed: 0, refRate: null }; }
+function oxCols(cfg){
+  return [['empNo','工號'],['name','姓名'],['early','早期到職級距（是／否）'],['regMin','平日服務分鐘數（本薪）'],['trWd','平日交通分鐘'],['trHol','假日交通分鐘'],['trNh','國定假日交通分鐘'],
+    ...cfg.ot.map((o,i)=>['ot'+i, o.day+o.band+'分鐘']),
+    ['aa05','AA05 次數'],['aa06','AA06 次數'],['aa11','AA11 次數'],['rural','偏鄉加給'],['intro','介紹費'],['open','開案費'],['other','其他津貼'],['short','缺工獎勵'],
+    ['labor','勞保自付額'],['health','健保自付額'],['pension','勞退自提'],['otherDed','其他代扣']];
+}
+function oxFromFlat(rows, cfg){   // 範本：用欄位名稱對照，不依賴欄位順序
+  const cols = oxCols(cfg), hi = rows.findIndex(r => r && r.some(c => String(c).trim() === '工號'));
+  if (hi < 0) return { err: '找不到「工號」欄，請用「下載範本」的格式。' };
+  const head = rows[hi].map(c => String(c == null ? '' : c).trim()), idx = {}; cols.forEach(([k, zh]) => { const j = head.indexOf(zh); if (j >= 0) idx[k] = j; });
+  const out = []; for (let i = hi + 1; i < rows.length; i++) {
+    const x = rows[i]; if (!x) continue; const id = String(x[idx.empNo] == null ? '' : x[idx.empNo]).trim(); if (!id) continue;
+    const r = oxBlank(); r.empNo = id; r.name = idx.name != null ? String(x[idx.name] || '').trim() : '';
+    if (idx.early != null) r.early = OX_YES(x[idx.early]);
+    OX_NUMERIC.forEach(k => { if (idx[k] != null) r[k] = OX_NUM(x[idx[k]]); });
+    cfg.ot.forEach((o, j) => { if (idx['ot' + j] != null) r.ot[j] = OX_NUM(x[idx['ot' + j]]); });
+    out.push(r);
+  }
+  return { rows: out, missing: cols.filter(([k]) => idx[k] == null && k !== 'early').map(c => c[1]) };
+}
+function oxFromSlips(sheets){   // 現有「居服員薪資條」活頁簿：每位居服員一個工作表（C7、C8、H7:H20、D9:D13、K7:K9），總表 C 欄是時薪
+  const out = [], note = [], cell = (rows, r, c) => { const row = rows[r - 1]; return row ? row[c] : undefined; };
+  const total = sheets.find(s => /月薪資總表/.test(s.name)), ref = {};
+  if (total) for (let i = 4; i < total.rows.length; i++) { const x = total.rows[i]; if (x && /^[A-Za-z]+\d+$/.test(String(x[0] || '').trim()) && String(x[2] || '') !== '') ref[String(x[0]).trim()] = OX_NUM(x[2]); }
+  sheets.forEach(s => {
+    const m = String(cell(s.rows, 2, 1) || s.name).match(/^([A-Za-z]+\d+)\s*(.*)$/); if (!m) return;
+    const r = oxBlank(); r.empNo = m[1]; r.name = m[2];
+    r.regMin = OX_NUM(cell(s.rows, 7, 2)); r.trWd = OX_NUM(cell(s.rows, 8, 2)); for (let k = 0; k < 14; k++) r.ot[k] = OX_NUM(cell(s.rows, 7 + k, 7));
+    r.aaFixed = OX_NUM(cell(s.rows, 9, 3)); r.rural = OX_NUM(cell(s.rows, 10, 3)); r.intro = OX_NUM(cell(s.rows, 11, 3)); r.open = OX_NUM(cell(s.rows, 12, 3)); r.other = OX_NUM(cell(s.rows, 13, 3));
+    r.labor = OX_NUM(cell(s.rows, 7, 10)); r.health = OX_NUM(cell(s.rows, 8, 10)); r.otherDed = OX_NUM(cell(s.rows, 9, 10));
+    if (ref[r.empNo] != null) r.refRate = ref[r.empNo];
+    out.push(r);
+  });
+  if (out.length && out.every(r => !r.aaFixed)) note.push('AA 加給沒有數值（活頁簿裡是公式，沒有存計算結果），請另用範本填 AA 次數。');
+  return { rows: out, note };
+}
+function oxDeductions(rows){   // 代扣表：工號、勞保、健保、勞退（自提）、其他
+  const hi = rows.findIndex(r => r && r.some(c => String(c).trim() === '工號')); if (hi < 0) return { err: '找不到「工號」欄。' };
+  const head = rows[hi].map(c => String(c == null ? '' : c).trim()), col = n => head.findIndex(h => h.includes(n)), c = { id: col('工號'), labor: col('勞保'), health: col('健保'), pension: col('勞退'), other: col('其他') };
+  const out = []; for (let i = hi + 1; i < rows.length; i++) { const x = rows[i]; if (!x) continue; const id = String(x[c.id] || '').trim(); if (!id) continue;
+    out.push({ empNo: id, labor: c.labor >= 0 ? OX_NUM(x[c.labor]) : 0, health: c.health >= 0 ? OX_NUM(x[c.health]) : 0, pension: c.pension >= 0 ? OX_NUM(x[c.pension]) : 0, otherDed: c.other >= 0 ? OX_NUM(x[c.other]) : 0 }); }
+  return { rows: out };
+}
+window.SvcParse = { xlsxRead, csvRead, svcAggregate, toPayload, oxBlank, oxCols, oxFromFlat, oxFromSlips, oxDeductions };
