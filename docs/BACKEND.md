@@ -59,3 +59,10 @@ npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@exam
 - `GET /api/svc/imports`、`/months`、`/dashboard?month=`、`/workers?month=&day=`（需可檢視）。
 - `GET /api/svc/pay?month=&plan=A|B`：拆帳制計薪草稿（需薪資權限；稽核 `svc_pay_view`）；給付表在 `server/svc-config.json`。
 - 網頁：`#/svc`（儀表板）、`#/svc/workers`、`#/svc/import`、`#/svc/pay`；解析程式 `web/svc-parse.js` 與展示版同源。
+
+## 牛津居家時薪制（/api/pay/hourly）
+- 權限：看＝薪資權限＋頁面 `pay.run` 不是「不可」；改規則、匯入、代扣、刪除＝薪資權限＋`pay.run` 為「可編輯」（目前只有人資）；較早到職勾選＝`editEmp`＋薪資權限。
+- `GET /rules?month=` 取得該月適用的規則與版本列表；`PUT /rules` 新增版本 `{effectiveFrom, config}`（檢查：級距由小到大、倍率與金額範圍、進位方式；日別與時段固定）。
+- `POST /rows` `{month, mode: upsert|replace, rows}` 匯入每月輸入（最多 600 人；工號、分鐘、金額逐項檢查）；`PUT /deductions` 更新代扣（回報名單裡沒有的工號）；`DELETE /rows/:month/:empNo`；`PUT /early/:id` 勾選較早到職。
+- `GET /results?month=` 依該月適用的規則計算；名冊裡有這個工號就用員工資料的勾選。每次變更與查看都寫稽核紀錄（`pay_rules_change`、`pay_rows_import`、`pay_deductions_import`、`pay_row_delete`、`pay_early_tier`、`pay_hourly_view`）。
+- 資料表在 `server/migrations/006_hourly_pay.sql`。網頁：`#/pay`、`#/pay/import`、`#/pay/rules`；解析程式在 `web/svc-parse.js`。

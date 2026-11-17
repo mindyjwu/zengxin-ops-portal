@@ -28,3 +28,4 @@ svg.chart{width:100%;height:auto;max-height:160px;border-bottom:1px solid var(--
 .bars{display:grid;grid-template-columns:minmax(80px,150px) 1fr auto;gap:6px 10px;align-items:center;font-size:13px}.bars progress{width:100%;height:10px}
 progress{accent-color:var(--accent)}.chips{display:flex;gap:8px;flex-wrap:wrap}.msg.warn{border-color:var(--warn);color:var(--warn)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
+input.sm{width:92px}

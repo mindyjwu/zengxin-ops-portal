@@ -150,4 +150,42 @@ test.describe('connected web app', () => {
     await expect(emp.page.locator('#nav')).not.toContainText('仁寶');
     await emp.ctx.close();
   });
+  test('時薪制: HR imports a template, sees results, changes the rules from a month on; the manager only views', async ({ browser }) => {
+    const errs = [], hr = await login(browser, 'hr@example.test');
+    hr.page.on('pageerror', e => errs.push(e.message));
+    hr.page.on('console', m => { if (m.type() === 'error' && /Content Security Policy/.test(m.text())) errs.push(m.text()); });
+    await hr.page.goto(BASE + '/app.html#/pay/import');
+    const cols = await hr.page.evaluate(() => SvcParse.oxCols({ ot: Array.from({ length: 14 }, (_, i) => ({ day: ['平日加班', '平日加班', '國定假日加班', '國定假日加班', '國定假日加班', '國定假日加班', '休息日加班', '休息日加班', '休息日加班', '休息日加班', '例假日加班', '例假日加班', '例假日加班', '例假日加班'][i], band: ['第9-10小時', '第11-12小時', '第0-2小時', '第3-8小時', '第9-10小時', '第11-12小時', '第0-2小時', '第3-8小時', '第9-10小時', '第11-12小時', '第0-2小時', '第3-8小時', '第9-10小時', '第11-12小時'][i] })) }).map(c => c[1]));
+    const val = { 工號: 'OXHR951', 姓名: '測試', '平日服務分鐘數（本薪）': '6000', 平日交通分鐘: '1200', '勞保自付額': '600', '健保自付額': '400' };
+    const csv = [cols.join(','), cols.map(c => val[c] || '0').join(',')].join('\n');
+    await hr.page.fill('#imonth', '2031-06');
+    await hr.page.setInputFiles('#payFile', { name: 'pay.csv', mimeType: 'text/csv', buffer: Buffer.from('\ufeff' + csv, 'utf8') });
+    await expect(hr.page.locator('main')).toContainText('讀到 1 人');
+    await hr.page.click('#payCommit');
+    await expect(hr.page.locator('.msg.ok')).toContainText('已匯入 1 人');
+    await hr.page.goto(BASE + '/app.html#/pay');
+    await hr.page.fill('#pmonth', '2031-06');
+    const row = hr.page.locator('tbody tr', { hasText: 'OXHR951' });
+    await expect(row).toContainText('23,920');                                                    // 100 小時 × 210 ＋ 轉場 20 小時 × 196 － 代扣 1,000
+    await hr.page.goto(BASE + '/app.html#/pay/rules');
+    await hr.page.fill('#rmonth', '2031-07');
+    await hr.page.fill('#effFrom', '2031-07');
+    await hr.page.locator('table').nth(0).locator('input').nth(1).fill('220');                  // 第一列「其他人員」時薪 210 → 220
+    await hr.page.locator('table').nth(0).locator('input').nth(1).dispatchEvent('change');
+    await hr.page.click('#saveRules');
+    await expect(hr.page.locator('.msg.ok')).toContainText('2031-07 起適用');
+    expect(errs).toEqual([]);
+    await hr.ctx.close();
+    const mgr = await login(browser, 'manager@example.test');
+    await mgr.page.goto(BASE + '/app.html#/pay');
+    await mgr.page.fill('#pmonth', '2031-06');
+    await expect(mgr.page.locator('tbody tr', { hasText: 'OXHR951' })).toContainText('23,920');
+    await expect(mgr.page.locator('.tabs')).not.toContainText('匯入');
+    await mgr.page.goto(BASE + '/app.html#/pay/rules');
+    await expect(mgr.page.locator('main')).toContainText('只有人資能改規則');
+    await mgr.ctx.close();
+    const emp = await login(browser, 'a@example.test');
+    await expect(emp.page.locator('#nav')).not.toContainText('時薪制');
+    await emp.ctx.close();
+  });
 });

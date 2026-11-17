@@ -31,10 +31,11 @@ window.ZXViews.svc = async (ctx, tab) => {
   async function dash() {
     if (!months.length) return noData();
     let month = months[0].month;
-    const holder = h('div');
+    const holder = h('div'); let seq = 0;
     const draw = async () => {
-      holder.textContent = '';
+      const my = ++seq; holder.textContent = '';
       const { ok, data: d } = await api('/api/svc/dashboard?month=' + month);
+      if (my !== seq) return;                                   // 連續切換月份時，只畫最後一次
       if (!ok) { holder.append(h('div', { class: 'msg bad' }, errText(d))); return; }
       const e = d.exceptions || {}, flag = (l, n) => h('span', { class: 'chip ' + (n ? 'warn' : '') }, `${l}：${n}`);
       const maxItem = Math.max(1, ...d.topItems.map(i => i.hours)), maxB = Math.max(1, ...d.workerBuckets.map(b => b.workers));
@@ -60,9 +61,11 @@ window.ZXViews.svc = async (ctx, tab) => {
     let month = months[0].month, day = months[0].last_day || '';
     const body = h('tbody'), dayIn = h('input', { id: 'wday', type: 'date', value: day });
     const MATCH = { matched: ['已對到員工', 'ok'], ambiguous: ['同名多人，請人工確認', 'warn'], suffix: ['同名同姓（姓名後加「2」），請人工確認', 'warn'], unmatched: ['未對到', ''] };
+    let seq = 0;
     const draw = async () => {
-      body.textContent = '';
+      const my = ++seq; body.textContent = '';
       const { data } = await api(`/api/svc/workers?month=${month}` + (dayIn.value ? '&day=' + dayIn.value : ''));
+      if (my !== seq) return;
       (data || []).forEach(w => body.append(h('tr', {}, h('td', {}, w.worker), h('td', { class: 'num' }, w.dayHours == null ? '—' : num1(w.dayHours)), h('td', { class: 'num' }, w.weekHours == null ? '—' : num1(w.weekHours)), h('td', { class: 'num' }, num1(w.hours)), h('td', { class: 'num' }, w.days),
         h('td', {}, h('span', { class: 'chip ' + MATCH[w.match.status][1] }, w.match.status === 'matched' ? '員編 ' + w.match.id : MATCH[w.match.status][0])))));
       if (!(data || []).length) body.append(h('tr', {}, h('td', { colspan: 6, class: 'muted' }, '沒有資料')));
@@ -114,10 +117,11 @@ window.ZXViews.svc = async (ctx, tab) => {
     if (!me.canSvcPay) return view.append(h('div', { class: 'msg bad' }, errText({ error: 'forbidden' })));
     if (!months.length) return noData();
     let month = months[0].month, plan = 'A';
-    const holder = h('div');
+    const holder = h('div'); let seq = 0;
     const draw = async () => {
-      holder.textContent = '';
+      const my = ++seq; holder.textContent = '';
       const { ok, data: d } = await api(`/api/svc/pay?month=${month}&plan=${plan}`);
+      if (my !== seq) return;
       if (!ok) { holder.append(h('div', { class: 'msg bad' }, errText(d))); return; }
       const un = Object.entries(d.unmatchedItems || {});
       holder.append(

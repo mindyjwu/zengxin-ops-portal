@@ -4,11 +4,12 @@
  */
 const express = require('express');
 const { makeSession, readSession, parseCookies, limiter } = require('./auth');
-const { can, requireCap, canViewPage, canEditPage } = require('./permissions');
+const { can, requireCap, canViewPage, canEditPage, pageCode } = require('./permissions');
 const { clientIp, punchRecord } = require('../backend/punch-ip');
 const { employeesRouter } = require('./employees');
 const { requestsRouter } = require('./requests');
 const { svcRouter } = require('./svc');
+const { hourlyRouter } = require('./hourly');
 const path = require('path');
 
 function createApp({ db, verifyGoogle, config }) {
@@ -89,7 +90,8 @@ function createApp({ db, verifyGoogle, config }) {
   const needLogin = (req, res, next) => req.user ? next() : res.status(401).json({ error: 'login_required' });
   app.get('/api/me', needLogin, (req, res) => res.json({ id: req.user.id, name: req.user.name, role: req.user.role, unit: req.user.unit_id, canSeeLocation: can(req.user.role, 'punchLoc'),
     canListEmployees: can(req.user.role, 'mgmt') && can(req.user.role, 'exportAll'), canEditEmployees: can(req.user.role, 'editEmp'), canChangeRole: can(req.user.role, 'perms'), canSeeAudit: can(req.user.role, 'perms'),
-    canSvcView: canViewPage(req.user.role, 'svc.case'), canSvcImport: canEditPage(req.user.role, 'svc.case'), canSvcPay: can(req.user.role, 'salary') }));
+    canSvcView: canViewPage(req.user.role, 'svc.case'), canSvcImport: canEditPage(req.user.role, 'svc.case'), canSvcPay: can(req.user.role, 'salary'),
+    canPayView: can(req.user.role, 'salary') && canViewPage(req.user.role, 'pay.run'), canPayEdit: can(req.user.role, 'salary') && pageCode(req.user.role, 'pay.run') === '可編輯', canPayEarly: can(req.user.role, 'editEmp') && can(req.user.role, 'salary') }));
 
   /* 打卡：IP 由伺服器自己讀；回傳給手機的內容不含位置（位置只給後台） */
   app.post('/api/punch', needLogin, async (req, res) => {
@@ -123,6 +125,7 @@ function createApp({ db, verifyGoogle, config }) {
 
   app.use('/api/employees', needLogin, employeesRouter({ db, audit }));
   app.use('/api/svc', needLogin, svcRouter({ db, audit }));
+  app.use('/api/pay/hourly', needLogin, hourlyRouter({ db, audit }));
   app.use('/api', needLogin, requestsRouter({ db, audit }));
   app.use(express.static(path.join(__dirname, '..', 'web'), { index: 'index.html', maxAge: 0 }));
 

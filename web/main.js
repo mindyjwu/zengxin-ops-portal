@@ -24,7 +24,7 @@
     leave_type_for_designated_staff_only: '這個假別只有指定員工可以使用。', exceeds_per_event_limit: '超過每次事件的上限。', quota_exceeded: '超過額度。', leave_overlaps: '這段時間已經有請假申請。',
     bad_date_or_time: '日期或時間格式不對。', comp_must_be_pay_or_comp: '請選擇換加班費或補休。', hours_must_be_half_hours_up_to_12: '加班時數要是 0.5 小時為單位，最多 12 小時。', hours_exceed_time_range: '加班時數超過起訖時間。',
     monthly_overtime_cap: '本月加班已超過上限（46 小時）。', cannot_fix_the_future: '不能補未來的打卡。', bad_kind: '請選擇上班或下班。', forbidden: '你沒有這個權限。', not_found: '找不到。', not_open: '這張單已經處理過了。',
-    reject_needs_reason: '駁回要寫理由。', bad_summary: '匯入的內容格式不對。', no_data_for_month: '這個月還沒有資料。', bad_month: '月份格式不對。', only_approved_can_be_cancelled: '只有已核准的才能銷假。', login_required: '請重新登入。', server_error: '伺服器出錯，請稍後再試。'
+    reject_needs_reason: '駁回要寫理由。', bad_summary: '匯入的內容格式不對。', no_data_for_month: '這個月還沒有資料。', bad_month: '月份格式不對。', bad_config: '規則設定不合理（級距要由小到大、倍率不能是負數）。', bad_rows: '沒有資料，或一次超過 600 人。', bad_emp_no: '工號格式不對。', bad_value: '有欄位不是正確的數字。', bad_ot: '加班分鐘要有 14 段。', duplicate_emp_no: '檔案裡有重複的工號。', only_approved_can_be_cancelled: '只有已核准的才能銷假。', login_required: '請重新登入。', server_error: '伺服器出錯，請稍後再試。'
   };
   const errText = (d) => { const base = ERR[d && d.error] || '失敗，請再試一次。'; return d && d.error === 'quota_exceeded' ? `${base}剩 ${hrs(d.left)} 小時，你申請 ${hrs(d.requested)} 小時。` : d && d.limitHours ? `${base}上限 ${hrs(d.limitHours)} 小時。` : base; };
   const msgBox = () => h('div', { class: 'msg hidden', role: 'status' });
@@ -44,6 +44,7 @@
     nav.append(link('首頁', '#/home'), link('申請', '#/apply/leave'), link('我的申請', '#/mine'),
       link('待我簽核', '#/inbox', inboxCount ? h('span', { class: 'badge', 'aria-label': inboxCount + ' 件待簽' }, inboxCount) : null));
     if (me.canSvcView) nav.append(link('仁寶', '#/svc'));
+    if (me.canPayView) nav.append(link('時薪制', '#/pay'));
     if (me.canListEmployees) nav.append(h('a', { href: '/admin.html' }, '員工管理'));
     if (me.canSeeAudit) nav.append(link('稽核紀錄', '#/audit'));
     nav.append(h('a', { href: '#', onclick: async e => { e.preventDefault(); await post('/auth/logout'); location.href = '/'; } }, '登出'));
@@ -164,10 +165,11 @@
   }
   async function routeOnce() {
     const hash = location.hash || '#/home', [, name, arg] = hash.split('/');
-    view.textContent = ''; await drawNav(name === 'apply' ? '#/apply/leave' : name === 'svc' ? '#/svc' : '#/' + name);
+    view.textContent = ''; await drawNav(name === 'apply' ? '#/apply/leave' : name === 'svc' ? '#/svc' : name === 'pay' ? '#/pay' : '#/' + name);
     if (name === 'apply') await apply(arg || 'leave'); else if (name === 'mine') await mine(); else if (name === 'inbox') await inbox();
     else if (name === 'request') await detail(+arg); else if (name === 'audit') await audit();
-    else if (name === 'svc') await ZXViews.svc({ view, h, api, post, fmt, hrs, say, msgBox, me, errText }, arg); else await home();
+    else if (name === 'svc') await ZXViews.svc({ view, h, api, post, fmt, hrs, say, msgBox, me, errText }, arg);
+    else if (name === 'pay') await ZXViews.pay({ view, h, api, post, fmt, hrs, say, msgBox, me, errText }, arg); else await home();
   }
   window.addEventListener('hashchange', route);
   route();

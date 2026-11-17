@@ -3206,7 +3206,7 @@ test.describe('Completion status report in the guide (4 Nov)', () => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     const sec = page.locator('#status');
     await expect(sec.locator('h2')).toContainText('完成度報告');
-    for (const s of ['整體約 52%', '72%', '31%', '後端與資料庫', '薪資計算', '還缺的決定與資料']) await expect(sec).toContainText(s);
+    for (const s of ['整體約 53%', '72%', '33%', '後端與資料庫', '薪資計算', '還缺的決定與資料']) await expect(sec).toContainText(s);
     await expect(page.locator('.toc a[href="#status"]')).toBeVisible();
   });
 });
@@ -3218,5 +3218,37 @@ test.describe('Server-side permission rules match the website (4 Nov)', () => {
     const srv = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../server/roles.json'), 'utf8')).roles;
     expect(Object.keys(srv).sort()).toEqual(Object.keys(site).sort());
     for (const k of Object.keys(site)) expect(srv[k].perms, k).toEqual(site[k]);
+  });
+
+  test('page permissions in server/roles.json (svc.case, pay.run) match the website title matrix', async ({ page }) => {
+    await openPortal(page);
+    const site = await page.evaluate(() => { const out = { 'svc.case': {}, 'pay.run': {} }, keys = { 'svc.case': 'svc:case', 'pay.run': 'pay:run' };
+      for (const role of Object.keys(ROLES)) { state.role = role; const col = roleColLive();
+        for (const [k, v] of Object.entries(keys)) { const it = permItems().find(x => x.key === v); out[k][role] = col && it ? titleCell(it, col) : (k === 'pay.run' ? (ROLES[role].perms.salary ? '可編輯' : '不可') : null); } }
+      return out; });
+    const srv = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../server/roles.json'), 'utf8')).pages;
+    expect(srv['svc.case']).toEqual(site['svc.case']);
+    expect(srv['pay.run']).toEqual(site['pay.run']);
+  });
+
+  test('Oxford hourly: server rules file, calculation and browser parsers agree with the website', async ({ page }) => {
+    await openPortal(page);
+    const E = require('../server/hourly-engine');
+    const { note, ...srvCfg } = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../server/ox-config.json'), 'utf8'));
+    expect(await page.evaluate(() => JSON.parse(JSON.stringify(OX_DEFAULT)))).toEqual(srvCfg);
+    /* 同一批輸入（固定的偽亂數）：網站與伺服器算出來的每一項都要一樣 */
+    let s = 12345; const rnd = n => { s = (s * 1103515245 + 12345) % 2147483648; return s % n; };
+    const cases = Array.from({ length: 60 }, () => ({ early: rnd(2) === 1, regMin: rnd(2) ? 7200 - 40 + rnd(80) : rnd(12000), trWd: rnd(900), trHol: rnd(300), trNh: rnd(200),
+      ot: Array.from({ length: 14 }, () => (rnd(3) === 0 ? rnd(400) : 0)), aa05: rnd(5), aa06: rnd(5), aa11: rnd(9), rural: rnd(2) * 600, short: rnd(2) * 1000, labor: rnd(800), health: rnd(500), pension: rnd(300), otherDed: rnd(100) }));
+    const site = await page.evaluate(cs => cs.map(c => { const r = oxPay(oxCfg(), Object.assign(oxBlank(), c), c.early); return [r.rate, r.judgeMin, r.base, r.transfer, r.aa, r.manual, r.A, r.B, r.C, r.net, r.segs.map(x => x.amt), r.warn.length]; }), cases);
+    const srv = cases.map(c => { const r = E.pay(E.DEFAULT_CONFIG, Object.assign(E.blankRow(), c), c.early); return [r.rate, r.judgeMin, r.base, r.transfer, r.aa, r.manual, r.A, r.B, r.C, r.net, r.segs.map(x => x.amt), r.warn.length]; });
+    expect(srv).toEqual(site);
+    /* 瀏覽器解析程式（後端版網頁用）與網站的解析程式讀同一份範本，結果一樣（工號欄位名稱不同） */
+    const win = {}; new Function('window', fs.readFileSync(path.resolve(__dirname, '../web/svc-parse.js'), 'utf8'))(win);
+    const cols = E.DEFAULT_CONFIG.ot.map(o => o.day + o.band + '分鐘'), head = ['工號', '姓名', '早期到職級距（是／否）', '平日服務分鐘數（本薪）', '平日交通分鐘', '假日交通分鐘', '國定假日交通分鐘', ...cols, 'AA05 次數', 'AA06 次數', 'AA11 次數', '偏鄉加給', '介紹費', '開案費', '其他津貼', '缺工獎勵', '勞保自付額', '健保自付額', '勞退自提', '其他代扣'];
+    const rows = [['備註'], head, ['X1', '甲', '是', '6000', '1,200', '0', '0', ...cols.map((_, i) => String(i)), '2', '1', '4', '600', '0', '0', '0', '1000', '600', '400', '0', '0'], ['', '空', ...Array(head.length - 2).fill('')]];
+    const webR = win.SvcParse.oxFromFlat(rows, E.DEFAULT_CONFIG), siteR = await page.evaluate(r => oxFromFlat(r), rows);
+    expect(webR.rows.map(({ empNo, ...x }) => ({ id: empNo, ...x }))).toEqual(siteR.rows);
+    expect(webR.missing).toEqual(siteR.missing);
   });
 });
