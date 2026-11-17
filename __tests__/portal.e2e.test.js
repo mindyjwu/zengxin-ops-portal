@@ -3206,7 +3206,7 @@ test.describe('Completion status report in the guide (4 Nov)', () => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     const sec = page.locator('#status');
     await expect(sec.locator('h2')).toContainText('完成度報告');
-    for (const s of ['整體約 54%', '72%', '36%', '後端與資料庫', '薪資計算', '還缺的決定與資料']) await expect(sec).toContainText(s);
+    for (const s of ['整體約 55%', '72%', '38%', '後端與資料庫', '薪資計算', '還缺的決定與資料']) await expect(sec).toContainText(s);
     await expect(page.locator('.toc a[href="#status"]')).toBeVisible();
   });
 });
@@ -3229,6 +3229,17 @@ test.describe('Server-side permission rules match the website (4 Nov)', () => {
     const srv = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../server/roles.json'), 'utf8')).pages;
     expect(srv['svc.case']).toEqual(site['svc.case']);
     expect(srv['pay.run']).toEqual(site['pay.run']);
+  });
+
+  test('revenue-share: server rates, bonus brackets and the remote allowance match the website tables', async ({ page }) => {
+    await openPortal(page);
+    const S = require('../server/split-engine'), cfg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../server/svc-config.json'), 'utf8'));
+    const site = await page.evaluate(() => ({ rates: JSON.parse(JSON.stringify(SPLIT_RATES)), bonus: SPLIT_BONUS, areas: REMOTE_AREAS, allow: REMOTE_ALLOW, bonusAt: [0, 19999, 20000, 29999, 30000, 49999, 50000, 100000, 100001].map(splitBonus) }));
+    expect(site.rates).toHaveLength(36);
+    expect(cfg.rates).toEqual(site.rates);                                                                      // 36 項給付表每個欄位都一樣
+    expect(S.DEFAULT_CONFIG.rates).toEqual(site.rates);
+    expect(cfg.bonus).toEqual(site.bonus); expect(cfg.remote).toEqual({ areas: site.areas, allow: site.allow });
+    expect([0, 19999, 20000, 29999, 30000, 49999, 50000, 100000, 100001].map(a => S.bonusOf(S.DEFAULT_CONFIG, a))).toEqual(site.bonusAt);
   });
 
   test('Oxford hourly: server rules file, calculation and browser parsers agree with the website', async ({ page }) => {

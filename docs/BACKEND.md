@@ -75,3 +75,7 @@ npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@exam
 - 人資（可編輯薪資試算）：`POST /publish {month, acknowledgeWarnings}` 發布並鎖定（存快照）；`POST /reopen {month, reason}` 退回（原因至少 5 字）；`GET /payslips?month=` 全部、`GET /payslip?month=&empNo=` 單張（可檢視者也能看）；`GET /events` 發布與退回紀錄。已發布的月份，`/rows`、`/deductions`、刪除、`/from-svc` 都回 409 `month_published`。
 - 員工：`GET /api/payslips/mine`、`GET /api/payslips/mine/:month`（只有自己、已發布）。
 - 網頁：`/payslip.html?month=&emp=`（單張）、`&all=1`（全部）、`&mine=1`（員工自己的）；資料表 `008_payslips.sql`。
+
+## 拆帳制（/api/pay/split）
+- 權限同時薪制。`GET /rules?month=`、`PUT /rules`（給付表、業績獎金區間、偏鄉津貼、加項或扣項，有生效月份）；`POST /rows`（方案與加扣項）、`PUT /deductions`、`DELETE /rows/:month/:empNo`；`GET /results?month=`（對不到員編的列在 `unmatched`）；`/payslips`、`/payslip`、`/publish`、`/reopen`、`/events` 與時薪制相同（`server/pay-months.js`）。
+- 引擎在 `server/split-engine.js`（純函式）；預設規則取自 `server/svc-config.json`；員工自己的薪資單用 `GET /api/payslips/mine/:month?kind=split`。網頁：`#/split`、`#/split/import`、`#/split/rules`；薪資單 `/payslip.html?kind=split&...`。
