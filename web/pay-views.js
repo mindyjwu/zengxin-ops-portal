@@ -22,16 +22,24 @@ window.ZXViews.pay = async (ctx, tab) => {
       const { ok, data: d, status } = await api(`${P}/results?month=${month}`);
       if (my !== seq) return;                                   // 連續切換月份時，只畫最後一次
       if (!ok) return holder.append(h('div', { class: 'msg ' + (status === 404 ? 'warn' : 'bad') }, status === 404 ? '這個月還沒有資料。' + (me.canPayEdit ? '請到「匯入」。' : '') : errText(d)));
-      const tb = h('tbody');
+      const tb = h('tbody'), locked = d.status === 'published';
       d.people.forEach(p => { const x = p.result;
-        const early = p.onRoster ? (me.canPayEarly ? h('input', { type: 'checkbox', checked: x.early, 'aria-label': '較早到職 ' + p.empNo, onchange: async e => { const r = await put(`${P}/early/${p.empNo}`, { early: e.target.checked }); if (r.ok) draw(); else say(box, errText(r.data), 'bad'), box.classList.remove('hidden'); } }) : h('span', { class: 'chip' }, x.early ? '是' : '否'))
+        const early = p.onRoster ? (me.canPayEarly && !locked ? h('input', { type: 'checkbox', checked: x.early, 'aria-label': '較早到職 ' + p.empNo, onchange: async e => { const r = await put(`${P}/early/${p.empNo}`, { early: e.target.checked }); if (r.ok) draw(); else say(box, errText(r.data), 'bad'), box.classList.remove('hidden'); } }) : h('span', { class: 'chip' }, x.early ? '是' : '否'))
           : h('span', { class: 'chip warn', title: '名冊裡沒有這個工號，用匯入時的欄位' }, x.early ? '是' : '否');
         tb.append(h('tr', {}, h('td', { class: 'mono' }, p.empNo), h('td', {}, p.name), h('td', {}, early), h('td', { class: 'num' }, (x.judgeMin / 60).toFixed(2)), h('td', { class: 'num' }, x.rate), h('td', { class: 'num' }, money(x.base)), h('td', { class: 'num' }, money(x.transfer)), h('td', { class: 'num' }, money(x.aa)),
-          h('td', { class: 'num' }, money(x.manual)), h('td', { class: 'num' }, money(x.A)), h('td', { class: 'num' }, money(x.B)), h('td', { class: 'num' }, money(x.C)), h('td', { class: 'num' }, h('b', {}, money(x.net))), h('td', {}, ...x.warn.map(w => h('span', { class: 'chip ' + (w.crit ? 'bad' : 'warn'), title: w.zh }, '!')))));
+          h('td', { class: 'num' }, money(x.manual)), h('td', { class: 'num' }, money(x.A)), h('td', { class: 'num' }, money(x.B)), h('td', { class: 'num' }, money(x.C)), h('td', { class: 'num' }, h('b', {}, money(x.net))), h('td', {}, ...x.warn.map(w => h('span', { class: 'chip ' + (w.crit ? 'bad' : 'warn'), title: w.zh }, '!')), ' ', h('a', { href: `/payslip.html?month=${month}&emp=${encodeURIComponent(p.empNo)}`, target: '_blank', rel: 'noopener' }, '薪資單'))));
         if (x.segs.length) tb.append(h('tr', { class: 'muted' }, h('td'), h('td', { colspan: 13 }, x.segs.map(s => `${s.day}${s.band} ${s.min} 分 × ${s.mult} = ${money(s.amt)}`).join('；'))));
         if (x.warn.length) tb.append(h('tr', {}, h('td'), h('td', { colspan: 13, class: 'muted' }, x.warn.map(w => w.zh).join('；'))));
       });
-      holder.append(h('div', { class: 'tiles' }, tile('人數', d.people.length), tile('應發 A', money(d.totals.A)), tile('加班費 B', money(d.totals.B)), tile('代扣 C', money(d.totals.C)), tile('實發', money(d.totals.net))),
+      const reasonIn = h('input', { id: 'reopenReason', type: 'text', maxlength: '300', placeholder: '退回原因（至少 5 個字）', class: 'wide' }), bar = h('div', { class: 'btnrow' });
+      if (me.canPayEdit && !locked) bar.append(h('button', { id: 'payPublish', onclick: async () => { let r = await post(`${P}/publish`, { month }); if (r.status === 409 && r.data.error === 'blocking_warnings') {
+        const list = r.data.people.map(x => `${x.empNo} ${x.name}：${x.warn.join('、')}`).join('；');
+        if (!window.confirm(`有嚴重提醒：${list}\n\n確定要發布嗎？`)) return; r = await post(`${P}/publish`, { month, acknowledgeWarnings: true }); }
+        say(box, r.ok ? `已發布並鎖定（版本 ${r.data.version}），員工現在看得到自己的薪資單。` : errText(r.data), r.ok ? 'ok' : 'bad'); box.classList.remove('hidden'); if (r.ok) draw(); } }, '發布並鎖定'));
+      if (me.canPayEdit && locked) bar.append(reasonIn, h('button', { id: 'payReopen', onclick: async () => { const r = await post(`${P}/reopen`, { month, reason: reasonIn.value }); say(box, r.ok ? '已退回，員工看不到這個月了；改完請重新發布。' : errText(r.data), r.ok ? 'ok' : 'bad'); box.classList.remove('hidden'); if (r.ok) draw(); } }, '退回修改'));
+      bar.append(h('a', { id: 'printAll', href: `/payslip.html?month=${month}&all=1`, target: '_blank', rel: 'noopener' }, '列印全部薪資單'));
+      holder.append(h('div', { class: 'msg ' + (locked ? 'ok' : 'warn') }, locked ? `已發布並鎖定（版本 ${d.version}）：輸入、代扣與算分鐘都不能改，要改請先「退回」。` : '草稿：員工還看不到。'), bar,
+        h('div', { class: 'tiles' }, tile('人數', d.people.length), tile('應發 A', money(d.totals.A)), tile('加班費 B', money(d.totals.B)), tile('代扣 C', money(d.totals.C)), tile('實發', money(d.totals.net))),
         h('p', { class: 'muted' }, d.rules.effectiveFrom ? `使用 ${d.rules.effectiveFrom} 起的規則版本。` : '使用預設規則（確認版）。實發 = 應發 A + 加班費 B − 代扣 C；時薪級距用「正常工時＋加班工時」的分鐘數判斷（不含轉場）。'),
         h('div', { class: 'btnrow' }, h('button', { id: 'payCsv', onclick: () => download(`牛津時薪制計薪_${month}.csv`, csv([['工號', '姓名', '較早到職', '判斷工時', '時薪', '本薪', '轉場費', 'AA加給', '人工項目', '應發A', '加班費B', '代扣C', '實發'], ...d.people.map(p => { const x = p.result; return [p.empNo, p.name, x.early ? '是' : '否', (x.judgeMin / 60).toFixed(2), x.rate, x.base, x.transfer, x.aa, x.manual, x.A, x.B, x.C, x.net]; })])) }, '匯出 CSV')),
         h('div', { class: 'tablewrap' }, h('table', {}, h('thead', {}, h('tr', {}, ...['工號', '姓名', '較早到職', '判斷工時', '時薪', '本薪', '轉場費', 'AA', '人工項目', '應發 A', '加班費 B', '代扣 C', '實發', ''].map(t => h('th', {}, t)))), tb)));
