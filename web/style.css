@@ -29,3 +29,17 @@ svg.chart{width:100%;height:auto;max-height:160px;border-bottom:1px solid var(--
 progress{accent-color:var(--accent)}.chips{display:flex;gap:8px;flex-wrap:wrap}.msg.warn{border-color:var(--warn);color:var(--warn)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 input.sm{width:92px}
+/* 薪資單（螢幕與 A4 列印） */
+.slipbar{padding:10px 16px;display:flex;gap:12px;align-items:center}
+.slip{max-width:760px;margin:0 auto 24px;padding:20px 24px;background:#fff;color:#111;border:1px solid var(--line);border-radius:8px;position:relative}
+.slip h1{font-size:15px;margin:0 0 4px;text-align:center}.slip h2{font-size:17px;margin:0 0 10px;text-align:center}.slip h3{font-size:14px;margin:14px 0 4px}
+.slipmeta{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13px;margin:6px 0}
+.slipt{width:100%;border-collapse:collapse;font-size:13px}.slipt th,.slipt td{border:1px solid #888;padding:4px 8px;text-align:left}.slipt th{background:#eee}.slipt td.num{text-align:right;font-variant-numeric:tabular-nums}.slipt tfoot td{font-weight:700}
+.slipnet{margin:14px 0 6px;padding:8px 10px;border:2px solid #111;font-size:15px;text-align:right}
+.slipdraft{text-align:right;color:#b00020;font-weight:700;font-size:13px;margin-bottom:6px}
+@media print{
+  @page{size:A4;margin:12mm}
+  body.slipbody{background:#fff}.slipbar{display:none}
+  .slip{border:none;border-radius:0;margin:0;padding:0;max-width:none;page-break-after:always;break-after:page}.slip:last-child{page-break-after:auto;break-after:auto}
+}
+input.wide{width:260px;max-width:100%}

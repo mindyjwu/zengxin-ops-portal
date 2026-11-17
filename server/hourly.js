@@ -7,6 +7,7 @@ const express = require('express');
 const { can, canViewPage, pageCode } = require('./permissions');
 const E = require('./hourly-engine');
 const { splitMonth, DAYTYPE_ZH } = require('./hourly-split');
+const { buildSlip } = require('./payslip');
 
 const PAGE = 'pay.run', MONTH = /^\d{4}-\d{2}$/;
 const KIND = 'oxford_hourly';
@@ -45,6 +46,20 @@ function hourlyRouter({ db, audit }) {
     return v ? { id: +v.id, effectiveFrom: v.effective_from, config: v.config } : { id: null, effectiveFrom: null, config: E.DEFAULT_CONFIG };
   }
 
+  /** 月份狀態：已發布就鎖定（輸入、代扣、算分鐘都不能改），要改先「退回」 */
+  const monthState = async month => (await db.query('SELECT status, version, changed_at FROM pay_hourly_months WHERE month=$1', [month])).rows[0] || { status: 'draft', version: 0, changed_at: null };
+  const lockedRes = async (res, month) => { const st = await monthState(month); if (st.status === 'published') { res.status(409).json({ error: 'month_published', month }); return true; } return false; };
+  /** 這個月每個人的計算（名冊裡有這個工號就以員工資料的勾選為準） */
+  async function computeMonth(month) {
+    const rows = (await db.query('SELECT * FROM pay_hourly_rows WHERE month=$1 ORDER BY emp_no', [month])).rows;
+    if (!rows.length) return null;
+    const rules = await rulesFor(month), emp = new Map((await db.query('SELECT id, pay_early_tier FROM employees WHERE id = ANY($1::text[])', [rows.map(x => x.emp_no)])).rows.map(e => [e.id, e.pay_early_tier]));
+    const people = rows.map(w => { const row = fromDb(w), early = emp.has(w.emp_no) ? emp.get(w.emp_no) : w.early; return { ...row, onRoster: emp.has(w.emp_no), result: E.pay(rules.config, row, early) }; });
+    return { rules, people };
+  }
+  const totalsOf = people => people.reduce((a, p) => ({ A: a.A + p.result.A, B: a.B + p.result.B, C: a.C + p.result.C, net: a.net + p.result.net }), { A: 0, B: 0, C: 0, net: 0 });
+  const slipOf = (month, p, rules, version) => buildSlip({ month, person: p, result: p.result, rules, version });
+
   r.get('/rules', view, async (req, res) => {
     const month = String(req.query.month || '');
     if (!MONTH.test(month)) return res.status(400).json({ error: 'bad_month' });
@@ -62,13 +77,14 @@ function hourlyRouter({ db, audit }) {
     res.status(201).json({ id: +id, effectiveFrom: month, config: v.config });
   });
 
-  r.get('/months', view, async (req, res) => res.json((await db.query('SELECT month, count(*)::int AS people, max(updated_at) AS updated_at FROM pay_hourly_rows GROUP BY month ORDER BY month DESC')).rows));
+  r.get('/months', view, async (req, res) => res.json((await db.query("SELECT r.month, count(*)::int AS people, max(r.updated_at) AS updated_at, COALESCE(m.status,'draft') AS status, COALESCE(m.version,0) AS version FROM pay_hourly_rows r LEFT JOIN pay_hourly_months m ON m.month=r.month GROUP BY r.month, m.status, m.version ORDER BY r.month DESC")).rows));
 
   /** 匯入或更新某個月的輸入。mode=replace：整個月換掉；mode=upsert（預設）：只更新送來的人 */
   r.post('/rows', edit, express.json({ limit: '2mb' }), async (req, res) => {
     const b = req.body || {}, month = String(b.month || ''), list = b.rows;
     if (!MONTH.test(month)) return res.status(400).json({ error: 'bad_month' });
     if (!Array.isArray(list) || !list.length || list.length > 600) return res.status(400).json({ error: 'bad_rows' });
+    if (await lockedRes(res, month)) return;
     const rows = [], seen = new Set();
     for (const x of list) { const c = cleanRow(x); if (c.error) return res.status(400).json(c); if (seen.has(c.row.empNo)) return res.status(400).json({ error: 'duplicate_emp_no', empNo: c.row.empNo }); seen.add(c.row.empNo); rows.push(c.row); }
     const replace = b.mode === 'replace';
@@ -89,6 +105,7 @@ function hourlyRouter({ db, audit }) {
     const b = req.body || {}, month = String(b.month || ''), list = b.rows;
     if (!MONTH.test(month)) return res.status(400).json({ error: 'bad_month' });
     if (!Array.isArray(list) || !list.length || list.length > 600) return res.status(400).json({ error: 'bad_rows' });
+    if (await lockedRes(res, month)) return;
     const updated = [], missing = [];
     for (const x of list) {
       const empNo = text(x && x.empNo, 20), v = ['labor', 'health', 'pension', 'otherDed'].map(k => money(x[k] ?? 0));
@@ -101,6 +118,7 @@ function hourlyRouter({ db, audit }) {
   });
 
   r.delete('/rows/:month/:empNo', edit, async (req, res) => {
+    if (await lockedRes(res, req.params.month)) return;
     const n = (await db.query('DELETE FROM pay_hourly_rows WHERE month=$1 AND emp_no=$2', [req.params.month, req.params.empNo])).rowCount;
     if (!n) return res.status(404).json({ error: 'not_found' });
     await audit(req, 'pay_row_delete', req.params.month, { empNo: req.params.empNo });
@@ -121,14 +139,71 @@ function hourlyRouter({ db, audit }) {
   r.get('/results', view, async (req, res) => {
     const month = String(req.query.month || '');
     if (!MONTH.test(month)) return res.status(400).json({ error: 'bad_month' });
-    const rows = (await db.query('SELECT * FROM pay_hourly_rows WHERE month=$1 ORDER BY emp_no', [month])).rows;
-    if (!rows.length) return res.status(404).json({ error: 'no_data_for_month' });
-    const rules = await rulesFor(month), emp = new Map((await db.query('SELECT id, pay_early_tier FROM employees WHERE id = ANY($1::text[])', [rows.map(x => x.emp_no)])).rows.map(e => [e.id, e.pay_early_tier]));
-    const people = rows.map(w => { const row = fromDb(w), early = emp.has(w.emp_no) ? emp.get(w.emp_no) : w.early; return { ...row, onRoster: emp.has(w.emp_no), result: E.pay(rules.config, row, early) }; });
-    const tot = people.reduce((a, p) => ({ A: a.A + p.result.A, B: a.B + p.result.B, C: a.C + p.result.C, net: a.net + p.result.net }), { A: 0, B: 0, C: 0, net: 0 });
-    await audit(req, 'pay_hourly_view', month, { people: people.length });
-    res.json({ month, rules: { id: rules.id, effectiveFrom: rules.effectiveFrom }, config: rules.config, people, totals: tot, editable: canEdit(req.user) });
+    const st = await monthState(month), base = { month, status: st.status, version: st.version, changedAt: st.changed_at, editable: canEdit(req.user) && st.status !== 'published' };
+    if (st.status === 'published') {                                                    // 已發布：顯示當時的快照，不重算
+      const snaps = (await db.query('SELECT slip FROM pay_hourly_slips WHERE month=$1 AND version=$2 ORDER BY emp_no', [month, st.version])).rows.map(x => x.slip);
+      const people = snaps.map(x => ({ ...x.person, onRoster: x.onRoster, result: x.result }));
+      await audit(req, 'pay_hourly_view', month, { people: people.length, published: st.version });
+      return res.json({ ...base, rules: snaps[0] ? snaps[0].slip.rules : null, config: null, people, totals: totalsOf(people) });
+    }
+    const m = await computeMonth(month); if (!m) return res.status(404).json({ error: 'no_data_for_month' });
+    await audit(req, 'pay_hourly_view', month, { people: m.people.length });
+    res.json({ ...base, rules: { id: m.rules.id, effectiveFrom: m.rules.effectiveFrom }, config: m.rules.config, people: m.people, totals: totalsOf(m.people) });
   });
+
+  /* ---------- 薪資單：預覽、發布並鎖定、退回 ---------- */
+  const slipsOf = async month => {                                                      // 已發布用快照；草稿用現在的計算
+    const st = await monthState(month);
+    if (st.status === 'published') return { published: true, version: st.version, slips: (await db.query('SELECT slip FROM pay_hourly_slips WHERE month=$1 AND version=$2 ORDER BY emp_no', [month, st.version])).rows.map(x => x.slip.slip) };
+    const m = await computeMonth(month); if (!m) return null;
+    return { published: false, version: 0, slips: m.people.map(p => slipOf(month, p, m.rules, 0)) };
+  };
+  r.get('/payslips', view, async (req, res) => {
+    const month = String(req.query.month || ''); if (!MONTH.test(month)) return res.status(400).json({ error: 'bad_month' });
+    const d = await slipsOf(month); if (!d) return res.status(404).json({ error: 'no_data_for_month' });
+    await audit(req, 'pay_payslips_view', month, { people: d.slips.length, published: d.published });
+    res.json({ month, ...d });
+  });
+  r.get('/payslip', view, async (req, res) => {
+    const month = String(req.query.month || ''), empNo = String(req.query.empNo || ''); if (!MONTH.test(month)) return res.status(400).json({ error: 'bad_month' });
+    const d = await slipsOf(month); if (!d) return res.status(404).json({ error: 'no_data_for_month' });
+    const slip = d.slips.find(x => x.empNo === empNo); if (!slip) return res.status(404).json({ error: 'not_found' });
+    await audit(req, 'pay_payslip_view', month + '/' + empNo, { published: d.published });
+    res.json({ published: d.published, version: d.version, slip });
+  });
+
+  /** 發布並鎖定：每個人的薪資單存成快照；有「嚴重提醒」（實發為負、時薪低於基本工資、與總表時薪不同）要人資明確確認才能發布 */
+  r.post('/publish', edit, async (req, res) => {
+    const month = String((req.body || {}).month || ''); if (!MONTH.test(month)) return res.status(400).json({ error: 'bad_month' });
+    const st = await monthState(month); if (st.status === 'published') return res.status(409).json({ error: 'month_published', month });
+    const m = await computeMonth(month); if (!m) return res.status(404).json({ error: 'no_data_for_month' });
+    const blockers = m.people.filter(p => p.result.warn.some(w => w.crit)).map(p => ({ empNo: p.empNo, name: p.name, warn: p.result.warn.filter(w => w.crit).map(w => w.zh) }));
+    const ack = (req.body || {}).acknowledgeWarnings === true;
+    if (blockers.length && !ack) return res.status(409).json({ error: 'blocking_warnings', people: blockers });
+    const version = st.version + 1;
+    await db.tx(async q => {
+      for (const p of m.people) await q('INSERT INTO pay_hourly_slips (month, version, emp_no, slip) VALUES ($1,$2,$3,$4)', [month, version, p.empNo, JSON.stringify({ slip: slipOf(month, p, m.rules, version), person: { ...p, result: undefined, onRoster: undefined }, result: p.result, onRoster: p.onRoster })]);
+      await q("INSERT INTO pay_hourly_months (month, status, version, changed_by) VALUES ($1,'published',$2,$3) ON CONFLICT (month) DO UPDATE SET status='published', version=$2, changed_by=$3, changed_at=now()", [month, version, req.user.id]);
+      await q("INSERT INTO pay_month_events (month, action, version, detail, by_id) VALUES ($1,'publish',$2,$3,$4)", [month, version, JSON.stringify({ people: m.people.length, acknowledgedWarnings: blockers.length }), req.user.id]);
+    });
+    await audit(req, 'pay_publish', month, { version, people: m.people.length, acknowledgedWarnings: blockers.length });
+    res.status(201).json({ month, version, people: m.people.length, acknowledgedWarnings: blockers.length });
+  });
+
+  /** 退回：必須寫原因；員工立刻看不到這個月；人資才能再改輸入，改完要重新發布（新版本，舊版本保留） */
+  r.post('/reopen', edit, async (req, res) => {
+    const month = String((req.body || {}).month || ''), reason = text((req.body || {}).reason, 300);
+    if (!MONTH.test(month)) return res.status(400).json({ error: 'bad_month' });
+    if (reason.length < 5) return res.status(400).json({ error: 'reason_required' });
+    const st = await monthState(month); if (st.status !== 'published') return res.status(409).json({ error: 'not_published', month });
+    await db.tx(async q => {
+      await q("UPDATE pay_hourly_months SET status='draft', changed_by=$2, changed_at=now() WHERE month=$1", [month, req.user.id]);
+      await q("INSERT INTO pay_month_events (month, action, version, reason, by_id) VALUES ($1,'reopen',$2,$3,$4)", [month, st.version, reason, req.user.id]);
+    });
+    await audit(req, 'pay_reopen', month, { version: st.version, reason });
+    res.json({ month, status: 'draft', version: st.version });
+  });
+  r.get('/events', view, async (req, res) => res.json((await db.query('SELECT e.month, e.action, e.version, e.reason, e.at, p.name AS by FROM pay_month_events e JOIN employees p ON p.id=e.by_id ORDER BY e.id DESC LIMIT 50')).rows));
 
   /* ---------- 工時由 Portal 用仁寶服務紀錄自己算（取代匯入分鐘數）----------
      只有能改薪資的人（人資）可以用：這些是每位居服員的工時，等於薪資資料。 */
@@ -164,6 +239,7 @@ function hourlyRouter({ db, audit }) {
   /** 把算出來的服務分鐘與加班分鐘寫進這個月的輸入：只改這兩項（與選了才帶的 AA 次數），轉場、人工項目、代扣、勾選都保留 */
   r.post('/from-svc', edit, async (req, res) => {
     const month = monthOk(req, res); if (!month) return;
+    if (await lockedRes(res, month)) return;
     const withAA = (req.body || {}).withAA === true, d = await fromSvc(month, withAA); if (d.error) return res.status(404).json(d);
     const ready = d.people.filter(p => p.match.empNo), skipped = d.people.filter(p => !p.match.empNo).map(p => ({ worker: p.worker, status: p.match.status }));
     const seen = new Map(); for (const p of ready) { if (seen.has(p.match.empNo)) return res.status(409).json({ error: 'same_emp_no_twice', empNo: p.match.empNo, workers: [seen.get(p.match.empNo), p.worker] }); seen.set(p.match.empNo, p.worker); }
@@ -201,4 +277,18 @@ function hourlyRouter({ db, audit }) {
   return r;
 }
 
-module.exports = { hourlyRouter, cleanRow };
+/** 員工自己的薪資單：只有自己（工號＝員工編號）、而且已發布的月份 */
+function payslipsRouter({ db, audit }) {
+  const r = express.Router();
+  r.get('/mine', async (req, res) => res.json((await db.query("SELECT s.month, s.version, (s.slip->'slip'->>'net')::int AS net FROM pay_hourly_slips s JOIN pay_hourly_months m ON m.month=s.month AND m.version=s.version AND m.status='published' WHERE s.emp_no=$1 ORDER BY s.month DESC", [req.user.id])).rows));
+  r.get('/mine/:month', async (req, res) => {
+    if (!MONTH.test(req.params.month)) return res.status(400).json({ error: 'bad_month' });
+    const x = (await db.query("SELECT s.slip->'slip' AS slip, s.version FROM pay_hourly_slips s JOIN pay_hourly_months m ON m.month=s.month AND m.version=s.version AND m.status='published' WHERE s.month=$1 AND s.emp_no=$2", [req.params.month, req.user.id])).rows[0];
+    if (!x) return res.status(404).json({ error: 'not_found' });
+    await audit(req, 'payslip_view_self', req.params.month, { version: x.version });
+    res.json({ published: true, version: x.version, slip: x.slip });
+  });
+  return r;
+}
+
+module.exports = { hourlyRouter, payslipsRouter, cleanRow };

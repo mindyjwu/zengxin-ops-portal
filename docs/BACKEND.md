@@ -70,3 +70,8 @@ npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@exam
 ### 用仁寶服務紀錄算分鐘數（/api/pay/hourly）
 - `GET /from-svc?month=&withAA=1` 預覽；`POST /from-svc {month, withAA}` 寫入（只更新服務分鐘、加班分鐘與選擇帶入的 AA 次數）；`PUT /daytype-map {label, type}` 歸類加班類型標籤；`PUT /name-map {worker, empNo}` 指定仁寶姓名的員編。全部需要能改薪資的權限，並寫稽核紀錄。
 - 切小時的規則在 `server/hourly-split.js`（純函式）；資料表 `007_hourly_from_svc.sql`。仁寶匯入的彙總多了 `who[姓名].byLabel[日期][標籤]`（分鐘）。
+
+### 薪資單（/api/pay/hourly 與 /api/payslips）
+- 人資（可編輯薪資試算）：`POST /publish {month, acknowledgeWarnings}` 發布並鎖定（存快照）；`POST /reopen {month, reason}` 退回（原因至少 5 字）；`GET /payslips?month=` 全部、`GET /payslip?month=&empNo=` 單張（可檢視者也能看）；`GET /events` 發布與退回紀錄。已發布的月份，`/rows`、`/deductions`、刪除、`/from-svc` 都回 409 `month_published`。
+- 員工：`GET /api/payslips/mine`、`GET /api/payslips/mine/:month`（只有自己、已發布）。
+- 網頁：`/payslip.html?month=&emp=`（單張）、`&all=1`（全部）、`&mine=1`（員工自己的）；資料表 `008_payslips.sql`。

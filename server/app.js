@@ -9,7 +9,7 @@ const { clientIp, punchRecord } = require('../backend/punch-ip');
 const { employeesRouter } = require('./employees');
 const { requestsRouter } = require('./requests');
 const { svcRouter } = require('./svc');
-const { hourlyRouter } = require('./hourly');
+const { hourlyRouter, payslipsRouter } = require('./hourly');
 const path = require('path');
 
 function createApp({ db, verifyGoogle, config }) {
@@ -126,6 +126,7 @@ function createApp({ db, verifyGoogle, config }) {
   app.use('/api/employees', needLogin, employeesRouter({ db, audit }));
   app.use('/api/svc', needLogin, svcRouter({ db, audit }));
   app.use('/api/pay/hourly', needLogin, hourlyRouter({ db, audit }));
+  app.use('/api/payslips', needLogin, payslipsRouter({ db, audit }));
   app.use('/api', needLogin, requestsRouter({ db, audit }));
   app.use(express.static(path.join(__dirname, '..', 'web'), { index: 'index.html', maxAge: 0 }));
 

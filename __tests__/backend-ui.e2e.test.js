@@ -220,4 +220,54 @@ test.describe('connected web app', () => {
     expect(errs).toEqual([]);
     await hr.ctx.close();
   });
+  test('薪資單: HR previews a draft, publishes and locks, the employee sees only their own, reopening hides it again', async ({ browser }) => {
+    const errs = [], hr = await login(browser, 'hr@example.test');
+    hr.page.on('pageerror', e => errs.push(e.message));
+    hr.page.on('console', m => { if (m.type() === 'error' && /Content Security Policy/.test(m.text())) errs.push(m.text()); });
+    const cols = await hr.page.evaluate(() => SvcParse.oxCols({ ot: Array.from({ length: 14 }, (_, i) => ({ day: ['平日加班', '平日加班', '國定假日加班', '國定假日加班', '國定假日加班', '國定假日加班', '休息日加班', '休息日加班', '休息日加班', '休息日加班', '例假日加班', '例假日加班', '例假日加班', '例假日加班'][i], band: ['第9-10小時', '第11-12小時', '第0-2小時', '第3-8小時', '第9-10小時', '第11-12小時', '第0-2小時', '第3-8小時', '第9-10小時', '第11-12小時', '第0-2小時', '第3-8小時', '第9-10小時', '第11-12小時'][i] })) }).map(c => c[1]));
+    const val = { 工號: 'J020003', 姓名: '示範員工甲', '平日服務分鐘數（本薪）': '6000', 平日交通分鐘: '1200', 勞保自付額: '600', 健保自付額: '400' };
+    await hr.page.goto(BASE + '/app.html#/pay/import');
+    await hr.page.fill('#imonth', '2031-09');
+    await hr.page.setInputFiles('#payFile', { name: 'pay.csv', mimeType: 'text/csv', buffer: Buffer.from('\ufeff' + [cols.join(','), cols.map(c => val[c] || '0').join(',')].join('\n'), 'utf8') });
+    await hr.page.click('#payCommit');
+    await expect(hr.page.locator('.msg.ok')).toContainText('已匯入 1 人');
+    await hr.page.goto(BASE + '/payslip.html?month=2031-09&emp=J020003');                         // 草稿預覽
+    await expect(hr.page.locator('.slip')).toContainText('牛津居家長照機構');
+    await expect(hr.page.locator('.slipdraft')).toContainText('草稿');
+    await expect(hr.page.locator('.slip')).toContainText('實發金額');
+    await expect(hr.page.locator('.slip')).toContainText('NT$23,920');
+    const emp = await login(browser, 'a@example.test');
+    await emp.page.goto(BASE + '/app.html#/payslips');
+    await expect(emp.page.locator('main')).toContainText('目前沒有已發布的薪資單');                    // 草稿員工看不到
+    await expect(emp.page.locator('#nav')).not.toContainText('我的薪資單');
+    await hr.page.goto(BASE + '/app.html#/pay');
+    await hr.page.fill('#pmonth', '2031-09');
+    await expect(hr.page.locator('main')).toContainText('草稿：員工還看不到');
+    await hr.page.click('#payPublish');
+    await expect(hr.page.locator('.msg.ok').last()).toContainText('已發布並鎖定');
+    await expect(hr.page.locator('main')).toContainText('已發布並鎖定（版本 1）');
+    await hr.page.goto(BASE + '/app.html#/pay/import');                                          // 鎖定後不能再匯入
+    await hr.page.fill('#imonth', '2031-09');
+    await hr.page.setInputFiles('#payFile', { name: 'pay.csv', mimeType: 'text/csv', buffer: Buffer.from('\ufeff' + [cols.join(','), cols.map(c => val[c] || '0').join(',')].join('\n'), 'utf8') });
+    await hr.page.click('#payCommit');
+    await expect(hr.page.locator('.msg.bad')).toContainText('已發布並鎖定');
+    await emp.page.goto(BASE + '/app.html#/payslips'); await emp.page.reload();
+    await expect(emp.page.locator('#nav')).toContainText('我的薪資單');
+    await expect(emp.page.locator('main')).toContainText('2031-09');
+    await emp.page.goto(BASE + '/payslip.html?month=2031-09&mine=1');
+    await expect(emp.page.locator('.slip')).toContainText('示範員工甲');
+    await expect(emp.page.locator('.slipdraft')).toHaveCount(0);
+    await emp.page.emulateMedia({ media: 'print' });
+    await expect(emp.page.locator('.slipbar')).toBeHidden();                                      // 列印時不顯示按鈕列
+    await emp.page.goto(BASE + '/payslip.html?month=2031-09&emp=J020003');                        // 看別人的／HR 的端點：沒有權限
+    await expect(emp.page.locator('main')).toContainText('沒有權限');
+    await hr.page.goto(BASE + '/app.html#/pay'); await hr.page.fill('#pmonth', '2031-09');
+    await hr.page.fill('#reopenReason', '更正轉場分鐘');
+    await hr.page.click('#payReopen');
+    await expect(hr.page.locator('.msg.ok').last()).toContainText('已退回');
+    await emp.page.goto(BASE + '/payslip.html?month=2031-09&mine=1');
+    await expect(emp.page.locator('main')).toContainText('找不到這張薪資單');                          // 退回後員工立刻看不到
+    expect(errs).toEqual([]);
+    await hr.ctx.close(); await emp.ctx.close();
+  });
 });
