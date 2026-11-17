@@ -89,7 +89,8 @@ function svcAggregate(rows){
     const U=((A.mu[mo]=A.mu[mo]||{})[un]=A.mu[mo][un]||{cases:new Set(),rows:0,min:0,who:new Set()}); U.cases.add(cid); U.rows++; U.min+=m; U.who.add(who);
     const it=String(x[C.item]??'').trim()||'（未填）', nt0=parseFloat(x[C.times]), n=isFinite(nt0)?nt0:1;   // 次數 0＝排班已排但當天沒做（仁寶仍會建立記錄），不能當成 1 次
     const o=A.items[it]=A.items[it]||{n:0,min:0}; o.n+=n; o.min+=m;
-    const w=A.who[who]=A.who[who]||{min:0,byDay:{}}; w.min+=m; w.byDay[d]=(w.byDay[d]||0)+m;
+    const w=A.who[who]=A.who[who]||{min:0,byDay:{},byLabel:{}}; w.min+=m; w.byDay[d]=(w.byDay[d]||0)+m;
+    { const lb=C.otype>=0?(String(x[C.otype]??'').trim()||'（未填）'):'（無此欄）', bl_=w.byLabel[d]=w.byLabel[d]||{}; bl_[lb]=(bl_[lb]||0)+m; }   // 每天每種「加班類型」的分鐘：時薪制算平日、休息日、國定假日、例假日的小時要用
     const st=C.status>=0?String(x[C.status]??''):''; if(st.includes('忘簽退')) A.odd.noOut++; if(st.includes('未遇')) A.odd.noShow++;
     if(C.late>=0&&String(x[C.late]??'').trim()==='是') A.odd.late++; if(C.short>=0&&String(x[C.short]??'').trim()==='是') A.odd.short++;
     if(m===0) A.odd.zero++;
@@ -109,7 +110,7 @@ function svcAggregate(rows){
 
 /** 彙總 → 要送給伺服器的內容：只有居服員的每日分鐘、項目、金額與各月合計；沒有個案姓名、身分證字號、案號 */
 function toPayload(g, sourceName) {
-  const who = {}; Object.keys(g.who).forEach(n => { who[n] = { byDay: g.who[n].byDay }; });
+  const who = {}; Object.keys(g.who).forEach(n => { who[n] = { byDay: g.who[n].byDay, byLabel: g.who[n].byLabel }; });
   return { sourceName: sourceName || '', from: g.from, to: g.to, rows: g.rows, skipped: g.skipped.length, cases: g.cases, odd: g.odd, noPrice: g.noPrice || 0, mon: g.mon, mu: g.mu, who, sp: g.sp };
 }
 

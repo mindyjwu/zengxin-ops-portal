@@ -20,7 +20,7 @@ function clean(b) {
   const months = Object.keys(b.mon || {});
   if (!months.length || months.length > 12 || !months.every(m => MONTH.test(m))) return bad('months');
   const out = { sourceName: str(b.sourceName, 120), from: DAY.test(b.from) ? b.from : null, to: DAY.test(b.to) ? b.to : null,
-    rows: num(b.rows), skipped: num(b.skipped) ?? 0, cases: num(b.cases) ?? 0, noPrice: num(b.noPrice) ?? 0, mon: {}, mu: {}, days: [], items: [], wm: [] };
+    rows: num(b.rows), skipped: num(b.skipped) ?? 0, cases: num(b.cases) ?? 0, noPrice: num(b.noPrice) ?? 0, mon: {}, mu: {}, days: [], labels: [], items: [], wm: [] };
   if (out.rows == null) return bad('rows');
   out.odd = {}; for (const k of ['noOut', 'noShow', 'late', 'short', 'zero']) out.odd[k] = num((b.odd || {})[k]) ?? 0;
   for (const m of months) {
@@ -39,6 +39,10 @@ function clean(b) {
     const name = str(w, 40); if (!name) return bad('worker_name');
     const days = Object.entries((v && v.byDay) || {}); if (days.length > 400) return bad('too_many_days');
     for (const [d, mins] of days) { const mi = num(mins, 1e6); if (!DAY.test(d) || mi == null || !out.mon[d.slice(0, 7)]) return bad('day'); out.days.push([d.slice(0, 7), name, d, mi]); }
+    for (const [d, labs] of Object.entries((v && v.byLabel) || {}).slice(0, 400)) {            // 每天每種加班類型的分鐘（時薪制用；標籤不含個案資料）
+      const ls = Object.entries(labs || {}); if (!DAY.test(d) || !out.mon[d.slice(0, 7)] || ls.length > 10) return bad('label_day');
+      for (const [label, mins] of ls) { const mi = num(mins, 1e6), lb = str(label, 40); if (mi == null || !lb) return bad('label'); out.labels.push([d.slice(0, 7), name, d, lb, mi]); }
+    }
   }
   for (const [m, ws] of Object.entries(b.sp || {})) {
     if (!out.mon[m]) return bad('sp_month');
@@ -72,6 +76,7 @@ function svcRouter({ db, audit }) {
         for (const [u, y] of Object.entries(c.mu[m])) await q('INSERT INTO svc_month_unit (month, unit, cases, rows, minutes, workers) VALUES ($1,$2,$3,$4,$5,$6)', [m, u, y.cases, y.rows, y.min, y.who]);
       }
       if (c.days.length) await q('INSERT INTO svc_worker_day (month, worker, day, minutes) SELECT * FROM unnest($1::text[], $2::text[], $3::date[], $4::numeric[])', [cols(c.days, 0), cols(c.days, 1), cols(c.days, 2), cols(c.days, 3)]);
+      if (c.labels.length) await q('INSERT INTO svc_worker_day_label (month, worker, day, label, minutes) SELECT * FROM unnest($1::text[], $2::text[], $3::date[], $4::text[], $5::numeric[])', [0, 1, 2, 3, 4].map(i => cols(c.labels, i)));
       if (c.items.length) await q('INSERT INTO svc_worker_item (month, worker, code, item_name, n, n_holiday, amount, minutes) SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::numeric[], $6::numeric[], $7::numeric[], $8::numeric[])', [0, 1, 2, 3, 4, 5, 6, 7].map(i => cols(c.items, i)));
       if (c.wm.length) await q('INSERT INTO svc_worker_month (month, worker, amount, remote_cases) SELECT * FROM unnest($1::text[], $2::text[], $3::numeric[], $4::int[])', [0, 1, 2, 3].map(i => cols(c.wm, i)));
       return imp;

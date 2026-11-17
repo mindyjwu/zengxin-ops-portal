@@ -62,9 +62,35 @@ window.ZXViews.pay = async (ctx, tab) => {
       else if (pendingDed) { const r = await put(`${P}/deductions`, { month, rows: pendingDed }); note(r.ok ? `代扣已更新 ${r.data.updated} 人。` + (r.data.missing.length ? `名單裡沒有這些工號：${r.data.missing.slice(0, 8).join('、')}` : '') : errText(r.data), r.ok ? (r.data.missing.length ? 'warn' : 'ok') : 'bad'); if (r.ok) { pendingDed = null; preview.textContent = ''; } else commit.disabled = false; } });
     const tpl = h('button', { id: 'payTpl', onclick: () => { const cols = SP.oxCols(cfg), ex = SP.oxBlank(); ex.empNo = 'OXHR901'; ex.name = '示範（虛構）'; ex.regMin = 6000; ex.trWd = 1200;
       download('牛津時薪制匯入範本.csv', csv([cols.map(c => c[1]), cols.map(([k]) => k === 'early' ? '否' : /^ot\d+$/.test(k) ? 0 : ex[k])])); } }, '下載範本（CSV）');
+    /* 從仁寶服務紀錄算分鐘數：日別看仁寶「加班類型」欄，一天的小時＝當天所有服務分鐘加總依序切；轉場分鐘仍照薪資報表匯入 */
+    const svcBox = msgBox(), svcOut = h('div'), withAA = h('input', { id: 'svcAA', type: 'checkbox' });
+    const DT = { weekday: '平日', national: '國定假日', rest: '休息日', statutory: '例假日' };
+    let lastPreview = null;
+    const svcNote = (t, k) => { say(svcBox, t, k); svcBox.classList.remove('hidden'); };
+    const previewSvc = async () => {
+      svcBox.classList.add('hidden'); svcOut.textContent = '';
+      const { ok, data: d } = await api(`${P}/from-svc?month=${month}&withAA=${withAA.checked ? 1 : 0}`);
+      if (!ok) return svcNote(errText(d), 'warn');
+      lastPreview = d; const sum = (p, from, to) => p.ot.slice(from, to).reduce((a, b) => a + b, 0), tb = h('tbody');
+      d.people.forEach(p => {
+        const m = p.match, inp = h('input', { type: 'text', class: 'sm', placeholder: '員編', 'aria-label': '指定員編 ' + p.worker });
+        const who = m.empNo ? h('span', { class: 'chip ok' }, (m.status === 'mapped' ? '已指定 ' : '') + m.empNo) : h('span', {}, h('span', { class: 'chip warn' }, m.status === 'ambiguous' ? '同名多人' : '對不到名冊'), ' ', inp, ' ', h('button', { class: 'mini', onclick: async () => { const r = await put(`${P}/name-map`, { worker: p.worker, empNo: inp.value.trim() }); if (r.ok) previewSvc(); else svcNote(errText(r.data), 'bad'); } }, '指定'));
+        const warn = [...(p.over.length ? [`超過 12 小時的分鐘不計：${p.over.map(o => o.day.slice(5) + ' ' + o.minutes + ' 分').join('、')}`] : []), ...(p.mixed.length ? [`同一天有多種日別（以特別的日別為準）：${p.mixed.map(o => o.day.slice(5)).join('、')}`] : [])];
+        tb.append(h('tr', {}, h('td', {}, p.worker), h('td', {}, who), h('td', { class: 'num' }, p.regMin), h('td', { class: 'num' }, sum(p, 0, 2)), h('td', { class: 'num' }, sum(p, 2, 6)), h('td', { class: 'num' }, sum(p, 6, 10)), h('td', { class: 'num' }, sum(p, 10, 14)), h('td', { class: 'muted' }, warn.join('；'))));
+      });
+      svcOut.append(h('p', {}, `${d.people.length} 位居服員；${d.people.filter(p => p.match.empNo).length} 位對得到員編，會寫入 ${month}。`),
+        d.unclassified.length ? h('div', { class: 'msg warn' }, h('p', {}, '有「加班類型」標籤系統看不懂，這些分鐘先不計入，請歸類：'), ...d.unclassified.map(u => { const sel = h('select', { 'aria-label': '歸類 ' + u.label }, h('option', { value: '' }, '選日別'), ...Object.entries(DT).map(([v, t]) => h('option', { value: v }, t)));
+          return h('div', { class: 'row' }, h('span', {}, `${u.label}（${u.minutes} 分鐘）`), sel, h('button', { class: 'mini', onclick: async () => { if (!sel.value) return; const r = await put(`${P}/daytype-map`, { label: u.label, type: sel.value }); if (r.ok) previewSvc(); else svcNote(errText(r.data), 'bad'); } }, '歸類')); })) : null,
+        h('div', { class: 'tablewrap' }, h('table', {}, h('thead', {}, h('tr', {}, ...['仁寶居服員', '員編', '平日服務分鐘（本薪）', '平日加班分鐘', '國定假日加班分鐘', '休息日加班分鐘', '例假日加班分鐘', '提醒'].map(t => h('th', {}, t)))), tb)),
+        h('p', { class: 'muted' }, '寫入只更新服務分鐘與加班分鐘（與你勾選的 AA 次數）；轉場、人工項目、代扣、較早到職都保留。國定假日照倍率表全部算加班（「前 13 小時算正常工時」待同事確認）。'),
+        h('div', { class: 'btnrow' }, h('button', { id: 'svcWrite', onclick: async () => { const r = await post(`${P}/from-svc`, { month, withAA: withAA.checked }); svcNote(r.ok ? `已寫入 ${r.data.written} 人（${month}）。` + (r.data.skipped.length ? `沒寫入：${r.data.skipped.map(x => x.worker).slice(0, 8).join('、')}（請先指定員編）。` : '') : errText(r.data) + (r.data && r.data.empNo ? ` 員編：${r.data.empNo}` : ''), r.ok ? (r.data.skipped.length ? 'warn' : 'ok') : 'bad'); } }, `寫入 ${month}`)));
+    };
+    const svcCard = h('section', { class: 'card' }, h('h2', {}, '用仁寶服務紀錄自己算分鐘數'), h('p', { class: 'muted' }, '取代手動匯入分鐘數：日別看仁寶「加班類型」欄；一天的小時＝當天所有服務分鐘加總，平日前 8 小時是本薪、之後第 9–10、11–12 小時加班；休息日、國定假日、例假日從第 0 小時算起。需要先在「仁寶」頁匯入該月的仁寶檔。轉場分鐘仍用上面的方式匯入。'),
+      h('div', { class: 'btnrow' }, h('label', {}, withAA, ' 同時帶入 AA05、AA06、AA11 次數（來自仁寶服務項目代碼）'), h('button', { id: 'svcPreview', onclick: previewSvc }, '預覽')), svcBox, svcOut);
     view.append(h('section', { class: 'card' }, h('h2', {}, '匯入計薪資料'), h('p', { class: 'muted' }, '三種來源：範本（Excel 或 CSV）、現有的薪資條活頁簿（每人一個工作表）、代扣表（勞保、健保、勞退自提、其他）。檔案在你的瀏覽器裡讀，不會整份上傳，只送計薪需要的數字。時間單位一律是分鐘。'),
       h('div', { class: 'row' }, h('div', {}, h('label', { for: 'imonth' }, '月份'), monthInput('imonth', month, async v => { if (/^\d{4}-\d{2}$/.test(v)) { month = v; await loadCfg(); } })), h('div', {}, h('label', { for: 'payMode' }, '匯入方式'), mode)),
       h('div', { class: 'btnrow' }, tpl), h('label', { for: 'payFile' }, '範本（Excel／CSV）'), f1, h('label', { for: 'paySlip' }, '現有薪資條活頁簿（.xlsx／.xlsm）'), f2, h('label', { for: 'payDed' }, '代扣表（Excel／CSV）'), f3, box, preview, h('div', { class: 'btnrow' }, commit)));
+    view.append(svcCard);
   }
 
   /* ---- 規則 ---- */

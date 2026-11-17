@@ -66,3 +66,7 @@ npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@exam
 - `POST /rows` `{month, mode: upsert|replace, rows}` 匯入每月輸入（最多 600 人；工號、分鐘、金額逐項檢查）；`PUT /deductions` 更新代扣（回報名單裡沒有的工號）；`DELETE /rows/:month/:empNo`；`PUT /early/:id` 勾選較早到職。
 - `GET /results?month=` 依該月適用的規則計算；名冊裡有這個工號就用員工資料的勾選。每次變更與查看都寫稽核紀錄（`pay_rules_change`、`pay_rows_import`、`pay_deductions_import`、`pay_row_delete`、`pay_early_tier`、`pay_hourly_view`）。
 - 資料表在 `server/migrations/006_hourly_pay.sql`。網頁：`#/pay`、`#/pay/import`、`#/pay/rules`；解析程式在 `web/svc-parse.js`。
+
+### 用仁寶服務紀錄算分鐘數（/api/pay/hourly）
+- `GET /from-svc?month=&withAA=1` 預覽；`POST /from-svc {month, withAA}` 寫入（只更新服務分鐘、加班分鐘與選擇帶入的 AA 次數）；`PUT /daytype-map {label, type}` 歸類加班類型標籤；`PUT /name-map {worker, empNo}` 指定仁寶姓名的員編。全部需要能改薪資的權限，並寫稽核紀錄。
+- 切小時的規則在 `server/hourly-split.js`（純函式）；資料表 `007_hourly_from_svc.sql`。仁寶匯入的彙總多了 `who[姓名].byLabel[日期][標籤]`（分鐘）。
