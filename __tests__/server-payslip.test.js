@@ -67,7 +67,7 @@ describe('publish, lock, reopen', () => {
     expect((await hr.post(U + '/rows').send({ month: '2026-08', rows: [row('J020003', { name: '示範員工甲', regMin: 6600 })] })).status).toBe(201);   // 退回後可以改
     const v2 = await hr.post(U + '/publish').send({ month: '2026-08' });
     expect(v2.body.version).toBe(2);
-    expect((await db.query("SELECT version, (slip->'slip'->>'net')::int AS net FROM pay_hourly_slips WHERE month='2026-08' ORDER BY version")).rows).toEqual([{ version: 1, net: 21000 }, { version: 2, net: 23100 }]);
+    expect((await db.query("SELECT version, (slip->'slip'->>'net')::int AS net FROM pay_slips WHERE kind='oxford_hourly' AND month='2026-08' ORDER BY version")).rows).toEqual([{ version: 1, net: 21000 }, { version: 2, net: 23100 }]);
     const ev = (await hr.get(U + '/events')).body.filter(e => e.month === '2026-08');
     expect(ev.map(e => [e.action, e.version])).toEqual([['publish', 2], ['reopen', 1], ['publish', 1]]); expect(ev[1].reason).toBe('漏算一位的加班');
     const audits = (await db.query("SELECT action FROM audit_log WHERE action IN ('pay_publish','pay_reopen')")).rows.map(r => r.action);

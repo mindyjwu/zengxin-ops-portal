@@ -162,4 +162,20 @@ function oxDeductions(rows){   // 代扣表：工號、勞保、健保、勞退�
     out.push({ empNo: id, labor: c.labor >= 0 ? OX_NUM(x[c.labor]) : 0, health: c.health >= 0 ? OX_NUM(x[c.health]) : 0, pension: c.pension >= 0 ? OX_NUM(x[c.pension]) : 0, otherDed: c.other >= 0 ? OX_NUM(x[c.other]) : 0 }); }
   return { rows: out };
 }
-window.SvcParse = { xlsxRead, csvRead, svcAggregate, toPayload, oxBlank, oxCols, oxFromFlat, oxFromSlips, oxDeductions };
+
+/* ---- 拆帳制：每月輸入範本（工號、姓名、方案、各項加扣項；加項或扣項由伺服器的規則決定） ---- */
+function splitCols(extras){ return [['empNo','工號'],['name','姓名'],['plan','方案（A／B，空白＝依身分）'], ...extras.map(e=>[e.k, e.label+'（金額）'])]; }
+function splitFromFlat(rows, extras){
+  const cols = splitCols(extras), hi = rows.findIndex(r => r && r.some(c => String(c).trim() === '工號'));
+  if (hi < 0) return { err: '找不到「工號」欄，請用「下載範本」的格式。' };
+  const head = rows[hi].map(c => String(c == null ? '' : c).trim()), idx = {}; cols.forEach(([k, zh]) => { const j = head.indexOf(zh); if (j >= 0) idx[k] = j; });
+  const out = [], bad = []; for (let i = hi + 1; i < rows.length; i++) {
+    const x = rows[i]; if (!x) continue; const id = String(x[idx.empNo] == null ? '' : x[idx.empNo]).trim(); if (!id) continue;
+    const planRaw = idx.plan != null ? String(x[idx.plan] == null ? '' : x[idx.plan]).trim().toUpperCase() : '';
+    if (planRaw && planRaw !== 'A' && planRaw !== 'B') { bad.push(id); continue; }
+    const ex = {}; extras.forEach(e => { if (idx[e.k] != null) { const v = OX_NUM(x[idx[e.k]]); if (v) ex[e.k] = v; } });
+    out.push({ empNo: id, name: idx.name != null ? String(x[idx.name] || '').trim() : '', plan: planRaw || null, extras: ex });
+  }
+  return { rows: out, bad, missing: cols.filter(([k]) => idx[k] == null && k !== 'plan').map(c => c[1]) };
+}
+window.SvcParse = { splitCols, splitFromFlat,  xlsxRead, csvRead, svcAggregate, toPayload, oxBlank, oxCols, oxFromFlat, oxFromSlips, oxDeductions };

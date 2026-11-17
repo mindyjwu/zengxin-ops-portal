@@ -22,4 +22,16 @@ function buildSlip({ month, person, result, rules, version, generatedAt }) {
     note: '實發 = 應發(A) + 加班費(B) − 代扣(C)。時薪依「正常工時 + 加班工時」（不含轉場）的總分鐘數分級。' };
 }
 
-module.exports = { ORG_NAME, buildSlip };
+/** 拆帳制薪資單：版型沿用時薪制，「加班」換成「服務項目明細」 */
+function buildSplitSlip({ month, person, result, rules, version, generatedAt }) {
+  const x = result, p = person;
+  const earnings = [{ item: '拆帳薪資（服務項目 × 給付表）', amount: x.itemPay }, { item: `業績獎金（服務金額 ${Math.round(x.billed).toLocaleString('en-US')} 元的區間）`, amount: x.bonus },
+    { item: `偏鄉津貼（${x.remoteCases} 案）`, amount: x.remote }, ...x.adds.map(a => ({ item: a.item, amount: a.amount }))];
+  return { kind: 'split', org: p.org || '（所屬單位尚未設定）', month, empNo: p.empNo, name: p.name, title: '居服員', plan: x.plan, earnings, totalA: x.A,
+    services: x.lines.map(l => ({ code: l.code, name: l.name, nWeekday: l.nWeekday, nHoliday: l.nHoliday, price: l.price, holidayPrice: l.holidayPrice, amount: l.amount, unpaid: l.unpaid })),
+    totalB: 0, deductions: x.deducts.map(d => ({ item: d.item, amount: d.amount })), totalC: x.C, net: x.net,
+    hours: { total: +(((p.minutes || 0)) / 60).toFixed(2) }, rules: { id: rules.id, effectiveFrom: rules.effectiveFrom }, version: version || 0, generatedAt: generatedAt || new Date().toISOString(),
+    note: `實發 = 應發（A）− 應扣（C）。方案 ${x.plan}：每個服務項目有固定的計薪金額，平日用「計薪」、休息日與國定假日用「假日總薪」。業績獎金的金額基準待需求端確認。` };
+}
+
+module.exports = { ORG_NAME, buildSlip, buildSplitSlip };

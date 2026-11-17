@@ -24,7 +24,7 @@
     leave_type_for_designated_staff_only: '這個假別只有指定員工可以使用。', exceeds_per_event_limit: '超過每次事件的上限。', quota_exceeded: '超過額度。', leave_overlaps: '這段時間已經有請假申請。',
     bad_date_or_time: '日期或時間格式不對。', comp_must_be_pay_or_comp: '請選擇換加班費或補休。', hours_must_be_half_hours_up_to_12: '加班時數要是 0.5 小時為單位，最多 12 小時。', hours_exceed_time_range: '加班時數超過起訖時間。',
     monthly_overtime_cap: '本月加班已超過上限（46 小時）。', cannot_fix_the_future: '不能補未來的打卡。', bad_kind: '請選擇上班或下班。', forbidden: '你沒有這個權限。', not_found: '找不到。', not_open: '這張單已經處理過了。',
-    reject_needs_reason: '駁回要寫理由。', bad_summary: '匯入的內容格式不對。', no_data_for_month: '這個月還沒有資料。', bad_month: '月份格式不對。', bad_config: '規則設定不合理（級距要由小到大、倍率不能是負數）。', bad_rows: '沒有資料，或一次超過 600 人。', bad_emp_no: '工號格式不對。', bad_value: '有欄位不是正確的數字。', bad_ot: '加班分鐘要有 14 段。', duplicate_emp_no: '檔案裡有重複的工號。', month_published: '這個月已發布並鎖定，要改請先到「本月結果」退回修改。', blocking_warnings: '有嚴重提醒，請先處理或確認。', reason_required: '退回要寫原因（至少 5 個字）。', not_published: '這個月還沒發布。', no_svc_data: '這個月還沒有匯入仁寶檔（先到「仁寶」頁匯入）。', no_label_data: '這個月的仁寶檔是舊版匯入的，沒有「加班類型」資料，請重新匯入仁寶檔。', nobody_matched: '沒有任何一位居服員對得到員編，請先指定員編。', same_emp_no_twice: '兩位仁寶居服員指定到同一個員編，請檢查。', bad_day_type: '日別不對。', bad_label: '標籤不能空白。', bad_worker: '姓名不能空白。', only_approved_can_be_cancelled: '只有已核准的才能銷假。', login_required: '請重新登入。', server_error: '伺服器出錯，請稍後再試。'
+    reject_needs_reason: '駁回要寫理由。', bad_summary: '匯入的內容格式不對。', no_data_for_month: '這個月還沒有資料。', bad_month: '月份格式不對。', bad_config: '規則設定不合理（級距要由小到大、倍率不能是負數）。', bad_rows: '沒有資料，或一次超過 600 人。', bad_emp_no: '工號格式不對。', bad_value: '有欄位不是正確的數字。', bad_ot: '加班分鐘要有 14 段。', duplicate_emp_no: '檔案裡有重複的工號。', month_published: '這個月已發布並鎖定，要改請先到「本月結果」退回修改。', blocking_warnings: '有嚴重提醒，請先處理或確認。', reason_required: '退回要寫原因（至少 5 個字）。', not_published: '這個月還沒發布。', no_svc_data: '這個月還沒有匯入仁寶檔（先到「仁寶」頁匯入）。', no_label_data: '這個月的仁寶檔是舊版匯入的，沒有「加班類型」資料，請重新匯入仁寶檔。', nobody_matched: '沒有任何一位居服員對得到員編，請先指定員編。', same_emp_no_twice: '兩位仁寶居服員指定到同一個員編，請檢查。', bad_day_type: '日別不對。', bad_label: '標籤不能空白。', bad_worker: '姓名不能空白。', bad_plan: '方案只能是 A 或 B。', bad_extra: '有不認得的加扣項。', bad_kind: '計薪方式不對。', only_approved_can_be_cancelled: '只有已核准的才能銷假。', login_required: '請重新登入。', server_error: '伺服器出錯，請稍後再試。'
   };
   const errText = (d) => { const base = ERR[d && d.error] || '失敗，請再試一次。'; return d && d.error === 'quota_exceeded' ? `${base}剩 ${hrs(d.left)} 小時，你申請 ${hrs(d.requested)} 小時。` : d && d.limitHours ? `${base}上限 ${hrs(d.limitHours)} 小時。` : base; };
   const msgBox = () => h('div', { class: 'msg hidden', role: 'status' });
@@ -44,7 +44,7 @@
     nav.append(link('首頁', '#/home'), link('申請', '#/apply/leave'), link('我的申請', '#/mine'),
       link('待我簽核', '#/inbox', inboxCount ? h('span', { class: 'badge', 'aria-label': inboxCount + ' 件待簽' }, inboxCount) : null));
     if (me.canSvcView) nav.append(link('仁寶', '#/svc'));
-    if (me.canPayView) nav.append(link('時薪制', '#/pay'));
+    if (me.canPayView) nav.append(link('時薪制', '#/pay'), link('拆帳制', '#/split'));
     if (((await api('/api/payslips/mine')).data || []).length) nav.append(link('我的薪資單', '#/payslips'));
     if (me.canListEmployees) nav.append(h('a', { href: '/admin.html' }, '員工管理'));
     if (me.canSeeAudit) nav.append(link('稽核紀錄', '#/audit'));
@@ -158,7 +158,7 @@
 
   async function payslips() {
     const { data } = await api('/api/payslips/mine'), tb = h('tbody');
-    (data || []).forEach(x => tb.append(h('tr', {}, h('td', {}, x.month), h('td', { class: 'num' }, 'NT$' + Number(x.net).toLocaleString('en-US')), h('td', {}, h('a', { href: `/payslip.html?month=${x.month}&mine=1`, target: '_blank', rel: 'noopener' }, '查看／列印')))));
+    (data || []).forEach(x => tb.append(h('tr', {}, h('td', {}, x.month + (x.kind === 'split' ? '（拆帳制）' : '（時薪制）')), h('td', { class: 'num' }, 'NT$' + Number(x.net).toLocaleString('en-US')), h('td', {}, h('a', { href: `/payslip.html?kind=${x.kind}&month=${x.month}&mine=1`, target: '_blank', rel: 'noopener' }, '查看／列印')))));
     view.append(h('section', { class: 'card' }, h('h2', {}, '我的薪資單'), (data || []).length ? h('div', { class: 'tablewrap' }, h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, '月份'), h('th', {}, '實發'), h('th', {}, ''))), tb)) : h('p', { class: 'muted' }, '目前沒有已發布的薪資單。'), h('p', { class: 'muted' }, '只有人資發布後的月份才會出現，而且只看得到你自己的。')));
   }
 
@@ -172,11 +172,12 @@
   }
   async function routeOnce() {
     const hash = location.hash || '#/home', [, name, arg] = hash.split('/');
-    view.textContent = ''; await drawNav(name === 'apply' ? '#/apply/leave' : name === 'svc' ? '#/svc' : name === 'pay' ? '#/pay' : '#/' + name);
+    view.textContent = ''; await drawNav(name === 'apply' ? '#/apply/leave' : name === 'svc' ? '#/svc' : name === 'pay' ? '#/pay' : name === 'split' ? '#/split' : '#/' + name);
     if (name === 'apply') await apply(arg || 'leave'); else if (name === 'mine') await mine(); else if (name === 'inbox') await inbox();
     else if (name === 'request') await detail(+arg); else if (name === 'audit') await audit();
     else if (name === 'svc') await ZXViews.svc({ view, h, api, post, fmt, hrs, say, msgBox, me, errText }, arg);
     else if (name === 'payslips') await payslips();
+    else if (name === 'split') await ZXViews.split({ view, h, api, post, fmt, hrs, say, msgBox, me, errText }, arg);
     else if (name === 'pay') await ZXViews.pay({ view, h, api, post, fmt, hrs, say, msgBox, me, errText }, arg); else await home();
   }
   window.addEventListener('hashchange', route);
