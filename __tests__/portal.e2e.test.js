@@ -3000,6 +3000,83 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
     await expect(page.locator('#paySplit')).toContainText('服務金額：NT$325');
   });
 
+  test('Oxford hourly rules: tiers by minutes, rounding, AA add-ons, overtime and net pay', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => {
+      const c = JSON.parse(JSON.stringify(OX_DEFAULT)), b = () => oxBlank();
+      const run = (o, early) => oxPay(c, Object.assign(b(), o), early);
+      const a = run({ regMin: 6000, trWd: 1200, aa05: 2, aa06: 1, aa11: 4, labor: 600, health: 400 }, true);
+      const ot = Array(14).fill(0); ot[0] = 90; ot[2] = 120; ot[6] = 90;
+      const e = run({ regMin: 7000, ot }, false);
+      return { a: [a.rate, a.base, a.transfer, a.aa, a.A, a.C, a.net],
+        tier: [run({ regMin: 7199 }, false).rate, run({ regMin: 7200 }, false).rate, run({ regMin: 8999 }, true).rate, run({ regMin: 9000 }, true).rate, run({ regMin: 9000 }, false).rate, run({ regMin: 0 }, true).rate],
+        base119: run({ regMin: 7199 }, false).base, e: [e.rate, e.judgeMin, e.base, e.segs.map(s => s.amt), e.B, e.net],
+        boundary: run({ regMin: 7200 }, false).warn.length, cols: oxCols(c).length };
+    });
+    expect(r.a).toEqual([210, 21000, 3920, 530, 25450, 1000, 24450]);   // 100 小時未滿 120；轉場 20 小時 × 196；AA 110×3 + 50×4
+    expect(r.tier).toEqual([210, 230, 230, 260, 250, 210]);                // 119:59→210、120:00→230；較早到職 150 小時以上 260、其他人 250
+    expect(r.base119).toBe(25197);                                        // 7199 分 ÷ 60 × 210 = 25196.5，無條件進位
+    expect(r.e).toEqual([230, 7300, 26834, [462, 920, 462], 1845, 28679]); // 加班分鐘併入判斷工時；各段 462＋920＋462＝1844，合計用未進位加總 1844.6 → 1845
+    expect(r.boundary).toBe(1);                                           // 離級距邊界 30 分鐘內要提醒
+    expect(r.cols).toBe(7 + 14 + 3 + 5 + 4);
+  });
+
+  test('Oxford hourly card: demo data, per-person results, settings change the result, export', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'hr');
+    await go(page, 'pay', 'calc');
+    const card = page.locator('#payOx');
+    await expect(card).toContainText('還沒有資料');
+    await card.locator('#oxDemo').click();
+    await expect(card).toContainText('已載入 5 筆');
+    await expect(card.locator('tbody tr', { hasText: 'OXHR901' })).toContainText('24,450');
+    await expect(card).toContainText('國定假日加班第0-2小時 120 分 × 2 = NT$920');
+    await expect(card).toContainText('實發：NT$');
+    await card.locator('summary', { hasText: '規則設定' }).click();
+    await card.locator('[data-oxcfg="transferRate"]').fill('200');
+    await card.locator('[data-oxcfg="transferRate"]').dispatchEvent('change');
+    await expect(page.locator('#payOx tbody tr', { hasText: 'OXHR901' })).toContainText('4,000');   // 轉場 20 小時 × 200
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('#oxXlsx').click()]);
+    expect(dl.suggestedFilename()).toBe('牛津時薪制計薪.xlsx');
+  });
+
+  test('Oxford hourly: the early-hire tick on the employee record decides the tier', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => {
+      const id = STAFF.find(s => s.title === 'hca').id, row = Object.assign(oxBlank(), { id, regMin: 9000 });
+      const before = oxPay(oxCfg(), row, oxIsEarly(row)).rate;
+      person(id).oxEarly = true;
+      return [before, oxPay(oxCfg(), row, oxIsEarly(row)).rate];
+    });
+    expect(r).toEqual([250, 260]);
+  });
+
+  test('Oxford hourly: a flat template import matches columns by name and a deductions file updates people', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'hr');
+    await go(page, 'pay', 'calc');
+    const head = await page.evaluate(() => oxCols(oxCfg()).map(c => c[1]));
+    const row = head.map(h => h === '工號' ? 'OXHR950' : h === '姓名' ? '測試' : h === '早期到職級距（是／否）' ? '是' : h === '平日服務分鐘數（本薪）' ? '9000' : '0');
+    const csv = [head.join(','), row.join(',')].join('\n');
+    await page.setInputFiles('#oxFile', { name: 't.csv', mimeType: 'text/csv', buffer: Buffer.from('\ufeff' + csv, 'utf8') });
+    await expect(page.locator('#payOx')).toContainText('已匯入 1 人');
+    await expect(page.locator('#payOx tbody tr', { hasText: 'OXHR950' })).toContainText('260');          // 150 小時、較早到職
+    const ded = '工號,勞保自付額,健保自付額,勞退自提,其他\nOXHR950,600,400,100,50\nOXHR999,1,1,1,1';
+    await page.setInputFiles('#oxDedFile', { name: 'd.csv', mimeType: 'text/csv', buffer: Buffer.from(ded, 'utf8') });
+    await expect(page.locator('#payOx')).toContainText('代扣已更新 1 人');
+    await expect(page.locator('#payOx')).toContainText('OXHR999');                                       // 名單裡沒有的工號要說出來
+  });
+
+  test('Oxford hourly: only HR imports and edits the rules; the manager sees the card read-only', async ({ page }) => {
+    await openPortal(page);
+    await setRole(page, 'manager');
+    await go(page, 'pay', 'calc');
+    await expect(page.locator('#payOx')).toBeVisible();
+    await expect(page.locator('#oxFile')).toHaveCount(0);
+    await expect(page.locator('#oxForm')).toHaveCount(0);
+    await expect(page.locator('#payOx')).toContainText('只有人資能改');
+  });
+
   test('without an import the draft asks for the 仁寶 file', async ({ page }) => {
     await openPortal(page);
     await go(page, 'pay', 'calc');
@@ -3129,7 +3206,7 @@ test.describe('Completion status report in the guide (4 Nov)', () => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     const sec = page.locator('#status');
     await expect(sec.locator('h2')).toContainText('完成度報告');
-    for (const s of ['整體約 51%', '71%', '31%', '後端與資料庫', '薪資計算', '還缺的決定與資料']) await expect(sec).toContainText(s);
+    for (const s of ['整體約 52%', '72%', '31%', '後端與資料庫', '薪資計算', '還缺的決定與資料']) await expect(sec).toContainText(s);
     await expect(page.locator('.toc a[href="#status"]')).toBeVisible();
   });
 });

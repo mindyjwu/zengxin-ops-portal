@@ -1361,7 +1361,7 @@ const ACTIONS = [
   {type:'data', zh:'繼續教育積分匯入', en:'Continuing-education import',
    rec:'', need:'10/20 已定：只有教育訓練專員可新增、修改與匯入（一次匯入整份檔案）；政府積分系統只能逐人查詢，所以仍用 Excel 匯入。請教育訓練照範本整理資料試匯', owner:'教育訓練', due:'10/28', go:['私人秘書 › 課程','desk','course']},
   {type:'data', zh:'拆帳制薪資規則', en:'Revenue-share pay rules',
-   rec:'', need:'10/28、11/4 已收到給付表與月薪制規則並放進原型。請確認：業績獎金區間的金額基準；月薪制是否還有全勤獎金與夜班津貼（新規則沒列）；生理假與家庭照顧假是否扣薪（新規則只列病假、事假）；補休與特休結算的時間點；底薪與專業加給每人的金額；AA 碼與多人分配、交通津貼與加扣項怎麼匯入；時薪制規則（HR 整理中）', owner:'人資／財務', due:'11/11', go:['薪資計算 › 薪資計算機','pay','calc']},
+   rec:'', need:'10/28、11/4 已收到給付表與月薪制規則並放進原型。請確認：業績獎金區間的金額基準；月薪制是否還有全勤獎金與夜班津貼（新規則沒列）；生理假與家庭照顧假是否扣薪（新規則只列病假、事假）；補休與特休結算的時間點；底薪與專業加給每人的金額；AA 碼與多人分配、交通津貼與加扣項怎麼匯入；牛津時薪制已放進原型，另需確認缺工獎勵與其他公司是否同規則', owner:'人資／財務', due:'11/11', go:['薪資計算 › 薪資計算機','pay','calc']},
   {type:'it', zh:'衛福部積分系統串接', en:'MOHW points-system connection',
    rec:'', need:'IT 先確認串接是否被允許與技術限制；過渡用現有 Excel 格式匯入；帳號密碼不放進網站或程式庫', owner:'IT', due:'待訂', go:['私人秘書 › 課程','desk','course']},
   {type:'it', zh:'手機打卡上線規格與中文輸入法測試', en:'Mobile clock-in go-live and input-method test',
@@ -2319,6 +2319,7 @@ function saveRec(id, kind, fd){
   if(kind==='ins'){ rec.ins.push({date:f('date'), kind:f('kind'), labor:+f('labor'), health:+f('health'), note:f('note')}); rec.dep=+f('dep')||0; addDoc(file(),'ins'); rec.ins.sort((a,b)=>a.date.localeCompare(b.date)); }
   if(kind==='lic'){ rec.lic.push({name:f('name'), no:f('no'), issued:f('issued'), exp:f('exp'), ce:+f('ceNeed')?{need:+f('ceNeed'),have:+f('ceHave')||0}:null, file:file()}); addDoc(file(),'license'); }
   if(kind==='train') rec.training.push({d:f('date'), zh:f('name'), en:f('name'), h:+f('hours')||0});
+  if(kind==='oxflag') person(id).oxEarly=fd.get('oxEarly')==='on';
   if(kind==='status'){ const p=person(id), st=f('status'), d=f('date');
     p.status=st; p.statusSince=st==='active'?'':d;
     rec.hist.push({date:d, kind:st==='active'?'return':st==='loa'?'leave':'exit', title:p.title, unit:p.unit, band:p.band, salary:p.salary, note:f('note')}); }
@@ -2366,6 +2367,8 @@ function openPerson(id){
       ${visible&&can('editEmp')?`<section>${addBox('status', both('變更在職狀態','Change employment status'), `<div class="row">
         ${sel('狀態','Status','status',p.status==='left'?{loa:EMP_STATUS.loa,left:EMP_STATUS.left}:EMP_STATUS)}${fld('生效日','Effective','date','date','required value="'+ymd(TODAY)+'"')}${fld('說明','Note','note')}</div>${p.status==='left'?`<div class="muted" style="font-size:12.5px;margin-top:6px">${esc(both('已離職的同仁不能改回「在職」：回任要以新進人員重新建檔（用上方「新增員工」，新員工編號，不沿用舊員編）。','A person who has left cannot be set back to Active: a rejoin is a new hire with a new employee number (use Add employee above); the old number is not reused.'))}</div>`:''}`)}
         <div class="legend">${esc(both('留職停薪與離職自生效月起不列入計薪與出勤統計；離職後回任以新進人員重新編號（10/13 需求端確認，不沿用舊員編），年資重新計算。編號的全公司原則待人事／IT 擬定。','Unpaid leave and resignation drop out of payroll and attendance stats from the effective month; rejoining after leaving is renumbered as a new hire (confirmed 13 Oct; the old number is not reused) and tenure restarts. The group-wide numbering rule is for HR and IT to define.'))}</div></section>`:''}
+      ${visible&&can('editEmp')&&can('salary')&&p.title==='hca'?`<section>${addBox('oxflag', both('薪資設定：牛津時薪級距','Pay setting: Oxford hourly tier'), `<div><label><input type="checkbox" name="oxEarly" ${p.oxEarly?'checked':''}> ${esc(both('較早到職級距（150 小時以上時薪 260，其他人 250）','Early-hire tier (rate 260 from 150 h; others 250)'))}</label></div>`)}
+        <div class="legend">${esc(both('只用在牛津居家的時薪制居服員；人資勾選，不靠員工編號判斷，換員編規則也不受影響。','Used only for Oxford home care hourly workers; HR ticks it, it does not depend on the employee number, so a change of numbering does not affect it.'))}</div></section>`:''}
       ${visible?`
       <section>
         <div class="eyebrow" style="margin-bottom:8px">${esc(both('出勤摘要','Attendance summary'))} · <span class="mono">${state.attMonth}</span></div>
@@ -4603,7 +4606,7 @@ function cloudCompareCard(){
 }
 function viewDocSysInfo(){
   const built=[['文件管理','會議紀錄（9/20、9/30、10/7）、使用指南、法規與資安、104 功能對照、系統說明'],['公告欄','公告、行事曆、組織圖（正式版，由上往下的傘狀圖）'],['私人秘書','員工自助：出勤月曆、打卡、表單、薪資袋、保險費、所得稅、人事資料'],
-    ['人事系統','員工資料（含在職狀態、第二位緊急聯絡人、證照上傳、訓練記錄）、我的工時（0.5 小時為單位）、出勤管理、請假審核、績效考核（含期中考核）'],['薪資計算','月薪制、時薪制試算、薪資計算機、版本與覆核、現金發放簽收清冊；拆帳制待規則確認'],
+    ['人事系統','員工資料（含在職狀態、第二位緊急聯絡人、證照上傳、訓練記錄）、我的工時（0.5 小時為單位）、出勤管理、請假審核、績效考核（含期中考核）'],['薪資計算','月薪制、時薪制試算、薪資計算機、版本與覆核、現金發放簽收清冊；牛津時薪制已依確認版放進計算機頁底；拆帳制見拆帳制計薪'],
     ['線上申請','5 種申請的流程規劃（待規則確認後開放）、簽核路徑預覽與自訂流程（示範）'],['報表匯出','人事、出勤、差勤申請、財務；CSV 或 Excel；每份都有員工編號與姓名'],['權限與範圍','權限對照表、職稱對照（職稱 × 項目名稱，含 Excel 範本）、組織圖與通訊錄（點人員看分機、電話、Email）、待決議題'],['業務資料整合','居服個案管理系統（仁寶）的連結與規劃中的 Excel 匯入；個案資料、異常事件通報為規劃中'],['系統設定','既有系統連結（104、居服個案管理系統、衛福部長照系統）、帳號原則、員工編號規則']];
   return `
   <div class="grid">
@@ -4761,7 +4764,7 @@ function viewSvcCase(){
   </div>`;
 }
 /* ---------- 仁寶服務記錄匯入：瀏覽器內讀 .xlsx（zip + sharedStrings + sheet），只留彙總 ---------- */
-async function xlsxRead(buf, prefer){   // prefer：優先選名稱符合的工作表（例如整份薪資活頁簿裡的「服務紀錄總表」），找不到就用第一個
+async function xlsxRead(buf, prefer, all){   // prefer：優先選名稱符合的工作表（例如整份薪資活頁簿裡的「服務紀錄總表」），找不到就用第一個
   const u8=new Uint8Array(buf), dv=new DataView(buf);
   let e=-1; for(let i=u8.length-22;i>=Math.max(0,u8.length-70000);i--){ if(dv.getUint32(i,true)===0x06054b50){ e=i; break; } }
   if(e<0) throw new Error('不是有效的 .xlsx 檔案');
@@ -4781,24 +4784,31 @@ async function xlsxRead(buf, prefer){   // prefer：優先選名稱符合的工�
   }
   const dom=x=>new DOMParser().parseFromString(x,'application/xml');
   const sst=[]; if(files['xl/sharedStrings.xml']) dom(files['xl/sharedStrings.xml']).querySelectorAll('si').forEach(si=>sst.push([...si.querySelectorAll('t')].map(t=>t.textContent).join('')));
-  /* 第一個工作表 */
-  let sheetPath='xl/worksheets/sheet1.xml';
-  try{
-    const wb=dom(files['xl/workbook.xml']), shs=[...wb.querySelectorAll('sheet')], sh=(prefer&&shs.find(x=>prefer.test(x.getAttribute('name')||'')))||shs[0], rid=sh.getAttribute('r:id')||sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id');
-    const rel=[...dom(files['xl/_rels/workbook.xml.rels']).querySelectorAll('Relationship')].find(r=>r.getAttribute('Id')===rid);
-    if(rel) sheetPath='xl/'+rel.getAttribute('Target').replace(/^\/?(xl\/)?/,'');
-  }catch(_){}
-  if(!files[sheetPath]) throw new Error('找不到工作表');
   const colIdx=ref=>{ let c=0; for(const ch of ref.replace(/\d+/g,'')) c=c*26+ch.charCodeAt(0)-64; return c-1; };
-  const rows=[];
-  dom(files[sheetPath]).querySelectorAll('row').forEach(r=>{
-    const arr=[]; r.querySelectorAll('c').forEach(c=>{
-      const t=c.getAttribute('t'), v=c.querySelector('v'); let val='';
-      if(t==='s'&&v) val=sst[+v.textContent]??''; else if(t==='inlineStr') val=[...c.querySelectorAll('t')].map(x=>x.textContent).join(''); else if(v) val=v.textContent;
-      arr[colIdx(c.getAttribute('r'))]=val;
-    }); rows.push(arr);
-  });
-  return rows;
+  const readSheet=(path, sparse)=>{
+    const rows=[];
+    dom(files[path]).querySelectorAll('row').forEach(r=>{
+      const arr=[]; r.querySelectorAll('c').forEach(c=>{
+        const t=c.getAttribute('t'), v=c.querySelector('v'); let val='';
+        if(t==='s'&&v) val=sst[+v.textContent]??''; else if(t==='inlineStr') val=[...c.querySelectorAll('t')].map(x=>x.textContent).join(''); else if(v) val=v.textContent;
+        arr[colIdx(c.getAttribute('r'))]=val;
+      });
+      if(sparse) rows[(+r.getAttribute('r')||rows.length+1)-1]=arr; else rows.push(arr);   // 全部工作表模式照列號放，空列留空，才能用「第幾列第幾欄」讀固定格子
+    });
+    return rows;
+  };
+  let shs=[], relOf={};
+  try{
+    const wb=dom(files['xl/workbook.xml']); shs=[...wb.querySelectorAll('sheet')];
+    [...dom(files['xl/_rels/workbook.xml.rels']).querySelectorAll('Relationship')].forEach(r=>relOf[r.getAttribute('Id')]=r.getAttribute('Target'));
+  }catch(_){}
+  const pathOf=sh=>{ const rid=sh&&(sh.getAttribute('r:id')||sh.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id')), t=relOf[rid]; return t?'xl/'+t.replace(/^\/?(xl\/)?/,''):'xl/worksheets/sheet1.xml'; };
+  if(all) return shs.map(sh=>({name:sh.getAttribute('name')||'', path:pathOf(sh)})).filter(x=>files[x.path]).map(x=>({name:x.name, rows:readSheet(x.path,true)}));
+  /* 第一個工作表（或名稱符合 prefer 的） */
+  const pick=(prefer&&shs.find(x=>prefer.test(x.getAttribute('name')||'')))||shs[0];
+  const sheetPath=shs.length?pathOf(pick):'xl/worksheets/sheet1.xml';
+  if(!files[sheetPath]) throw new Error('找不到工作表');
+  return readSheet(sheetPath,false);
 }
 /* CSV：支援引號、引號內的逗號與換行、CRLF、UTF-8（含 BOM）；Excel 在繁中 Windows 存的 CSV 常是 Big5，讀不了 UTF-8 時改用 Big5 */
 function csvRead(buf){
@@ -5674,9 +5684,9 @@ function monthPicker(id, val){
 /* 10/20 會議：薪資計算的分類與規則（放在薪資試算最上面） */
 function payRulesCard(){
   const rows=[
-    ['一般員工（含督導、行政、日照人員）','月薪制','固定月薪（月薪與時薪的細則 HR 整理中）。','Monthly: fixed monthly pay (HR is still compiling monthly and hourly rules).'],
+    ['一般員工（含督導、行政、日照人員）','月薪制','固定月薪（月薪細則 HR 整理中）。','Monthly: fixed monthly pay (HR is still compiling the monthly rules).'],
     ['居服員：誠馨綜合式、誠芯居家、誠芯三館','拆帳制','每個服務項目有固定計薪金額（給付表），依服務量計算。','Revenue-share: a fixed pay amount per service item (pay table).'],
-    ['居服員：牛津居家','時薪制','做多少拿多少：工時 × 時薪（HR 整理中）。','Hourly: hours × hourly rate (HR is compiling the rules).'],
+    ['居服員：牛津居家','時薪制','依確認版：服務分鐘 ÷ 60 × 時薪（120 與 150 小時分級）＋轉場費＋ AA 加給＋加班費（14 段倍率）－代扣；見頁底「時薪制計薪」。','Hourly, confirmed rules: minutes ÷ 60 × tiered rate (tiers at 120 and 150 h) + transfer + AA add-ons + overtime (14 bands) − deductions; see Hourly pay at the bottom.'],
     ['日照司機（誠馨綜合式，兼居服）','月薪＋拆帳（方案 B）','開車部分：月薪；居服部分：拆帳，用方案 B 的計薪金額。','Driving: monthly pay; home care: revenue-share on plan B amounts.']
   ];
   const en=['Regular staff','Home care: Zengxin, Chengxin home care and Chengxin No. 3','Home care: Oxford','Day-care drivers (dual role)'];
@@ -6044,7 +6054,7 @@ function viewPayCalc(){
         'The calculator is a sandbox and does not change the payroll run; to apply a difference, add a manual adjustment with a reason on the employee breakdown.'))}</div>
     </section>
   </div>
-  ${payRulesNote()}${paySplitCard()}`;
+  ${payRulesNote()}${paySplitCard()}${payOxCard()}`;
 }
 function splitData(g){
   const months=Object.keys(g.sp).sort(), mo=months.includes(state.splitMonth)?state.splitMonth:months[months.length-1], W=g.sp[mo]||{};
@@ -6089,6 +6099,176 @@ function paySplitCard(){
       ${items.map(([k,o])=>`<tr><td class="mono">${esc(k)}</td><td style="white-space:normal">${esc(o.name)}</td><td class="num">${o.n-o.nh}</td><td class="num">${o.nh}</td><td class="num">${o.r?money(o.r.price):'—'}</td><td class="num">${o.r?o.r.A+' / '+o.r.B:'<span class="chip warn">不在給付表</span>'}</td></tr>`).join('')}</tbody></table></div>
   </div></section>`;
 }
+/* 牛津居家時薪制（已確認版，依 11510 薪資條 Final 檔與 Drew 確認內容，2026-11-08）。
+   實發 = 應發(A) + 加班費(B) − 代扣(C)；級距、倍率、AA 加給、轉場時薪與進位方式都在設定裡，可改，不寫死。 */
+const OX_DEFAULT = {
+  tiers:[{lt:120,early:210,other:210},{lt:150,early:230,other:230},{lt:null,early:260,other:250}],   // 判斷工時（小時）未滿 lt 用該列時薪；最後一列 lt 空白＝以上
+  transferRate:196,                                        // 轉場時薪＝當年度基本工資時薪（115 年 196）
+  aa:{AA05:110, AA06:110, AA11:50},                         // 每次加給（AA07/AA08/AA09 不發給照服員，刻意設計）
+  ot:[ {day:'平日加班',band:'第9-10小時',mult:1.34},{day:'平日加班',band:'第11-12小時',mult:1.67},
+       {day:'國定假日加班',band:'第0-2小時',mult:2},{day:'國定假日加班',band:'第3-8小時',mult:2},{day:'國定假日加班',band:'第9-10小時',mult:2.34},{day:'國定假日加班',band:'第11-12小時',mult:2.67},
+       {day:'休息日加班',band:'第0-2小時',mult:1.34},{day:'休息日加班',band:'第3-8小時',mult:1.67},{day:'休息日加班',band:'第9-10小時',mult:2.67},{day:'休息日加班',band:'第11-12小時',mult:2.67},
+       {day:'例假日加班',band:'第0-2小時',mult:1.34},{day:'例假日加班',band:'第3-8小時',mult:1.67},{day:'例假日加班',band:'第9-10小時',mult:2.67},{day:'例假日加班',band:'第11-12小時',mult:2.67} ],
+  round:{base:'up', transfer:'up', otSeg:'round', otTotal:'round', net:'round'}   // up＝無條件進位、round＝四捨五入、down＝無條件捨去
+};
+const OX_ROUND_LABEL = {up:{zh:'無條件進位',en:'Round up'}, round:{zh:'四捨五入',en:'Round half up'}, down:{zh:'無條件捨去',en:'Round down'}};
+const oxCfg = () => state.oxCfg || (state.oxCfg = JSON.parse(JSON.stringify(OX_DEFAULT)));
+const oxR = (mode, x) => { x=Math.round(x*1e6)/1e6; return mode==='up'?Math.ceil(x):mode==='down'?Math.floor(x):Math.round(x); };   // 先消掉浮點誤差，再進位
+const oxBlank = () => ({id:'', name:'', early:false, regMin:0, trWd:0, trHol:0, trNh:0, ot:Array(14).fill(0), aa05:0, aa06:0, aa11:0, aaFixed:0, rural:0, intro:0, open:0, other:0, short:0, labor:0, health:0, pension:0, otherDed:0, refRate:null});
+const oxIsEarly = r => { const p=person(r.id); return p ? !!p.oxEarly : !!r.early; };   // 員工資料有勾選就以員工資料為準；名冊裡沒有這個工號（例如匯入的牛津工號）才看這一列自己的欄位
+function oxTier(cfg, judgeMin, early){
+  for(const t of cfg.tiers){ if(t.lt==null || judgeMin < t.lt*60) return {rate: early?t.early:t.other, lt:t.lt}; }
+  const t=cfg.tiers[cfg.tiers.length-1]; return {rate: early?t.early:t.other, lt:t.lt};
+}
+function oxPay(cfg, r, early){
+  const otMin=r.ot.reduce((a,b)=>a+(+b||0),0), judgeMin=(+r.regMin||0)+otMin;     // 判斷工時＝正常工時＋加班工時，不含轉場，用分鐘判斷避免小數造成邊界誤判
+  const tier=oxTier(cfg, judgeMin, early), rate=tier.rate, trMin=(+r.trWd||0)+(+r.trHol||0)+(+r.trNh||0);
+  const base=oxR(cfg.round.base, (+r.regMin||0)/60*rate), transfer=oxR(cfg.round.transfer, trMin/60*cfg.transferRate);
+  const aa=cfg.aa.AA05*(+r.aa05||0)+cfg.aa.AA06*(+r.aa06||0)+cfg.aa.AA11*(+r.aa11||0)+(+r.aaFixed||0);
+  const manual=['rural','intro','open','other','short'].reduce((a,k)=>a+(+r[k]||0),0);
+  const segs=cfg.ot.map((o,i)=>{ const raw=(+r.ot[i]||0)/60*rate*o.mult; return {i, day:o.day, band:o.band, mult:o.mult, min:+r.ot[i]||0, raw, amt:oxR(cfg.round.otSeg, raw)}; }).filter(s=>s.min>0);
+  const B=oxR(cfg.round.otTotal, segs.reduce((a,s)=>a+s.raw,0)), A=base+transfer+aa+manual;
+  const C=(+r.labor||0)+(+r.health||0)+(+r.pension||0)+(+r.otherDed||0), net=oxR(cfg.round.net, A+B-C);
+  const warn=[], edge=tier.lt==null?null:tier.lt*60-judgeMin;
+  const nearest=cfg.tiers.filter(t=>t.lt!=null).map(t=>Math.abs(t.lt*60-judgeMin)).sort((a,b)=>a-b)[0];
+  if(judgeMin>0 && nearest!=null && nearest<=30) warn.push({zh:'離級距邊界不到 30 分鐘，請確認分鐘數', en:'Within 30 minutes of a tier boundary; please confirm the minutes'});
+  if(net<0) warn.push({zh:'實發為負數', en:'Net pay is negative', cls:'crit'});
+  if(rate<PAY_CFG.minHourly) warn.push({zh:'時薪低於基本工資 '+PAY_CFG.minHourly, en:'Hourly rate below minimum '+PAY_CFG.minHourly, cls:'crit'});
+  if(r.refRate!=null && +r.refRate!==rate) warn.push({zh:'與總表時薪 '+r.refRate+' 不同', en:'Differs from the sheet rate '+r.refRate, cls:'crit'});
+  return {rate, judgeMin, early, base, transfer, aa, manual, A, segs, B, C, net, warn};
+}
+function oxCols(cfg){
+  return [['id','工號'],['name','姓名'],['early','早期到職級距（是／否）'],['regMin','平日服務分鐘數（本薪）'],['trWd','平日交通分鐘'],['trHol','假日交通分鐘'],['trNh','國定假日交通分鐘'],
+    ...cfg.ot.map((o,i)=>['ot'+i, o.day+o.band+'分鐘']),
+    ['aa05','AA05 次數'],['aa06','AA06 次數'],['aa11','AA11 次數'],['rural','偏鄉加給'],['intro','介紹費'],['open','開案費'],['other','其他津貼'],['short','缺工獎勵'],
+    ['labor','勞保自付額'],['health','健保自付額'],['pension','勞退自提'],['otherDed','其他代扣']];
+}
+const oxNum = v => { const n=parseFloat(String(v==null?'':v).replace(/,/g,'')); return isFinite(n)?n:0; };
+const oxYes = v => /^(是|y|yes|true|1|v|✓|✔)$/i.test(String(v==null?'':v).trim());
+function oxFromFlat(rows){   // 範本或自己整理的表：用欄位名稱對照，不依賴欄位順序
+  const cfg=oxCfg(), cols=oxCols(cfg), hi=rows.findIndex(r=>r&&r.some(c=>String(c).trim()==='工號'));
+  if(hi<0) return {err:'找不到「工號」欄，請用「下載範本」的格式。'};
+  const head=rows[hi].map(c=>String(c==null?'':c).trim()), idx={}; cols.forEach(([k,zh])=>{ const j=head.indexOf(zh); if(j>=0) idx[k]=j; });
+  const out=[]; for(let i=hi+1;i<rows.length;i++){
+    const x=rows[i]; if(!x) continue; const id=String(x[idx.id]==null?'':x[idx.id]).trim(); if(!id) continue;
+    const r=oxBlank(); r.id=id; r.name=idx.name!=null?String(x[idx.name]||'').trim():'';
+    if(idx.early!=null) r.early=oxYes(x[idx.early]);
+    ['regMin','trWd','trHol','trNh','aa05','aa06','aa11','rural','intro','open','other','short','labor','health','pension','otherDed'].forEach(k=>{ if(idx[k]!=null) r[k]=oxNum(x[idx[k]]); });
+    cfg.ot.forEach((o,j)=>{ if(idx['ot'+j]!=null) r.ot[j]=oxNum(x[idx['ot'+j]]); });
+    out.push(r);
+  }
+  return {rows:out, missing:cols.filter(([k])=>idx[k]==null && k!=='early').map(c=>c[1])};
+}
+function oxFromSlips(sheets){   // 照現有「居服員薪資條」活頁簿：每位居服員一個工作表（C7＝平日分鐘、C8＝轉場分鐘、H7:H20＝14 段加班分鐘、D9＝AA 加給、D10:D13＝人工項目、K7:K9＝勞保健保其他）
+  const out=[], cell=(rows,r,c)=>{ const row=rows[r-1]; return row?row[c]:undefined; }, note=[];
+  const total=sheets.find(s=>/月薪資總表/.test(s.name)), ref={};
+  if(total) for(let i=4;i<total.rows.length;i++){ const x=total.rows[i]; if(x&&/^[A-Za-z]+\d+$/.test(String(x[0]||'').trim())&&String(x[2]||'')!=='') ref[String(x[0]).trim()]=oxNum(x[2]); }
+  sheets.forEach(s=>{
+    const m=String(cell(s.rows,2,1)||s.name).match(/^([A-Za-z]+\d+)\s*(.*)$/); if(!m) return;
+    const r=oxBlank(); r.id=m[1]; r.name=m[2];
+    r.regMin=oxNum(cell(s.rows,7,2)); r.trWd=oxNum(cell(s.rows,8,2)); for(let k=0;k<14;k++) r.ot[k]=oxNum(cell(s.rows,7+k,7));
+    r.aaFixed=oxNum(cell(s.rows,9,3)); r.rural=oxNum(cell(s.rows,10,3)); r.intro=oxNum(cell(s.rows,11,3)); r.open=oxNum(cell(s.rows,12,3)); r.other=oxNum(cell(s.rows,13,3));
+    r.labor=oxNum(cell(s.rows,7,10)); r.health=oxNum(cell(s.rows,8,10)); r.otherDed=oxNum(cell(s.rows,9,10));
+    if(ref[r.id]!=null) r.refRate=ref[r.id];
+    out.push(r);
+  });
+  if(out.length && out.every(r=>!r.aaFixed)) note.push('AA 加給沒有數值（活頁簿裡是公式，沒有存計算結果），請另用範本填 AA 次數。');
+  return {rows:out, note};
+}
+function oxUpsert(rows, keepEarly){ const list=state.oxRows||(state.oxRows=[]); rows.forEach(r=>{ const i=list.findIndex(x=>x.id===r.id); if(i>=0){ if(keepEarly) r.early=r.early||list[i].early; list[i]=r; } else list.push(r); }); }
+function oxDemoRows(){   // 虛構示範：涵蓋級距邊界（120、150 小時）與加班進位
+  const mk=(id,name,early,regMin,o={})=>Object.assign(oxBlank(),{id,name,early,regMin},o);
+  const ot=(m)=>{ const a=Array(14).fill(0); Object.entries(m).forEach(([i,v])=>a[+i]=v); return a; };
+  return [ mk('OXHR901','示範甲',true,6000,{trWd:1200, aa05:2, aa06:1, aa11:4, labor:600, health:400}),
+           mk('OXHR902','示範乙',false,7200,{labor:700, health:450}),
+           mk('OXHR903','示範丙',false,7199),
+           mk('OXHR904','示範丁',true,9000,{rural:600, short:1000, pension:500}),
+           mk('OXHR905','示範戊',false,7000,{ot:ot({0:90,2:120,6:90})}) ];
+}
+function payOxCard(){
+  const cfg=oxCfg(), rows=state.oxRows||[], can_=payEdit(), dis=can_?'':' disabled';
+  const calc=rows.map(r=>({r, x:oxPay(cfg, r, oxIsEarly(r))})), tot=calc.reduce((a,{x})=>({A:a.A+x.A,B:a.B+x.B,C:a.C+x.C,net:a.net+x.net}),{A:0,B:0,C:0,net:0});
+  const num=(name,val,extra='')=>`<input type="number" step="any" min="0" data-oxcfg="${name}" value="${val==null?'':val}" ${extra}${dis} style="width:84px">`;
+  const rsel=k=>`<select data-oxcfg="round.${k}"${dis}>${Object.entries(OX_ROUND_LABEL).map(([v,l])=>`<option value="${v}" ${cfg.round[k]===v?'selected':''}>${esc(both(l.zh,l.en))}</option>`).join('')}</select>`;
+  const msg=state.oxMsg?`<div class="note ${/無法|找不到|沒有/.test(state.oxMsg)?'warn':''}">${esc(state.oxMsg)}</div>`:'';
+  const e=state.oxEdit?(rows.find(r=>r.id===state.oxEdit)||oxBlank()):oxBlank();
+  const f=(n,zh,en,v,type='number',ex='')=>`<div><label>${esc(both(zh,en))}</label><input name="${n}" type="${type}" ${type==='number'?'min="0" step="any"':''} value="${esc(v==null?'':String(v))}" ${ex}></div>`;
+  return `<section class="card" id="payOx" style="margin-top:14px"><div class="card-h"><h2>${esc(both('時薪制計薪（牛津居家，依確認版規則）','Hourly pay (Oxford home care, confirmed rules)'))}</h2><span class="chip ok">${esc(both('規則已確認；分鐘數目前靠匯入','Rules confirmed; minutes come from imports for now'))}</span></div>
+  <div class="card-b" style="display:grid;gap:10px">
+    <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('實發 = 應發(A) + 加班費(B) − 代扣(C)。應發 = 本薪 + 轉場費 + AA 加給 + 人工項目（偏鄉加給、介紹費、開案費、其他津貼、缺工獎勵）。本薪與轉場費無條件進位；加班費各段分鐘 ÷ 60 × 時薪 × 倍率，各段四捨五入顯示，合計用各段未進位金額加總後四捨五入（可能與各段加總差 ±1 元）。時薪依「正常工時 + 加班工時」（不含轉場）的分鐘數判斷級距。特休與補休折發為年度結算，不在月薪流程。','Net = payable (A) + overtime (B) − deductions (C). Payable = base + transfer + AA add-ons + manual items (rural, referral, case-opening, other allowance, shortage bonus). Base and transfer round up; each overtime segment is minutes ÷ 60 × rate × multiplier, shown rounded, with the total taken from the unrounded sum (can differ by ±1 from the segments). The tier is judged on regular + overtime minutes (transfer excluded). Annual leave and comp-time payout are settled once a year, outside the monthly run.'))}</div>
+    ${msg}
+    <details id="oxSet" ${state.oxOpen?'open':''}><summary>${esc(both('規則設定（級距、倍率、AA、進位）','Rule settings (tiers, multipliers, AA, rounding)'))}${can_?'':` · ${esc(both('只有人資能改','HR only'))}`}</summary>
+      <div class="tablewrap" style="margin-top:8px"><table class="todotbl"><thead><tr><th>${bi('判斷工時（小時）','Judged hours')}</th><th>${bi('較早到職','Early hires')}</th><th>${bi('其他人員','Others')}</th></tr></thead><tbody>
+        ${cfg.tiers.map((t,i)=>`<tr><td>${t.lt==null?esc(both('以上','and above')):esc(both('未滿','Under'))+' '+num(`tier.${i}.lt`,t.lt)}</td><td>${num(`tier.${i}.early`,t.early)}</td><td>${num(`tier.${i}.other`,t.other)}</td></tr>`).join('')}</tbody></table></div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:8px"><label class="muted">${esc(both('轉場時薪','Transfer rate'))} ${num('transferRate',cfg.transferRate)}</label>
+        ${Object.keys(cfg.aa).map(k=>`<label class="muted">${k} ${num('aa.'+k,cfg.aa[k])}</label>`).join('')}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:8px"><label class="muted">${esc(both('本薪','Base'))} ${rsel('base')}</label><label class="muted">${esc(both('轉場費','Transfer'))} ${rsel('transfer')}</label><label class="muted">${esc(both('加班各段','Overtime segment'))} ${rsel('otSeg')}</label><label class="muted">${esc(both('加班合計','Overtime total'))} ${rsel('otTotal')}</label><label class="muted">${esc(both('實發','Net'))} ${rsel('net')}</label></div>
+      <div class="tablewrap" style="margin-top:8px"><table class="todotbl"><thead><tr><th>${bi('日別','Day type')}</th><th>${bi('時段','Band')}</th><th>${bi('倍率','Multiplier')}</th></tr></thead><tbody>
+        ${cfg.ot.map((o,i)=>`<tr><td>${esc(o.day)}</td><td>${esc(o.band)}</td><td>${num('ot.'+i,o.mult)}</td></tr>`).join('')}</tbody></table></div>
+      <div class="legend">${esc(both('預設值是確認版（115 年 10 月）：時薪 210／230／250（較早到職 260）、轉場 196、AA05 與 AA06 各 110、AA11 50、例假日加班倍率已與律師確認。AA07、AA08、AA09 不發給照服員，是刻意設計。改設定只影響這個畫面，重新整理就還原。','Defaults are the confirmed rules (Oct 2026). AA07, AA08 and AA09 are deliberately not paid to home care workers. Changing a setting affects this screen only and resets on refresh.'))}</div>
+    </details>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+      <button class="btn ghost mini" id="oxTpl">${esc(both('下載範本','Download template'))}</button><button class="btn ghost mini" id="oxDemo">${esc(both('載入示範資料','Load demo data'))}</button>
+      ${can_?`<label class="muted" style="font-size:12.5px">${esc(both('匯入範本（Excel／CSV）','Import template (Excel/CSV)'))} <input type="file" id="oxFile" accept=".xlsx,.xlsm,.csv"></label>
+      <label class="muted" style="font-size:12.5px">${esc(both('匯入現有薪資條活頁簿','Import the existing payslip workbook'))} <input type="file" id="oxSlipFile" accept=".xlsx,.xlsm"></label>
+      <label class="muted" style="font-size:12.5px">${esc(both('匯入代扣表（勞保、健保、勞退自提、其他）','Import deductions (labor, health, pension, other)'))} <input type="file" id="oxDedFile" accept=".xlsx,.xlsm,.csv"></label>`:`<span class="muted" style="font-size:12.5px">${esc(both('匯入只有人資能做。','Only HR can import.'))}</span>`}
+      <button class="btn" id="oxXlsx" ${rows.length?'':'disabled'}>${esc(both('匯出 Excel','Export Excel'))}</button>
+    </div>
+    ${rows.length?`<div class="todostrip"><span class="chip acc">${esc(both('人數','People'))}：${rows.length}</span><span class="chip">${esc(both('應發 A','Payable A'))}：${money(tot.A)}</span><span class="chip">${esc(both('加班費 B','Overtime B'))}：${money(tot.B)}</span><span class="chip">${esc(both('代扣 C','Deductions C'))}：${money(tot.C)}</span><span class="chip acc">${esc(both('實發','Net'))}：${money(tot.net)}</span></div>
+    <div class="tablewrap" style="max-height:420px;overflow:auto"><table class="todotbl"><thead><tr><th>${bi('工號','No.')}</th><th>${bi('姓名','Name')}</th><th>${bi('較早到職','Early')}</th><th>${bi('判斷工時','Judged h')}</th><th>${bi('時薪','Rate')}</th><th>${bi('本薪','Base')}</th><th>${bi('轉場費','Transfer')}</th><th>AA</th><th>${bi('人工項目','Manual')}</th><th>${bi('應發 A','A')}</th><th>${bi('加班費 B','B')}</th><th>${bi('代扣 C','C')}</th><th>${bi('實發','Net')}</th><th></th></tr></thead><tbody>
+      ${calc.map(({r,x})=>`<tr><td class="mono">${esc(r.id)}</td><td>${esc(r.name)}</td><td>${person(r.id)?`<span class="chip ${x.early?'ok':''}">${esc(x.early?both('是','Yes'):both('否','No'))}</span>`:`<input type="checkbox" data-oxearly="${esc(r.id)}" ${x.early?'checked':''}${dis} aria-label="${esc(both('較早到職','Early hire'))}">`}</td><td class="num">${(x.judgeMin/60).toFixed(2)}</td><td class="num">${x.rate}</td><td class="num">${money(x.base)}</td><td class="num">${money(x.transfer)}</td><td class="num">${money(x.aa)}</td><td class="num">${money(x.manual)}</td><td class="num">${money(x.A)}</td><td class="num">${money(x.B)}</td><td class="num">${money(x.C)}</td><td class="num"><b>${money(x.net)}</b></td><td>${x.warn.map(w=>`<span class="chip ${w.cls==='crit'?'bad':'warn'}" title="${esc(both(w.zh,w.en))}">!</span>`).join('')} ${can_?`<button class="btn ghost mini" data-oxedit="${esc(r.id)}">${esc(both('編輯','Edit'))}</button> <button class="btn ghost mini" data-oxdel="${esc(r.id)}">${esc(both('移除','Remove'))}</button>`:''}</td></tr>
+      ${x.segs.length?`<tr class="muted"><td></td><td colspan="13" style="font-size:12px">${x.segs.map(s=>esc(s.day+s.band)+' '+s.min+' '+esc(both('分','min'))+' × '+s.mult+' = '+money(s.amt)).join('；')}</td></tr>`:''}
+      ${x.warn.length?`<tr><td></td><td colspan="13" class="muted" style="font-size:12px">${x.warn.map(w=>esc(both(w.zh,w.en))).join('；')}</td></tr>`:''}`).join('')}
+    </tbody></table></div>`:`<div class="muted">${esc(both('還沒有資料：下載範本填寫後匯入、匯入現有薪資條活頁簿，或載入示範資料看看。','No data yet: fill in the template and import it, import the existing payslip workbook, or load the demo data.'))}</div>`}
+    ${can_?`<details ${state.oxEdit?'open':''}><summary>${esc(both('新增或更新一位','Add or update one person'))}</summary><form id="oxForm" class="frm" style="padding-top:10px">
+      <div class="row">${f('id','工號','No.',e.id,'text','required maxlength="20" class="mono"')}${f('name','姓名','Name',e.name,'text','maxlength="20"')}${f('regMin','平日服務分鐘數','Weekday service minutes',e.regMin)}</div>
+      <div class="row">${f('trWd','平日交通分鐘','Weekday transfer min',e.trWd)}${f('trHol','假日交通分鐘','Holiday transfer min',e.trHol)}${f('trNh','國定假日交通分鐘','National-holiday transfer min',e.trNh)}</div>
+      <div class="row">${f('aa05','AA05 次數','AA05 count',e.aa05)}${f('aa06','AA06 次數','AA06 count',e.aa06)}${f('aa11','AA11 次數','AA11 count',e.aa11)}</div>
+      <div class="row">${f('rural','偏鄉加給','Rural',e.rural)}${f('intro','介紹費','Referral',e.intro)}${f('open','開案費','Case opening',e.open)}${f('other','其他津貼','Other allowance',e.other)}${f('short','缺工獎勵','Shortage bonus',e.short)}</div>
+      <div class="row">${f('labor','勞保自付額','Labor insurance',e.labor)}${f('health','健保自付額','Health insurance',e.health)}${f('pension','勞退自提','Pension self-contribution',e.pension)}${f('otherDed','其他代扣','Other deductions',e.otherDed)}</div>
+      <div class="eyebrow">${esc(both('加班分鐘（依日別與時段）','Overtime minutes by day type and band'))}</div><div class="row" style="flex-wrap:wrap">${cfg.ot.map((o,i)=>f('ot'+i,o.day+o.band,o.day+' '+o.band,e.ot[i])).join('')}</div>
+      <div><label><input type="checkbox" name="early" ${oxIsEarly(e)?'checked':''} ${person(e.id)?'disabled':''}> ${esc(both('較早到職級距（名冊裡的員工以員工資料為準）','Early-hire tier (for people on the staff list the employee record decides)'))}</label></div>
+      <div><button class="btn" type="submit">${esc(both('儲存','Save'))}</button></div></form></details>`:''}
+  </div></section>`;
+}
+function oxBind(){
+  const cfg=oxCfg(), $=id=>document.getElementById(id);
+  const set=(msg)=>{ state.oxMsg=msg; render(); };
+  const sd=$('oxSet'); if(sd) sd.addEventListener('toggle',()=>{ state.oxOpen=sd.open; });
+  document.querySelectorAll('[data-oxcfg]').forEach(i=>i.onchange=()=>{
+    const p=i.dataset.oxcfg.split('.'), v=i.tagName==='SELECT'?i.value:(i.value===''?null:+i.value);
+    if(p[0]==='tier') cfg.tiers[+p[1]][p[2]]=v; else if(p[0]==='aa') cfg.aa[p[1]]=v||0; else if(p[0]==='ot') cfg.ot[+p[1]].mult=v||0; else if(p[0]==='round') cfg.round[p[1]]=v; else if(p[0]==='transferRate') cfg.transferRate=v||0;
+    state.oxOpen=true; render();
+  });
+  const tp=$('oxTpl'); if(tp) tp.onclick=()=>{ const cols=oxCols(cfg), ex=oxDemoRows()[4];
+    const row=cols.map(([k])=>k.startsWith('ot')&&!isNaN(+k.slice(2))?ex.ot[+k.slice(2)]:k==='early'?'否':ex[k]);
+    saveBlob(buildXlsx([['牛津居家時薪制匯入範本（虛構示範列；時間單位一律是分鐘）'],cols.map(c=>c[1]),row]),'牛津時薪制匯入範本.xlsx'); };
+  const dm=$('oxDemo'); if(dm) dm.onclick=()=>{ state.oxRows=oxDemoRows(); set('已載入 5 筆虛構示範資料（含級距邊界與加班進位）。'); };
+  const xl=$('oxXlsx'); if(xl) xl.onclick=()=>{
+    const rows=state.oxRows||[]; const out=[['牛津居家時薪制計薪'],['依確認版規則；實發＝應發＋加班費－代扣。'],['工號','姓名','較早到職','判斷工時','時薪','本薪','轉場費','AA加給','人工項目','應發A','加班費B','代扣C','實發','提醒']];
+    rows.forEach(r=>{ const x=oxPay(cfg,r,oxIsEarly(r)); out.push([r.id,r.name,x.early?'是':'否',+(x.judgeMin/60).toFixed(2),x.rate,x.base,x.transfer,x.aa,x.manual,x.A,x.B,x.C,x.net,x.warn.map(w=>w.zh).join('；')]); });
+    saveBlob(buildXlsx(out),'牛津時薪制計薪.xlsx'); };
+  const rd=async(file,all)=>{ const buf=await file.arrayBuffer(); if(/\.csv$/i.test(file.name)) return csvRead(buf); return xlsxRead(buf,null,all); };
+  const fl=$('oxFile'); if(fl) fl.onchange=async()=>{ const file=fl.files[0]; if(!file) return;
+    try{ const g=oxFromFlat(await rd(file)); if(g.err) return set('無法匯入：'+g.err); oxUpsert(g.rows); set(`已匯入 ${g.rows.length} 人。`+(g.missing.length?`（範本裡沒有這些欄位，當成 0：${g.missing.slice(0,6).join('、')}${g.missing.length>6?'…':''}）`:'')); }
+    catch(err){ set('無法匯入：'+(err.message||'格式不對')); } };
+  const sl=$('oxSlipFile'); if(sl) sl.onchange=async()=>{ const file=sl.files[0]; if(!file) return;
+    try{ const g=oxFromSlips(await xlsxRead(await file.arrayBuffer(),null,true)); if(!g.rows.length) return set('找不到居服員工作表（工作表名稱或 B2 要像「OXHR001 姓名」）。'); oxUpsert(g.rows,true); set(`已從薪資條活頁簿匯入 ${g.rows.length} 位。`+g.note.join(' ')+' 較早到職級距請到員工資料勾選。'); }
+    catch(err){ set('無法匯入：'+(err.message||'格式不對')); } };
+  const df=$('oxDedFile'); if(df) df.onchange=async()=>{ const file=df.files[0]; if(!file) return;
+    try{ const rows=await rd(file), hi=rows.findIndex(r=>r&&r.some(c=>String(c).trim()==='工號')); if(hi<0) return set('找不到「工號」欄。');
+      const head=rows[hi].map(c=>String(c==null?'':c).trim()), col=n=>head.findIndex(h=>h.includes(n)), c={id:col('工號'),labor:col('勞保'),health:col('健保'),pension:col('勞退'),other:col('其他')};
+      const list=state.oxRows||(state.oxRows=[]); let hit=0, miss=[]; for(let i=hi+1;i<rows.length;i++){ const x=rows[i]; if(!x) continue; const id=String(x[c.id]||'').trim(); if(!id) continue;
+        const r=list.find(q=>q.id===id); if(!r){ miss.push(id); continue; } if(c.labor>=0) r.labor=oxNum(x[c.labor]); if(c.health>=0) r.health=oxNum(x[c.health]); if(c.pension>=0) r.pension=oxNum(x[c.pension]); if(c.other>=0) r.otherDed=oxNum(x[c.other]); hit++; }
+      set(`代扣已更新 ${hit} 人。`+(miss.length?`名單裡沒有這些工號，沒有匯入：${miss.slice(0,8).join('、')}${miss.length>8?'…':''}`:'')); }
+    catch(err){ set('無法匯入：'+(err.message||'格式不對')); } };
+  document.querySelectorAll('[data-oxearly]').forEach(i=>i.onchange=()=>{ const r=(state.oxRows||[]).find(q=>q.id===i.dataset.oxearly); if(r){ r.early=i.checked; render(); } });
+  document.querySelectorAll('[data-oxedit]').forEach(b=>b.onclick=()=>{ state.oxEdit=b.dataset.oxedit; render(); const fm=$('oxForm'); if(fm) fm.scrollIntoView({block:'center'}); });
+  document.querySelectorAll('[data-oxdel]').forEach(b=>b.onclick=()=>{ state.oxRows=(state.oxRows||[]).filter(q=>q.id!==b.dataset.oxdel); state.oxEdit=null; render(); });
+  const fm=$('oxForm'); if(fm) fm.onsubmit=e=>{ e.preventDefault(); const fd=new FormData(fm), r=oxBlank(); r.id=String(fd.get('id')).trim(); r.name=String(fd.get('name')||'').trim(); r.early=fd.get('early')==='on';
+    ['regMin','trWd','trHol','trNh','aa05','aa06','aa11','rural','intro','open','other','short','labor','health','pension','otherDed'].forEach(k=>r[k]=Math.max(0,oxNum(fd.get(k)))); cfg.ot.forEach((o,i)=>r.ot[i]=Math.max(0,oxNum(fd.get('ot'+i))));
+    if(!r.id) return; const old=(state.oxRows||[]).find(q=>q.id===r.id); if(old){ r.aaFixed=old.aaFixed; r.refRate=old.refRate; } oxUpsert([r]); state.oxEdit=null; set('已儲存 '+r.id+'。'); };
+}
 function payRulesNote(){
   return `<section class="card" style="margin-top:14px">
     <div class="card-h"><h2>${esc(both('計算規則','Calculation rules'))}</h2></div>
@@ -6109,6 +6289,7 @@ function payRulesNote(){
     </div></section>`;
 }
 BINDERS['pay:calc']=function(){
+  oxBind();
   const sx=document.getElementById('splitXlsx'); if(sx) sx.onclick=()=>{
     const g=state.svcImp; if(!g||!g.sp) return; const d=splitData(g);
     const out=[['拆帳制計薪（'+d.mo+'）'],['草稿：依 10/28 給付表；只算服務拆帳、業績獎金與偏鄉津貼，未含交通津貼、其他加扣項、勞健保代扣與 AA 碼獎勵金。仁寶檔期間：'+g.from+' ~ '+g.to+'。'],[],
