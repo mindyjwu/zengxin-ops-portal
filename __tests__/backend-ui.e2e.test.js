@@ -188,4 +188,36 @@ test.describe('connected web app', () => {
     await expect(emp.page.locator('#nav')).not.toContainText('時薪制');
     await emp.ctx.close();
   });
+  test('時薪制: 分鐘數由 Portal 用仁寶服務紀錄算，看不懂的加班類型要人資歸類，寫入後結果頁有數字', async ({ browser }) => {
+    const head = '案號,服務項目代碼,服務項目類別,項目服務次數,居服員姓名,服務日期,服務時間長度(分),項目單價,加班類型,居住(區),服務單位,服務狀態';
+    const L = (day, min, type) => `C-${day}-${type},BA20,陪伴服務,1,示範員工甲,${day},${min},175,${type},竹北市,機構一,已簽退`;
+    const csv = [head, L('2031-08-04', 600, '正常班'), L('2031-08-09', 300, '休息日加班'), L('2031-08-10', 30, '怪標籤')].join('\n');
+    const mgr = await login(browser, 'manager@example.test');
+    await mgr.page.goto(BASE + '/app.html#/svc/import');
+    await mgr.page.setInputFiles('#svcFile', { name: 'svc.csv', mimeType: 'text/csv', buffer: Buffer.from('\ufeff' + csv, 'utf8') });
+    await mgr.page.click('#svcCommit');
+    await expect(mgr.page.locator('.msg.ok')).toContainText('2031-08');
+    await mgr.ctx.close();
+    const errs = [], hr = await login(browser, 'hr@example.test');
+    hr.page.on('pageerror', e => errs.push(e.message));
+    hr.page.on('console', m => { if (m.type() === 'error' && /Content Security Policy/.test(m.text())) errs.push(m.text()); });
+    await hr.page.goto(BASE + '/app.html#/pay/import');
+    await hr.page.fill('#imonth', '2031-08');
+    await hr.page.click('#svcPreview');
+    await expect(hr.page.locator('main')).toContainText('怪標籤');                                  // 看不懂的標籤要列出來，不猜
+    await expect(hr.page.locator('tbody tr', { hasText: '示範員工甲' })).toContainText('J020003');
+    await hr.page.locator('select[aria-label="歸類 怪標籤"]').selectOption('national');
+    await hr.page.locator('select[aria-label="歸類 怪標籤"]').locator('xpath=..').locator('button', { hasText: '歸類' }).click();
+    await expect(hr.page.locator('main')).not.toContainText('系統看不懂');
+    await hr.page.click('#svcWrite');
+    await expect(hr.page.locator('.msg.ok').last()).toContainText('已寫入 1 人');
+    await hr.page.goto(BASE + '/app.html#/pay');
+    await hr.page.fill('#pmonth', '2031-08');
+    const row = hr.page.locator('tbody tr', { hasText: 'J020003' });
+    await expect(row).toContainText('15.50');                                                     // 480 ＋ 120（平日 9–10 小時）＋ 300 ＋ 30 分鐘 ＝ 930 分鐘
+    await expect(row).toContainText('1,680');                                                     // 本薪 480 分鐘 ÷ 60 × 210
+    await expect(hr.page.locator('main')).toContainText('國定假日加班第0-2小時 30 分');
+    expect(errs).toEqual([]);
+    await hr.ctx.close();
+  });
 });

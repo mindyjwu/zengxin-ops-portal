@@ -6,6 +6,7 @@
 const express = require('express');
 const { can, canViewPage, pageCode } = require('./permissions');
 const E = require('./hourly-engine');
+const { splitMonth, DAYTYPE_ZH } = require('./hourly-split');
 
 const PAGE = 'pay.run', MONTH = /^\d{4}-\d{2}$/;
 const KIND = 'oxford_hourly';
@@ -127,6 +128,74 @@ function hourlyRouter({ db, audit }) {
     const tot = people.reduce((a, p) => ({ A: a.A + p.result.A, B: a.B + p.result.B, C: a.C + p.result.C, net: a.net + p.result.net }), { A: 0, B: 0, C: 0, net: 0 });
     await audit(req, 'pay_hourly_view', month, { people: people.length });
     res.json({ month, rules: { id: rules.id, effectiveFrom: rules.effectiveFrom }, config: rules.config, people, totals: tot, editable: canEdit(req.user) });
+  });
+
+  /* ---------- 工時由 Portal 用仁寶服務紀錄自己算（取代匯入分鐘數）----------
+     只有能改薪資的人（人資）可以用：這些是每位居服員的工時，等於薪資資料。 */
+  async function fromSvc(month, withAA) {
+    const m = (await db.query('SELECT 1 FROM svc_month WHERE month=$1', [month])).rows.length;
+    if (!m) return { error: 'no_svc_data' };
+    const lab = (await db.query("SELECT worker, to_char(day,'YYYY-MM-DD') AS day, label, minutes::float AS minutes FROM svc_worker_day_label WHERE month=$1", [month])).rows;
+    if (!lab.length) return { error: 'no_label_data' };                                  // 這個月是在加入「加班類型」彙總之前匯入的
+    const table = new Map((await db.query('SELECT label, day_type FROM svc_daytype_map')).rows.map(r => [r.label, r.day_type]));
+    const byWorker = new Map(); for (const x of lab) { const w = byWorker.get(x.worker) || {}; (w[x.day] = w[x.day] || {})[x.label] = x.minutes; byWorker.set(x.worker, w); }
+    const nameMap = new Map((await db.query('SELECT worker, emp_no FROM svc_name_map')).rows.map(r => [r.worker, r.emp_no]));
+    const emps = (await db.query("SELECT id, name FROM employees WHERE status='active'")).rows, byName = new Map(); emps.forEach(e => byName.set(e.name, [...(byName.get(e.name) || []), e.id]));
+    const aa = new Map(); if (withAA) for (const x of (await db.query("SELECT worker, code, sum(n)::float AS n FROM svc_worker_item WHERE month=$1 AND code IN ('AA05','AA06','AA11') GROUP BY worker, code", [month])).rows) { const o = aa.get(x.worker) || {}; o[x.code] = x.n; aa.set(x.worker, o); }
+    const people = [], unclassified = {};
+    for (const [worker, days] of [...byWorker].sort((a, b) => a[0].localeCompare(b[0], 'zh-Hant'))) {
+      const sp = splitMonth(days, table); for (const [l, v] of Object.entries(sp.unclassified)) unclassified[l] = (unclassified[l] || 0) + v;
+      const hit = byName.get(worker), match = nameMap.has(worker) ? { status: 'mapped', empNo: nameMap.get(worker) } : hit ? (hit.length === 1 ? { status: 'matched', empNo: hit[0] } : { status: 'ambiguous' }) : { status: 'unmatched' };
+      const a = aa.get(worker) || {};
+      people.push({ worker, match, regMin: sp.reg, ot: sp.ot, aa05: a.AA05 || 0, aa06: a.AA06 || 0, aa11: a.AA11 || 0, over: sp.over, mixed: sp.mixed, unclassified: sp.unclassified });
+    }
+    return { month, withAA: !!withAA, people, unclassified: Object.entries(unclassified).map(([label, minutes]) => ({ label, minutes })).sort((a, b) => b.minutes - a.minutes),
+      daytypeMap: [...table].map(([label, type]) => ({ label, type })), dayTypes: DAYTYPE_ZH };
+  }
+  const monthOk = (req, res) => { const m = String(req.query.month || (req.body || {}).month || ''); if (!MONTH.test(m)) { res.status(400).json({ error: 'bad_month' }); return null; } return m; };
+
+  r.get('/from-svc', edit, async (req, res) => {
+    const month = monthOk(req, res); if (!month) return;
+    const d = await fromSvc(month, req.query.withAA === '1'); if (d.error) return res.status(404).json(d);
+    await audit(req, 'pay_from_svc_preview', month, { workers: d.people.length });
+    res.json(d);
+  });
+
+  /** 把算出來的服務分鐘與加班分鐘寫進這個月的輸入：只改這兩項（與選了才帶的 AA 次數），轉場、人工項目、代扣、勾選都保留 */
+  r.post('/from-svc', edit, async (req, res) => {
+    const month = monthOk(req, res); if (!month) return;
+    const withAA = (req.body || {}).withAA === true, d = await fromSvc(month, withAA); if (d.error) return res.status(404).json(d);
+    const ready = d.people.filter(p => p.match.empNo), skipped = d.people.filter(p => !p.match.empNo).map(p => ({ worker: p.worker, status: p.match.status }));
+    const seen = new Map(); for (const p of ready) { if (seen.has(p.match.empNo)) return res.status(409).json({ error: 'same_emp_no_twice', empNo: p.match.empNo, workers: [seen.get(p.match.empNo), p.worker] }); seen.set(p.match.empNo, p.worker); }
+    if (!ready.length) return res.status(400).json({ error: 'nobody_matched', skipped });
+    await db.tx(async q => { for (const p of ready) await q(`INSERT INTO pay_hourly_rows (month, emp_no, name, reg_min, ot, aa05, aa06, aa11, updated_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        ON CONFLICT (month, emp_no) DO UPDATE SET reg_min=EXCLUDED.reg_min, ot=EXCLUDED.ot, name=CASE WHEN pay_hourly_rows.name='' THEN EXCLUDED.name ELSE pay_hourly_rows.name END,
+          aa05=CASE WHEN $10 THEN EXCLUDED.aa05 ELSE pay_hourly_rows.aa05 END, aa06=CASE WHEN $10 THEN EXCLUDED.aa06 ELSE pay_hourly_rows.aa06 END, aa11=CASE WHEN $10 THEN EXCLUDED.aa11 ELSE pay_hourly_rows.aa11 END, updated_by=EXCLUDED.updated_by, updated_at=now()`,
+      [month, p.match.empNo, p.worker, p.regMin, p.ot, Math.round(p.aa05), Math.round(p.aa06), Math.round(p.aa11), req.user.id, withAA]); });
+    await audit(req, 'pay_from_svc_write', month, { written: ready.length, skipped: skipped.length, withAA });
+    res.status(201).json({ month, written: ready.length, skipped, unclassified: d.unclassified });
+  });
+
+  /** 加班類型標籤歸類（預設規則看不懂的標籤）；type 空白＝刪除這筆歸類 */
+  r.put('/daytype-map', edit, async (req, res) => {
+    const label = text((req.body || {}).label, 40), type = (req.body || {}).type;
+    if (!label) return res.status(400).json({ error: 'bad_label' });
+    if (type == null || type === '') { await db.query('DELETE FROM svc_daytype_map WHERE label=$1', [label]); await audit(req, 'svc_daytype_map', label, { type: null }); return res.json({ label, type: null }); }
+    if (!DAYTYPE_ZH[type]) return res.status(400).json({ error: 'bad_day_type' });
+    await db.query('INSERT INTO svc_daytype_map (label, day_type, updated_by) VALUES ($1,$2,$3) ON CONFLICT (label) DO UPDATE SET day_type=EXCLUDED.day_type, updated_by=EXCLUDED.updated_by, updated_at=now()', [label, type, req.user.id]);
+    await audit(req, 'svc_daytype_map', label, { type });
+    res.json({ label, type });
+  });
+
+  /** 仁寶居服員姓名 → 員工編號（姓名對不到名冊時由人資指定）；empNo 空白＝刪除對應 */
+  r.put('/name-map', edit, async (req, res) => {
+    const worker = text((req.body || {}).worker, 40), empNo = text((req.body || {}).empNo, 20);
+    if (!worker) return res.status(400).json({ error: 'bad_worker' });
+    if (!empNo) { await db.query('DELETE FROM svc_name_map WHERE worker=$1', [worker]); await audit(req, 'svc_name_map', worker, { empNo: null }); return res.json({ worker, empNo: null }); }
+    if (!/^[A-Za-z0-9_-]{1,20}$/.test(empNo)) return res.status(400).json({ error: 'bad_emp_no' });
+    await db.query('INSERT INTO svc_name_map (worker, emp_no, updated_by) VALUES ($1,$2,$3) ON CONFLICT (worker) DO UPDATE SET emp_no=EXCLUDED.emp_no, updated_by=EXCLUDED.updated_by, updated_at=now()', [worker, empNo, req.user.id]);
+    await audit(req, 'svc_name_map', worker, { empNo });
+    res.json({ worker, empNo });
   });
 
   return r;
