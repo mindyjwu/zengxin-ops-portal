@@ -319,4 +319,52 @@ test.describe('connected web app', () => {
     expect(errs).toEqual([]);
     await hr.ctx.close(); await emp.ctx.close();
   });
+  test('月薪資料: HR imports base pay and allowance from a template, adds a raise and a correction, the manager only views', async ({ browser }) => {
+    const errs = [], hr = await login(browser, 'hr@example.test');
+    hr.page.on('pageerror', e => errs.push(e.message));
+    hr.page.on('console', m => { if (m.type() === 'error' && /Content Security Policy/.test(m.text())) errs.push(m.text()); });
+    await hr.page.goto(BASE + '/app.html#/salary/import');
+    const serial = await hr.page.evaluate(() => SvcParse.salaryFromFlat([['員工編號', '生效日（YYYY-MM-DD）', '底薪', '專業加給'], ['J020003', 46023, '32,000', '']]).rows[0]);
+    expect(serial).toEqual({ empNo: 'J020003', effectiveFrom: '2026-01-01', baseSalary: 32000, professionalAllowance: 0 });   // Excel 的日期數字也讀得懂
+    const csv = '員工編號,生效日（YYYY-MM-DD）,底薪,專業加給\nJ020003,2026-01-01,32000,2500\nJ020004,2026-01-01,34000,1000\n';
+    await hr.page.setInputFiles('#salFile', { name: 'salary.csv', mimeType: 'text/csv', buffer: Buffer.from('\ufeff' + csv, 'utf8') });
+    await expect(hr.page.locator('main')).toContainText('讀到 2 列');
+    await hr.page.click('#salCommit');
+    await expect(hr.page.locator('.msg.bad')).toContainText('要寫原因（至少 2 個字）');                  // 沒寫說明不能匯入，訊息不能是退回薪資單那句
+    await hr.page.fill('#impReason', '2026 年度調薪');
+    await hr.page.click('#salCommit');
+    await expect(hr.page.locator('.msg.ok')).toContainText('已新增 2 筆');
+    await hr.page.goto(BASE + '/app.html#/salary');
+    await hr.page.fill('#asOf', '2026-06-01');
+    const row = hr.page.locator('tbody tr', { hasText: 'J020003' });
+    await expect(row).toContainText('34,500');                                                       // 32,000 + 2,500
+    await expect(hr.page.locator('main')).toContainText('還沒有登錄薪資');
+    await row.locator('button', { hasText: '歷史' }).click();
+    await expect(hr.page.locator('section.card', { hasText: '薪資歷史' })).toContainText('2026 年度調薪');
+    await hr.page.fill('#sDate', '2026-10-16'); await hr.page.fill('#sBase', '33000'); await hr.page.fill('#sAllow', '2500');
+    await hr.page.click('#sSave');
+    await expect(hr.page.locator('.msg.bad').last()).toContainText('原因');                           // 原因必填
+    await hr.page.fill('#sReason', '年度調薪');
+    await hr.page.click('#sSave');
+    await expect(hr.page.locator('.msg.ok').last()).toContainText('已新增');
+    await hr.page.locator('section.card', { hasText: '薪資歷史' }).locator('tr', { hasText: '2026-10-16' }).locator('button', { hasText: '更正' }).click();
+    await hr.page.fill('#sBase', '33500'); await hr.page.fill('#sReason', '打錯底薪');
+    await hr.page.click('#sSave');
+    await expect(hr.page.locator('.msg.ok').last()).toContainText('已新增');
+    await expect(hr.page.locator('section.card', { hasText: '薪資歷史' })).toContainText('更正');
+    await hr.page.fill('#asOf', '2026-10-20');
+    await expect(hr.page.locator('tbody tr', { hasText: 'J020003' })).toContainText('36,000');         // 以更正後為準：33,500 + 2,500
+    expect(errs).toEqual([]);
+    await hr.ctx.close();
+    const mgr = await login(browser, 'manager@example.test');
+    await mgr.page.goto(BASE + '/app.html#/salary');
+    await mgr.page.fill('#asOf', '2026-10-20');
+    await expect(mgr.page.locator('tbody tr', { hasText: 'J020003' })).toContainText('36,000');
+    await expect(mgr.page.locator('.tabs')).not.toContainText('匯入');
+    await expect(mgr.page.locator('button', { hasText: '歷史' }).first()).toBeVisible();
+    await mgr.ctx.close();
+    const emp = await login(browser, 'a@example.test');
+    await expect(emp.page.locator('#nav')).not.toContainText('月薪資料');
+    await emp.ctx.close();
+  });
 });
