@@ -899,11 +899,8 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await expect(sec.locator('tbody tr')).toHaveCount(6);
     await expect(sec).toContainText('繼續教育積分（私人秘書 › 課程）：確認積分規則');
     await expect(sec).toContainText('組織圖 10/13 版與 10/20 的 V3');
-    const upd = page.locator('#new1014');
-    await expect(upd).toContainText('日照主管的人事頁面已開放');
-    await expect(upd).toContainText('主管可跨單位查看');
-    await expect(upd).toContainText('第四次會議正式紀錄（V2.0）已放進');
-    await expect(page.locator('.toc a[href="#new1014"]')).toBeVisible();
+    await expect(page.locator('.toc a[href="guide-archive.html"]')).toBeVisible();   // 舊更新已移到歷史紀錄頁
+    await expect(page.locator('#new1014')).toHaveCount(0);
     await expect(page.locator('#basics')).toContainText('日照主管');
     await expect(sec).toContainText('可以直接傳給同事的訊息');
     await expect(sec).toContainText('最影響進度的三件事');
@@ -2404,7 +2401,7 @@ test.describe('仁寶 import accepts .csv', () => {
 
 test.describe('v3.2 section in the guide', () => {
   test('records the csv support, upload formats and revision date, with a table of import formats', async ({ page }) => {
-    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    await page.goto('file://' + path.resolve(__dirname, '../guide-archive.html'));   // 已退役，在歷史紀錄頁
     const sec = page.locator('#newv32');
     await expect(sec.locator('h2')).toContainText('v3.2 更新（10/19）');
     for (const s of ['.csv', 'Big5', 'HEIC', '修訂日期', '傘狀圖', '找不到表頭', '服務個案數']) await expect(sec).toContainText(s);
@@ -2540,11 +2537,12 @@ test.describe('v3.3: org chart V3 approval levels and cloud plan comparison', ()
     await expect(card).toContainText('居服員都要帳號');
   });
   test('the guide records the 20 Oct update and the repaired agenda table', async ({ page }) => {
-    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    await page.goto('file://' + path.resolve(__dirname, '../guide-archive.html'));   // 已退役，在歷史紀錄頁
     const sec = page.locator('#newv33');
     await expect(sec.locator('h2')).toContainText('v3.3 更新（10/20）');
     for (const s of ['組織圖 V3', '雲端方案比較', '沒有查證', '只放職位']) await expect(sec).toContainText(s);
     await expect(page.locator('.toc a[href="#newv33"]')).toBeVisible();
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     await expect(page.locator('#agenda tbody tr')).toHaveCount(6);
     await expect(page.locator('#confirm tbody tr').nth(2)).toContainText('員工編號原則');   // 待補齊清單第 3 列是員編，不是議程
     await expect(page.locator('#agenda tbody tr').nth(2)).toContainText('雲端方案比較');
@@ -3261,5 +3259,24 @@ test.describe('Server-side permission rules match the website (4 Nov)', () => {
     const webR = win.SvcParse.oxFromFlat(rows, E.DEFAULT_CONFIG), siteR = await page.evaluate(r => oxFromFlat(r), rows);
     expect(webR.rows.map(({ empNo, ...x }) => ({ id: empNo, ...x }))).toEqual(siteR.rows);
     expect(webR.missing).toEqual(siteR.missing);
+  });
+});
+
+test.describe('Guide archive', () => {
+  test('old update notes live on the archive page, marked as not current, and the guide links to it', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide-archive.html'));
+    await expect(page.locator('h1')).toContainText('歷史紀錄');
+    await expect(page.locator('header')).toContainText('不代表現況');
+    for (const id of ['newv34', 'newv33', 'newv32', 'new1014', 'newlatest', 'new930']) {
+      await expect(page.locator('#' + id)).toHaveCount(1);
+      await expect(page.locator('.toc a[href="#' + id + '"]')).toBeVisible();
+    }
+    const upd = page.locator('#new1014');
+    await expect(upd).toContainText('日照主管的人事頁面已開放');
+    await expect(upd).toContainText('第四次會議正式紀錄（V2.0）已放進');
+    await expect(page.locator('a[href="guide.html"]').first()).toBeVisible();
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const id of ['newv34', 'newv33', 'newv32', 'new1014', 'newlatest', 'new930']) await expect(page.locator('#' + id)).toHaveCount(0);
+    await expect(page.locator('#newv35')).toHaveCount(1);
   });
 });
