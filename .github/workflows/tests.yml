@@ -10,6 +10,20 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    # 真正的 PostgreSQL（正式環境用的資料庫與驅動）：整套後端測試除了用 PGlite 跑一次，再對它跑一次
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     strategy:
       matrix:
         node-version: [20.x, 22.x]   # @playwright/test 1.63 requires Node >= 20
@@ -26,11 +40,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install the PostgreSQL 16 client (backup and restore drill test)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-16
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
       - name: Run unit tests (Jest)
         run: npm run test:unit
+
+      - name: Run unit tests again on real PostgreSQL 16
+        run: npm run test:unit
+        env:
+          TEST_PG_ADMIN_URL: postgres://postgres:test@localhost:5432/postgres
 
       - name: Run e2e tests (Playwright)
         run: npm run test:e2e
@@ -44,3 +66,46 @@ jobs:
           name: playwright-report-${{ matrix.node-version }}
           path: playwright-report/
           retention-days: 30
+
+  # 容器：真的用 Dockerfile 建映像、以正式模式啟動、跑煙霧測試、送停止訊號確認乾淨結束
+  container:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -t zengxin-api .
+      - name: Start it in production mode
+        run: |
+          docker run -d --name api --network host \
+            -e NODE_ENV=production -e PORT=8080 \
+            -e DATABASE_URL=postgres://postgres:test@localhost:5432/postgres \
+            -e SESSION_SECRET=ci-only-session-secret-ci-only-session-secret \
+            -e GOOGLE_CLIENT_ID=ci.apps.googleusercontent.com -e ALLOWED_DOMAIN=example.com \
+            -e ALLOWED_ORIGINS=https://portal.example.com -e TRUSTED_HOPS=1 \
+            zengxin-api
+      - name: Smoke test
+        run: scripts/smoke.sh http://localhost:8080
+      - name: Image runs as a non-root user and has no dev packages
+        run: |
+          test "$(docker exec api id -u)" != "0"
+          ! docker exec api test -d node_modules/@electric-sql
+          ! docker exec api test -d node_modules/jest
+      - name: Stops cleanly on SIGTERM
+        run: |
+          docker stop -t 10 api
+          test "$(docker inspect api --format '{{.State.ExitCode}}')" = "0"
+      - name: Logs
+        if: always()
+        run: docker logs api || true

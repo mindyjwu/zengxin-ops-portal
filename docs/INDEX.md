@@ -12,6 +12,10 @@ One folder, one source of truth. Point any Claude surface (chat, Cowork, Code) a
 | `/guide.html` | User guide (Traditional Chinese) with walkthrough links |
 | `/docs/ltc-portal-walkthrough.md` | Stakeholder walkthrough (about 17 minutes) |
 | `/TEST_PLAN.md` | Test plan |
+| `/docs/BACKEND.md` | Backend architecture, local run, API notes |
+| `/docs/DEPLOY.md` | Go-live: architecture, steps, cost, security design (Google Cloud) |
+| `/docs/GCP_CHECKLIST.md` | Tick-box checklist: what to decide, who does what, go-live checks |
+| `/docs/RUNBOOK.md` | Operations: rollback, backup and restore drill, secret rotation, monthly checks |
 
 ## Rules of thumb
 1. If it was decided, it is in `DECISIONS.md` with a date. If it is not there, it is not decided.

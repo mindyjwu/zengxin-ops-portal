@@ -34,15 +34,11 @@ npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@exam
 | `ALLOWED_DOMAIN` | 只允許這個 Google Workspace 網域登入（例如公司網域） | 建議必填 |
 | `ALLOWED_ORIGINS` | 網頁網址（逗號分隔），擋跨站請求 | 必填 |
 | `TRUSTED_HOPS` | 伺服器前面有幾層可信任的代理（決定怎麼讀真實 IP，要實測） | 必填 |
-| `DEV_LOGIN` | 假登入，只在非正式環境有效 | 不要設 |
+| `BOOTSTRAP_ADMIN_EMAIL` | 第一位系統管理員（員工名冊是空的時才建立一次） | 只有第一次部署 |
+| `DEV_LOGIN` | 假登入，只在非正式環境有效 | 不要設（設了會拒絕啟動） |
 
-## 要你操作的部分（我沒有你的帳號與付款權限）
-1. **建 Google Cloud 專案**（建議兩個：`zengxin-test`、`zengxin-prod`），開啟帳單與預算提醒。
-2. **建 Cloud SQL（PostgreSQL）**：先選最小規格，區域選台灣（asia-east1），開啟每日自動備份與時間點還原。
-3. **建 OAuth 用戶端**：APIs & Services → Credentials → OAuth client ID（Web），把網頁網址加入授權來源，取得 `GOOGLE_CLIENT_ID`。
-4. **Secret Manager** 放 `SESSION_SECRET` 與資料庫密碼。
-5. **部署到 Cloud Run**：`gcloud run deploy zengxin-api --source . --region asia-east1`，設定上面的環境變數，連上 Cloud SQL。
-6. 做一次**還原演練**：把備份還原到一個新的資料庫，確認資料回得來。
+## 上線
+要你操作的部分、一鍵建置腳本、部署流程、費用與資安設計，都在 `docs/DEPLOY.md`；勾選清單在 `docs/GCP_CHECKLIST.md`；備份還原與維運在 `docs/RUNBOOK.md`。
 
 ## 下一步（我來寫）
 員工資料與請假、加班、簽核的 API；網頁前端改成呼叫 API（目前網站的資料還在瀏覽器）；匯入 104 與仁寶的正式流程；備份腳本與監控；更多伺服器端權限規則。
