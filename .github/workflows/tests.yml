@@ -41,6 +41,8 @@ jobs:
         run: npm ci
 
       - name: Install the PostgreSQL 16 client (backup and restore drill test)
+        # 裝不起來也不讓整個測試失敗：還原演練測試會自己檢查 pg_dump 的版本，不合就略過並說明
+        continue-on-error: true
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client-16
 
       - name: Install Playwright browser
