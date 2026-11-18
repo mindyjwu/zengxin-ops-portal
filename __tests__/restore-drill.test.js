@@ -11,9 +11,20 @@ const { createApp } = require('../server/app');
 const { seed } = require('../server/seed');
 const { verify } = require('../scripts/verify-restore');
 
-const bin = name => { for (const d of (process.env.PATH || '').split(':').concat(fs.existsSync('/usr/lib/postgresql') ? fs.readdirSync('/usr/lib/postgresql').sort().reverse().map(v => `/usr/lib/postgresql/${v}/bin`) : [])) { const f = path.join(d, name); if (fs.existsSync(f)) return f; } return null; };
-const have = process.env.TEST_PG_ADMIN_URL && bin('pg_dump') && bin('psql');
-const drill = have ? test : test.skip;
+const fsx = require('fs');
+const dirs = major => [...(major ? [`/usr/lib/postgresql/${major}/bin`] : []), ...(process.env.PATH || '').split(':'), ...(fsx.existsSync('/usr/lib/postgresql') ? fsx.readdirSync('/usr/lib/postgresql').sort().reverse().map(v => `/usr/lib/postgresql/${v}/bin`) : [])];
+const find = (name, major) => { for (const d of dirs(major)) { const f = path.join(d, name); if (fsx.existsSync(f)) return f; } return null; };
+const majorOfVersion = s => parseInt(String(s).match(/\d+/)[0], 10);
+// 備份工具的版本要和資料庫「一樣」：比資料庫舊會失敗，比資料庫新產出的備份檔會有舊版不認得的設定（CI 的 pg_dump 常常比較新）
+function tools() {
+  const psql = find('psql'); if (!process.env.TEST_PG_ADMIN_URL || !psql) return null;
+  const serverMajor = Math.floor(+execFileSync(psql, ['-Atc', 'SHOW server_version_num', process.env.TEST_PG_ADMIN_URL], { encoding: 'utf8' }) / 10000);
+  const dump = find('pg_dump', serverMajor), run = find('psql', serverMajor);
+  if (!dump || !run || majorOfVersion(execFileSync(dump, ['--version'], { encoding: 'utf8' })) !== serverMajor) { console.warn(`略過還原演練：找不到版本 ${serverMajor} 的 pg_dump 與 psql`); return null; }
+  return { dump, psql: run };
+}
+const T = (() => { try { return tools(); } catch (e) { console.warn('略過還原演練：' + e.message); return null; } })();
+const drill = T ? test : test.skip;
 
 async function populate(db) {
   await seed(db);
@@ -27,16 +38,12 @@ async function populate(db) {
 
 describe('restore drill', () => {
   drill('a dump restored into a new database verifies; tampering with a payslip or losing a trigger is caught', async () => {
-    // pg_dump 的版本不能比資料庫舊（版本不合會直接失敗）：不合就略過並說明，不要讓別人的環境差異變成假失敗
-    const major = v => parseInt(String(v).match(/\d+/)[0], 10), clientMajor = major(execFileSync(bin('pg_dump'), ['--version'], { encoding: 'utf8' }));
-    const serverMajor = Math.floor(+execFileSync(bin('psql'), ['-Atc', 'SHOW server_version_num', process.env.TEST_PG_ADMIN_URL], { encoding: 'utf8' }) / 10000);
-    if (clientMajor < serverMajor) { console.warn(`略過還原演練：pg_dump ${clientMajor} 比資料庫 ${serverMajor} 舊`); return; }
     const A = await tempDatabase(process.env.TEST_PG_ADMIN_URL), B = await tempDatabase(process.env.TEST_PG_ADMIN_URL);
     const dbA = await createDb({ url: A.url }); await populate(dbA);
     const file = path.join(os.tmpdir(), `restore-drill-${process.pid}.sql`); let pool = null, c = null;
     try {
-      execFileSync(bin('pg_dump'), ['--no-owner', '--no-privileges', '--format=plain', '--file', file, A.url], { stdio: 'pipe' });            // 備份
-      execFileSync(bin('psql'), ['-v', 'ON_ERROR_STOP=1', '-q', '-f', file, B.url], { stdio: 'pipe' });                                          // 還原到新的資料庫
+      execFileSync(T.dump, ['--no-owner', '--no-privileges', '--format=plain', '--file', file, A.url], { stdio: 'pipe' });            // 備份
+      execFileSync(T.psql, ['-v', 'ON_ERROR_STOP=1', '-q', '-f', file, B.url], { stdio: 'pipe' });                                          // 還原到新的資料庫
       pool = new Pool({ connectionString: B.url, max: 1 }); c = await pool.connect();
       const ok = await verify(c, { maxAgeHours: 1 });
       expect(ok.lines.filter(l => !l.ok)).toEqual([]); expect(ok.ok).toBe(true);
