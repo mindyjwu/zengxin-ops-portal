@@ -79,3 +79,8 @@ npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@exam
 ## 拆帳制（/api/pay/split）
 - 權限同時薪制。`GET /rules?month=`、`PUT /rules`（給付表、業績獎金區間、偏鄉津貼、加項或扣項，有生效月份）；`POST /rows`（方案與加扣項）、`PUT /deductions`、`DELETE /rows/:month/:empNo`；`GET /results?month=`（對不到員編的列在 `unmatched`）；`/payslips`、`/payslip`、`/publish`、`/reopen`、`/events` 與時薪制相同（`server/pay-months.js`）。
 - 引擎在 `server/split-engine.js`（純函式）；預設規則取自 `server/svc-config.json`；員工自己的薪資單用 `GET /api/payslips/mine/:month?kind=split`。網頁：`#/split`、`#/split/import`、`#/split/rules`；薪資單 `/payslip.html?kind=split&...`。
+
+## 月薪制薪資資料（/api/pay/salary）
+- 權限同其他薪資功能（看＝薪資權限＋`pay.run` 不是「不可」；改＝該頁可編輯，目前只有人資）。
+- `GET /?asOf=` 某天適用的底薪與專業加給（含未登錄的人與提醒）；`GET /history/:empNo`；`GET /segments/:empNo?month=` 月內分段（按天數）；`POST /entries {empNo, kind: hire|raise|correction, effectiveFrom, baseSalary, professionalAllowance, reason, correctsId?}`；`POST /import {rows, reason}` 整份一起成功。
+- 引擎在 `server/salary-engine.js`（純函式）；資料表 `010_salary.sql`，觸發器擋修改與刪除。網頁：`#/salary`、`#/salary/import`。

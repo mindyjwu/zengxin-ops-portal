@@ -12,6 +12,7 @@ const { svcRouter } = require('./svc');
 const { hourlyRouter } = require('./hourly');
 const { payslipsRouter } = require('./pay-months');
 const { splitRouter } = require('./split');
+const { salaryRouter } = require('./salary');
 const path = require('path');
 
 function createApp({ db, verifyGoogle, config }) {
@@ -129,6 +130,7 @@ function createApp({ db, verifyGoogle, config }) {
   app.use('/api/svc', needLogin, svcRouter({ db, audit }));
   app.use('/api/pay/hourly', needLogin, hourlyRouter({ db, audit }));
   app.use('/api/pay/split', needLogin, splitRouter({ db, audit }));
+  app.use('/api/pay/salary', needLogin, salaryRouter({ db, audit }));
   app.use('/api/payslips', needLogin, payslipsRouter({ db, audit }));
   app.use('/api', needLogin, requestsRouter({ db, audit }));
   app.use(express.static(path.join(__dirname, '..', 'web'), { index: 'index.html', maxAge: 0 }));

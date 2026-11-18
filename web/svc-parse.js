@@ -178,4 +178,17 @@ function splitFromFlat(rows, extras){
   }
   return { rows: out, bad, missing: cols.filter(([k]) => idx[k] == null && k !== 'plan').map(c => c[1]) };
 }
-window.SvcParse = { splitCols, splitFromFlat,  xlsxRead, csvRead, svcAggregate, toPayload, oxBlank, oxCols, oxFromFlat, oxFromSlips, oxDeductions };
+
+/* ---- 月薪制薪資資料：員工編號、生效日、底薪、專業加給（Excel 的日期是數字，這裡轉成 YYYY-MM-DD） ---- */
+const SALARY_COLS = ['員工編號', '生效日（YYYY-MM-DD）', '底薪', '專業加給'];
+function salaryFromFlat(rows){
+  const hi = rows.findIndex(r => r && r.some(c => String(c).trim() === '員工編號'));
+  if (hi < 0) return { err: '找不到「員工編號」欄，請用「下載範本」的格式。' };
+  const head = rows[hi].map(c => String(c == null ? '' : c).trim()), col = n => head.findIndex(h => h.startsWith(n)), c = { id: col('員工編號'), date: col('生效日'), base: col('底薪'), allow: col('專業加給') };
+  if (c.date < 0 || c.base < 0) return { err: '範本要有「生效日」與「底薪」欄。' };
+  const iso = v => { const t = String(v == null ? '' : v).trim(), m = t.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/); if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`; if (/^\d{5}$/.test(t)) return new Date(Date.UTC(1899, 11, 30) + (+t) * 864e5).toISOString().slice(0, 10); return t; };
+  const out = []; for (let i = hi + 1; i < rows.length; i++) { const x = rows[i]; if (!x) continue; const id = String(x[c.id] == null ? '' : x[c.id]).trim(); if (!id) continue;
+    out.push({ empNo: id, effectiveFrom: iso(x[c.date]), baseSalary: x[c.base] == null || String(x[c.base]).trim() === '' ? '' : OX_NUM(x[c.base]), professionalAllowance: c.allow >= 0 && String(x[c.allow] == null ? '' : x[c.allow]).trim() !== '' ? OX_NUM(x[c.allow]) : 0 }); }
+  return { rows: out };
+}
+window.SvcParse = { SALARY_COLS, salaryFromFlat,  splitCols, splitFromFlat,  xlsxRead, csvRead, svcAggregate, toPayload, oxBlank, oxCols, oxFromFlat, oxFromSlips, oxDeductions };
