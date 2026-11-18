@@ -26,10 +26,11 @@ function createApp({ db, verifyGoogle, config }) {
   /* 安全標頭：不讓別的網站把我們嵌進去、不讓瀏覽器亂猜檔案類型 */
   app.use((req, res, next) => {
     const loginPage = req.path === '/' || req.path === '/index.html';
+    if (cfg.production) res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');      // 只准用 HTTPS 連（瀏覽器記一年）
     res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store',
       /* 只允許自己的程式碼與 Google 登入的腳本，擋掉別人注入的腳本。
          登入頁多放行「style 屬性」（style-src-attr）：Google 登入按鈕會替自己的元素加行內樣式；屬性不能執行程式，所以影響很小，其他頁面不放行 */
-      'Content-Security-Policy': "default-src 'self'; script-src 'self' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://accounts.google.com; style-src 'self' https://accounts.google.com; " + (loginPage ? "style-src-attr 'unsafe-inline'; " : '') + "img-src 'self' data:; base-uri 'none'; form-action 'self'" });
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' https://accounts.google.com; frame-src https://accounts.google.com; connect-src 'self' https://accounts.google.com; style-src 'self' https://accounts.google.com; " + (loginPage ? "style-src-attr 'unsafe-inline'; " : '') + "img-src 'self' data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" });
     next();
   });
   /* 會改資料的請求：如果帶了 Origin，必須是我們允許的網站（擋跨站偽造請求） */
@@ -65,7 +66,8 @@ function createApp({ db, verifyGoogle, config }) {
     res.json({ id: r.rows[0].id, name: r.rows[0].name, role: r.rows[0].role });
   };
 
-  app.get('/healthz', (req, res) => res.json({ ok: true }));
+  app.get('/healthz', (req, res) => res.json({ ok: true }));                                                  // 活著嗎（不碰資料庫）
+  app.get('/readyz', async (req, res) => { try { await db.query('SELECT 1'); res.json({ ok: true }); } catch (e) { res.status(503).json({ ok: false }); } });   // 資料庫連得上嗎（部署後的檢查用）
   /* 登入頁需要知道 Google 用戶端 ID（公開識別碼，不是密碼）與有沒有開假登入 */
   app.get('/auth/config', (req, res) => res.json({ googleClientId: cfg.googleClientId || '', devLogin: !!(cfg.devLogin && !cfg.production) }));
 

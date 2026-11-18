@@ -1,0 +1,63 @@
+name: Deploy to Cloud Run
+
+# 手動按「Run workflow」就部署；或把 GitHub 變數 GCP_AUTO_DEPLOY 設成 true，之後每次合併到 main 自動部署。
+# 還沒有雲端環境（沒設 GCP_PROJECT_ID）時整個略過，不會失敗。設定步驟見 docs/DEPLOY.md。
+# 建議在 GitHub 的 Settings > Environments > production 勾「Required reviewers」，部署前要有人按核准。
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write        # 免金鑰登入 Google Cloud（Workload Identity Federation）
+
+concurrency:
+  group: deploy-cloudrun
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    # 部署前再跑一次後端測試（含 PGlite，約 20 秒）；e2e 與容器測試在 tests.yml
+    if: ${{ vars.GCP_PROJECT_ID != '' && (github.event_name == 'workflow_dispatch' || vars.GCP_AUTO_DEPLOY == 'true') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+
+  deploy:
+    needs: gate
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION || 'asia-east1' }}
+      ALLOWED_DOMAIN: ${{ vars.PORTAL_ALLOWED_DOMAIN }}
+      PORTAL_URL: ${{ vars.PORTAL_URL }}
+      GOOGLE_CLIENT_ID: ${{ vars.PORTAL_GOOGLE_CLIENT_ID }}
+      TRUSTED_HOPS: ${{ vars.PORTAL_TRUSTED_HOPS || '1' }}
+      MIN_INSTANCES: ${{ vars.GCP_MIN_INSTANCES || '1' }}
+      MAX_INSTANCES: ${{ vars.GCP_MAX_INSTANCES || '4' }}
+      BOOTSTRAP_ADMIN_EMAIL: ${{ vars.PORTAL_BOOTSTRAP_ADMIN_EMAIL }}   # 只有第一次部署要設；之後可以刪掉
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Build and push the image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/zengxin/api:${GITHUB_SHA}"
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+      - name: Deploy (new revision gets no traffic until the smoke test passes)
+        run: scripts/gcp/deploy.sh "$IMAGE"

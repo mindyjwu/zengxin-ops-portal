@@ -13,3 +13,6 @@ test-results/
 .idea
 dist/
 build/
+
+# 雲端設定（含專案 ID 等，不進程式庫）
+scripts/gcp/config.env

@@ -1,10 +1,7 @@
-node_modules
-__tests__
-docs
-*.html
-icons
-test-results
-playwright-report
-.git
-.github
-junit-report.xml
+# 只把容器需要的放進映像（Dockerfile 只複製 server、backend、web 與套件清單）；其他全部排除，避免把文件、測試、真實檔案帶進去
+**
+!package.json
+!package-lock.json
+!server/**
+!backend/**
+!web/**
