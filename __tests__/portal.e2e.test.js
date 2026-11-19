@@ -3505,3 +3505,98 @@ test.describe('11/19 meeting: pay receipt sheets, one sheet per person', () => {
   });
 });
 
+/* ================================================================ */
+/* 11/19 會議：組織架構設定連動所有部門／職稱／單位下拉選單 */
+test.describe('11/19 meeting: org settings drive every department / title / unit dropdown', () => {
+  const openOrg = async (page, role) => { await openPortal(page); await setRole(page, role); await go(page, 'ann', 'orgcfg'); };
+  const cfgIn = (page, kind, key, f) => page.locator(`[data-orgcfg="${kind}"][data-key="${key}"][data-f="${f}"]`);
+  const openAddEmp = async page => { await go(page, 'hr', 'emp'); await page.click('[data-newemp]'); };
+  const opts = (page, sel) => page.locator(`${sel} option`).allTextContents();
+
+  test('only HR and the system administrator can edit; everyone else only sees the chart', async ({ page }) => {
+    await openPortal(page);
+    for (const role of ['employee', 'manager']) {                                    // 其他身分連分頁都看不到
+      await setRole(page, role); await go(page, 'ann');
+      await expect(page.locator('[data-tab="orgcfg"]')).toHaveCount(0);
+    }
+    for (const role of ['hr', 'admin']) { await setRole(page, role); await go(page, 'ann', 'orgcfg'); await expect(page.locator('#orgCfg')).toBeVisible(); }
+  });
+
+  test('renaming a title updates the add-employee dropdown, the people shown and the org chart', async ({ page }) => {
+    await openOrg(page, 'hr');
+    expect(await page.evaluate(() => person('A004').zh)).toBe('照服員');
+    await cfgIn(page, 'title', 'ca', 'zh').fill('照顧服務員');
+    await cfgIn(page, 'title', 'ca', 'zh').dispatchEvent('change');
+    await expect(page.locator('.toast')).toContainText('所有下拉選單已同步');
+    expect(await page.evaluate(() => [person('A004').zh, person('A007').zh])).toEqual(['照顧服務員', '照顧服務員']);   // 所有人身上的職稱文字跟著變
+    await openAddEmp(page);
+    expect(await opts(page, '#newEmpForm select[name="title"]')).toContain('照顧服務員');
+    expect(await opts(page, '#newEmpForm select[name="title"]')).not.toContain('照服員');
+    await page.click('aside.drawer button.x');
+    await setRole(page, 'admin'); await go(page, 'perm', 'orgfn');
+    await expect(page.locator('#view')).toContainText('照顧服務員');                              // 組織圖上的職稱
+    await expect(page.locator('#view')).not.toContainText('照服員');
+  });
+
+  test('a new department appears in the dropdowns once it is placed under a unit; retiring hides it but keeps people', async ({ page }) => {
+    await openOrg(page, 'hr');
+    await page.fill('[data-orgadd="dept"] input[name="zh"]', '營運企劃');
+    await page.click('[data-orgadd="dept"] button');
+    await expect(page.locator('.toast')).toContainText('營運企劃');
+    await openAddEmp(page);                                                          // 還沒放進任何單位，部門選單不會出現
+    await page.selectOption('#neUnit', 'O2');
+    expect(await opts(page, '#neDept')).not.toContain('營運企劃');
+    await page.click('aside.drawer button.x');
+    await go(page, 'ann', 'orgcfg');
+    const key = await page.evaluate(() => Object.keys(DEPTS).find(k => DEPTS[k].zh === '營運企劃'));
+    await page.check(`[data-orgud="O2:${key}"]`);                                      // 放進誠芯
+    await openAddEmp(page);
+    await page.selectOption('#neUnit', 'O2');
+    expect(await opts(page, '#neDept')).toContain('營運企劃');
+    await page.click('aside.drawer button.x');
+    await go(page, 'ann', 'orgcfg');
+    await page.click(`[data-orgoff="dept:${key}"]`);                                   // 停用
+    await openAddEmp(page);
+    await page.selectOption('#neUnit', 'O2');
+    expect(await opts(page, '#neDept')).not.toContain('營運企劃');
+    await page.click('aside.drawer button.x');
+    await go(page, 'ann', 'orgcfg');
+    await page.click('[data-orgoff="title:sw"]');                                      // 停用「社工」：選單不再出現，已經在用的人照舊顯示
+    await expect(page.locator('.toast')).toContainText('人使用中，照舊顯示');
+    await openAddEmp(page);
+    expect(await opts(page, '#newEmpForm select[name="title"]')).not.toContain('社工');
+    expect(await page.evaluate(() => person('A005').zh)).toBe('社工');
+  });
+
+  test('the org chart department filter follows the department list', async ({ page }) => {
+    await openOrg(page, 'hr');
+    await cfgIn(page, 'dept', 'day', 'zh').fill('日間照顧');
+    await cfgIn(page, 'dept', 'day', 'zh').dispatchEvent('change');
+    await setRole(page, 'admin'); await go(page, 'perm', 'orgfn');
+    expect(await opts(page, '#orgDept')).toContain('日間照顧');
+    expect(await opts(page, '#orgDept')).not.toContain('日照');
+  });
+
+  test('blank or duplicate names are refused, and a department in use cannot be removed from its unit', async ({ page }) => {
+    await openOrg(page, 'hr');
+    await cfgIn(page, 'title', 'ca', 'zh').fill('   ');
+    await cfgIn(page, 'title', 'ca', 'zh').dispatchEvent('change');
+    await expect(page.locator('.toast')).toContainText('不能空白');
+    expect(await page.evaluate(() => TITLES.ca.zh)).toBe('照服員');
+    await cfgIn(page, 'title', 'ca', 'zh').fill('護理師');                              // 與另一個職稱同名
+    await cfgIn(page, 'title', 'ca', 'zh').dispatchEvent('change');
+    await expect(page.locator('.toast')).toContainText('已經有同名');
+    expect(await page.evaluate(() => TITLES.ca.zh)).toBe('照服員');
+    await page.fill('[data-orgadd="title"] input[name="zh"]', '社工');
+    await page.click('[data-orgadd="title"] button');
+    await expect(page.locator('.toast')).toContainText('已經有同名');
+    await expect(page.locator('[data-orgud="O1:day"]')).toBeDisabled();                // 協會的日照有人在用
+  });
+
+  test('the guide records the org settings', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    const sec = page.locator('#newv35');
+    for (const w of ['組織架構設定', '連動所有下拉選單', '停用']) await expect(sec).toContainText(w);
+  });
+});
+

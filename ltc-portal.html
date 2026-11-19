@@ -520,11 +520,17 @@ const RAW = [
  ['D002','社工','O4','sw','day','2023-04-10','502','P2',51000,'full','D001']
 ];
 const LEGACY_NO = {H001:'E1001', H002:'E1002', H003:'E1003', H004:'E1004', H005:'E1005', H006:'E1006', A001:'E2101', A002:'E2102', A003:'E2103', A004:'E2104', A005:'E2105', A006:'E2106', A007:'E2107', A008:'E2108', A009:'E2109', A010:'E2110', B001:'E2201', B002:'E2202', B003:'E2203', B004:'E2204', B005:'E2205', B006:'E2206', B007:'E2207', B008:'E2208', B009:'E2209', C001:'E2301', C002:'E2302', C003:'E2303', D001:'E4101', D002:'E4102'};   // 新編號 → 舊編號：示範資料（姓名、出勤、手機）的亂數種子沿用舊編號，換前綴不會改變內容
+/* 職稱名稱以 TITLES 為準：HR 在「組織架構設定」改職稱名稱時，所有人員身上的職稱文字跟著變 */
+const linkTitle = s => { ['zh','en'].forEach(k=>Object.defineProperty(s,k,{get(){ return (TITLES[s.title]||{})[k]||''; }, configurable:true, enumerable:true})); return s; };
+/* 部門、職稱、單位的下拉選單都從這三個清單即時產生（單一來源）；停用的不再出現在選單，已經在用的照舊顯示（keep＝目前已選的值一定留著） */
+const titleList = keep => Object.entries(TITLES).filter(([k,v])=>!v.off||k===keep);
+const deptList  = keep => Object.entries(DEPTS).filter(([k,v])=>!v.off||k===keep);
 const STAFF = RAW.map(r=>({
   id:r[0], zh:r[1], en:TITLES[r[3]].en, unit:r[2], title:r[3], titleKey:r[3], dept:r[4],
   hired:r[5], ext:r[6], band:r[7], salary:r[8], type:r[9], mgr:r[10],
   mobile:'09'+LEGACY_NO[r[0]].slice(1,3)+'-'+LEGACY_NO[r[0]].slice(3)+'8-'+LEGACY_NO[r[0]].slice(2)+'1'
 }));
+STAFF.forEach(linkTitle);
 const person = id => STAFF.find(s=>s.id===id);
 /* 在職狀態（9/30 會議：在職、留職停薪、離職）。示範資料：兩位同仁帶有狀態，其餘皆在職 */
 const EMP_STATUS = {active:{zh:'在職',en:'Active',cls:'ok'}, loa:{zh:'留職停薪',en:'Unpaid leave of absence',cls:'warn'}, left:{zh:'離職',en:'Resigned',cls:''}};
@@ -970,7 +976,8 @@ const MODULES = [
   {id:'ann', zh:'公告欄', en:'Announcements', built:true, tabs:[
     {id:'board',  zh:'公告',     en:'Board'},
     {id:'cal',    zh:'公司行事曆', en:'Calendar'},
-    {id:'org',    zh:'組織圖',    en:'Org chart'}
+    {id:'org',    zh:'組織圖',    en:'Org chart'},
+    {virtual:true, id:'orgcfg', zh:'組織架構設定', en:'Org settings'}   // 只有人資與系統管理員看得到；不另外長出權限對照表的列
   ]},
   {id:'hr', zh:'人事系統', en:'HR', built:true, perm:'mgmt', tabs:[
     {virtual:true, id:'todo', zh:'今日待辦', en:'Today’s to-do'},
@@ -1030,6 +1037,7 @@ function payEdit(){
 function itemAllowed(modId, tabId){
   const col=roleColLive(), m=MODULES.find(x=>x.id===modId);
   if(modId==='pay' && ['monthly','hourly','split'].includes(tabId)) return itemAllowed('pay','run');   // 三種計薪頁籤：權限同「薪資試算」
+  if(modId==='ann' && tabId==='orgcfg') return canOrgCfg();   // 組織架構設定：人資與系統管理員
   if(modId==='hr' && tabId==='todo') return ['emp','att','leave'].some(t=>itemAllowed('hr',t));   // 待辦不在 Excel 內：只要看得到人事的任一頁就看得到
   if(!col) return !m.perm || can(m.perm);
   if(modId==='perm' && can('perms')) return true;
@@ -1201,7 +1209,7 @@ function render(){
   const fn={
     'arch:scope':viewArchScope, 'arch:roles':viewArchRoles,
     'desk:home':viewDeskHome, 'desk:forms':viewDeskForms, 'desk:query':viewDeskQuery, 'desk:course':viewDeskCourse,
-    'ann:board':viewBoard, 'ann:cal':viewCalendar, 'ann:org':viewOrgFormal,
+    'ann:board':viewBoard, 'ann:cal':viewCalendar, 'ann:org':viewOrgFormal, 'ann:orgcfg':viewOrgCfg,
     'hr:todo':viewTodo, 'hr:emp':viewEmployees, 'hr:mylog':viewMyHours, 'hr:att':viewAttendance, 'hr:leave':viewLeave,
     'perm:matrix':viewMatrix, 'perm:orgfn':viewOrgFn, 'perm:open':viewOpen,
     'doc:comp':viewDocCompliance, 'doc:guide':viewDocGuides, 'doc:meeting':viewDocMeeting, 'doc:sysinfo':viewDocSysInfo, 'doc:cmp104':viewDocCmp104,
@@ -1665,7 +1673,7 @@ function viewOrgFn(){
       <h2>${esc(both('組織圖與通訊錄','Org chart & directory'))}</h2>
       <span class="en">${esc(both(hits+' / '+STAFF.length+' 人 · '+OFFICES.length+' 個主體單位＋共用行政（示範人員）',hits+' / '+STAFF.length+' people · '+OFFICES.length+' entities + shared admin (demo staff)'))}</span>
       <div class="spacer"></div>
-      <select id="orgDept" title="${esc(both('部門篩選','Filter by department'))}"><option value="ALL">${esc(both('全部部門','All departments'))}</option>${Object.keys(DEPTS).map(d=>`<option value="${d}" ${d===dd?'selected':''}>${esc(both(DEPTS[d].zh,DEPTS[d].en))}</option>`).join('')}</select>
+      <select id="orgDept" title="${esc(both('部門篩選','Filter by department'))}"><option value="ALL">${esc(both('全部部門','All departments'))}</option>${deptList(dd).map(([d,v])=>`<option value="${d}" ${d===dd?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}</select>
       <input type="search" id="orgQ" placeholder="${esc(both('搜尋姓名、職稱、分機','Search name, title, extension'))}" value="${esc(state.dirQ)}" style="min-width:210px">
       ${canOrgEdit()?`<button class="btn ghost mini" data-orgedit-toggle aria-pressed="${ed}">${esc(ed?both('完成編輯','Done editing'):both('編輯組織圖（增加／刪除／改文字）','Edit chart (add / remove / edit labels)'))}</button>`:`<span class="muted" style="font-size:12.5px">${esc(both('只有管理者與系統管理員可以增減組織圖','Only the manager and system administrator can add or remove people'))}</span>`}
       <span class="chip ${scopeLocked()?'warn':'acc'}">${esc(scopeLocked()
@@ -1676,7 +1684,7 @@ function viewOrgFn(){
       'Click anyone to see their extension, phone, mobile and email at the bottom right. Working view: positions and places, so colleagues can find the right contact; the formal full-name version is under Announcements › Org chart. Staff will be able to edit labels themselves, but changes only persist once cloud storage is connected (for now they live in this browser session).'))}</div>
     ${ed?`<form id="orgAddForm" class="frm" style="padding:10px 14px"><div class="muted" style="font-size:12.5px;margin-bottom:6px">${esc(both('增加：選單位與部門，輸入姓名與職稱。這只是組織圖上的位置（示範）；要新增員工資料請到「人事系統 › 員工資料」。刪除：按 ✕，只是從圖上拿掉，不會刪除員工資料。','Add: choose the unit and department, then type a name and title. This only adds a position on the chart (demo); add the employee record under HR › Employee records. Remove: press ✕; it only removes the box, not the employee record.'))}</div>
       <div class="row"><div><label>${esc(both('單位','Unit'))}</label><select name="unit"><option value="HQ">${esc(both('共用行政','Shared administration'))}</option>${OFFICES.map(o=>`<option value="${o.id}">${esc(o.zh)}</option>`).join('')}</select></div>
-        <div><label>${esc(both('部門','Department'))}</label><select name="dept">${Object.keys(DEPTS).map(d=>`<option value="${d}">${esc(both(DEPTS[d].zh,DEPTS[d].en))}</option>`).join('')}</select></div>
+        <div><label>${esc(both('部門','Department'))}</label><select name="dept">${deptList().map(([d,v])=>`<option value="${d}">${esc(both(v.zh,v.en))}</option>`).join('')}</select></div>
         <div><label>${esc(both('姓名與職稱','Name and title'))}</label><input name="label" required maxlength="30" placeholder="${esc(both('例如：王小明 · 照服員','e.g. Alex · care attendant'))}" lang="zh-Hant"></div>
         <div><button class="btn mini" type="submit">${esc(both('加到組織圖','Add to the chart'))}</button></div></div></form>`:''}
     <div class="orgwrap">
@@ -1730,6 +1738,39 @@ function contactPanel(){
   </aside>`;
 }
 function viewOrgFormal(){ return `<div class="grid">${titleStructureCard()}</div>`; }
+function viewOrgCfg(){ return `<div class="grid">${orgCfgCard()}</div>`; }
+/* ---------- 組織架構設定（11/19 會議）：部門、職稱、單位名稱的唯一來源 ----------
+   所有表單與頁面的「部門／職稱／單位」下拉選單都從這裡即時產生：HR 改了，全部自動同步。
+   停用＝不再出現在下拉選單；已經在用的人與歷史資料照舊顯示。新增單位牽涉資料範圍與簽核，之後再做。 */
+const canOrgCfg=()=>['hr','admin'].includes(state.role);
+const orgKinds={title:{zh:'職稱',en:'Titles'}, dept:{zh:'部門',en:'Departments'}, unit:{zh:'單位',en:'Units'}};
+const orgObj=(kind,key)=>kind==='title'?TITLES[key]:kind==='dept'?DEPTS[key]:ALL_UNITS.find(u=>u.id===key);
+const orgUse=(kind,key)=>STAFF.filter(x=>kind==='title'?x.title===key:kind==='dept'?x.dept===key:x.unit===key).length;
+function orgCfgCard(){
+  if(!canOrgCfg()) return '';
+  const head=k=>`<thead><tr><th>${bi('代號','Code')}</th><th>${bi('中文名稱','Chinese name')}</th><th>${bi('英文名稱','English name')}</th><th>${bi('使用中','In use')}</th><th>${k==='unit'?bi('旗下部門','Departments'):bi('狀態','Status')}</th></tr></thead>`;
+  const names=(kind,key,o)=>`<td class="mono">${esc(key)}</td>
+    <td><input data-orgcfg="${kind}" data-key="${esc(key)}" data-f="zh" value="${esc(o.zh)}" maxlength="20" lang="zh-Hant" aria-label="${esc(both('中文名稱','Chinese name')+' '+key)}"></td>
+    <td><input data-orgcfg="${kind}" data-key="${esc(key)}" data-f="en" value="${esc(o.en)}" maxlength="40" aria-label="${esc(both('英文名稱','English name')+' '+key)}"></td>
+    <td class="num">${orgUse(kind,key)}</td>`;
+  const listRows=(kind,obj)=>Object.entries(obj).map(([k,o])=>`<tr class="${o.off?'muted':''}">${names(kind,k,o)}
+    <td><button class="btn ghost mini" data-orgoff="${kind}:${esc(k)}">${esc(o.off?both('啟用','Enable'):both('停用','Retire'))}</button>${o.off?` <span class="chip">${esc(both('已停用','Retired'))}</span>`:''}</td></tr>`).join('');
+  const unitRows=ALL_UNITS.map(u=>`<tr>${names('unit',u.id,u)}<td>${Object.entries(DEPTS).filter(([d,v])=>!v.off||u.depts.includes(d)).map(([d,v])=>{
+      const on=u.depts.includes(d), used=STAFF.some(x=>x.unit===u.id&&x.dept===d);
+      return `<label class="chip" style="margin-right:6px"><input type="checkbox" data-orgud="${u.id}:${d}" ${on?'checked':''} ${on&&used?'disabled title="'+esc(both('有人在用，不能移除','In use — cannot remove'))+'"':''}> ${esc(both(v.zh,v.en))}</label>`; }).join('')}</td></tr>`).join('');
+  const add=k=>`<form class="frm" data-orgadd="${k}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:8px">
+      <div><label>${esc(both('新增'+orgKinds[k].zh,'Add '+orgKinds[k].en))}</label><input name="zh" required maxlength="20" lang="zh-Hant" placeholder="${esc(both('中文名稱','Chinese name'))}"></div>
+      <div><input name="en" maxlength="40" placeholder="${esc(both('英文名稱（選填）','English name (optional)'))}"></div>
+      <div><button class="btn mini" type="submit">${esc(both('新增','Add'))}</button></div></form>`;
+  return `<section class="card" id="orgCfg"><div class="card-h"><h2>${esc(both('組織架構設定','Organisation settings'))}</h2><span class="chip acc">${esc(both('連動所有下拉選單','Drives every dropdown'))}</span></div>
+    <div class="card-b" style="display:grid;grid-template-columns:minmax(0,1fr);gap:14px">
+      <div class="note">${esc(both('部門、職稱與單位名稱只在這裡維護。改了之後，所有表單與頁面裡的「部門／職稱／單位」下拉選單（新增員工、組織圖篩選、報表篩選等）會自動同步，不用到處去改。停用的項目不再出現在下拉選單，已經在用的人照舊顯示。示範站重新整理會還原，正式版會存在資料庫。','Department, title and unit names are maintained only here. After a change every dropdown for department / title / unit across the forms and pages (add employee, org chart filter, report filters…) updates by itself. Retired items disappear from dropdowns while the people already using them are unchanged. The demo resets on reload; the real version keeps this in the database.'))}</div>
+      <div><div class="eyebrow">${esc(both('職稱','Titles'))} · ${Object.keys(TITLES).length}</div><div class="tablewrap" style="max-height:300px;overflow:auto"><table class="todotbl">${head('title')}<tbody>${listRows('title',TITLES)}</tbody></table></div>${add('title')}</div>
+      <div><div class="eyebrow">${esc(both('部門','Departments'))} · ${Object.keys(DEPTS).length}</div><div class="tablewrap"><table class="todotbl">${head('dept')}<tbody>${listRows('dept',DEPTS)}</tbody></table></div>${add('dept')}</div>
+      <div><div class="eyebrow">${esc(both('單位（公司）與旗下部門','Units and their departments'))}</div><div class="tablewrap"><table class="todotbl">${head('unit')}<tbody>${unitRows}</tbody></table></div>
+        <div class="legend">${esc(both('單位的代號與資料範圍、員工編號前綴綁在一起，目前只能改名稱與旗下部門；新增單位之後再做。各職稱需要哪些權限，仍在「權限與設定」的職稱對照表設定；新增的職稱在設定前先當一般員工。','A unit’s code is tied to data scope and the employee-number prefix, so only names and departments can change for now; adding units comes later. What each title may do is still set in the title permission matrix; a new title acts as a regular employee until set.'))}</div></div>
+    </div></section>`;
+}
 /* 組織架構（需求端 10/13 提供的組織圖 PDF）：4 個主體單位（1 協會＋3 公司）、各附設機構、業務負責人、單位與職稱。
    目前仍因業務需求動態調整，之後會逐步收斂各業務、與部分機構整合，屆時組織圖與職稱可能再統一調整；簽核流程有部分與組織圖不同，需求端再想怎麼呈現。
    「A個管」是政府的命名（Ａ單位個管師）。圖上的兩個浮動主管（日照主管、A個管主管）以虛線箭頭連到各單位。 */
@@ -1818,6 +1859,34 @@ BINDERS['perm:orgfn']=function(){
   document.querySelectorAll('[data-orgedit]').forEach(i=>i.onchange=()=>{ (state.orgEdits||(state.orgEdits={}))[i.dataset.orgedit]=i.value.trim(); toast(both('已修改（示範：要等雲端儲存串接後才會真正保存）','Edited (demo: it will only persist once cloud storage is connected)')); });
 };
 BINDERS['ann:org']=function(){};
+BINDERS['ann:orgcfg']=function(){
+  if(!canOrgCfg()) return;
+  const done=m=>{ toast(both(m+'；所有下拉選單已同步',m+'; every dropdown is in sync')); render(); };
+  const dup=(kind,key,v)=>kind!=='unit' ? Object.entries(kind==='title'?TITLES:DEPTS).some(([k,o])=>k!==key&&!o.off&&o.zh===v) : ALL_UNITS.some(u=>u.id!==key&&u.zh===v);
+  document.querySelectorAll('[data-orgcfg]').forEach(i=>i.onchange=()=>{
+    const kind=i.dataset.orgcfg, key=i.dataset.key, f=i.dataset.f, o=orgObj(kind,key), v=i.value.trim();
+    if(f==='zh'&&!v){ toast(both('中文名稱不能空白','The Chinese name cannot be blank')); render(); return; }
+    if(f==='zh'&&dup(kind,key,v)){ toast(both('已經有同名的'+orgKinds[kind].zh+'：'+v,'That name is already used: '+v)); render(); return; }
+    o[f]=f==='en'&&!v?o.zh:v; done('已把「'+orgKinds[kind].zh+'」'+key+' 改成 '+o[f]);
+  });
+  document.querySelectorAll('[data-orgoff]').forEach(b=>b.onclick=()=>{
+    const [kind,key]=b.dataset.orgoff.split(':'), o=orgObj(kind,key); o.off=!o.off;
+    done((o.off?'已停用 ':'已啟用 ')+L(o)+(o.off&&orgUse(kind,key)?'（'+orgUse(kind,key)+' 人使用中，照舊顯示）':''));
+  });
+  document.querySelectorAll('[data-orgud]').forEach(c=>c.onchange=()=>{
+    const [uid,d]=c.dataset.orgud.split(':'), u=ALL_UNITS.find(x=>x.id===uid);
+    if(c.checked){ if(!u.depts.includes(d)) u.depts.push(d); } else u.depts=u.depts.filter(x=>x!==d);
+    done((c.checked?'已把部門加到 ':'已把部門從 ')+u.zh+(c.checked?'':' 移除'));
+  });
+  document.querySelectorAll('[data-orgadd]').forEach(f=>f.onsubmit=e=>{
+    e.preventDefault(); const kind=f.dataset.orgadd, fd=new FormData(f), zh=String(fd.get('zh')||'').trim(), en=String(fd.get('en')||'').trim()||zh;
+    if(!zh) return;
+    if(dup(kind,'',zh)){ toast(both('已經有同名的'+orgKinds[kind].zh+'：'+zh,'That name is already used: '+zh)); return; }
+    const obj=kind==='title'?TITLES:DEPTS, key=(kind==='title'?'t':'d')+(state.orgSeq=(state.orgSeq||0)+1);
+    obj[key]={zh,en};
+    done('已新增'+orgKinds[kind].zh+'：'+zh+(kind==='dept'?'（請在下面的「單位與旗下部門」勾選它屬於哪些單位，新增員工的部門選單才會出現）':''));
+  });
+};
 
 /* 中文輸入（注音）時不要在組字中途重新繪製畫面，否則輸入會被打斷：組字結束（compositionend）才更新 */
 function bindSearch(id,key){
@@ -1939,7 +2008,7 @@ function nextEmpNo(unitId){
 function openAddEmp(){
   if(!can('editEmp')) return;
   const units=ALL_UNITS, u0=units[1].id;
-  const deptOpts=u=>unit(u).depts.map(d=>`<option value="${d}">${esc(both(DEPTS[d].zh,DEPTS[d].en))}</option>`).join('');
+  const deptOpts=u=>unit(u).depts.filter(d=>!DEPTS[d].off).map(d=>`<option value="${d}">${esc(both(DEPTS[d].zh,DEPTS[d].en))}</option>`).join('');
   document.getElementById('overlay').innerHTML=`
     <div class="scrim" data-close></div>
     <aside class="drawer" role="dialog" aria-modal="true">
@@ -1953,7 +2022,7 @@ function openAddEmp(){
         </div>
         <div class="row">
           <div><label>${esc(both('部門','Department'))}</label><select name="dept" id="neDept">${deptOpts(u0)}</select></div>
-          <div><label>${esc(both('職稱','Title'))}</label><select name="title">${Object.entries(TITLES).map(([k,v])=>`<option value="${k}" ${k==='ca'?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}</select></div>
+          <div><label>${esc(both('職稱','Title'))}</label><select name="title">${titleList().map(([k,v])=>`<option value="${k}" ${k==='ca'?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}</select></div>
         </div>
         <div class="row">
           <div><label>${esc(both('姓名','Name'))}</label><input name="name" required maxlength="20"></div>
@@ -1974,8 +2043,8 @@ function openAddEmp(){
     const id=nextEmpNo(unitId);
     LEGACY_NO[id]='E'+(9000+STAFF.length);              // 示範資料的亂數種子
     const lead=STAFF.find(x=>x.unit===unitId&&(x.title==='dir'||x.title==='sup'));
-    STAFF.push({id, zh:TITLES[tk].zh, en:TITLES[tk].en, unit:unitId, title:tk, titleKey:tk, dept:fd.get('dept'), hired:fd.get('hired'),
-      ext:'—', band:'G1', salary:can('salary')?(+fd.get('salary')||0):0, type:'full', mgr:lead?lead.id:'H002', mobile:'', status:'active', statusSince:'', prevNo:(fd.get('prevNo')||'').toString().trim()});
+    STAFF.push(linkTitle({id, zh:TITLES[tk].zh, en:TITLES[tk].en, unit:unitId, title:tk, titleKey:tk, dept:fd.get('dept'), hired:fd.get('hired'),
+      ext:'—', band:'G1', salary:can('salary')?(+fd.get('salary')||0):0, type:'full', mgr:lead?lead.id:'H002', mobile:'', status:'active', statusSince:'', prevNo:(fd.get('prevNo')||'').toString().trim()}));
     empRecord(id).basic.name=fd.get('name').toString().trim();
     closeOverlay(); state.q=''; toast(both('已新增 '+id+'（編號自動帶入）',id+' added (number filled in automatically)'));
     render(); openPerson(id);
