@@ -1414,11 +1414,13 @@ test.describe('Cash pay for staff without a bank account', () => {
     await expect(page.locator('.tile', { hasText: '現金發放' })).toContainText(total);
     const list = page.locator('#cashList');
     await expect(list.locator('tbody tr')).toHaveCount(3);          // 2 staff + total
-    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-cashcsv]')]);
-    expect(dl.suggestedFilename()).toBe('現金發薪簽收清冊_2026-08.csv');
-    const lines = fs.readFileSync(await dl.path(), 'utf8').replace(/^﻿/, '').trim().split('\n');
-    expect(lines[0]).toContain('領款人簽名');
-    expect(lines.length).toBe(4);
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-cashxlsx]')]);
+    expect(dl.suggestedFilename()).toBe('薪資發放簽收清冊_2026-08.xlsx');
+    const buf = fs.readFileSync(await dl.path());
+    expect(buf.subarray(0, 2).toString()).toBe('PK');
+    const text = buf.toString('utf8');
+    expect((text.match(/<sheet name="/g) || []).length).toBe(2);       // 每位員工一個工作頁
+    for (const s of ['A007', 'B006', '領款人簽名']) expect(text).toContain(s);
   });
 
   test('payroll CSV has a pay-method column and no overnight column', async ({ page }) => {
@@ -3445,6 +3447,61 @@ test.describe('11/19 meeting: payroll split into monthly, hourly and revenue-sha
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     const sec = page.locator('#newv35');
     for (const w of ['薪資計算拆成三個頁籤', '月薪＋拆帳', '在拆帳制頁籤直接上傳']) await expect(sec).toContainText(w);
+  });
+});
+
+/* ================================================================ */
+/* 11/19 會議：薪資發放簽收清冊每位員工獨立一頁，實發為負數另出代扣單 */
+test.describe('11/19 meeting: pay receipt sheets, one sheet per person', () => {
+  const build = (page, res, ids) => page.evaluate(async ({ res, ids }) => {
+    const r = paySheets(res, '2026-08', ids);
+    const dec = async sheets => { const t = new TextDecoder().decode(new Uint8Array(await buildXlsxBook(sheets).arrayBuffer()));
+      return { names: [...t.matchAll(/<sheet name="([^"]*)"/g)].map(m => m[1]), xml: [...t.matchAll(/<worksheet[\s\S]*?<\/worksheet>/g)].map(m => m[0]) }; };
+    return { recvNames: r.recv.map(x => x.name), oweNames: r.owe.map(x => x.name), recv: await dec(r.recv), owe: await dec(r.owe) };
+  }, { res, ids });
+
+  test('each person gets their own sheet in one file; no sheet shows anyone else’s pay', async ({ page }) => {
+    await openPortal(page);
+    const r = await build(page, { A007: { gross: 31234, net: 28888 }, B006: { gross: 26000, net: 24567 } }, ['A007', 'B006']);
+    expect(r.recv.names).toEqual(['A007 ' + r.recvNames[0].slice(5), 'B006 ' + r.recvNames[1].slice(5)]);
+    expect(r.recv.xml).toHaveLength(2);
+    expect(r.recv.xml[0]).toContain('<v>28888</v>');  expect(r.recv.xml[0]).not.toContain('24567'); expect(r.recv.xml[0]).not.toContain('B006');
+    expect(r.recv.xml[1]).toContain('<v>24567</v>');  expect(r.recv.xml[1]).not.toContain('28888'); expect(r.recv.xml[1]).not.toContain('A007');
+    for (const x of r.recv.xml) { for (const w of ['領款人簽名', '發放人簽名', '薪資發放簽收單']) expect(x).toContain(w);
+      expect(x).toContain('fitToPage'); expect(x).toContain('<pageSetup');              // 整本一起列印，每人剛好一張紙
+    }
+    expect(r.oweNames).toEqual([]);
+  });
+
+  test('a negative net pay is not a receipt: it gets a separate deduction notice to pay back', async ({ page }) => {
+    await openPortal(page);
+    const r = await build(page, { A007: { gross: 31234, net: 28888 }, B006: { gross: 20000, net: -1500 } }, ['A007', 'B006']);
+    expect(r.recv.names).toHaveLength(1); expect(r.recv.names[0]).toMatch(/^A007 /);   // 負數的人不在簽收清冊
+    expect(r.owe.names).toHaveLength(1);  expect(r.owe.names[0]).toMatch(/^B006 /);
+    const x = r.owe.xml[0];
+    for (const w of ['薪資代扣繳款單（實發為負數）', '應自行繳納金額', '員工簽名', '收款人簽名']) expect(x).toContain(w);
+    expect(x).toContain('<v>1500</v>');                                                // 金額用正數顯示「要繳多少」
+    expect(x).not.toContain('<v>-');
+    expect(r.recv.xml[0]).not.toContain('1500');
+  });
+
+  test('the payroll page offers the per-person Excel and the deduction notices when someone’s net is negative', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'run');
+    await page.selectOption('#payMonth', '2026-08');
+    await expect(page.locator('[data-cashxlsx]')).toBeVisible();
+    await expect(page.locator('[data-owexlsx]')).toHaveCount(0);
+    await expect(page.locator('#cashList')).toContainText('每位員工一頁');
+    await page.evaluate(() => { payrun('2026-08').adj['A007'] = [{ label: 'e2e 大額扣款', reason: 'test', amount: -9999999 }]; render(); });
+    await expect(page.locator('[data-owexlsx]')).toContainText('1 位實發為負數');
+    await expect(page.locator('#cashList .note.warn')).toContainText('不能領款簽收');
+    await expect(page.locator('#cashList .note.warn')).toContainText('A007');
+    await expect(page.locator('[data-cashxlsx]')).toBeVisible();                       // 其他現金領薪的同仁還是照常簽收
+  });
+
+  test('the guide records the receipt sheets', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    const sec = page.locator('#newv35');
+    for (const w of ['薪資發放簽收清冊', '每位員工一個工作頁', '代扣單']) await expect(sec).toContainText(w);
   });
 });
 
