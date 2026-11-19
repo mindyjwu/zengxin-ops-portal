@@ -4117,3 +4117,108 @@ test.describe('11/19 meeting: org single source of truth', () => {
     for (const w of ['組織架構單一來源', '機構／地點', '尚未統一']) await expect(page.locator('#newv35')).toContainText(w);
   });
 });
+
+/* 10/20 會議：報價單、出差申請、零佣金申請照組織圖 V3 逐層往上簽 */
+test.describe('10/20 meeting: approval forms go up the chart level by level', () => {
+  const open = async (page, role) => { await openPortal(page); await setRole(page, role); await go(page, 'desk', 'biz'); };
+  const file = async (page, kind, fields) => {
+    await page.click(`[data-biznew="${kind}"]`);
+    for (const [k, v] of Object.entries(fields)) await page.fill(`#bizForm [name="${k}"]`, v);
+    await page.click('#bizForm button[type="submit"]');
+  };
+  const trip = { dest: '台北市', note: '外部會議', amount: '3000' };
+  const toSignIds = page => page.locator('[data-bizact$=":ok"]').evaluateAll(els => els.map(e => e.dataset.bizact.split(':')[0]));
+
+  test('three forms exist and the preview shows the supervisor chain up to manager and owner', async ({ page }) => {
+    await open(page, 'daysw');
+    await expect(page.locator('[data-biznew]')).toHaveText(['報價單', '出差申請', '零佣金申請']);
+    await page.click('[data-biznew="trip2"]');
+    await page.fill('#bizForm [name="amount"]', '3000');
+    const prev = page.locator('#bizPreview');
+    for (const w of ['日照主管', '管理者', '老闆']) await expect(prev).toContainText(w);
+  });
+
+  test('each level signs in turn; nobody sees it before their turn; the last approval finishes it', async ({ page }) => {
+    await open(page, 'daysw');
+    await file(page, 'trip2', trip);
+    const id = await page.evaluate(() => BIZ_REQ[0].id);
+    await expect(page.locator('#view')).toContainText('第 1 / 3 層簽核中');
+    await setRole(page, 'manager'); await go(page, 'desk', 'biz');
+    expect(await toSignIds(page)).not.toContain(id);                          // 輪不到管理者：第 1 層是日照主管
+    await setRole(page, 'daydir'); await go(page, 'desk', 'biz');
+    expect(await toSignIds(page)).toContain(id);
+    await page.click(`[data-bizact="${id}:ok"]`);
+    await setRole(page, 'boss'); await go(page, 'desk', 'biz');
+    expect(await toSignIds(page)).not.toContain(id);                          // 還沒到老闆
+    await setRole(page, 'manager'); await go(page, 'desk', 'biz');
+    await page.click(`[data-bizact="${id}:ok"]`);
+    await setRole(page, 'boss'); await go(page, 'desk', 'biz');
+    await page.click(`[data-bizact="${id}:ok"]`);
+    expect(await page.evaluate(i => BIZ_REQ.find(x => x.id === i).status, id)).toBe('approved');
+    await setRole(page, 'daysw'); await go(page, 'desk', 'biz');
+    await expect(page.locator('#view')).toContainText('已核准');
+  });
+
+  test('a rejection needs a reason, ends the request and shows the reason to the applicant', async ({ page }) => {
+    await open(page, 'daysw');
+    await file(page, 'zero', { who: '示範客戶', amount: '5000', note: '長期合作' });
+    const id = await page.evaluate(() => BIZ_REQ[0].id);
+    await setRole(page, 'daydir'); await go(page, 'desk', 'biz');
+    await page.click(`[data-bizact="${id}:reject"]`);
+    await expect(page.locator('.toast')).toContainText('駁回一定要寫理由');
+    expect(await page.evaluate(i => BIZ_REQ.find(x => x.id === i).status, id)).toBe('pending');
+    await page.fill(`[data-biznote="${id}"]`, '金額不合理');
+    await page.click(`[data-bizact="${id}:reject"]`);
+    await setRole(page, 'daysw'); await go(page, 'desk', 'biz');
+    await expect(page.locator('#view')).toContainText('已駁回');
+    await expect(page.locator('#view')).toContainText('金額不合理');
+  });
+
+  test('the applicant can withdraw while it is open; nobody can approve their own request', async ({ page }) => {
+    await open(page, 'daysw');
+    await file(page, 'quote', { who: '示範客戶', amount: '20000' });
+    const id = await page.evaluate(() => BIZ_REQ[0].id);
+    await page.click(`[data-bizwd="${id}"]`);
+    expect(await page.evaluate(i => BIZ_REQ.find(x => x.id === i).status, id)).toBe('withdrawn');
+    const res = await page.evaluate(() => { BIZ_REQ.unshift({ id: 'Q99', kind: 'quote', emp: me().id, filed: '2026-11-19', amount: 1, f: {}, steps: [{ emp: me().id, st: 'wait', at: '', note: '' }], cur: 0, status: 'pending' }); return bizAct('Q99', 'ok', ''); });
+    expect(res.err).toContain('不能簽自己的單');
+  });
+
+  test('someone whose turn it is not cannot approve, even by calling the action directly', async ({ page }) => {
+    await open(page, 'daysw');
+    await file(page, 'trip2', trip);
+    const id = await page.evaluate(() => BIZ_REQ[0].id);
+    await setRole(page, 'manager');                                                // 第 1 層是日照主管，輪不到管理者
+    const res = await page.evaluate(i => bizAct(i, 'ok', ''), id);
+    expect(res.err).toContain('還沒輪到你簽核');
+    expect(await page.evaluate(i => BIZ_REQ.find(x => x.id === i).cur, id)).toBe(0);
+  });
+
+  test('the owner has nobody above, so a request is approved on submit', async ({ page }) => {
+    await open(page, 'boss');
+    await file(page, 'quote', { who: '示範客戶', amount: '999999' });
+    expect(await page.evaluate(() => BIZ_REQ[0].status)).toBe('approved');
+  });
+
+  test('amount rules cut the number of levels; only the manager / admin edit them', async ({ page }) => {
+    await open(page, 'daysw');
+    await expect(page.locator('[data-bizrule]')).toHaveCount(0);                   // 日照社工不能調整
+    await setRole(page, 'manager'); await go(page, 'desk', 'biz');
+    await page.click('[data-bizradd]');                                            // 新增一列（10,000 起）
+    await page.selectOption('[data-bizrule="1"][data-f="levels"]', '1');           // 10,000 元以上只簽第 1 層
+    await setRole(page, 'daysw'); await go(page, 'desk', 'biz');
+    await file(page, 'quote', { who: 'A', amount: '9999' });
+    expect(await page.evaluate(() => BIZ_REQ[0].steps.length)).toBe(3);            // 未達門檻：全部層級
+    await file(page, 'quote', { who: 'B', amount: '10000' });
+    expect(await page.evaluate(() => BIZ_REQ[0].steps.length)).toBe(1);            // 達到門檻：只簽第 1 層
+    const id = await page.evaluate(() => BIZ_REQ[0].id);
+    await setRole(page, 'daydir'); await go(page, 'desk', 'biz');
+    await page.click(`[data-bizact="${id}:ok"]`);
+    expect(await page.evaluate(i => BIZ_REQ.find(x => x.id === i).status, id)).toBe('approved');
+  });
+
+  test('the guide records the approval forms', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['簽核申請單', '逐層', '金額規則']) await expect(page.locator('#newv35')).toContainText(w);
+  });
+});

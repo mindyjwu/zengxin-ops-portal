@@ -974,6 +974,7 @@ const MODULES = [
   {id:'desk', zh:'私人秘書', en:'My Desk', built:true, tabs:[
     {id:'home',   zh:'首頁', en:'Home'},
     {id:'forms',  zh:'表單', en:'Forms'},
+    {virtual:true, id:'biz', zh:'簽核申請單', en:'Approval forms'},   // 報價單、出差申請、零佣金申請：逐層簽核；權限同「表單」，不另外長出權限對照表的列
     {id:'query',  zh:'查詢', en:'Look up'},
     {id:'course', zh:'課程', en:'Courses'}
   ]},
@@ -1042,6 +1043,7 @@ function payEdit(){
 function itemAllowed(modId, tabId){
   const col=roleColLive(), m=MODULES.find(x=>x.id===modId);
   if(modId==='pay' && ['monthly','hourly','split','ins'].includes(tabId)) return itemAllowed('pay','run');   // 三種計薪頁籤：權限同「薪資試算」
+  if(modId==='desk' && tabId==='biz') return itemAllowed('desk','forms');   // 簽核申請單：權限同「表單」
   if(modId==='ann' && tabId==='orgcfg') return canOrgCfg();   // 組織架構設定：人資與系統管理員
   if(modId==='hr' && tabId==='todo') return ['emp','att','leave'].some(t=>itemAllowed('hr',t));   // 待辦不在 Excel 內：只要看得到人事的任一頁就看得到
   if(!col) return !m.perm || can(m.perm);
@@ -1213,7 +1215,7 @@ function render(){
   const key=state.tab?state.module+':'+state.tab:state.module;
   const fn={
     'arch:scope':viewArchScope, 'arch:roles':viewArchRoles,
-    'desk:home':viewDeskHome, 'desk:forms':viewDeskForms, 'desk:query':viewDeskQuery, 'desk:course':viewDeskCourse,
+    'desk:home':viewDeskHome, 'desk:forms':viewDeskForms, 'desk:biz':viewBizReq, 'desk:query':viewDeskQuery, 'desk:course':viewDeskCourse,
     'ann:board':viewBoard, 'ann:cal':viewCalendar, 'ann:org':viewOrgFormal, 'ann:orgcfg':viewOrgCfg,
     'hr:todo':viewTodo, 'hr:emp':viewEmployees, 'hr:mylog':viewMyHours, 'hr:att':viewAttendance, 'hr:leave':viewLeave,
     'perm:matrix':viewMatrix, 'perm:orgfn':viewOrgFn, 'perm:open':viewOpen,
@@ -5478,6 +5480,121 @@ function viewApprovalPath(){
     </div>
   </section>`;
 }
+/* =============================== 簽核申請單（10/20 會議）===============================
+   報價單、出差申請、零佣金申請：流程相同，照組織圖 V3 由申請人的直屬主管逐層往上簽，最後到管理者、老闆。
+   金額會影響要簽到第幾層，但門檻需求端還沒提供：預設「每一層都要簽」，管理者／系統管理員可在下方「簽核金額規則」先設定，拿到正式門檻再改。
+   欄位是暫定（需求端尚未提供表單欄位），申請人不能簽自己的單，駁回一定要寫理由。 */
+const BIZ_KINDS = {
+  quote:{zh:'報價單', en:'Quotation', fields:[
+    {k:'who', zh:'對象／案名', en:'Client / project', req:true},
+    {k:'amount', zh:'報價金額（元）', en:'Quoted amount (NT$)', type:'number', req:true},
+    {k:'note', zh:'說明', en:'Notes'}]},
+  trip2:{zh:'出差申請', en:'Business trip request', fields:[
+    {k:'dest', zh:'出差地點', en:'Destination', req:true},
+    {k:'from', zh:'出發日', en:'From', type:'date', req:true},
+    {k:'to', zh:'返回日', en:'To', type:'date', req:true},
+    {k:'amount', zh:'預估費用（元）', en:'Estimated cost (NT$)', type:'number', req:true},
+    {k:'note', zh:'事由', en:'Purpose', req:true}]},
+  zero:{zh:'零佣金申請', en:'Zero-commission request', fields:[
+    {k:'who', zh:'對象／案名', en:'Client / project', req:true},
+    {k:'amount', zh:'涉及金額（元）', en:'Amount involved (NT$)', type:'number', req:true},
+    {k:'note', zh:'原因', en:'Reason', req:true}]}
+};
+let BIZ_REQ = [
+  {id:'Q1', kind:'trip2', emp:'A005', filed:'2026-11-10', amount:1800, f:{dest:'台北市・外部教育訓練', from:'2026-11-24', to:'2026-11-24', note:'長照機構評鑑說明會'},
+   steps:[{emp:'A001',st:'ok',at:'2026-11-11',note:''},{emp:'H002',st:'wait',at:'',note:''},{emp:'H001',st:'wait',at:'',note:''}], cur:1, status:'pending'},
+  {id:'Q2', kind:'quote', emp:'B005', filed:'2026-11-12', amount:85000, f:{who:'示範對象・居家服務方案', note:'年度合約報價'},
+   steps:[{emp:'H002',st:'wait',at:'',note:''},{emp:'H001',st:'wait',at:'',note:''}], cur:0, status:'pending'}
+];
+const BIZ_STATUS = {pending:{zh:'簽核中',en:'In approval',cls:'warn'}, approved:{zh:'已核准',en:'Approved',cls:'ok'}, rejected:{zh:'已駁回',en:'Rejected',cls:'crit'}, withdrawn:{zh:'已抽單',en:'Withdrawn',cls:''}};
+const bizRules = () => state.bizRules || (state.bizRules=[{min:0, levels:'all'}]);
+/* 金額對應的簽核層數：取「最低金額 ≤ 申請金額」中最高的那一列 */
+function bizLevels(amount){ let lv='all'; bizRules().slice().sort((a,b)=>a.min-b.min).forEach(r=>{ if(amount>=r.min) lv=r.levels; }); return lv; }
+function bizChain(empId, amount){ const full=approvalChain(empId), lv=bizLevels(amount); return lv==='all' ? full : full.slice(0,Math.max(0,+lv)); }
+const bizMoney = n => 'NT$ '+Number(n||0).toLocaleString('en-US');
+const bizPerson = id => { const p=person(id); return p ? nameOf(p)+'（'+L(TITLES[p.title])+'）' : id; };
+function bizFile(kind, f){
+  const amount=+f.amount||0, chain=bizChain(me().id, amount);
+  const r={id:nextId('Q',BIZ_REQ), kind, emp:me().id, filed:ymd(TODAY), amount, f, steps:chain.map(p=>({emp:p.id,st:'wait',at:'',note:''})), cur:0, status:chain.length?'pending':'approved'};
+  BIZ_REQ.unshift(r); return r;
+}
+function bizAct(id, act, note){
+  const r=BIZ_REQ.find(x=>x.id===id); if(!r||r.status!=='pending') return {err:both('這張單已經不在簽核中','This request is no longer in approval')};
+  const s=r.steps[r.cur];
+  if(!s||s.emp!==me().id) return {err:both('還沒輪到你簽核','It is not your turn to approve')};
+  if(r.emp===me().id) return {err:both('不能簽自己的單','You cannot approve your own request')};
+  if(act==='reject' && !note) return {err:both('駁回一定要寫理由','A rejection needs a reason')};
+  s.st=act==='ok'?'ok':'no'; s.at=ymd(TODAY); s.note=note||'';
+  if(act==='reject') r.status='rejected';
+  else if(r.cur+1>=r.steps.length) r.status='approved';
+  else r.cur++;
+  return {r};
+}
+const bizSteps = r => r.steps.map((s,i)=>{
+  const cls=s.st==='ok'?'ok':s.st==='no'?'crit':(r.status==='pending'&&i===r.cur?'warn':'');
+  return `<span class="chip ${cls}" title="${esc(s.note||'')}">${esc(s.st==='ok'?'✓ ':s.st==='no'?'✗ ':(r.status==='pending'&&i===r.cur?'⏳ ':''))}${esc(both('第 '+(i+1)+' 層','L'+(i+1)))} ${esc(bizPerson(s.emp))}</span>`;
+}).join('<span class="arr">→</span>');
+const bizStatus = r => { const o=BIZ_STATUS[r.status]; return `<span class="chip ${o.cls}">${esc(r.status==='pending'?both('第 '+(r.cur+1)+' / '+r.steps.length+' 層簽核中','Level '+(r.cur+1)+' of '+r.steps.length):both(o.zh,o.en))}</span>`; };
+const bizBrief = r => { const k=BIZ_KINDS[r.kind]; return k.fields.filter(f=>f.k!=='amount'&&r.f[f.k]).map(f=>L(f)+'：'+r.f[f.k]).join('　'); };
+function viewBizReq(){
+  const u=me(), k=state.bizNew, mine=BIZ_REQ.filter(r=>r.emp===u.id);
+  const toSign=BIZ_REQ.filter(r=>r.status==='pending'&&r.steps[r.cur]&&r.steps[r.cur].emp===u.id);
+  const form=k?`<form class="frm" id="bizForm" data-kind="${k}" style="display:grid;gap:8px">
+      ${BIZ_KINDS[k].fields.map(f=>`<div><label>${esc(both(f.zh,f.en))}${f.req?' *':''}</label><input name="${f.k}" type="${f.type||'text'}" ${f.req?'required':''} ${f.type==='number'?'min="0" step="1"':''} ${f.type==='date'?`value="${ymd(TODAY)}"`:''} maxlength="80"></div>`).join('')}
+      <div class="note" id="bizPreview"></div>
+      <div><button class="btn" type="submit">${esc(both('送出申請','Submit'))}</button> <button class="btn ghost" type="button" data-biznew="">${esc(both('取消','Cancel'))}</button></div></form>`:'';
+  const rules=bizRules().slice().sort((a,b)=>a.min-b.min);
+  return `<div class="grid">
+    <section class="card"><div class="card-h"><h2>${esc(both('簽核申請單（逐層往上簽）','Approval forms (level by level)'))}</h2><span class="chip acc">${esc(both('需求端 10/20：照組織圖 V3','Org chart V3, 20 Oct'))}</span></div>
+      <div class="card-b" style="display:grid;gap:10px">
+        <div class="note">${esc(both('送出後依你的直屬主管一路往上簽，最後到管理者、老闆；上一層核准後才輪到下一層。欄位與金額門檻是暫定，等需求端提供正式內容。','After you submit, it goes up your reporting line to the manager and the owner, one level at a time. The fields and thresholds are provisional until the requester side supplies the real ones.'))}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${Object.entries(BIZ_KINDS).map(([id,v])=>`<button class="btn ${k===id?'':'ghost'}" data-biznew="${id}">${esc(both(v.zh,v.en))}</button>`).join('')}</div>${form}
+      </div></section>
+    <section class="card"><div class="card-h"><h2>${esc(both('待我簽核','Awaiting my approval'))} <span class="chip ${toSign.length?'crit':'ok'}">${toSign.length}</span></h2></div>
+      ${toSign.length?`<div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('單號','No.')}</th><th>${bi('表單','Form')}</th><th>${bi('申請人','Applicant')}</th><th>${bi('內容','Details')}</th><th>${bi('金額','Amount')}</th><th>${bi('簽核進度','Progress')}</th><th>${bi('意見','Comment')}</th><th></th></tr></thead><tbody>
+        ${toSign.map(r=>`<tr><td class="mono">${r.id}</td><td>${esc(both(BIZ_KINDS[r.kind].zh,BIZ_KINDS[r.kind].en))}</td><td>${esc(bizPerson(r.emp))}</td><td style="white-space:normal">${esc(bizBrief(r))}</td><td class="num">${esc(bizMoney(r.amount))}</td><td style="white-space:normal">${bizSteps(r)}</td>
+          <td><input data-biznote="${r.id}" maxlength="80" placeholder="${esc(both('駁回必填','Required to reject'))}" aria-label="${esc(both('簽核意見','Comment')+' '+r.id)}"></td>
+          <td style="white-space:nowrap"><button class="btn mini" data-bizact="${r.id}:ok">${esc(both('核准','Approve'))}</button> <button class="btn ghost mini" data-bizact="${r.id}:reject">${esc(both('駁回','Reject'))}</button></td></tr>`).join('')}</tbody></table></div>`
+        :`<div class="empty" style="padding:14px">${esc(both('目前沒有輪到你簽核的單','Nothing waiting for you'))}</div>`}</section>
+    <section class="card"><div class="card-h"><h2>${esc(both('我的申請單','My requests'))} <span class="chip">${mine.length}</span></h2></div>
+      ${mine.length?`<div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('單號','No.')}</th><th>${bi('表單','Form')}</th><th>${bi('內容','Details')}</th><th>${bi('金額','Amount')}</th><th>${bi('簽核進度','Progress')}</th><th>${bi('狀態','Status')}</th><th></th></tr></thead><tbody>
+        ${mine.map(r=>`<tr><td class="mono">${r.id}</td><td>${esc(both(BIZ_KINDS[r.kind].zh,BIZ_KINDS[r.kind].en))}</td><td style="white-space:normal">${esc(bizBrief(r))}</td><td class="num">${esc(bizMoney(r.amount))}</td>
+          <td style="white-space:normal">${r.steps.length?bizSteps(r):`<span class="muted">${esc(both('最上層，不需簽核','Top of the chart — no approval needed'))}</span>`}${r.steps.filter(s=>s.st==='no'&&s.note).map(s=>`<div class="muted" style="font-size:12px">${esc(both('駁回理由：','Reason: ')+s.note)}</div>`).join('')}</td>
+          <td>${bizStatus(r)}</td><td>${r.status==='pending'?`<button class="btn ghost mini" data-bizwd="${r.id}">${esc(both('抽單','Withdraw'))}</button>`:''}</td></tr>`).join('')}</tbody></table></div>`
+        :`<div class="empty" style="padding:14px">${esc(both('你還沒有送出過簽核申請單','You have not filed any approval forms'))}</div>`}</section>
+    <section class="card" id="bizRules"><div class="card-h"><h2>${esc(both('簽核金額規則','Amount rules'))}</h2><span class="chip">${esc(both('暫定，待需求端提供門檻','Provisional'))}</span></div>
+      <div class="card-b" style="display:grid;gap:8px">
+        <div class="muted" style="font-size:12.5px">${esc(both('金額達到「起算金額」時，簽到第幾層（從直屬主管算起）。預設每一層都要簽；沒有收到正式門檻前不要當成公司規定。','From the starting amount, how many levels must sign (counting from the direct supervisor). The default is every level; do not treat this as company policy until the real thresholds arrive.'))}</div>
+        <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('起算金額（元）','From amount (NT$)')}</th><th>${bi('簽到第幾層','Levels required')}</th>${can('perms')?'<th></th>':''}</tr></thead><tbody>
+          ${rules.map((r,i)=>`<tr><td>${i===0?'0':can('perms')?`<input type="number" min="1" step="1" data-bizrule="${rules.indexOf(r)}" data-f="min" value="${r.min}" aria-label="${esc(both('起算金額','From amount'))}">`:r.min}</td>
+            <td>${can('perms')?`<select data-bizrule="${rules.indexOf(r)}" data-f="levels" aria-label="${esc(both('簽到第幾層','Levels'))}">${['all',1,2,3,4,5].map(v=>`<option value="${v}" ${String(r.levels)===String(v)?'selected':''}>${v==='all'?esc(both('全部層級','All levels')):esc(both('前 '+v+' 層','First '+v))}</option>`).join('')}</select>`:esc(r.levels==='all'?both('全部層級','All levels'):both('前 '+r.levels+' 層','First '+r.levels))}</td>
+            ${can('perms')?`<td>${i?`<button class="btn ghost mini" data-bizrdel="${rules.indexOf(r)}">${esc(both('刪除','Delete'))}</button>`:''}</td>`:''}</tr>`).join('')}</tbody></table></div>
+        ${can('perms')?`<div><button class="btn mini" data-bizradd>${esc(both('新增一列門檻','Add a threshold'))}</button></div>`:`<div class="muted" style="font-size:12px">${esc(both('只有管理者與系統管理員可以調整。','Only the manager and system admin can change this.'))}</div>`}
+      </div></section>
+  </div>`;
+}
+BINDERS['desk:biz']=function(){
+  const ok=(zh,en)=>{ toast(both(zh,en)); render(); };
+  document.querySelectorAll('[data-biznew]').forEach(b=>b.onclick=()=>{ state.bizNew=b.dataset.biznew||null; render(); });
+  const fm=document.getElementById('bizForm');
+  if(fm){
+    const prev=()=>{ const amt=+(fm.elements.amount&&fm.elements.amount.value)||0, lv=bizLevels(amt), ch=bizChain(me().id,amt);
+      document.getElementById('bizPreview').innerHTML=ch.length?esc(both('簽核路徑：','Approval path: '))+ch.map((p,i)=>`<span class="chip">${esc(both('第 '+(i+1)+' 層','L'+(i+1)))} ${esc(bizPerson(p.id))}</span>`).join('<span class="arr">→</span>')+(lv==='all'?'':esc(both('（依金額只簽前 '+lv+' 層）',' (amount rule: first '+lv+' levels only)'))):esc(both('你在組織圖最上層，送出後直接核准。','You are at the top of the chart; it is approved on submit.')); };
+    fm.addEventListener('input',prev); prev();
+    fm.onsubmit=e=>{ e.preventDefault(); const fd=new FormData(fm), f={}; BIZ_KINDS[fm.dataset.kind].fields.forEach(x=>{ f[x.k]=String(fd.get(x.k)||'').trim(); });
+      if(f.from&&f.to&&f.to<f.from){ toast(both('返回日不能早於出發日','The return date cannot be before the departure date')); return; }
+      const r=bizFile(fm.dataset.kind,f); state.bizNew=null; ok(r.id+' 已送出'+(r.steps.length?'，等待第 1 層簽核':'（最上層，直接核准）'), r.id+' submitted'); };
+  }
+  document.querySelectorAll('[data-bizact]').forEach(b=>b.onclick=()=>{ const [id,act]=b.dataset.bizact.split(':'), n=document.querySelector(`[data-biznote="${id}"]`);
+    const res=bizAct(id,act,(n&&n.value||'').trim()); if(res.err){ toast(res.err); return; }
+    ok(id+(act==='ok'?(res.r.status==='approved'?' 已全部核准':' 已核准，轉下一層'):' 已駁回'), id+(act==='ok'?' approved':' rejected')); });
+  document.querySelectorAll('[data-bizwd]').forEach(b=>b.onclick=()=>{ const r=BIZ_REQ.find(x=>x.id===b.dataset.bizwd); if(r&&r.status==='pending'&&r.emp===me().id){ r.status='withdrawn'; ok(r.id+' 已抽單', r.id+' withdrawn'); } });
+  document.querySelectorAll('[data-bizrule]').forEach(i=>i.onchange=()=>{ const r=bizRules()[+i.dataset.bizrule]; if(!r||!can('perms')) return;
+    if(i.dataset.f==='min'){ const v=Math.floor(+i.value); if(!(v>0)||bizRules().some(x=>x!==r&&x.min===v)){ toast(both('起算金額要大於 0，且不能與其他列重複','The amount must be above 0 and unique')); render(); return; } r.min=v; }
+    else r.levels=i.value==='all'?'all':+i.value; ok('已更新金額規則','Amount rules updated'); });
+  document.querySelectorAll('[data-bizrdel]').forEach(b=>b.onclick=()=>{ if(!can('perms')) return; bizRules().splice(+b.dataset.bizrdel,1); ok('已刪除一列','Row deleted'); });
+  const ad=document.querySelector('[data-bizradd]'); if(ad) ad.onclick=()=>{ let m=10000; while(bizRules().some(x=>x.min===m)) m+=10000; bizRules().push({min:m,levels:'all'}); ok('已新增一列，請調整金額與層數','Row added — adjust amount and levels'); };
+};
 function viewFinProcurement(){
   return `
   <div class="grid">
@@ -5490,6 +5607,7 @@ function viewFinProcurement(){
         <tbody>${APP_TYPES.map(a=>`<tr><td><b>${esc(a.zh)}</b></td><td style="white-space:normal">${a.flow.map(x=>`<span class="chip">${esc(x)}</span>`).join(' → ')}</td>
           <td>${a.ok?`<span class="chip ok">${esc(both('已確認（三種流程相同）','Confirmed (same flow)'))}</span>`:`<span class="chip">${esc(both('簡報原案，是否保留待確認','From the deck; keep or drop to confirm'))}</span>`}</td></tr>`).join('')}</tbody>
       </table></div>
+      <div class="note" style="margin:10px 12px 12px">${esc(both('已確認的三種（報價單、出差申請、零佣金申請）現在可以真的送出與逐層簽核：到「私人秘書 › 簽核申請單」。欄位與金額門檻是暫定，等需求端提供正式內容。','The three confirmed forms (quotation, business trip, zero-commission) can now be filed and approved level by level under My Desk › Approval forms. Fields and thresholds are provisional.'))}</div>
     </section>
     ${viewApprovalPath()}
     <section class="card">
