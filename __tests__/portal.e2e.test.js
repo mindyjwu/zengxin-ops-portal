@@ -510,7 +510,7 @@ test.describe('Leave approval flow', () => {
     await page.click('[data-quick="am"]');
     await page.fill('#leaveForm textarea[name="reason"]', 'e2e');
     await page.click('#leaveForm button[type="submit"]');
-    await page.click('[data-tab="leave"]');
+    await go(page, 'hr', 'leave');                          // 送出後會跳到「表單追蹤」，再回人資頁看簽核
     const row = requestRow(page, 'L249');
     await expect(row.locator('.lock')).toContainText('本人申請');
     await expect(row.locator('[data-act]')).toHaveCount(0);
@@ -560,21 +560,22 @@ test.describe('My Hours', () => {
     await go(page, 'hr', 'mylog');
     await page.click('[data-mytab="leave"]');
     const calc = page.locator('#leaveCalc');
-    await expect(calc).toContainText('8 小時');           // default: full day
+    await expect(calc).toHaveText('1天');                 // default: full day（天數＋小時合併，不用小數天）
 
     await page.click('[data-quick="am"]');
     await expect(page.locator('#leaveForm select[name="fromT"]')).toHaveValue('08:00');
     await expect(page.locator('#leaveForm select[name="toT"]')).toHaveValue('12:00');
-    await expect(calc).toContainText('4 小時（折合 0.5 天）');
+    await expect(calc).toHaveText('4小時');
 
     await page.click('[data-quick="pm"]');
     await expect(page.locator('#leaveForm select[name="fromT"]')).toHaveValue('13:00');
-    await expect(calc).toContainText('4 小時');
+    await expect(calc).toHaveText('4小時');
 
     await page.fill('#leaveForm textarea[name="reason"]', '下午看診');
     await page.click('#leaveForm button[type="submit"]');
+    await expect(page.locator('[data-dform="track"]')).toHaveAttribute('aria-current', 'true');   // 送出後跳到表單追蹤
     const row = requestRow(page, 'L249');
-    await expect(row.locator('td.num')).toHaveText('4');
+    await expect(row.locator('td.num')).toHaveText('4小時');
     await expect(row).toContainText('待主管簽核');
   });
 
@@ -595,10 +596,10 @@ test.describe('My Hours', () => {
     await page.click('[data-quick="full"]');
     await expect(f.locator('[name=fromT]')).toHaveValue('08:00');
     await expect(f.locator('[name=toT]')).toHaveValue('17:00');
-    await expect(calc).toContainText('8 小時');
+    await expect(calc).toHaveText('1天');
     await page.click('[data-quick="am"]');
     await expect(f.locator('[name=toT]')).toHaveValue('12:00');
-    await expect(calc).toContainText('4 小時');
+    await expect(calc).toHaveText('4小時');
 
     // 2026-08-21 is an evening shift (16:00–24:00)
     await f.locator('[name=from]').fill('2026-08-21');
@@ -606,13 +607,13 @@ test.describe('My Hours', () => {
     await page.click('[data-quick="pm"]');
     await expect(f.locator('[name=fromT]')).toHaveValue('20:00');
     await expect(f.locator('[name=toT]')).toHaveValue('24:00');
-    await expect(calc).toContainText('4 小時');
+    await expect(calc).toHaveText('4小時');
 
     await f.locator('textarea[name="reason"]').fill('夜班後半請假');
     await page.click('#leaveForm button[type="submit"]');
     const row = requestRow(page, 'L249');
     await expect(row).toContainText('2026-08-21 20:00 → 24:00');
-    await expect(row.locator('td.num')).toHaveText('4');
+    await expect(row.locator('td.num')).toHaveText('4小時');
   });
 
   test('overtime hours compute, including across midnight', async ({ page }) => {
@@ -632,7 +633,10 @@ test.describe('My Hours', () => {
     await page.fill('#otForm textarea[name="reason"]', '夜間支援');
     await page.click('#otForm button[type="submit"]');
     const row = requestRow(page, 'OT33');
-    await expect(row.locator('td.num')).toHaveText('4');
+    await expect(row.locator('td.num')).toHaveText('4');          // 加班仍以小時顯示
+    await expect(page.locator('[data-dform="track"]')).toHaveAttribute('aria-current', 'true');   // 送出後跳到表單追蹤
+    await go(page, 'hr', 'mylog');
+    await page.click('[data-mytab="clock"]');
     await expect(page.locator('.tile').filter({ hasText: '本月加班' }).locator('.v')).toHaveText('4');
   });
 
@@ -644,21 +648,22 @@ test.describe('My Hours', () => {
     await expect(rows).toHaveCount(19);                  // 27 Oct: 104 leave list (the 2 designated-staff types are hidden)
 
     const cells = rows.filter({ hasText: '特休' }).locator('td');
-    await expect(cells.nth(1)).toContainText('120 h');   // 15 days
-    await expect(cells.nth(2)).toHaveText('4 h');        // L234 approved
-    await expect(cells.nth(4)).toContainText('116 h');
+    await expect(cells.nth(1)).toHaveText('15天');       // 120 h
+    await expect(cells.nth(2)).toHaveText('4小時');      // L234 approved
+    await expect(cells.nth(4)).toHaveText('14天4小時');  // 116 h
 
     const comp = rows.filter({ hasText: '補休' });
-    await expect(comp.locator('td').nth(1)).toContainText('4 h');  // OT22 approved as comp time
+    await expect(comp.locator('td').nth(1)).toContainText('4小時');  // OT22 approved as comp time
 
     // a pending half day is held against the balance
     await page.click('[data-mytab="leave"]');
     await page.click('[data-quick="am"]');
     await page.fill('#leaveForm textarea[name="reason"]', 'e2e');
     await page.click('#leaveForm button[type="submit"]');
+    await go(page, 'hr', 'mylog');                       // 送出後跳到表單追蹤，再回來看餘額
     await page.click('[data-mytab="balance"]');
-    await expect(cells.nth(3)).toHaveText('4 h');
-    await expect(cells.nth(4)).toContainText('112 h');
+    await expect(cells.nth(3)).toHaveText('4小時');
+    await expect(cells.nth(4)).toHaveText('14天');       // 112 h
   });
 });
 
@@ -3278,5 +3283,94 @@ test.describe('Guide archive', () => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     for (const id of ['newv34', 'newv33', 'newv32', 'new1014', 'newlatest', 'new930']) await expect(page.locator('#' + id)).toHaveCount(0);
     await expect(page.locator('#newv35')).toHaveCount(1);
+  });
+});
+
+/* ================================================================ */
+/* 11/19 會議：出勤與請假顯示、表單送出後跳轉、補忘刷選單、簽核篩選與全選核准 */
+test.describe('11/19 meeting: leave display, form jumps, missed punches, sign filters', () => {
+  const openForms = async (page, role, form) => {
+    await openPortal(page); await setRole(page, role);
+    await go(page, 'desk', 'forms'); await page.click(`[data-dform="${form}"]`);
+  };
+
+  test('leave is shown as days + hours (no decimal days), in the form and on the balance page', async ({ page }) => {
+    await openForms(page, 'employee', 'leave');
+    const out = await page.evaluate(() => [0, 4, 8, 10, 10.5, 16, 26.5].map(h => fmtDH(h)));
+    expect(out).toEqual(['0小時', '4小時', '1天', '1天2小時', '1天2.5小時', '2天', '3天2.5小時']);
+    await page.fill('#leaveForm input[name="from"]', '2026-09-08');
+    await page.selectOption('#leaveForm select[name="fromT"]', '08:00');
+    await page.fill('#leaveForm input[name="to"]', '2026-09-09');
+    await page.selectOption('#leaveForm select[name="toT"]', '10:00');
+    await expect(page.locator('#leaveCalc')).toHaveText('1天2小時');          // 10 小時
+    await expect(page.locator('#leaveCalc')).not.toContainText('1.25');
+    await expect(page.locator('#leaveForm select[name="type"] option').first()).toContainText('剩');
+    await go(page, 'desk', 'query'); await page.click('[data-dq="yearly"]');     // 假別查詢頁面
+    await expect(page.locator('#view table').first()).not.toContainText(' h');   // 不再用「120 h (15d)」
+    await expect(page.locator('#view table').first()).toContainText('15天');
+  });
+
+  test('every form jumps to “Track my forms” after submitting', async ({ page }) => {
+    const track = page.locator('[data-dform="track"]');
+    await openForms(page, 'manager', 'leave');
+    await page.click('[data-quick="am"]');
+    await page.fill('#leaveForm textarea[name="reason"]', 'e2e');
+    await page.click('#leaveForm button[type="submit"]');
+    await expect(track).toHaveAttribute('aria-current', 'true');
+    await page.click('[data-dform="ot"]');
+    await page.fill('#otForm textarea[name="reason"]', 'e2e');
+    await page.click('#otForm button[type="submit"]');
+    await expect(track).toHaveAttribute('aria-current', 'true');
+    await page.click('[data-dform="fix"]');
+    await page.fill('#fixForm textarea[name="reason"]', 'e2e');
+    await page.click('#fixForm button[type="submit"]');
+    await expect(track).toHaveAttribute('aria-current', 'true');
+  });
+
+  test('missed punch: the system lists the days with a missed punch in a dropdown', async ({ page }) => {
+    await openForms(page, 'manager', 'fix');
+    const pick = page.locator('#fixForm select[name="pick"]');
+    await expect(pick.locator('option')).toHaveText(['2026-08-05（三）下班', '其他日期（手動輸入）']);
+    await expect(page.locator('#fixOther')).toBeHidden();                    // 選了系統列出的日子就不用另外輸入
+    await expect(page.locator('#fixForm input[name="time"]')).toHaveValue('17:00');
+    await page.selectOption('#fixForm select[name="pick"]', 'other');
+    await expect(page.locator('#fixOther')).toBeVisible();
+    await page.selectOption('#fixForm select[name="pick"]', '2026-08-05|out');
+    await page.fill('#fixForm textarea[name="reason"]', '忘記打卡');
+    await page.click('#fixForm button[type="submit"]');
+    await expect(page.locator('[data-dform="track"]')).toHaveAttribute('aria-current', 'true');
+    await expect(page.locator('#view')).toContainText('2026-08-05 17:00');
+    await page.click('[data-dform="fix"]');                                  // 已送出的日子不再列出
+    await expect(page.locator('#fixForm select[name="pick"] option')).toHaveText(['其他日期（手動輸入）']);
+  });
+
+  test('sign page: every column filters, a manager can approve all shown at once, single approval stays', async ({ page }) => {
+    await openForms(page, 'manager', 'sign');
+    const rows = page.locator('#signTable tbody tr');
+    const total = await rows.count();
+    expect(total).toBeGreaterThan(5);
+    await expect(page.locator('#signTable [data-act="approve"]').first()).toBeVisible();   // 單筆核准還在
+    for (const c of [1, 2, 3, 4, 5, 6, 7, 8]) await expect(page.locator(`#signTable [data-fcol="${c}"]`)).toHaveCount(1);
+    await page.selectOption('#signTable select[data-fcol="3"]', '請假單');
+    const shown = await rows.filter({ hasNot: page.locator('[hidden]') }).evaluateAll(rs => rs.filter(r => !r.hidden).map(r => r.cells[3].textContent));
+    expect(shown.length).toBeGreaterThan(0); expect(shown.length).toBeLessThan(total);
+    expect(new Set(shown)).toEqual(new Set(['請假單']));
+    await expect(page.locator('#signTable tbody tr[hidden]').first()).toBeHidden();   // 被篩掉的列真的看不到
+    await page.fill('#signTable [data-fcol="1"]', 'zzz-no-such-id');         // 文字欄位也能篩
+    expect(await rows.evaluateAll(rs => rs.filter(r => !r.hidden).length)).toBe(0);
+    await page.fill('#signTable [data-fcol="1"]', '');
+    await page.check('#signAll');                                             // 只全選目前篩出的
+    await expect(page.locator('#signBatch')).toContainText(`核准勾選的 ${shown.length} 筆`);
+    page.once('dialog', d => d.accept());
+    await page.click('#signBatch');
+    await expect(page.locator('.toast')).toContainText(`已核准 ${shown.length} 筆`);
+    await expect(rows).toHaveCount(total - shown.length);                    // 沒勾的其他表單原封不動
+    await expect(page.locator('#signTable select[data-fcol="3"] option', { hasText: '請假單' })).toHaveCount(0);
+  });
+
+  test('the guide records the 11/19 changes and what is still waiting', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    const sec = page.locator('#newv35');
+    for (const w of ['11/19 會議後的第一批修改', '1天2小時', '表單追蹤', '其他日期', '全選', '課程積分暫緩']) await expect(sec).toContainText(w);
   });
 });
