@@ -4317,3 +4317,102 @@ test.describe('10/20 meeting: approval forms go up the chart level by level', ()
     for (const w of ['簽核申請單', '逐層', '金額規則', '空缺', '辦理期限', '逾期', '結案']) await expect(page.locator('#newv35')).toContainText(w);
   });
 });
+
+/* 11/19 會議：表單簽核頁面加入 filter（所有欄位皆可篩選）；主管可全選一鍵核准 */
+test.describe('11/19 meeting: filters on every column of the approval pages', () => {
+  const visibleRows = (page, sel) => page.locator(sel + ' tbody tr:not([hidden])').count();
+  const allRows = (page, sel) => page.locator(sel + ' tbody tr').count();
+
+  test('Leave approvals: every data column has a filter, the action column does not', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'hr', 'leave');
+    for (const id of ['lv-leave', 'lv-ot', 'lv-fix', 'lv-forms']) {
+      const t = `table[data-filterable="${id}"]`;
+      const heads = await page.locator(t + ' thead tr:first-child th').count();
+      const filters = await page.locator(t + ' thead tr.filters [data-tfcol]').count();
+      expect(filters, id).toBe(heads - 1);                                                // 全部欄位，除了「簽核」按鈕欄
+    }
+  });
+
+  test('Leave approvals: filtering by status, by name and by text narrows the rows; clearing brings them back', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'hr', 'leave');
+    const t = 'table[data-filterable="lv-leave"]', total = await allRows(page, t);
+    expect(total).toBeGreaterThan(10);
+    const pendingCount = await page.locator(t + ' tbody tr').evaluateAll(trs => trs.filter(r => r.cells[6].textContent.includes('待主管簽核')).length);
+    await page.selectOption(t + ' [data-tfcol="6"]', '待主管簽核');                          // 狀態
+    expect(await visibleRows(page, t)).toBe(pendingCount);
+    expect(pendingCount).toBeGreaterThan(0); expect(pendingCount).toBeLessThan(total);
+    await page.fill(t + ' [data-tfcol="0"]', 'L9999');                                       // 單號：沒有這張
+    expect(await visibleRows(page, t)).toBe(0);
+    await expect(page.locator('.tfcount').first()).toContainText('顯示 0 /');
+    await page.click('.tfclear >> nth=0');
+    expect(await visibleRows(page, t)).toBe(total);
+  });
+
+  test('Leave approvals: the filter stays after approving one request', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'hr', 'leave');
+    const t = 'table[data-filterable="lv-leave"]';
+    await page.selectOption(t + ' [data-tfcol="6"]', '待主管簽核');
+    const before = await visibleRows(page, t);
+    await page.locator(t + ' tbody tr:not([hidden]) [data-act="approve"]').first().click();
+    expect(await page.locator(t + ' [data-tfcol="6"]').inputValue()).toBe('待主管簽核');   // 重畫後篩選還在
+    expect(await visibleRows(page, t)).toBe(before - 1);
+  });
+
+  test('Approval forms: every field can be filtered (form, dept, text, amount, status, due, approver, no.)', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'manager'); await go(page, 'desk', 'biz');
+    const vis = () => page.locator('[data-bizbar="sign"]').locator('xpath=..').locator('.bizcard:not([hidden])').evaluateAll(c => c.map(x => x.dataset.bizid));
+    expect((await vis()).sort()).toEqual(['Q1', 'Q2']);
+    await page.selectOption('[data-bizf="sign:kind"]', '報價單');           expect(await vis()).toEqual(['Q2']);
+    await page.click('[data-bizfclear="sign"]');                              expect((await vis()).length).toBe(2);
+    await page.selectOption('[data-bizf="sign:dept"]', '日照');             expect(await vis()).toEqual(['Q1']);
+    await page.click('[data-bizfclear="sign"]');
+    await page.fill('[data-bizf="sign:text"]', '評鑑');                      expect(await vis()).toEqual(['Q1']);
+    await page.click('[data-bizfclear="sign"]');
+    await page.fill('[data-bizf="sign:amt"]', '50000');                       expect(await vis()).toEqual(['Q2']);
+    await page.click('[data-bizfclear="sign"]');
+    await page.selectOption('[data-bizf="sign:st"]', '逾期');               expect(await vis()).toEqual(['Q1']);
+    await page.click('[data-bizfclear="sign"]');
+    await page.fill('[data-bizf="sign:id"]', 'Q2');                           expect(await vis()).toEqual(['Q2']);
+    await page.click('[data-bizfclear="sign"]');
+    await page.fill('[data-bizf="sign:appr"]', '老闆');                      expect((await vis()).length).toBe(2);
+    await page.fill('[data-bizf="sign:who"]', '不存在的人');                 expect(await vis()).toEqual([]);
+    await expect(page.locator('[data-bizcount="sign"]')).toContainText('顯示 0 / 2');
+  });
+
+  test('Approval forms: select all approves only what the filter shows; hidden requests are untouched', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'manager'); await go(page, 'desk', 'biz');
+    page.on('dialog', d => d.accept());
+    await page.selectOption('[data-bizf="sign:kind"]', '報價單');                // 只剩 Q2
+    await page.check('#bizAll');
+    await expect(page.locator('#bizBatch')).toContainText('核准勾選的 1 筆');
+    await page.click('#bizBatch');
+    const r = await page.evaluate(() => BIZ_REQ.filter(x => ['Q1', 'Q2'].includes(x.id)).map(x => [x.id, x.cur]));
+    expect(r.sort()).toEqual([['Q1', 1], ['Q2', 2]]);                          // Q2 往下一層（老闆），Q1 沒動
+    expect(await page.locator('[data-bizf="sign:kind"]').inputValue()).toBe('報價單');   // 篩選還在
+  });
+
+  test('Approval forms: select all with no filter approves everything waiting; nothing ticked means the button stays off', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'manager'); await go(page, 'desk', 'biz');
+    page.on('dialog', d => d.accept());
+    await expect(page.locator('#bizBatch')).toBeDisabled();
+    await page.check('#bizAll');
+    await expect(page.locator('#bizBatch')).toContainText('核准勾選的 2 筆');
+    await page.click('#bizBatch');
+    expect(await page.evaluate(() => ['Q1', 'Q2'].map(i => BIZ_REQ.find(x => x.id === i).cur))).toEqual([2, 2]);
+    await expect(page.locator('#view')).toContainText('目前沒有輪到你簽核的單');
+  });
+
+  test('Approval forms: my requests can be filtered too', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'daysw'); await go(page, 'desk', 'biz');
+    await expect(page.locator('[data-bizbar="mine"]')).toBeVisible();
+    await page.selectOption('[data-bizf="mine:st"]', '已駁回');
+    expect(await page.locator('[data-bizbar="mine"]').locator('xpath=..').locator('.bizcard:not([hidden])').count()).toBe(0);
+    await page.click('[data-bizfclear="mine"]');
+    expect(await page.locator('[data-bizbar="mine"]').locator('xpath=..').locator('.bizcard:not([hidden])').count()).toBe(1);   // Q1 是日照社工自己的
+  });
+
+  test('the guide records the filters', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['請假審核', '欄位篩選', '全選']) await expect(page.locator('#newv35')).toContainText(w);
+  });
+});
