@@ -1017,6 +1017,7 @@ const MODULES = [
     {virtual:true, id:'monthly', zh:'月薪制', en:'Monthly pay'},
     {virtual:true, id:'hourly',  zh:'時薪制', en:'Hourly pay'},
     {virtual:true, id:'split',   zh:'拆帳制', en:'Revenue-share pay'},
+    {virtual:true, id:'ins',     zh:'勞健退', en:'Insurance & pension'},
     {id:'ver',  zh:'版本與覆核', en:'Versions & review'}
   ]},
   {id:'rpt', zh:'報表匯出', en:'Reports Export', built:true, perm:'mgmt', tabs:[]},
@@ -1040,7 +1041,7 @@ function payEdit(){
 }
 function itemAllowed(modId, tabId){
   const col=roleColLive(), m=MODULES.find(x=>x.id===modId);
-  if(modId==='pay' && ['monthly','hourly','split'].includes(tabId)) return itemAllowed('pay','run');   // 三種計薪頁籤：權限同「薪資試算」
+  if(modId==='pay' && ['monthly','hourly','split','ins'].includes(tabId)) return itemAllowed('pay','run');   // 三種計薪頁籤：權限同「薪資試算」
   if(modId==='ann' && tabId==='orgcfg') return canOrgCfg();   // 組織架構設定：人資與系統管理員
   if(modId==='hr' && tabId==='todo') return ['emp','att','leave'].some(t=>itemAllowed('hr',t));   // 待辦不在 Excel 內：只要看得到人事的任一頁就看得到
   if(!col) return !m.perm || can(m.perm);
@@ -1219,7 +1220,7 @@ function render(){
     'doc:comp':viewDocCompliance, 'doc:guide':viewDocGuides, 'doc:meeting':viewDocMeeting, 'doc:sysinfo':viewDocSysInfo, 'doc:cmp104':viewDocCmp104,
     'svc:case':viewSvcCase, 'svc:contract':viewSvcContract, 'svc:assess':viewSvcAssess,
     'fin:proc':viewFinProcurement, 'fin:petty':viewFinPettyCash,
-    'pay:run':viewPayRun, 'pay:calc':viewPayCalc, 'pay:monthly':viewPayMonthly, 'pay:hourly':viewPayHourly, 'pay:split':viewPaySplit, 'pay:ver':viewPayVer,
+    'pay:run':viewPayRun, 'pay:calc':viewPayCalc, 'pay:monthly':viewPayMonthly, 'pay:hourly':viewPayHourly, 'pay:split':viewPaySplit, 'pay:ins':viewPayIns, 'pay:ver':viewPayVer,
     'rpt':viewReports, 'set':viewSettings
   }[key];
   v.innerHTML = fn ? fn() : '';
@@ -2110,8 +2111,79 @@ const LABOR_GRADES = [29500,30300,31800,33300,34800,36300,38200,40100,42000,4390
 const HEALTH_GRADES = LABOR_GRADES.concat([48200,50600,53000,55400,57800,60800,63800,66800,69800,72800,76500,80200,83900,87600,92100,96600,
   101100,105600,110100,115500,120900,126300,131700,137100,142500,147900,150000,156400,162800,169200,175600,182000,189500,197000,204500,212000,219500]);
 const gradeFor = (sal, table) => table.find(g=>g>=sal) || table[table.length-1];
-const laborPremium  = g => Math.round(g*0.125*0.2);          // 勞保 11.5% + 就保 1%，個人負擔 20%
-const healthPremium = (g,dep) => Math.round(g*0.0517*0.3)*(1+Math.min(dep,3));  // 健保 5.17%，個人負擔 30%
+const laborPremium  = (g,m) => insCalc(m||CUR_MONTH,{labor:g}).lab.ee;                  // 勞保（含就保）個人負擔，費率依月份
+const healthPremium = (g,dep,m) => insCalc(m||CUR_MONTH,{health:g,dep}).hel.ee;         // 健保個人負擔（含眷屬）
+/* =========================================================================
+   勞保、健保、勞退：分級表與費率（版本＋生效日），系統依薪資月份自動選用當時有效的版本。
+   分級表資料取自需求端 11/19 提供的政府公告 PDF；之後由人資上傳新公告（下一批功能），這裡不寫死金額。
+   每一格 [下限, 上限, 月投保金額]：第一級下限為 null（以下），最後一級上限為 null（以上）。
+   ========================================================================= */
+const INS_KINDS = {
+  labor:  {zh:'勞工保險',    en:'Labor insurance',   table:'勞工保險投保薪資分級表', amt:'月投保薪資'},
+  health: {zh:'全民健康保險', en:'Health insurance',  table:'全民健康保險投保金額分級表', amt:'月投保金額'},
+  pension:{zh:'勞工退休金',  en:'Labor pension',     table:'勞工退休金月提繳分級表', amt:'月提繳工資'}
+};
+const INS_TABLES = {
+  labor:[
+    {id:'labor-2026-01-01', eff:'2026-01-01', doc:'勞動部 114/11/21 勞動保 2 字第 1140091863 號令（115/1/1 施行）', file:'勞工保險投保薪資分級表（115.1.1）.pdf', src:'seed',
+     rows:[[null,29500,29500],[29501,30300,30300],[30301,31800,31800],[31801,33300,33300],[33301,34800,34800],[34801,36300,36300],[36301,38200,38200],[38201,40100,40100],[40101,42000,42000],[42001,43900,43900],[43901,null,45800]],
+     partTime:[11100,12540], low:[13500,15840,16500,17280,17880,19047,20008,21009,22000,23100,24000,25250,26400,27600,28590]},
+    {id:'labor-2027-01-01', eff:'2027-01-01', doc:'勞動部 115/11/17 勞動保 2 字第 1150092891 號令（116/1/1 施行）', file:'勞工保險投保薪資分級表（116.1.1）.pdf', src:'seed',
+     rows:[[null,30900,30900],[30901,31800,31800],[31801,33300,33300],[33301,34800,34800],[34801,36300,36300],[36301,38200,38200],[38201,40100,40100],[40101,42000,42000],[42001,43900,43900],[43901,null,45800]],
+     partTime:[11100,12540], low:[13500,15840,16500,17280,17880,19047,20008,21009,22000,23100,24000,25250,26400,27600,28590,29500]}],
+  health:[
+    {id:'health-2026-01-01', eff:'2026-01-01', doc:'全民健康保險投保金額分級表（檔案內文未載明生效日，依檔名 115.01.01）', file:'全民健康保險投保金額分級表（115.01.01）.pdf', src:'seed',
+     rows:[[null,29500,29500],[29501,30300,30300],[30301,31800,31800],[31801,33300,33300],[33301,34800,34800],[34801,36300,36300],[36301,38200,38200],[38201,40100,40100],[40101,42000,42000],[42001,43900,43900],[43901,45800,45800],[45801,48200,48200],[48201,50600,50600],[50601,53000,53000],[53001,55400,55400],[55401,57800,57800],[57801,60800,60800],[60801,63800,63800],[63801,66800,66800],[66801,69800,69800],[69801,72800,72800],[72801,76500,76500],[76501,80200,80200],[80201,83900,83900],[83901,87600,87600],[87601,92100,92100],[92101,96600,96600],[96601,101100,101100],[101101,105600,105600],[105601,110100,110100],[110101,115500,115500],[115501,120900,120900],[120901,126300,126300],[126301,131700,131700],[131701,137100,137100],[137101,142500,142500],[142501,147900,147900],[147901,150000,150000],[150001,156400,156400],[156401,162800,162800],[162801,169200,169200],[169201,175600,175600],[175601,182000,182000],[182001,189500,189500],[189501,197000,197000],[197001,204500,204500],[204501,212000,212000],[212001,219500,219500],[219501,228200,228200],[228201,236900,236900],[236901,245600,245600],[245601,254300,254300],[254301,263000,263000],[263001,273000,273000],[273001,283000,283000],[283001,293000,293000],[293001,303000,303000],[303001,null,313000]]}],
+  pension:[
+    {id:'pension-2026-01-01', eff:'2026-01-01', doc:'勞動部 114/11/24 勞動福 3 字第 1140153598 號令（115/1/1 生效）', file:'勞工退休金月提繳分級表（115.01.01）.pdf', src:'seed',
+     rows:[[null,1500,1500],[1501,3000,3000],[3001,4500,4500],[4501,6000,6000],[6001,7500,7500],[7501,8700,8700],[8701,9900,9900],[9901,11100,11100],[11101,12540,12540],[12541,13500,13500],[13501,15840,15840],[15841,16500,16500],[16501,17280,17280],[17281,17880,17880],[17881,19047,19047],[19048,20008,20008],[20009,21009,21009],[21010,22000,22000],[22001,23100,23100],[23101,24000,24000],[24001,25250,25250],[25251,26400,26400],[26401,27600,27600],[27601,28590,28590],[28591,29500,29500],[29501,30300,30300],[30301,31800,31800],[31801,33300,33300],[33301,34800,34800],[34801,36300,36300],[36301,38200,38200],[38201,40100,40100],[40101,42000,42000],[42001,43900,43900],[43901,45800,45800],[45801,48200,48200],[48201,50600,50600],[50601,53000,53000],[53001,55400,55400],[55401,57800,57800],[57801,60800,60800],[60801,63800,63800],[63801,66800,66800],[66801,69800,69800],[69801,72800,72800],[72801,76500,76500],[76501,80200,80200],[80201,83900,83900],[83901,87600,87600],[87601,92100,92100],[92101,96600,96600],[96601,101100,101100],[101101,105600,105600],[105601,110100,110100],[110101,115500,115500],[115501,120900,120900],[120901,126300,126300],[126301,131700,131700],[131701,137100,137100],[137101,142500,142500],[142501,147900,147900],[147901,null,150000]]}]
+};
+/* 費率（版本＋生效日）。occ＝職業災害保險費率，依行業別與上下班災害，由勞保局核定給每個投保單位，這裡由人資依單位填（未填就標「待設定」，不用假數字）。
+   ok＝是否已查證；未查證的版本在畫面與計算明細上都會標出來。 */
+const INS_RATES = [
+  {eff:'2026-01-01', ok:true,
+   labor:{ord:0.115, emp:0.01, ee:0.2, er:0.7, gov:0.1}, health:{rate:0.0517, ee:0.3, er:0.6, gov:0.1, avgDep:0.56, maxDep:3}, pension:{er:0.06, eeMax:0.06},
+   src:['勞動部：115 年勞工保險費率合計 12.5%（普通事故 11.5% ＋ 就業保險 1%），勞工 20%、雇主 70%、政府 10%',
+        '健保署：一般保險費率 5.17%（行政院 114/12/31 核定維持），平均眷口數 0.56（113/1/1 起），勞工 30%、雇主 60%、政府 10%；眷屬最多計 3 口',
+        '勞工退休金條例：雇主每月至少提繳 6%，勞工可在 6% 內自願提繳'],
+   note:'勞保與就保合併計算後四捨五入至元（尾數處理尚未與勞保局帳單核對）；健保雇主負擔＝投保金額 × 5.17% × 60% × (1＋0.56)，四捨五入。'},
+  {eff:'2027-01-01', ok:false,
+   labor:{ord:0.12, emp:0.01, ee:0.2, er:0.7, gov:0.1}, health:{rate:0.0517, ee:0.3, er:0.6, gov:0.1, avgDep:0.56, maxDep:3}, pension:{er:0.06, eeMax:0.06},
+   src:['勞保局公告：116 年 1 月 1 日起勞保費率合計調升為 13%（其中 1% 為就業保險）；各報導對普通事故與就保如何拆分說法不一，以勞保局正式公告為準',
+        '健保費率與平均眷口數：目前未見 116 年的新公告，暫沿用 115 年，公告後再更新'],
+   note:'尚未查證：116 年費率拆分、健保費率與眷口數，請人資對照公告確認後再使用。'}
+];
+const insDate = m => m.length===7 ? m+'-01' : m;
+const insVer  = (kind, month) => { const d=insDate(month), v=INS_TABLES[kind].filter(x=>x.eff<=d).sort((a,b)=>a.eff<b.eff?1:-1)[0]; return v||INS_TABLES[kind].slice().sort((a,b)=>a.eff<b.eff?-1:1)[0]; };
+const insRate = month => { const d=insDate(month), r=INS_RATES.filter(x=>x.eff<=d).sort((a,b)=>a.eff<b.eff?1:-1)[0]; return r||INS_RATES[0]; };
+/* 薪資落在哪一級：第一個「上限 ≥ 薪資」的級距；超過最高級就用最高級的金額 */
+function insGrade(ver, pay){
+  const rows=ver.rows; let i=rows.findIndex(r=>r[1]==null||pay<=r[1]); if(i<0) i=rows.length-1;
+  return {level:i+1, lo:rows[i][0], hi:rows[i][1], amt:rows[i][2]};
+}
+/* 勞保：部分工時且薪資低於最低工資者（分級表備註二、三）：11,100／12,540 兩級，再往上依備註二各級，超過最後一級改依第 1 級 */
+function insLaborGrade(ver, pay, partTime){
+  const min=ver.rows[0][2];
+  if(partTime && pay<min){
+    if(pay<=ver.partTime[0]) return {level:0, amt:ver.partTime[0], note:'部分工時 備註三'};
+    if(pay<=ver.partTime[1]) return {level:0, amt:ver.partTime[1], note:'部分工時 備註三'};
+    const v=ver.low.find(x=>x>=pay); if(v) return {level:0, amt:v, note:'備註二（薪資未達最低工資）'};
+    return {...insGrade(ver,pay), note:'超過備註二最高級，依第 1 級'};
+  }
+  return insGrade(ver,pay);
+}
+/* 每月保費：勞保（個人 20%、雇主 70%）、健保（個人 30% 含眷屬、雇主 60% × (1＋平均眷口數)）、勞退（雇主 6%、個人自提）、職災（雇主，單位費率） */
+function insCalc(month, {labor=0, health=0, pension=0, dep=0, selfPct=0, unitId=''}){
+  const R=insRate(month), L=R.labor, H=R.health, P=R.pension, rate=L.ord+L.emp, hd=Math.min(Math.max(+dep||0,0),H.maxDep);
+  const lab={amt:labor, rate, ee:labor?Math.round(labor*rate*L.ee):0, er:labor?Math.round(labor*rate*L.er):0};
+  const e1=health?Math.round(health*H.rate*H.ee):0;
+  const hel={amt:health, rate:H.rate, dep:hd, ee1:e1, ee:e1*(1+hd), er:health?Math.round(health*H.rate*H.er*(1+H.avgDep)):0};
+  const pen={amt:pension, rate:P.er, selfPct:+selfPct||0, er:pension?Math.round(pension*P.er):0, ee:pension&&selfPct?Math.round(pension*selfPct/100):0};
+  const oc=((typeof state!=='undefined'&&state.insOcc)||{})[unitId]||{}, has=v=>v!=null&&v!=='';
+  const set=has(oc.industry)||has(oc.commute), orate=(has(oc.industry)?+oc.industry:0)+(has(oc.commute)?+oc.commute:0);
+  const occ={rate:set?orate:null, er:set&&labor?Math.round(labor*orate):null};
+  return {R, lab, hel, pen, occ, ee:lab.ee+hel.ee+pen.ee, er:lab.er+hel.er+pen.er+(occ.er||0)};
+}
 /* 證照（v2.0 規格：照服員證、護理師執照等證照編號與效期；簡報：證照、小卡效期）。示範資料 */
 const LICENSES = {
   rn:[{zh:'護理師證書',renew:0},{zh:'護理人員執業執照',renew:6,ce:150}],
@@ -5608,8 +5680,6 @@ const PAY_CFG = {
   minMonthly:29500, minHourly:196,          // 2026 基本工資
   fullAttBonus:2000,                         // 全勤獎金（全職）
   taxThreshold:88501, taxRate:0.05,          // 薪資扣繳：超過門檻以 5% 預扣（簡化）
-  avgDep:0.56,                               // 健保雇主負擔平均眷口數
-  laborRate:0.125, healthRate:0.0517, pensionER:0.06,
   eveRate:200, nightRate:400,                // 夜班津貼（每班）
   nightInOTBase:true                         // 夜班津貼屬經常性給與，計入加班費時薪基準
 };
@@ -5669,7 +5739,6 @@ const splitBonus = amt => { for(const [lo,hi,b] of SPLIT_BONUS) if(amt>=lo&&amt<
 const REMOTE_AREAS = ['五峰','尖石','關西','峨眉'], REMOTE_ALLOW = 600;   // 服務偏遠區：每案每月補貼 600 元
 const SPLIT_FACILITIES = ['附設新竹縣私立誠馨綜合式服務類長期照顧服務機構','附設新竹市私立誠芯居家長照機構','附設私立誠芯三館綜合長照機構'];
 const HOLIDAYS = {'2026-09-25':'中秋節','2026-09-28':'孔子誕辰紀念日','2026-10-09':'國慶日補假','2026-10-26':'光復節補假'};
-const PENSION_GRADES = HEALTH_GRADES.filter(g=>g<=150000);
 const PAY_MONTHS = ['2026-06','2026-07','2026-08','2026-09','2026-10'];
 const payDefault = () => state.payMonth || (PAY_MONTHS.includes(CUR_MONTH) ? CUR_MONTH : PAY_MONTHS[PAY_MONTHS.length-1]);
 const OT_TIERS = [
@@ -5754,7 +5823,7 @@ function payInputs(empId, month){
   inp.bonus = !part && inp.lateMin===0 && !Object.keys(inp.leave).some(k=>LEAVE_TYPES[k].att&&inp.leave[k]>0);
   const ev=rec.ins.filter(x=>x.date<=mE).slice(-1)[0];
   if(ev && ev.kind!=='quit'){ inp.laborG=ev.labor; inp.healthG=ev.health; }
-  inp.pensionG = inp.laborG ? gradeFor(part ? inp.hourly*WORK_DAY_H*22 : p.salary, PENSION_GRADES) : 0;
+  inp.pensionG = inp.laborG ? insGrade(insVer('pension',month), part ? inp.hourly*WORK_DAY_H*22 : p.salary).amt : 0;   // 勞退月提繳工資：依該月有效的分級表
   { const bi=((state.bonusImp||{})[month]||{})[empId]; if(bi){ inp.visits=bi.visits||0; inp.overN=bi.over||0; inp.incentive=bi.incentive||0; inp.sources.push('獎金匯入'); } }
   { const ar=part?null:aCodeReward(empId,month); if(ar){ inp.aReward=ar.amt; inp.aMeta=ar.meta; inp.sources.push('A碼'); } }
   { const sv=svcHoursFor(p.zh, month); if(sv!==null&&(inp.driver||part)){ if(inp.driver) inp.homeH=sv; else inp.regH=sv; inp.svcHours=sv; inp.sources.push('仁寶'); } }
@@ -5804,18 +5873,20 @@ function payMath(inp){
   if(+inp.settleAnnual>0) extra+=add('earn','特休結算','Annual-leave settlement',`${fmtH(+inp.settleAnnual)} 小時 × ${Hs}`, inp.settleAnnual*H);
   const gross = base+night+ot+paidLeave+bonus+adjPos-att+home+extra;
   const regular = (inp.part ? inp.regH*H : +inp.monthly)+night;
-  if(inp.laborG && gradeFor(regular,LABOR_GRADES)>inp.laborG) warn.push({zh:`勞保投保薪資 ${inp.laborG} 低於本月經常性薪資（含夜班津貼）${Math.round(regular)} 的級距 ${gradeFor(regular,LABOR_GRADES)}`,
-    en:`Labor insured salary ${inp.laborG} is below the bracket for regular pay incl. shift allowance (${gradeFor(regular,LABOR_GRADES)})`,cls:'warn'});
-  const labor = inp.laborG ? add('stat','勞保費（個人負擔）','Labor insurance (employee)',`投保薪資 ${n(inp.laborG)} × 12.5% × 20%`, laborPremium(+inp.laborG)) : 0;
-  const health = inp.healthG ? add('stat','健保費（個人負擔）','Health insurance (employee)',`投保金額 ${n(inp.healthG)} × 5.17% × 30% × (1 + 眷屬 ${Math.min(+inp.dep,3)})`, healthPremium(+inp.healthG,+inp.dep)) : 0;
-  const pension = +inp.selfPct ? add('stat','勞退自提','Voluntary pension',`提繳工資 ${n(inp.pensionG)} × ${inp.selfPct}%`, inp.pensionG*inp.selfPct/100) : 0;
+  const mo=inp.month||CUR_MONTH, I=insCalc(mo,{labor:+inp.laborG, health:+inp.healthG, pension:+inp.pensionG, dep:+inp.dep, selfPct:+inp.selfPct}), pc=x=>+(x*100).toFixed(2)+'%';
+  const regGrade=insGrade(insVer('labor',mo),regular).amt;
+  if(inp.laborG && regGrade>inp.laborG) warn.push({zh:`勞保投保薪資 ${inp.laborG} 低於本月經常性薪資（含夜班津貼）${Math.round(regular)} 的級距 ${regGrade}`,
+    en:`Labor insured salary ${inp.laborG} is below the bracket for regular pay incl. shift allowance (${regGrade})`,cls:'warn'});
+  const labor = inp.laborG ? add('stat','勞保費（個人負擔）','Labor insurance (employee)',`投保薪資 ${n(inp.laborG)} × ${pc(I.lab.rate)} × 20%`, I.lab.ee) : 0;
+  const health = inp.healthG ? add('stat','健保費（個人負擔）','Health insurance (employee)',`投保金額 ${n(inp.healthG)} × ${pc(I.hel.rate)} × 30% × (1 + 眷屬 ${I.hel.dep})`, I.hel.ee) : 0;
+  const pension = +inp.selfPct ? add('stat','勞退自提','Voluntary pension',`提繳工資 ${n(inp.pensionG)} × ${inp.selfPct}%`, I.pen.ee) : 0;
   const taxable = gross-pension;
   const tax = taxable>PAY_CFG.taxThreshold ? add('stat','薪資所得扣繳','Income tax withheld',`(應發 − 勞退自提) ${n(taxable)} × 5%（超過 ${n(PAY_CFG.taxThreshold)}）`, taxable*PAY_CFG.taxRate) : 0;
   const stat = labor+health+pension+tax;
   const net = gross-stat-adjNeg;
-  const erL = add('er','勞保費（雇主 70%）','Labor insurance (employer)',`${n(inp.laborG)} × 12.5% × 70%`, inp.laborG*PAY_CFG.laborRate*0.7);
-  const erH = add('er','健保費（雇主 60%）','Health insurance (employer)',`${n(inp.healthG)} × 5.17% × 60% × (1 + ${PAY_CFG.avgDep})`, inp.healthG*PAY_CFG.healthRate*0.6*(1+PAY_CFG.avgDep));
-  const erP = add('er','勞退提繳（雇主 6%）','Pension (employer 6%)',`${n(inp.pensionG)} × 6%`, inp.pensionG*PAY_CFG.pensionER);
+  const erL = add('er','勞保費（雇主 70%）','Labor insurance (employer)',`${n(inp.laborG)} × ${pc(I.lab.rate)} × 70%`, I.lab.er);
+  const erH = add('er','健保費（雇主 60%）','Health insurance (employer)',`${n(inp.healthG)} × ${pc(I.hel.rate)} × 60% × (1 + ${I.R.health.avgDep})`, I.hel.er);
+  const erP = add('er','勞退提繳（雇主 6%）','Pension (employer 6%)',`${n(inp.pensionG)} × ${pc(I.pen.rate)}`, I.pen.er);
   if(inp.part && H<PAY_CFG.minHourly) warn.push({zh:`時薪低於基本工資 ${PAY_CFG.minHourly}`,en:`Hourly rate below minimum ${PAY_CFG.minHourly}`,cls:'crit'});
   if(!inp.part && +inp.monthly<PAY_CFG.minMonthly) warn.push({zh:'月薪低於基本工資',en:'Monthly pay below minimum wage',cls:'crit'});
   if(inp.missing) warn.push({zh:`未打卡 ${inp.missing} 筆未補登`+(inp.part?'（以 8 小時暫計）':''),en:`${inp.missing} missing punch(es) unresolved`,cls:'warn'});
@@ -6194,7 +6265,7 @@ function calcDefaults(empId, month){
 function calcToInput(c){
   const leave={}; DEDUCT_LEAVES.forEach(k=>{ if(+c['lv_'+k]) leave[k]=+c['lv_'+k]; }); if(+c.lv_paid) leave.annual=+c.lv_paid;
   const adjust=[]; if(+c.addAmt) adjust.push({label:'其他加項',amount:+c.addAmt,reason:''}); if(+c.dedAmt) adjust.push({label:'其他減項',amount:-c.dedAmt,reason:''});
-  const pensionG = +c.laborG ? gradeFor(c.part ? c.hourly*WORK_DAY_H*22 : +c.monthly, PENSION_GRADES) : 0;
+  const pensionG = +c.laborG ? insGrade(insVer('pension',c.month||CUR_MONTH), c.part ? c.hourly*WORK_DAY_H*22 : +c.monthly).amt : 0;
   return {...c, part:c.part===true||c.part==='true', leave, adjust, pensionG, missing:0, pending:0, otOver:[], compH:0};
 }
 function viewPayCalc(){
@@ -6469,6 +6540,148 @@ function oxBind(){
     ['regMin','trWd','trHol','trNh','aa05','aa06','aa11','rural','intro','open','other','short','labor','health','pension','otherDed'].forEach(k=>r[k]=Math.max(0,oxNum(fd.get(k)))); cfg.ot.forEach((o,i)=>r.ot[i]=Math.max(0,oxNum(fd.get('ot'+i))));
     if(!r.id) return; const old=(state.oxRows||[]).find(q=>q.id===r.id); if(old){ r.aaFixed=old.aaFixed; r.refRate=old.refRate; } oxUpsert([r]); state.oxEdit=null; set('已儲存 '+r.id+'。'); };
 }
+
+/* ---------- 薪資計算 › 勞健退（11/19 會議）：人資只要上傳政府公告，系統算出每位員工的投保級距與保費，並留下每個數字的依據供稽核 ---------- */
+function insRowFor(s, month){
+  const rec=empRecord(s.id), mE=monthEnd(month), ev=rec.ins.filter(x=>x.date<=mE).slice(-1)[0], enrolled=!!ev&&ev.kind!=='quit';
+  const part=isHourlyPay(s), basis=Math.round(part ? (HOURLY_WAGE[s.id]||PAY_CFG.minHourly)*WORK_DAY_H*22 : s.salary);
+  const vL=insVer('labor',month), vH=insVer('health',month), vP=insVer('pension',month);
+  const sugL=insLaborGrade(vL,basis,s.type==='part'), sugH=insGrade(vH,basis), pen=insGrade(vP,basis);
+  const labor=enrolled?ev.labor:0, health=enrolled?ev.health:0, pension=enrolled?pen.amt:0;
+  const C=insCalc(month,{labor,health,pension,dep:rec.dep,selfPct:rec.selfPension,unitId:s.unit}), flags=[];
+  if(!enrolled) flags.push({cls:'warn',zh:'未加保',en:'Not enrolled'});
+  else {
+    if(labor<sugL.amt) flags.push({cls:'warn',zh:'勞保投保薪資低於建議 '+sugL.amt,en:'Labor grade below suggested '+sugL.amt});
+    else if(labor>sugL.amt) flags.push({cls:'info',zh:'勞保高於建議 '+sugL.amt,en:'Labor grade above suggested '+sugL.amt});
+    if(health<sugH.amt) flags.push({cls:'warn',zh:'健保投保金額低於建議 '+sugH.amt,en:'Health grade below suggested '+sugH.amt});
+    else if(health>sugH.amt) flags.push({cls:'info',zh:'健保高於建議 '+sugH.amt,en:'Health grade above suggested '+sugH.amt});
+  }
+  [[vL,'勞保'],[vH,'健保'],[vP,'勞退']].forEach(([v,t])=>{ if(v.eff>insDate(month)) flags.push({cls:'crit',zh:t+'分級表 '+v.eff+' 才生效，這個月沒有有效的版本',en:t+' table effective only from '+v.eff}); });
+  return {s, rec, ev, enrolled, part, basis, vL, vH, vP, sugL, sugH, pen, C, flags};
+}
+const insMonthNow = () => state.insMonth || payDefault();
+function insRows(month){ const units=activeUnitIds(); return STAFF.filter(s=>units.includes(s.unit)&&onRoster(s,month)).map(s=>insRowFor(s,month)); }
+const insTotals = rows => rows.reduce((a,r)=>{ const c=r.C; a.n++; a.lab.ee+=c.lab.ee; a.lab.er+=c.lab.er; a.hel.ee+=c.hel.ee; a.hel.er+=c.hel.er; a.pen.ee+=c.pen.ee; a.pen.er+=c.pen.er; a.occ+=c.occ.er||0; a.occN+=(c.occ.rate==null&&r.enrolled)?1:0; a.ee+=c.ee; a.er+=c.er; return a; },
+  {n:0, lab:{ee:0,er:0}, hel:{ee:0,er:0}, pen:{ee:0,er:0}, occ:0, occN:0, ee:0, er:0});
+const pct = x => +(x*100).toFixed(2)+'%';
+function viewPayIns(){
+  const month=insMonthNow(), rows=insRows(month), T=insTotals(rows), R=insRate(month), can_=payEdit();
+  const units=[...new Set(rows.map(r=>r.s.unit))].map(u=>ALL_UNITS.find(x=>x.id===u));
+  const verRow=kind=>{ const cur=insVer(kind,month), all=INS_TABLES[kind].slice().sort((a,b)=>a.eff<b.eff?-1:1);
+    return all.map(v=>{ const first=v.rows[0][2], last=v.rows[v.rows.length-1][2], st=v===cur?(v.eff<=insDate(month)?'使用中':'最早版本（此月份之前無版本）'):v.eff>insDate(month)?'已公布，尚未生效':'已被新版取代';
+      return `<tr class="${v===cur?'':'muted'}"><td>${esc(both(INS_KINDS[kind].zh,INS_KINDS[kind].en))}</td><td class="mono">${v.eff}</td><td style="white-space:normal">${esc(v.doc)}<div class="muted" style="font-size:11px">${esc(v.file)}</div></td>
+        <td class="num">${v.rows.length}</td><td class="num">${money(first)} – ${money(last)}</td><td><span class="chip ${v===cur?'ok':''}">${esc(st)}</span></td></tr>`; }).join(''); };
+  const emp=r=>{ const c=r.C;
+    return `<tr data-insemp="${r.s.id}" style="cursor:pointer"><td>${esc(empName(r.s.id))} <span class="muted mono" style="font-size:11px">${r.s.id}</span></td><td>${esc(unit(r.s.unit).zh)}</td>
+      <td class="num">${money(r.basis)}</td>
+      <td class="num">${r.enrolled?money(r.ev.labor):'—'}</td><td class="num">${money(c.lab.ee)}</td><td class="num">${money(c.lab.er)}</td>
+      <td class="num">${r.enrolled?money(r.ev.health):'—'}${c.hel.dep?` <span class="muted" style="font-size:11px">+${c.hel.dep}</span>`:''}</td><td class="num">${money(c.hel.ee)}</td><td class="num">${money(c.hel.er)}</td>
+      <td class="num">${money(c.pen.amt)}</td><td class="num">${money(c.pen.er)}</td><td class="num">${c.pen.ee?money(c.pen.ee):'—'}</td>
+      <td class="num">${c.occ.er==null?`<span class="chip warn">${esc(both('待設定','Not set'))}</span>`:money(c.occ.er)}</td>
+      <td class="num"><b>${money(c.ee)}</b></td><td class="num"><b>${money(c.er)}</b></td>
+      <td>${r.flags.map(f=>`<span class="chip ${f.cls}">${esc(both(f.zh,f.en))}</span>`).join(' ')||`<span class="chip ok">${esc(both('正常','OK'))}</span>`}</td></tr>`; };
+  const unitRow=u=>{ const t=insTotals(rows.filter(r=>r.s.unit===u.id));
+    return `<tr><td><b>${esc(u.zh)}</b></td><td class="num">${t.n}</td><td class="num">${money(t.lab.ee)}</td><td class="num">${money(t.lab.er)}</td><td class="num">${money(t.hel.ee)}</td><td class="num">${money(t.hel.er)}</td><td class="num">${money(t.pen.er)}</td><td class="num">${t.occN?`<span class="chip warn">${esc(both('待設定','Not set'))}</span>`:money(t.occ)}</td><td class="num"><b>${money(t.er)}</b></td></tr>`; };
+  const occCell=(u,k)=>{ const v=((state.insOcc||{})[u.id]||{})[k]; return `<input type="number" step="0.01" min="0" max="10" data-insocc="${u.id}:${k}" value="${v==null||v===''?'':+(v*100).toFixed(4)}" placeholder="${esc(both('待設定','not set'))}" style="width:96px"${can_?'':' disabled'}>`; };
+  return `<div class="grid">
+    <section class="card" id="insVers"><div class="card-h"><h2>${esc(both('分級表版本與費率','Grade-table versions and rates'))}</h2><span class="mono muted" style="font-size:12px">${month}</span></div>
+      <div class="card-b" style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px">
+        <div class="note">${esc(both('系統依薪資月份自動選用當時有效的分級表與費率；政府公告新版時，上傳新表就會從生效日起自動套用（下一批功能）。表格資料取自需求端 11/19 提供的政府公告。','The system picks the grade tables and rates in force for the pay month. When the government publishes a new table, uploading it will apply from its effective date (coming next). The data comes from the official notices supplied on 19 Nov.'))}</div>
+        <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('保險','Insurance')}</th><th>${bi('生效日','Effective')}</th><th>${bi('公告文號與檔案','Notice and file')}</th><th>${bi('級數','Levels')}</th><th>${bi('投保金額範圍','Range')}</th><th>${bi('狀態','Status')}</th></tr></thead>
+          <tbody>${['labor','health','pension'].map(verRow).join('')}</tbody></table></div>
+        <div><div class="eyebrow">${esc(both('這個月適用的費率（生效日 '+R.eff+'）','Rates in force (effective '+R.eff+')'))} ${R.ok?`<span class="chip ok">${esc(both('已查證','Verified'))}</span>`:`<span class="chip warn">${esc(both('尚未查證','Not yet verified'))}</span>`}</div>
+          <div class="todostrip"><span class="chip">${esc(both('勞保','Labor'))} ${pct(R.labor.ord+R.labor.emp)}（${pct(R.labor.ord)}＋${esc(both('就保','emp.'))} ${pct(R.labor.emp)}）· ${esc(both('個人','you'))} ${pct(R.labor.ee)} / ${esc(both('雇主','employer'))} ${pct(R.labor.er)}</span>
+            <span class="chip">${esc(both('健保','Health'))} ${pct(R.health.rate)} · ${esc(both('個人','you'))} ${pct(R.health.ee)} / ${esc(both('雇主','employer'))} ${pct(R.health.er)} × (1＋${R.health.avgDep})</span>
+            <span class="chip">${esc(both('勞退','Pension'))} ${esc(both('雇主','employer'))} ${pct(R.pension.er)}</span></div>
+          <details><summary>${esc(both('依據與說明','Sources and notes'))}</summary><ul style="margin:6px 0 0 18px;font-size:12.5px;line-height:1.7">${R.src.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="legend">${esc(R.note)}</div></details></div>
+        <div><div class="eyebrow">${esc(both('職業災害保險費率（雇主負擔）','Occupational-injury rate (employer)'))}</div>
+          <div class="muted" style="font-size:12.5px;line-height:1.7;margin-bottom:6px">${esc(both('費率由勞保局依行業別與上下班災害核定給每個投保單位，請人資依單位填入（%）。沒填的單位會標「待設定」，不會用假數字。注意：職災保險有自己的「災害保險投保薪資分級表」，目前先以勞保投保薪資估算，該表上傳後會改用。','The rate is set by the BLI for each insured unit by industry and commuting accidents; HR enters it per unit (%). Units left blank show “Not set” and no figure is invented. Note: occupational-injury insurance has its own grade table; for now the labor insured salary is used, and the table will be used once uploaded.'))}</div>
+          <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('單位','Unit')}</th><th>${bi('行業別費率 %','Industry rate %')}</th><th>${bi('上下班災害費率 %','Commuting rate %')}</th></tr></thead>
+            <tbody>${units.map(u=>`<tr><td>${esc(u.zh)}</td><td>${occCell(u,'industry')}</td><td>${occCell(u,'commute')}</td></tr>`).join('')}</tbody></table></div></div>
+      </div></section>
+    <section class="card" id="insRun"><div class="card-h"><h2>${esc(both('每位員工的投保級距與保費','Grades and premiums per employee'))}</h2>
+      <span class="ulabel" style="margin-left:10px">${esc(both('月份','Month'))}</span> <select id="insMonth">${PAY_MONTHS.map(m=>`<option ${m===month?'selected':''}>${m}</option>`).join('')}</select>
+      <div class="spacer"></div><button class="btn mini" data-insxlsx>${esc(both('匯出核對 Excel','Export for checking'))}</button></div>
+      <div class="card-b" style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px">
+        <div class="tiles">
+          <div class="tile"><span class="k">${esc(both('員工負擔合計','Employees pay'))}</span><span class="v">${money(T.ee)}</span><span class="d">${T.n} ${esc(both('人','people'))}</span></div>
+          <div class="tile"><span class="k">${esc(both('雇主負擔合計','Employer pays'))}</span><span class="v">${money(T.er)}</span><span class="d">${esc(both('勞保＋健保＋勞退'+(T.occN?'（職災待設定）':'＋職災'),'labor + health + pension'+(T.occN?' (occupational not set)':' + occupational')))}</span></div>
+          <div class="tile"><span class="k">${esc(both('勞保（個人／雇主）','Labor (you / employer)'))}</span><span class="v" style="font-size:17px">${money(T.lab.ee)} / ${money(T.lab.er)}</span></div>
+          <div class="tile"><span class="k">${esc(both('健保（個人／雇主）','Health (you / employer)'))}</span><span class="v" style="font-size:17px">${money(T.hel.ee)} / ${money(T.hel.er)}</span></div>
+          <div class="tile"><span class="k">${esc(both('勞退（雇主／自提）','Pension (employer / voluntary)'))}</span><span class="v" style="font-size:17px">${money(T.pen.er)} / ${money(T.pen.ee)}</span></div>
+        </div>
+        <div class="eyebrow">${esc(both('各單位合計（對勞保局、健保署帳單用）','Totals per unit (to check against the bills)'))}</div>
+        <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('單位','Unit')}</th><th>${bi('人數','People')}</th><th>${bi('勞保 個人','Labor you')}</th><th>${bi('勞保 雇主','Labor er.')}</th><th>${bi('健保 個人','Health you')}</th><th>${bi('健保 雇主','Health er.')}</th><th>${bi('勞退 雇主','Pension er.')}</th><th>${bi('職災 雇主','Occup. er.')}</th><th>${bi('雇主合計','Employer total')}</th></tr></thead>
+          <tbody>${units.map(unitRow).join('')}</tbody></table></div>
+        <div class="eyebrow">${esc(both('每位員工（點一列看計算依據）','Per employee (click a row for the working)'))}</div>
+        <div class="tablewrap" style="max-height:460px;overflow:auto"><table class="todotbl"><thead><tr><th>${bi('員工','Employee')}</th><th>${bi('單位','Unit')}</th><th>${bi('薪資基準','Pay basis')}</th>
+          <th>${bi('勞保投保薪資','Labor grade')}</th><th>${bi('個人','You')}</th><th>${bi('雇主','Er.')}</th><th>${bi('健保投保金額（＋眷屬）','Health grade (+deps)')}</th><th>${bi('個人','You')}</th><th>${bi('雇主','Er.')}</th>
+          <th>${bi('勞退月提繳工資','Pension wage')}</th><th>${bi('雇主 6%','Er. 6%')}</th><th>${bi('自提','Voluntary')}</th><th>${bi('職災 雇主','Occup. er.')}</th><th>${bi('個人合計','Total you')}</th><th>${bi('雇主合計','Total er.')}</th><th>${bi('提醒','Flags')}</th></tr></thead>
+          <tbody>${rows.map(emp).join('')}</tbody></table></div>
+        <div class="legend">${esc(both('薪資基準：月薪制用月薪；時薪制與兼職先用「時薪 × 8 小時 × 22 天」估算，每季建議級距的功能會改用前三個月的平均經常性薪資（下一批）。個人負擔會進薪資單的法定代扣；雇主負擔不進薪資單，供核對帳單與計算公司成本。','Pay basis: monthly staff use monthly pay; hourly and part-time staff are estimated as hourly rate × 8 h × 22 days for now — the quarterly suggestion (next) will use the average of the previous three months. Employee amounts go on the payslip; employer amounts do not and are for checking the bills and company cost.'))}</div>
+      </div></section>
+  </div>`;
+}
+function openInsAudit(id, month){
+  const r=insRowFor(person(id), month), c=r.C, R=c.R, s=r.s, rec=r.rec, L=R.labor, H=R.health;
+  const row=(zh,en,v)=>`<dt>${esc(both(zh,en))}</dt><dd>${v}</dd>`, mono=x=>`<span class="mono">${esc(x)}</span>`, ver=v=>`${esc(v.doc)}<div class="muted" style="font-size:11px">${esc(v.file)} · ${esc(both('生效日 ','effective '))}${v.eff}</div>`;
+  const gradeTxt=(g,v)=>`${esc(both('第 '+(g.level||'—')+' 級','Level '+(g.level||'—')))}${g.lo==null?'（'+money(g.hi)+esc(both(' 以下',' or less'))+'）':g.hi==null?'（'+money(g.lo)+esc(both(' 以上',' or more'))+'）':'（'+money(g.lo)+' – '+money(g.hi)+'）'}`;
+  const sec=(t,body)=>`<section style="margin-bottom:14px"><div class="eyebrow">${esc(t)}</div><dl class="kv">${body}</dl></section>`;
+  document.getElementById('overlay').innerHTML=`
+    <div class="scrim" data-close></div>
+    <aside class="drawer wide" role="dialog" aria-modal="true">
+      <div class="drawer-h"><span class="avatar" style="width:40px;height:40px;font-size:15px">${esc(empName(id).slice(0,1))}</span>
+        <div><h2 style="font-size:16px">${esc(empName(id))} <span class="muted mono" style="font-size:12px">${id} · ${month}</span></h2>
+          <div class="muted" style="font-size:12px">${esc(TITLES[s.title].zh)} · ${esc(unit(s.unit).zh)} · ${esc(both('勞健退計算依據','how the insurance figures are worked out'))}</div></div>
+        <button class="x" data-close aria-label="${esc(both('關閉','Close'))}">✕</button></div>
+      <div class="drawer-b">
+        ${R.ok?'':`<div class="note warn">${esc(both('這個月適用的費率版本尚未查證：','The rate version for this month is not yet verified: ')+R.note)}</div>`}
+        ${sec(both('薪資基準','Pay basis'),
+          row('金額','Amount',`<b>${money(r.basis)}</b>`)+row('來源','Source',esc(r.part?both('時薪 × 8 小時 × 22 天（估算；每季建議功能會改用前三個月平均）','Hourly rate × 8 h × 22 days (estimate; the quarterly suggestion will use the previous three months)'):both('月薪（底薪＋專業加給）','Monthly pay (base + allowance)'))))}
+        ${sec(both('勞保','Labor insurance'),
+          row('適用分級表','Table in force',ver(r.vL))+row('薪資落在','Pay falls in',gradeTxt(r.sugL,r.vL)+(r.sugL.note?` <span class="chip">${esc(r.sugL.note)}</span>`:''))+
+          row('建議投保薪資','Suggested grade',`<b>${money(r.sugL.amt)}</b>`)+row('目前投保薪資','Current grade',r.enrolled?`<b>${money(r.ev.labor)}</b> ${r.ev.labor<r.sugL.amt?`<span class="chip warn">${esc(both('低於建議','below suggested'))}</span>`:r.ev.labor>r.sugL.amt?`<span class="chip info">${esc(both('高於建議','above suggested'))}</span>`:`<span class="chip ok">${esc(both('一致','matches'))}</span>`}`:esc(both('未加保','Not enrolled')))+
+          row('費率','Rate',mono(pct(L.ord)+' + '+pct(L.emp)+' = '+pct(L.ord+L.emp)))+
+          row('個人負擔','Employee',mono(money(c.lab.amt)+' × '+pct(c.lab.rate)+' × '+pct(L.ee)+' = '+money(c.lab.ee)))+
+          row('雇主負擔','Employer',mono(money(c.lab.amt)+' × '+pct(c.lab.rate)+' × '+pct(L.er)+' = '+money(c.lab.er)))+
+          row('職災（雇主）','Occupational (er.)',c.occ.er==null?`<span class="chip warn">${esc(both('待設定：請人資填入這個單位的職災費率','Not set: HR must enter this unit’s rate'))}</span>`:mono(money(c.lab.amt)+' × '+pct(c.occ.rate)+' = '+money(c.occ.er))))}
+        ${sec(both('健保','Health insurance'),
+          row('適用分級表','Table in force',ver(r.vH))+row('薪資落在','Pay falls in',gradeTxt(r.sugH,r.vH))+row('建議投保金額','Suggested grade',`<b>${money(r.sugH.amt)}</b>`)+
+          row('目前投保金額','Current grade',r.enrolled?`<b>${money(r.ev.health)}</b>`:esc(both('未加保','Not enrolled')))+
+          row('費率','Rate',mono(pct(H.rate)))+
+          row('個人負擔','Employee',mono(money(c.hel.amt)+' × '+pct(H.rate)+' × '+pct(H.ee)+' = '+money(c.hel.ee1)+'；本人＋眷屬 '+c.hel.dep+' 口 → '+money(c.hel.ee)))+
+          row('雇主負擔','Employer',mono(money(c.hel.amt)+' × '+pct(H.rate)+' × '+pct(H.er)+' × (1＋'+H.avgDep+') = '+money(c.hel.er))))}
+        ${sec(both('勞退','Labor pension'),
+          row('適用分級表','Table in force',ver(r.vP))+row('薪資落在','Pay falls in',gradeTxt(r.pen,r.vP))+row('月提繳工資','Monthly contribution wage',`<b>${money(c.pen.amt)}</b>`)+
+          row('雇主提繳','Employer',mono(money(c.pen.amt)+' × '+pct(R.pension.er)+' = '+money(c.pen.er)))+
+          row('個人自提','Voluntary',c.pen.selfPct?mono(money(c.pen.amt)+' × '+c.pen.selfPct+'% = '+money(c.pen.ee)):esc(both('未自提','None'))))}
+        ${sec(both('合計','Totals'),row('個人負擔（進薪資單）','Employee (on payslip)',`<b>${money(c.ee)}</b>`)+row('雇主負擔','Employer',`<b>${money(c.er)}</b>`+(c.occ.er==null?` <span class="muted">${esc(both('（不含職災）','(excl. occupational)'))}</span>`:'')))}
+        <section><div class="eyebrow">${esc(both('投保異動紀錄','Enrolment history'))}</div>
+          <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('日期','Date')}</th><th>${bi('異動','Event')}</th><th>${bi('勞保','Labor')}</th><th>${bi('健保','Health')}</th><th>${bi('備註','Note')}</th></tr></thead>
+            <tbody>${rec.ins.slice().reverse().map(x=>`<tr><td class="mono">${x.date}</td><td>${esc(both(INS_EVENT[x.kind].zh,INS_EVENT[x.kind].en))}</td><td class="num">${x.kind==='quit'?'—':money(x.labor)}</td><td class="num">${x.kind==='quit'?'—':money(x.health)}</td><td>${esc(x.note||'')}</td></tr>`).join('')}</tbody></table></div></section>
+      </div></aside>`;
+  document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{ closeOverlay(); render(); });
+}
+function insSheets(month){
+  const rows=insRows(month), T=insTotals(rows), R=insRate(month), units=[...new Set(rows.map(r=>r.s.unit))].map(u=>ALL_UNITS.find(x=>x.id===u));
+  const head=['員編','姓名','單位','職稱','薪資基準','勞保投保薪資','勞保 個人','勞保 雇主','健保投保金額','眷屬口數','健保 個人','健保 雇主','勞退月提繳工資','勞退 雇主','勞退 自提','職災 雇主','個人合計','雇主合計','建議勞保','建議健保','提醒'];
+  const body=rows.map(r=>{ const c=r.C; return [r.s.id,empName(r.s.id),unit(r.s.unit).zh,TITLES[r.s.title].zh,r.basis,r.enrolled?r.ev.labor:0,c.lab.ee,c.lab.er,r.enrolled?r.ev.health:0,c.hel.dep,c.hel.ee,c.hel.er,c.pen.amt,c.pen.er,c.pen.ee,c.occ.er==null?'待設定':c.occ.er,c.ee,c.er,r.sugL.amt,r.sugH.amt,r.flags.map(f=>f.zh).join('；')]; });
+  const unitRows=units.map(u=>{ const t=insTotals(rows.filter(r=>r.s.unit===u.id)); return [u.zh,t.n,t.lab.ee,t.lab.er,t.hel.ee,t.hel.er,t.pen.er,t.pen.ee,t.occN?'待設定':t.occ,t.ee,t.er]; });
+  const vers=[['保險','生效日','公告文號','檔案','級數','最低級','最高級','使用中']];
+  ['labor','health','pension'].forEach(k=>INS_TABLES[k].forEach(v=>vers.push([INS_KINDS[k].zh,v.eff,v.doc,v.file,v.rows.length,v.rows[0][2],v.rows[v.rows.length-1][2],v===insVer(k,month)?'是':''])));
+  return [
+    {name:'每位員工', rows:[['勞健退核對表 '+month+'（個人負擔會進薪資單；雇主負擔供核對帳單）'],head,...body,['合計','','','','','',T.lab.ee,T.lab.er,'','',T.hel.ee,T.hel.er,'',T.pen.er,T.pen.ee,T.occN?'待設定':T.occ,T.ee,T.er]], widths:[10,10,10,12,10,12,10,10,12,8,10,10,14,10,10,10,10,10,10,10,40]},
+    {name:'單位合計', rows:[['各單位合計 '+month+'（對勞保局、健保署帳單用）'],['單位','人數','勞保 個人','勞保 雇主','健保 個人','健保 雇主','勞退 雇主','勞退 自提','職災 雇主','個人合計','雇主合計'],...unitRows], widths:[14,8,10,10,10,10,10,10,10,10,10]},
+    {name:'版本與費率', rows:[['這個月使用的分級表版本'],...vers,[],['費率（生效日 '+R.eff+'，'+(R.ok?'已查證':'尚未查證')+'）'],['勞保（普通事故＋就保）',pct(R.labor.ord+R.labor.emp),'個人 '+pct(R.labor.ee),'雇主 '+pct(R.labor.er)],['健保',pct(R.health.rate),'個人 '+pct(R.health.ee),'雇主 '+pct(R.health.er)+' × (1＋'+R.health.avgDep+')'],['勞退雇主',pct(R.pension.er)],[],...R.src.map(x=>[x]),[R.note]], widths:[28,12,40,34,8,10,10,8]}
+  ];
+}
+BINDERS['pay:ins']=function(){
+  const sm=document.getElementById('insMonth'); if(sm) sm.onchange=()=>{ state.insMonth=sm.value; render(); };
+  document.querySelectorAll('[data-insemp]').forEach(r=>r.onclick=()=>openInsAudit(r.dataset.insemp, insMonthNow()));
+  const x=document.querySelector('[data-insxlsx]'); if(x) x.onclick=()=>saveBlob(buildXlsxBook(insSheets(insMonthNow())), `勞健退核對_${insMonthNow()}.xlsx`);
+  document.querySelectorAll('[data-insocc]').forEach(i=>i.onchange=()=>{ if(!payEdit()) return; const [u,k]=i.dataset.insocc.split(':'), v=i.value.trim();
+    const o=(state.insOcc||(state.insOcc={}))[u]||(state.insOcc[u]={}); o[k]=v===''?null:Math.max(0,+v)/100; toast(both('已更新職災費率；雇主負擔已重算','Occupational rate updated; employer amounts recalculated')); render(); });
+};
 /* ---------- 薪資計算 › 月薪制／時薪制／拆帳制（11/19 會議：三種算法完全不同，欄位也不同，分開頁籤） ---------- */
 function viewPayMonthly(){
   const month=payDefault(), can_=payEdit(), units=activeUnitIds();
