@@ -12,6 +12,7 @@
 <!--#artifact-begin-->
 <title>誠馨日照營運入口 Zengxin Day Care Ops Portal</title>
 <style>
+[hidden]{display:none!important}   /* 有些版面樣式會蓋掉 hidden 屬性，統一讓它一定生效 */
 :root{
   --ground:#F5F7F6; --surface:#FFFFFF; --surface-2:#EEF2F0; --rail:#12211D;
   --rail-ink:#CFDCD7; --rail-ink-dim:#8AA09A; --line:#DCE3E0; --line-strong:#C3CFCB;
@@ -706,6 +707,15 @@ function spanHours(start, end){
 }
 const fmtH = h => (Math.round(h*10)/10).toString();
 const hToDays = h => fmtH(h/WORK_DAY_H);
+/* 請假與出勤的時數顯示：天數＋小時合併（1 天 = WORK_DAY_H 小時），不用小數天。
+   例：10 小時 →「1天2小時」、4 小時 →「4小時」、16 小時 →「2天」、10.5 小時 →「1天2.5小時」。計算仍以小時為準。 */
+function fmtDH(h){
+  h=+h||0; if(h<0) return '-'+fmtDH(-h);
+  const t=Math.round(h*10), per=WORK_DAY_H*10, d=Math.floor(t/per), r=(t-d*per)/10, zh=state.lang==='zh';
+  if(!d) return zh ? r+'小時' : r+'h';
+  if(!r) return zh ? d+'天' : d+'d';
+  return zh ? d+'天'+r+'小時' : d+'d '+r+'h';
+}
 
 const mkLeave = (id,emp,type,from,fromT,to,toT,filed,status,note) =>
   ({id,emp,type,from,fromT,to,toT,hours:leaveHours(from,fromT,to,toT,emp),filed,status,note});
@@ -2393,7 +2403,7 @@ function openPerson(id){
         ${leaves.length?leaves.map(l=>`<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px">
             <span class="chip">${esc(both(LEAVE_TYPES[l.type].zh,LEAVE_TYPES[l.type].en))}</span>
             <span class="mono">${l.from} ${l.fromT} → ${l.to!==l.from?l.to+' ':''}${l.toT}</span>
-            <span class="mono muted">${fmtH(l.hours)}h</span>
+            <span class="mono muted">${fmtDH(l.hours)}</span>
             <span class="spacer" style="flex:1"></span>${statusChip(l.status)}</div>`).join('')
           :`<div class="muted" style="font-size:12.5px">${esc(both('無紀錄','No records'))}</div>`}
       </section>`:''}`;
@@ -2503,7 +2513,7 @@ function viewMyHours(){
   <div class="grid">
     <div class="tiles">
       <div class="tile"><span class="k">${esc(both('本月出勤工時','Hours worked this month'))}</span><span class="v">${fmtH(workedH)}</span><span class="d">${esc(both('小時','hours'))}</span></div>
-      <div class="tile"><span class="k">${esc(both('本月請假','Leave this month'))}</span><span class="v">${fmtH(leaveH)}</span><span class="d">${esc(both('小時（折合 '+hToDays(leaveH)+' 天）','hours ('+hToDays(leaveH)+' days)'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('本月請假','Leave this month'))}</span><span class="v">${fmtDH(leaveH)}</span><span class="d">${esc(both('已核准的假','approved leave'))}</span></div>
       <div class="tile"><span class="k">${esc(both('本月加班','Overtime this month'))}</span><span class="v">${fmtH(otH)}</span>
         <span class="d">${esc(both('上限 '+OT_MONTH_CAP_H+' 小時','cap '+OT_MONTH_CAP_H+' h'))}</span>
         <div class="bar" style="margin-top:6px"><i class="${otH>OT_MONTH_CAP_H*0.8?'warn':''}" style="width:${Math.min(100,otH/OT_MONTH_CAP_H*100)}%"></i></div></div>
@@ -2544,7 +2554,7 @@ function myClock(rows){
         <td>${r.shift?`<span class="chip ${SHIFT_TYPES[r.shift].cls}">${esc(both(SHIFT_TYPES[r.shift].zh,SHIFT_TYPES[r.shift].en))}</span>`:'—'}</td>
         <td class="mono">${r.inT||'—'}</td><td class="mono">${r.outT||'—'}</td>
         <td class="num">${r.hours?fmtH(r.hours):'—'}</td>
-        <td class="num">${r.leaveH?fmtH(r.leaveH):'—'}</td>
+        <td class="num">${r.leaveH?fmtDH(r.leaveH):'—'}</td>
         <td>${r.status==='off'?`<span class="chip">${esc(both('排休','Rest day'))}</span>`
              : r.issues.length? r.issues.map(i=>`<span class="chip ${ISSUE[i].cls}">${esc(both(ISSUE[i].zh,ISSUE[i].en))}</span>`).join(' ')
              : r.src==='fix'?`<span class="chip info">${esc(both('已補打卡','Corrected'))}</span>`
@@ -2555,18 +2565,34 @@ function myClock(rows){
   </section>`;
 }
 
+/* 有漏打卡的日子（上月與本月；已送出申請的不再列出）：補忘刷時直接從下拉選單挑，員工不必自己去查 */
+function missedPunchOptions(){
+  const u=me(), t=ymd(TODAY).slice(0,7), [y,m]=t.split('-').map(Number), pm=m===1?(y-1)+'-12':y+'-'+String(m-1).padStart(2,'0');
+  const pend=(d,k)=>PUNCH_FIX.some(f=>f.emp===u.id&&f.date===d&&f.kind===k&&f.status!=='rejected'&&f.status!=='withdrawn');
+  return [...myMonthRows(pm),...myMonthRows(t)].flatMap(r=>r.issues.filter(i=>i==='noin'||i==='noout')
+    .map(i=>({date:r.date, dow:r.dow, kind:i==='noin'?'in':'out', time:SHIFT_TYPES[r.shift||'day'][i==='noin'?'start':'end']})))
+    .filter(o=>!pend(o.date,o.kind));
+}
 function myFix(){
-  const pre=state.fixPrefill||{};
+  const pre=state.fixPrefill||{}, opts=missedPunchOptions();
+  const hit=pre.date?opts.find(o=>o.date===pre.date&&o.kind===pre.kind):null;
+  const other=!!pre.date&&!hit;
   return `
   <section class="card">
     <div class="card-h"><h2>${esc(both('補打卡申請','Missed-punch correction'))}</h2>
-      <span class="en">${esc(both('忘記打卡或打卡機故障時提出，需主管核准','For missed or failed punches; needs director approval'))}</span></div>
+      <span class="en">${esc(both('系統已列出您有漏打卡的日子，直接選取即可，需主管核准','Days with a missed punch are listed for you — just pick one; needs director approval'))}</span></div>
     <form id="fixForm" class="card-b frm">
       <div class="row">
-        <div><label>${esc(both('日期','Date'))}</label><input type="date" name="date" value="${pre.date||ymd(TODAY)}" max="${ymd(TODAY)}" required></div>
+        <div><label>${esc(both('忘刷的日期','Day with a missed punch'))}</label><select name="pick">
+          ${opts.map((o,i)=>`<option value="${o.date}|${o.kind}" data-t="${o.time}" ${hit?(hit===o?'selected':''):(!other&&i===0?'selected':'')}>${esc(o.date+'（'+DOW[o.dow]+'）'+both(PUNCH_KIND[o.kind].zh,PUNCH_KIND[o.kind].en))}</option>`).join('')}
+          <option value="other" ${other||!opts.length?'selected':''}>${esc(both('其他日期（手動輸入）','Another date (enter manually)'))}</option></select>
+          ${opts.length?'':`<div class="muted" style="font-size:12px;margin-top:4px">${esc(both('目前沒有偵測到漏打卡的日子；若是打卡機故障等情況，請選「其他日期」。','No missed punches detected. For a machine fault etc., use “Another date”.'))}</div>`}</div>
+        <div><label>${esc(both('實際時間','Actual time'))}</label><input type="time" name="time" value="${pre.time||(hit?hit.time:opts[0]?opts[0].time:(pre.kind==='out'?SHIFT.end:SHIFT.start))}" required></div>
+      </div>
+      <div class="row" id="fixOther" ${other||!opts.length?'':'hidden'}>
+        <div><label>${esc(both('日期','Date'))}</label><input type="date" name="date" value="${pre.date||ymd(TODAY)}" max="${ymd(TODAY)}"></div>
         <div><label>${esc(both('補登類別','Punch'))}</label><select name="kind">
           ${Object.entries(PUNCH_KIND).map(([k,v])=>`<option value="${k}" ${pre.kind===k?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}</select></div>
-        <div><label>${esc(both('實際時間','Actual time'))}</label><input type="time" name="time" value="${pre.time||(pre.kind==='out'?SHIFT.end:SHIFT.start)}" required></div>
       </div>
       <div><label>${esc(both('原因','Reason'))}</label><textarea name="reason" required placeholder="${esc(both('例如：忘記打卡、打卡機故障、外出公務','e.g. forgot, clock malfunction, off-site duty'))}"></textarea></div>
       <div><button type="submit" class="btn">${esc(both('送出補打卡','Submit correction'))}</button></div>
@@ -2584,7 +2610,7 @@ function myLeave(){
     <form id="leaveForm" class="card-b frm">
       <div class="row">
         <div><label>${esc(both('假別','Leave type'))}</label><select name="type">
-          ${bal.map(b=>`<option value="${b.k}" ${d.type===b.k?'selected':''}>${esc(both(b.t.zh,b.t.en))}${b.left!=null?esc(both('（剩 '+fmtH(b.left)+' 小時）',' ('+fmtH(b.left)+' h left)')):''}</option>`).join('')}</select></div>
+          ${bal.map(b=>`<option value="${b.k}" ${d.type===b.k?'selected':''}>${esc(both(b.t.zh,b.t.en))}${b.left!=null?esc(both('（剩 '+fmtDH(b.left)+'）',' ('+fmtDH(b.left)+' left)')):''}</option>`).join('')}</select></div>
         <div><label>${esc(both('快速選擇','Quick pick'))}</label>
           <div class="seg">
             <button type="button" data-quick="full">${esc(rot?both('整班 8h','Whole shift'):both('全天 8h','Full day'))}</button>
@@ -2667,10 +2693,10 @@ function myBalance(){
       <thead><tr><th>${bi('假別','Type')}</th><th>${bi('年度額度','Entitlement')}</th><th>${bi('已使用','Used')}</th><th>${bi('審核中','Pending')}</th><th>${bi('剩餘','Remaining')}</th><th>${bi('規定','Rule')}</th></tr></thead>
       <tbody>${bal.map(b=>`<tr>
         <td>${esc(both(b.t.zh,b.t.en))}</td>
-        <td class="num">${b.quotaH==null?'—':fmtH(b.quotaH)+' h <span class="muted">('+hToDays(b.quotaH)+'d)</span>'}</td>
-        <td class="num">${fmtH(b.used)} h</td>
-        <td class="num">${b.pend?fmtH(b.pend)+' h':'—'}</td>
-        <td class="num">${b.left==null?'—':`<b>${fmtH(b.left)} h</b> <span class="muted">(${hToDays(b.left)}d)</span>`}</td>
+        <td class="num">${b.quotaH==null?'—':fmtDH(b.quotaH)}</td>
+        <td class="num">${b.used?fmtDH(b.used):'—'}</td>
+        <td class="num">${b.pend?fmtDH(b.pend):'—'}</td>
+        <td class="num">${b.left==null?'—':`<b>${fmtDH(b.left)}</b>`}</td>
         <td class="muted" style="white-space:normal;font-size:12px">${esc(L(b.t.basis))}</td>
       </tr>`).join('')}</tbody>
     </table></div>
@@ -2742,6 +2768,8 @@ BINDERS['hr:mylog']=function(){
     render();
   };
   document.querySelectorAll('[data-mytab]').forEach(b=>b.onclick=()=>{ state.fixPrefill=null; go(b.dataset.mytab); });
+  /* 所有表單送出後統一跳到私人秘書「表單 › 表單追蹤」（從人事系統「我的工時」送出也一樣） */
+  const goTrack=()=>{ state.fixPrefill=null; state.module='desk'; state.tab='forms'; state.deskForm='track'; render(); };
 
   document.querySelectorAll('[data-punch]').forEach(b=>b.onclick=()=>{
     state.punches=state.punches||[];
@@ -2765,12 +2793,18 @@ BINDERS['hr:mylog']=function(){
   });
 
   const fix=document.getElementById('fixForm');
+  if(fix){
+    const box=document.getElementById('fixOther'), syncFix=()=>{
+      const o=fix.pick.value==='other'; box.hidden=!o; fix.date.required=o;
+      if(!o){ const t=fix.pick.selectedOptions[0].dataset.t; if(t) fix.time.value=t; } };
+    fix.pick.onchange=syncFix; fix.date.required=fix.pick.value==='other';
+  }
   if(fix) fix.onsubmit=e=>{
-    e.preventDefault(); const fd=new FormData(fix);
-    const r={id:nextId('PF',PUNCH_FIX), emp:u.id, date:fd.get('date'), kind:fd.get('kind'), time:fd.get('time'),
+    e.preventDefault(); const fd=new FormData(fix), pk=fd.get('pick'), oth=pk==='other', [pd,pkind]=oth?[fd.get('date'),fd.get('kind')]:pk.split('|');
+    const r={id:nextId('PF',PUNCH_FIX), emp:u.id, date:pd, kind:pkind, time:fd.get('time'),
       filed:ymd(TODAY), status:'pending', note:{zh:fd.get('reason'),en:fd.get('reason')}};
-    PUNCH_FIX.push(r); state.fixPrefill=null;
-    toast(both(r.id+' 補打卡申請已送出，待主管核准', r.id+' correction submitted for approval')); render();
+    PUNCH_FIX.push(r);
+    toast(both(r.id+' 補打卡申請已送出，待主管核准', r.id+' correction submitted for approval')); goTrack();
   };
 
   const lf=document.getElementById('leaveForm');
@@ -2781,7 +2815,7 @@ BINDERS['hr:mylog']=function(){
       const over=b.left!=null && h>b.left, el=document.getElementById('leaveCalc');
       el.className='calc'+(h<=0||over?' bad':'');
       el.textContent = h<=0 ? both('請確認起訖時間','Check the start/end times')
-        : both(fmtH(h)+' 小時（折合 '+hToDays(h)+' 天）', fmtH(h)+' h ('+hToDays(h)+' days)') + (over?both(' · 超過剩餘 '+fmtH(b.left)+' 小時',' · exceeds '+fmtH(b.left)+' h left'):'');
+        : fmtDH(h) + (over?both(' · 超過剩餘 '+fmtDH(b.left),' · exceeds '+fmtDH(b.left)+' left'):'');
       const sh=document.getElementById('leaveShift');
       if(sh && fd.get('from')){ const w=shiftWindow(u.id, fd.get('from')), t=SHIFT_TYPES[w.sh];
         sh.textContent=both(t.zh, t.en)+' '+w.start+'–'+w.end; }
@@ -2805,7 +2839,7 @@ BINDERS['hr:mylog']=function(){
         ymd(TODAY), 'pending', {zh:fd.get('reason'),en:fd.get('reason')});
       const up=fd.get('file'); if(up&&up.name) r.file=up.name;     // 只記檔名（示範；要等雲端儲存串接才會真正保存檔案）
       LEAVE.push(r); state.leaveDraft=null;
-      toast(both(r.id+' 已送出 '+fmtH(r.hours)+' 小時請假', r.id+' submitted: '+fmtH(r.hours)+' h leave')); render();
+      toast(both(r.id+' 已送出請假 '+fmtDH(r.hours), r.id+' submitted: '+fmtDH(r.hours)+' leave')); goTrack();
     };
   }
 
@@ -2828,7 +2862,7 @@ BINDERS['hr:mylog']=function(){
       const r={id:nextId('OT',OT_REQ), emp:u.id, date:fd.get('date'), start:fd.get('start'), end:fd.get('end'), hours:h,
         comp:fd.get('comp'), filed:ymd(TODAY), status:'pending', note:{zh:fd.get('reason'),en:fd.get('reason')}};
       OT_REQ.push(r); state.otDate=null;
-      toast(both(r.id+' 加班申請已送出 '+fmtH(h)+' 小時', r.id+' overtime submitted: '+fmtH(h)+' h')); render();
+      toast(both(r.id+' 加班申請已送出 '+fmtH(h)+' 小時', r.id+' overtime submitted: '+fmtH(h)+' h')); goTrack();
     };
   }
 
@@ -2935,7 +2969,7 @@ function trackTable(list, withdraw=true){
       <th>${bi('時數','Hours')}</th><th>${bi('申請日','Filed')}</th><th>${bi('狀態','Status')}</th>${withdraw?'<th></th>':''}</tr></thead>
     <tbody>${list.map(x=>{ const q=reqInfo(x); return `<tr>
       <td class="mono">${x.id}</td><td>${esc(both(q.form.zh,q.form.en))}</td><td style="white-space:normal">${esc(q.what)}</td>
-      <td class="mono" style="font-size:12px">${esc(q.when)}</td><td class="num">${q.h==null?'—':fmtH(q.h)}</td>
+      <td class="mono" style="font-size:12px">${esc(q.when)}</td><td class="num">${q.h==null?'—':LEAVE.includes(x)?fmtDH(q.h):fmtH(q.h)}</td>
       <td class="mono">${x.filed}</td><td>${statusChip(x.status)}</td>
       ${withdraw?`<td>${OPEN_ST.includes(x.status)&&x.emp===me().id?`<button class="btn ghost mini" data-withdraw="${x.id}">${esc(both('抽單','Withdraw'))}</button>`:''}</td>`:''}
     </tr>`; }).join('')}</tbody></table></div>`;
@@ -2964,7 +2998,7 @@ function dayTags(ds, r, dow){
     else if(r.issues.length) out+=r.issues.map(i=>t(ISSUE[i].cls,ISSUE[i].zh,ISSUE[i].en)).join('');
     else if(r.src==='trip') out+=t('info','公出','Off-site');
     else out+=t('ok','正常','OK');
-    if(r.leaveH>0 && r.status!=='leave') out+=t('info','請假 '+fmtH(r.leaveH)+'h','Leave '+fmtH(r.leaveH)+'h');
+    if(r.leaveH>0 && r.status!=='leave') out+=t('info','請假 '+fmtDH(r.leaveH),'Leave '+fmtDH(r.leaveH));
     if(r.inT||r.outT) out+=`<span class="dtime">${clockSvg}<span>${r.inT||'--:--'}</span><span>${r.outT||'--:--'}</span></span>`;
   }
   const open=myReqs().filter(x=>OPEN_ST.includes(x.status) && (LEAVE.includes(x)||x.kind==='trip') && (x.from||x.date)<=ds && (x.to||x.date)>=ds);
@@ -2985,7 +3019,7 @@ function deskDayPanel(){
         ${kvRow('班別','Shift', sh?esc(both(sh.zh,sh.en))+` <span class="mono muted">${sh.start}–${sh.end}</span>`:esc(r.status==='leave'?both('請假','On leave'):both('休假','Off')))}
         ${kvRow('上班 / 下班','In / out', `<span class="mono">${r.inT||'—'} / ${r.outT||'—'}</span>`)}
         ${kvRow('工時','Hours', r.hours?fmtH(r.hours)+' h':'—')}
-        ${kvRow('請假時數','Leave hours', r.leaveH?fmtH(r.leaveH)+' h':'—')}
+        ${kvRow('請假時數','Leave hours', r.leaveH?fmtDH(r.leaveH):'—')}
         ${r.issues.length?kvRow('異常','Exceptions', r.issues.map(i=>`<span class="chip ${ISSUE[i].cls}">${esc(both(ISSUE[i].zh,ISSUE[i].en))}</span>`).join(' ')):''}
       </dl>`:`<div class="muted">${esc(both('尚無出勤資料','No attendance yet'))}</div>`}
       ${reqs.length?trackTable(reqs):''}
@@ -3225,16 +3259,24 @@ function deskAction(x){
   return '—';
 }
 function deskSign(){
-  const list=deskToSign();
+  const list=deskToSign(), uniq=f=>[...new Set(list.map(f))].sort();
+  const sel=(i,vals)=>`<select data-fcol="${i}" aria-label="${esc(both('篩選','Filter'))}"><option value="">${esc(both('全部','All'))}</option>${vals.map(v=>`<option>${esc(v)}</option>`).join('')}</select>`;
+  const txt=i=>`<input data-fcol="${i}" placeholder="${esc(both('篩選','Filter'))}" aria-label="${esc(both('篩選','Filter'))}" style="width:100%;min-width:70px">`;
+  const forms=uniq(x=>both(reqInfo(x).form.zh,reqInfo(x).form.en)), sts=uniq(x=>both(LEAVE_STATUS[x.status].zh,LEAVE_STATUS[x.status].en));
   return `<section class="card"><div class="card-h"><h2>${esc(both('表單簽核','Sign forms'))}</h2>
-      ${list.length?`<span class="en">${esc(both(list.length+' 筆待處理',list.length+' waiting'))}</span>`:''}</div>
-    ${list.length?`<div class="tablewrap"><table>
-      <thead><tr><th>${bi('單號','No.')}</th><th>${bi('申請人','Employee')}</th><th>${bi('表單','Form')}</th><th>${bi('內容','Item')}</th>
-        <th>${bi('時間','When')}</th><th>${bi('時數','Hours')}</th><th>${bi('狀態','Status')}</th><th>${bi('事由','Reason')}</th><th>${bi('簽核','Action')}</th></tr></thead>
+      ${list.length?`<span class="en" id="signCount">${esc(both(list.length+' 筆待處理',list.length+' waiting'))}</span>`:''}</div>
+    ${list.length?`<div class="card-b" style="padding-bottom:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn" id="signBatch" disabled>${esc(both('核准勾選的 0 筆','Approve selected (0)'))}</button>
+        <span class="muted" style="font-size:12px">${esc(both('可先用下方欄位篩選，再按表頭的方框「全選」；也可以只勾幾筆，或照舊逐筆按「核准」。','Filter with the boxes below, tick “select all”, or tick a few — or approve one by one as before.'))}</span></div>
+      <div class="tablewrap"><table id="signTable">
+      <thead><tr><th><input type="checkbox" id="signAll" aria-label="${esc(both('全選目前顯示的表單','Select all shown'))}"></th><th>${bi('單號','No.')}</th><th>${bi('申請人','Employee')}</th><th>${bi('表單','Form')}</th><th>${bi('內容','Item')}</th>
+        <th>${bi('時間','When')}</th><th>${bi('時數','Hours')}</th><th>${bi('狀態','Status')}</th><th>${bi('事由','Reason')}</th><th>${bi('簽核','Action')}</th></tr>
+        <tr class="filters"><th></th><th>${txt(1)}</th><th>${txt(2)}</th><th>${sel(3,forms)}</th><th>${txt(4)}</th><th>${txt(5)}</th><th>${txt(6)}</th><th>${sel(7,sts)}</th><th>${txt(8)}</th><th></th></tr></thead>
       <tbody>${list.map(x=>{ const q=reqInfo(x), p=person(x.emp); return `<tr>
+        <td><input type="checkbox" class="signpick" data-id="${x.id}" aria-label="${esc(x.id)}"></td>
         <td class="mono">${x.id}</td><td>${esc(empName(p.id))} <span class="muted" style="font-size:11px">${esc(L(TITLES[p.title]))}</span></td>
         <td>${esc(both(q.form.zh,q.form.en))}</td><td style="white-space:normal">${esc(q.what)}</td>
-        <td class="mono" style="font-size:12px">${esc(q.when)}</td><td class="num">${q.h==null?'—':fmtH(q.h)}</td><td>${statusChip(x.status)}</td>
+        <td class="mono" style="font-size:12px">${esc(q.when)}</td><td class="num">${q.h==null?'—':LEAVE.includes(x)?fmtDH(q.h):fmtH(q.h)}</td><td>${statusChip(x.status)}</td>
         <td class="muted" style="white-space:normal;max-width:200px">${esc(L(x.note)||'—')}${x.file?` <span class="chip">📎 ${esc(x.file)}</span>`:''}</td>
         <td style="display:flex;gap:6px">${deskAction(x)}</td></tr>`; }).join('')}</tbody></table></div>
       <div class="legend">${esc(both('與「人事系統 › 請假審核」同一流程：主管核准 → 人資複核 → 生效。','Same flow as HR › Leave approvals: director approves → HR countersigns → effective.'))}</div>`
@@ -3379,7 +3421,7 @@ function dqAtt(){
           <td class="mono">${r.date} <span class="muted">(${DOW[r.dow]})</span>${HOLIDAYS[r.date]?` <span class="chip acc">${esc(HOLIDAYS[r.date])}</span>`:''}</td>
           <td>${r.shift?`<span class="chip ${SHIFT_TYPES[r.shift].cls}">${esc(both(SHIFT_TYPES[r.shift].zh,SHIFT_TYPES[r.shift].en))}</span>`:'—'}</td>
           <td class="mono">${r.inT||'—'}</td><td class="mono">${r.outT||'—'}</td>
-          <td class="num">${r.hours?fmtH(r.hours):'—'}</td><td class="num">${r.leaveH?fmtH(r.leaveH):'—'}</td>
+          <td class="num">${r.hours?fmtH(r.hours):'—'}</td><td class="num">${r.leaveH?fmtDH(r.leaveH):'—'}</td>
           <td>${r.status==='off'?`<span class="chip">${esc(r.dow===0?both('例假日','Day off'):both('休息日','Rest day'))}</span>`
             : r.status==='leave'?`<span class="chip info">${esc(both('請假','On leave'))}</span>`
             : r.issues.length?r.issues.map(i=>`<span class="chip ${ISSUE[i].cls}">${esc(both(ISSUE[i].zh,ISSUE[i].en))}</span>`).join(' ')
@@ -4090,7 +4132,7 @@ function viewLeave(){
     <div class="tiles">
       <div class="tile"><span class="k">${esc(both('待主管簽核','Awaiting director'))}</span><span class="v">${pend}</span><span class="d">${esc(both('件','requests'))}</span></div>
       <div class="tile"><span class="k">${esc(both('待人資複核','Awaiting HR'))}</span><span class="v">${cs}</span><span class="d">${esc(both('件','requests'))}</span></div>
-      <div class="tile"><span class="k">${esc(both('範圍內請假總時數','Leave hours in scope'))}</span><span class="v">${fmtH(list.filter(l=>l.status!=='rejected').reduce((a,l)=>a+l.hours,0))}</span><span class="d">${esc(both('小時','hours'))}</span></div>
+      <div class="tile"><span class="k">${esc(both('範圍內請假總時數','Leave hours in scope'))}</span><span class="v">${fmtDH(list.filter(l=>l.status!=='rejected').reduce((a,l)=>a+l.hours,0))}</span><span class="d">${esc(both('合計','total'))}</span></div>
       <div class="tile"><span class="k">${esc(both('範圍內加班總時數','Overtime hours in scope'))}</span><span class="v">${fmtH(ots.filter(o=>o.status!=='rejected').reduce((a,o)=>a+o.hours,0))}</span><span class="d">${esc(both('小時','hours'))}</span></div>
     </div>
     <div class="note q">${esc(both(
@@ -4107,7 +4149,7 @@ function viewLeave(){
           <td class="mono">${l.id}</td>${who(person(l.emp))}
           <td>${esc(both(LEAVE_TYPES[l.type].zh,LEAVE_TYPES[l.type].en))}</td>
           <td class="mono">${l.from} ${l.fromT} → ${l.to!==l.from?l.to+' ':''}${l.toT}</td>
-          <td class="num">${fmtH(l.hours)} <span class="muted">(${hToDays(l.hours)}d)</span></td>
+          <td class="num">${fmtDH(l.hours)}</td>
           <td>${statusChip(l.status)}</td>
           <td class="muted" style="white-space:normal;max-width:200px">${esc(L(l.note)||'—')}${l.file?` <span class="chip">📎 ${esc(l.file)}</span>`:''}</td>
           <td style="display:flex;gap:6px">${rowAction(l)}</td>
@@ -4166,19 +4208,47 @@ function viewLeave(){
     </section>
   </div>`;
 }
+/* 簽核動作（單筆與批次共用）；回傳要顯示的訊息 */
+function signAct(l, act){
+  const p=person(l.emp);
+  if(act==='approve'){ l.status='countersign';
+    return both(l.id+'：'+nameOf(p)+' 已核准，轉人資複核', l.id+': approved for '+nameOf(p)+', sent to HR for countersign'); }
+  if(act==='reject'){ l.status='rejected'; return both(l.id+'：已駁回', l.id+': rejected'); }
+  if(act==='final'){ l.status='approved';
+    if(l.kind==='cancel'){ const t=LEAVE.find(x=>x.id===l.ref); if(t) t.status='cancelled'; }
+    return both(l.id+'：人資複核完成，申請生效', l.id+': countersigned by HR — now effective'); }
+  return '';
+}
 BINDERS['hr:leave']=function(){
   document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{
-    const l=[...LEAVE,...OT_REQ,...PUNCH_FIX,...FORMS].find(x=>x.id===b.dataset.id); if(!l) return;
-    const p=person(l.emp);
-    if(b.dataset.act==='approve'){ l.status='countersign';
-      toast(both(l.id+'：'+nameOf(p)+' 已核准，轉人資複核', l.id+': approved for '+nameOf(p)+', sent to HR for countersign')); }
-    if(b.dataset.act==='reject'){ l.status='rejected';
-      toast(both(l.id+'：已駁回', l.id+': rejected')); }
-    if(b.dataset.act==='final'){ l.status='approved';
-      if(l.kind==='cancel'){ const t=LEAVE.find(x=>x.id===l.ref); if(t) t.status='cancelled'; }
-      toast(both(l.id+'：人資複核完成，申請生效', l.id+': countersigned by HR — now effective')); }
-    render();
+    const l=allReqs().find(x=>x.id===b.dataset.id); if(!l) return;
+    toast(signAct(l,b.dataset.act)); render();
   });
+  /* 表單簽核頁：每個欄位都能篩選；可勾選（或全選目前篩出的）一鍵核准 */
+  const st=document.getElementById('signTable');
+  if(st){
+    const rows=[...st.tBodies[0].rows], fs=[...st.querySelectorAll('[data-fcol]')],
+      all=document.getElementById('signAll'), btn=document.getElementById('signBatch'), cnt=document.getElementById('signCount');
+    const picks=()=>rows.filter(r=>!r.hidden).map(r=>r.querySelector('.signpick')).filter(c=>c&&c.checked);
+    const upd=()=>{ const n=picks().length, tot=rows.filter(r=>!r.hidden&&r.querySelector('.signpick')).length;
+      all.checked=tot>0&&n===tot; all.indeterminate=n>0&&n<tot; btn.disabled=n===0;
+      btn.textContent=both('核准勾選的 '+n+' 筆','Approve selected ('+n+')'); cnt.textContent=both('顯示 '+rows.filter(r=>!r.hidden).length+' / '+rows.length+' 筆','Showing '+rows.filter(r=>!r.hidden).length+' / '+rows.length); };
+    const apply=()=>{ rows.forEach(r=>{
+      r.hidden=!fs.every(f=>!f.value||r.cells[+f.dataset.fcol].textContent.toLowerCase().includes(f.value.trim().toLowerCase()));
+      if(r.hidden){ const c=r.querySelector('.signpick'); if(c) c.checked=false; } }); upd(); };
+    fs.forEach(f=>{ f.oninput=apply; f.onchange=apply; });
+    all.onchange=()=>{ rows.filter(r=>!r.hidden).forEach(r=>{ const c=r.querySelector('.signpick'); if(c) c.checked=all.checked; }); upd(); };
+    rows.forEach(r=>{ const c=r.querySelector('.signpick'); if(c) c.onchange=upd; });
+    btn.onclick=()=>{
+      const sel=picks(); if(!sel.length) return;
+      if(!confirm(both('確定一次核准勾選的 '+sel.length+' 筆？\n要個別駁回或保留，請取消後在該列按「駁回」。','Approve '+sel.length+' selected form(s) at once?\nTo reject or skip one, cancel and use that row’s Reject button.'))) return;
+      let n=0; sel.forEach(c=>{ const l=allReqs().find(x=>x.id===c.dataset.id); if(!l) return;
+        const act=l.status==='pending'&&can('approve')?'approve':l.status==='countersign'&&can('finalize')?'final':null;
+        if(act){ signAct(l,act); n++; } });
+      toast(both('已核准 '+n+' 筆','Approved '+n+' form(s)')); render();
+    };
+    upd();
+  }
 };
 
 /* =============================== 文件管理 Documents =============================== */
