@@ -5299,22 +5299,32 @@ function zipStore(files){
 }
 const xlsxCol=i=>{ let n=i+1, out=''; while(n>0){ const m=(n-1)%26; out=String.fromCharCode(65+m)+out; n=Math.floor((n-1)/26); } return out; };
 const xmlEsc=t=>String(t).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-function buildXlsx(rows){
+/* 一個檔案可有多個工作頁：sheets = [{name, rows, widths?, print?}]；print 為真時每頁自動縮成一張紙，整本一起列印就是每人一頁 */
+function buildXlsxBook(sheets){
   /* 純數字（不含前導 0、最多 9 位）存成數字，其餘（員工編號、電話、帳號）存成文字 */
-  const sheet=rows.map((r,ri)=>`<row r="${ri+1}">`+r.map((v,ci)=>{
-    const t=String(v??''); if(t==='') return '';
-    const ref=xlsxCol(ci)+(ri+1);
-    return /^-?(0|[1-9]\d{0,8})(\.\d+)?$/.test(t) ? `<c r="${ref}"><v>${t}</v></c>` : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(t)}</t></is></c>`;
-  }).join('')+'</row>').join('');
-  const X='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const used=new Set(), sname=n=>{ let b=String(n||'報表').replace(/[\\\/?*\[\]:]/g,'').slice(0,31)||'報表', k=b, i=2; while(used.has(k)){ k=b.slice(0,28)+'_'+i++; } used.add(k); return k; };
+  const X='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n', NS='http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+  const xml=sh=>{
+    const data=sh.rows.map((r,ri)=>`<row r="${ri+1}">`+r.map((v,ci)=>{
+      const t=String(v??''); if(t==='') return '';
+      const ref=xlsxCol(ci)+(ri+1);
+      return /^-?(0|[1-9]\d{0,8})(\.\d+)?$/.test(t) ? `<c r="${ref}"><v>${t}</v></c>` : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(t)}</t></is></c>`;
+    }).join('')+'</row>').join('');
+    return X+`<worksheet xmlns="${NS}">`+(sh.print?'<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>':'')
+      +(sh.widths?'<cols>'+sh.widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')+'</cols>':'')
+      +'<sheetData>'+data+'</sheetData>'
+      +(sh.print?'<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="1"/>':'')+'</worksheet>';
+  };
+  const names=sheets.map(sh=>sname(sh.name));
   return zipStore([
-    {name:'[Content_Types].xml', text:X+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'},
+    {name:'[Content_Types].xml', text:X+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'+sheets.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')+'</Types>'},
     {name:'_rels/.rels', text:X+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'},
-    {name:'xl/workbook.xml', text:X+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="報表" sheetId="1" r:id="rId1"/></sheets></workbook>'},
-    {name:'xl/_rels/workbook.xml.rels', text:X+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>'},
-    {name:'xl/worksheets/sheet1.xml', text:X+'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'+sheet+'</sheetData></worksheet>'}
+    {name:'xl/workbook.xml', text:X+'<workbook xmlns="'+NS+'" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+names.map((n,i)=>`<sheet name="${xmlEsc(n)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')+'</sheets></workbook>'},
+    {name:'xl/_rels/workbook.xml.rels', text:X+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+sheets.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')+'</Relationships>'},
+    ...sheets.map((sh,i)=>({name:`xl/worksheets/sheet${i+1}.xml`, text:xml(sh)}))
   ]);
 }
+const buildXlsx = rows => buildXlsxBook([{name:'報表', rows}]);
 function saveBlob(blob, filename){
   const url=URL.createObjectURL(blob), link=document.createElement('a');
   link.href=url; link.download=filename; document.body.appendChild(link); link.click(); document.body.removeChild(link);
@@ -5756,12 +5766,19 @@ function payCSV(res, month){
   rows.push(tot);
   return toCSV(rows);
 }
-/* 現金發薪簽收清冊：未開立薪資帳戶、以現金領薪的同仁，發放時由本人簽收 */
-function cashCSV(res, month, ids){
-  const rows=[['員工編號','姓名','職稱','公司','薪資月份','實發金額','發放日','領款人簽名','發放人簽名','備註']];
-  ids.forEach(id=>{ const s=person(id); rows.push([id, empName(id), TITLES[s.title].zh, unit(s.unit).zh, month, res[id].net, '', '', '', '']); });
-  rows.push(['合計','','','','',ids.reduce((a,id)=>a+res[id].net,0),'','','','']);
-  return toCSV(rows);
+/* 薪資發放簽收清冊（11/19 會議）：每位員工獨立一個工作頁、合併在同一個檔案列印，簽收時看不到別人的薪資；
+   實發為負數的人不簽收，另外產出「薪資代扣繳款單」，請本人自行繳納。 */
+const SIGN_NOTE='依勞基法第 22、23 條，工資須全額直接給付並提供計算明細；請核對金額後簽名，簽收單由人資保存 5 年。';
+const SIGN_WIDTHS=[16,36];
+function paySheets(res, month, ids){
+  const recv=[], owe=[], line='＿＿＿＿＿＿＿＿＿＿';
+  ids.forEach(id=>{ const s=person(id), r=res[id]; if(!r||!s) return;
+    const who=[['員工編號',id],['姓名',empName(id)],['公司',unit(s.unit).zh],['職稱',TITLES[s.title].zh],['薪資月份',month]],
+      sums=[['應發合計',Math.round(r.gross)],['代扣合計',Math.round(r.gross-r.net)]], name=id+' '+empName(id);
+    if(r.net<0) owe.push({name, print:true, widths:SIGN_WIDTHS, rows:[['薪資代扣繳款單（實發為負數）'],[],...who,...sums,['應自行繳納金額',Math.abs(Math.round(r.net))],['繳納方式',''],['繳納期限',''],['員工簽名',line],['收款人簽名',line],[],['說明','本月代扣金額大於應發金額，差額請員工自行繳納；繳納後由收款人簽名，人資保存。']]});
+    else recv.push({name, print:true, widths:SIGN_WIDTHS, rows:[['薪資發放簽收單'],[],...who,...sums,['實發金額',Math.round(r.net)],['發放日',''],['領款人簽名',line],['發放人簽名',line],[],['說明',SIGN_NOTE]]});
+  });
+  return {recv, owe};
 }
 
 /* ---------- 薪資試算 ---------- */
@@ -5865,6 +5882,7 @@ function viewPayRun(){
   const last=run.versions.slice(-1)[0], all=payTotals(res);
   const drift = last && (last.totals.net!==all.net || last.totals.gross!==all.gross);
   const cash=list.filter(s=>payMethodOf(s.id)==='cash'), cashSum=cash.reduce((a,s)=>a+res[s.id].net,0);
+  const cashSheets=paySheets(res, month, [...new Set([...cash.map(s=>s.id), ...list.filter(s=>res[s.id].net<0).map(s=>s.id)])]);   // 簽收：現金領薪；代扣單：任何人實發為負數
   const pendAll=[...LEAVE,...OT_REQ,...PUNCH_FIX].filter(x=>(x.status==='pending'||x.status==='countersign')&&(x.from||x.date).slice(0,7)===month).length;
   return `
   <div class="grid">
@@ -5913,10 +5931,12 @@ function viewPayRun(){
         'Only fully approved leave, overtime and punch corrections count. Time after 17:00 is not overtime without an approved request.'))}</div>
     </section>
     <section class="card" id="cashList">
-      <div class="card-h"><h2>${esc(both('現金發薪簽收清冊','Cash pay receipt list'))} <span class="mono muted" style="font-size:12px">${month}</span></h2>
-        <span class="en">${esc(both('未開立薪資帳戶的同仁，發薪日以現金領取並本人簽收','Staff without a salary account collect cash on payday and sign for it'))}</span>
+      <div class="card-h"><h2>${esc(both('薪資發放簽收清冊','Pay receipt sheets'))} <span class="mono muted" style="font-size:12px">${month}</span></h2>
+        <span class="en">${esc(both('未開立薪資帳戶的同仁，發薪日以現金領取並本人簽收；匯出的 Excel 每位員工一頁，簽收時看不到他人薪資','Staff without a salary account collect cash on payday and sign for it; the Excel export has one sheet per person so nobody sees another’s pay'))}</span>
         <div class="spacer"></div>
-        ${cash.length?`<button class="btn ghost mini" data-cashcsv>${esc(both('匯出簽收清冊 CSV','Export receipt list CSV'))}</button>`:''}</div>
+        ${cashSheets.recv.length?`<button class="btn ghost mini" data-cashxlsx>${esc(both('匯出簽收清冊（每人一頁 Excel）','Export receipts (one sheet per person)'))}</button>`:''}
+        ${cashSheets.owe.length?`<button class="btn mini" data-owexlsx>${esc(both('匯出代扣單（'+cashSheets.owe.length+' 位實發為負數）','Export deduction notices ('+cashSheets.owe.length+' negative net)'))}</button>`:''}</div>
+      ${cashSheets.owe.length?`<div class="note warn">${esc(both('有 '+cashSheets.owe.length+' 位同仁實發為負數，不能領款簽收，請改用「代扣單」請本人自行繳納：'+cashSheets.owe.map(x=>x.name).join('、'),cashSheets.owe.length+' staff have a negative net pay and cannot sign for cash; use the deduction notice instead: '+cashSheets.owe.map(x=>x.name).join(', ')))}</div>`:''}
       ${cash.length?`<div class="tablewrap"><table>
         <thead><tr><th>${bi('員工','Employee')}</th><th>${bi('公司','Company')}</th><th>${bi('實發金額','Net pay')}</th><th>${bi('領款人簽名','Signature')}</th><th>${bi('發放日','Date paid')}</th></tr></thead>
         <tbody>${cash.map(s=>`<tr><td>${esc(empName(s.id))} <span class="muted mono" style="font-size:11px">${s.id}</span></td><td>${esc(unit(s.unit).zh)}</td>
@@ -5962,9 +5982,12 @@ BINDERS['pay:run']=function(){
   document.querySelectorAll('[data-payemp]').forEach(r=>r.onclick=()=>openPayslip(r.dataset.payemp, month));
   const sv=document.querySelector('[data-savever]'); if(sv&&!sv.disabled) sv.onclick=()=>saveVersion(month);
   document.querySelector('[data-paycsv]').onclick=()=>downloadCSV(payCSV(allPay(month),month), `薪資試算_${month}.csv`);
-  const cc=document.querySelector('[data-cashcsv]');
-  if(cc) cc.onclick=()=>{ const ids=STAFF.filter(s=>activeUnitIds().includes(s.unit)&&onRoster(s,month)&&payMethodOf(s.id)==='cash').map(s=>s.id);
-    downloadCSV(cashCSV(allPay(month),month,ids), `現金發薪簽收清冊_${month}.csv`); };
+  const sheetsNow=()=>{ const res=allPay(month), inScope=STAFF.filter(s=>activeUnitIds().includes(s.unit)&&onRoster(s,month));
+    return paySheets(res, month, inScope.filter(s=>payMethodOf(s.id)==='cash'||res[s.id].net<0).map(s=>s.id)); };
+  const cx=document.querySelector('[data-cashxlsx]');
+  if(cx) cx.onclick=()=>{ const r=sheetsNow().recv; if(r.length) saveBlob(buildXlsxBook(r), `薪資發放簽收清冊_${month}.xlsx`); };
+  const ox=document.querySelector('[data-owexlsx]');
+  if(ox) ox.onclick=()=>{ const r=sheetsNow().owe; if(r.length) saveBlob(buildXlsxBook(r), `薪資代扣繳款單_${month}.xlsx`); };
 };
 function saveVersion(month){
   const run=payrun(month), res=allPay(month), v=run.versions.length+1;
