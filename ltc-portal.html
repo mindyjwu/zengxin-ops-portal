@@ -5988,7 +5988,7 @@ function payMath(inp){
   const otH=OT_TIERS.reduce((a,t)=>a+(+inp[t.k]||0),0)+(+inp.compH||0);
   if(otH>OT_MONTH_CAP_H) warn.push({zh:`本月加班 ${fmtH(otH)} 小時，超過 ${OT_MONTH_CAP_H} 小時上限`,en:`Overtime ${fmtH(otH)}h exceeds ${OT_MONTH_CAP_H}h cap`,cls:'crit'});
   if(net<0) warn.push({zh:'實發為負數',en:'Net pay is negative',cls:'crit'});
-  return {H, Hot, eveN, nightN, lines, base, home, night, ot, att, paidLeave, bonus, extra, adjPos, adjNeg, adjNet:adjPos-adjNeg, gross, labor, health, pension, tax, stat, net,
+  return {H, Hot, eveN, nightN, lines, base, home, night, ot, att, paidLeave, bonus, extra, adjPos, adjNeg, adjNet:adjPos-adjNeg, regular, gross, labor, health, pension, tax, stat, net,
     er:{labor:erL, health:erH, pension:erP, total:erL+erH+erP}, warn};
 }
 const calcPay = (empId, month) => payMath(payInputs(empId, month));
@@ -6718,6 +6718,77 @@ function insRateCard(){
         <div><button class="btn" type="submit">${esc(both('新增費率版本','Add rate version'))}</button></div></form>`:''}
     </div></section>`;
 }
+
+/* ---------- 每季建議（11/19 會議）：1、4、7、10 月，依前三個月平均的經常性薪資建議新的投保級距，人資一次核可 ----------
+   經常性薪資＝本薪（時薪制為正常工時 × 時薪）＋夜班津貼，與薪資單上檢查「投保薪資低於本月薪資」用的是同一個數字；
+   要不要把加班費也算進去，勾選後重算。還沒結算的月份、不在職的月份不算，資料不足會標出來。 */
+const INS_QUARTERS = [1,4,7,10];
+const insPrev3 = month => { const [y,m]=month.split('-').map(Number); return [3,2,1].map(k=>{ const d=new Date(y,m-1-k,1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }); };
+const insQuarterMonths = () => { const out=[]; for(let y=2026;y<=2027;y++) INS_QUARTERS.forEach(q=>out.push(y+'-'+String(q).padStart(2,'0'))); return out; };
+const insQuarterDefault = () => { const ok=insQuarterMonths().filter(q=>insPrev3(q).every(m=>m<CUR_MONTH)); return ok.length?ok[ok.length-1]:insQuarterMonths()[0]; };
+const insQMonthNow = () => state.insQMonth || insQuarterDefault();
+function insQuarterRows(qm){
+  const mon=insPrev3(qm), withOT=!!state.insQOT, units=activeUnitIds(), qStart=qm+'-01';
+  return STAFF.filter(s=>units.includes(s.unit)&&onRoster(s,qm)).map(s=>{
+    const rec=empRecord(s.id), ev=rec.ins.filter(x=>x.date<=qStart).slice(-1)[0], enrolled=!!ev&&ev.kind!=='quit', part=isHourlyPay(s);
+    const vals=mon.map(m=>{ if(m>=CUR_MONTH) return {m,v:null,why:'還沒結算'}; if(!onRoster(s,m)||(s.hired&&s.hired.slice(0,7)>m)) return {m,v:null,why:'當月不在職'};
+      const c=calcPay(s.id,m); return {m, v:Math.round(c.regular+(withOT?c.ot:0))}; });
+    const have=vals.filter(x=>x.v!=null), avg=have.length?Math.round(have.reduce((a,x)=>a+x.v,0)/have.length):null;
+    const vL=insVer('labor',qm), vH=insVer('health',qm), vP=insVer('pension',qm), basis=Math.round(part?(HOURLY_WAGE[s.id]||PAY_CFG.minHourly)*WORK_DAY_H*22:s.salary);
+    const cur={labor:enrolled?ev.labor:0, health:enrolled?ev.health:0}, curPen=enrolled?insGrade(vP,basis).amt:0;
+    const sugL=avg==null?null:insLaborGrade(vL,avg,s.type==='part'), sugH=avg==null?null:insGrade(vH,avg), sugP=avg==null?null:insGrade(vP,avg);
+    const changed=enrolled&&avg!=null&&(sugL.amt!==cur.labor||sugH.amt!==cur.health);
+    const o={dep:rec.dep, selfPct:rec.selfPension, unitId:s.unit};
+    const C0=insCalc(qm,{labor:cur.labor,health:cur.health,pension:curPen,...o}), C1=avg!=null&&enrolled?insCalc(qm,{labor:sugL.amt,health:sugH.amt,pension:sugP.amt,...o}):C0;
+    const flags=[]; if(!enrolled) flags.push({cls:'warn',zh:'未加保'}); else if(avg==null) flags.push({cls:'crit',zh:'沒有可用的月份'}); else if(have.length<3) flags.push({cls:'warn',zh:'只有 '+have.length+' 個月資料'});
+    return {s, rec, qm, enrolled, vals, have, avg, cur, curPen, sugL, sugH, sugP, changed, C0, C1, dEe:C1.ee-C0.ee, dEr:C1.er-C0.er, flags, evidence:vals.map(x=>x.m.slice(5)+'月 '+(x.v==null?x.why:x.v.toLocaleString('en-US'))).join(' ＋ ')+(have.length?' ÷ '+have.length+' = '+avg.toLocaleString('en-US'):'')};
+  });
+}
+function insQuarterApply(qm, ids){
+  const rows=insQuarterRows(qm).filter(r=>ids.includes(r.s.id)&&r.changed);
+  rows.forEach(r=>{ r.rec.ins.push({date:qm+'-01', kind:'adjust', labor:r.sugL.amt, health:r.sugH.amt, note:'每季調整：'+r.evidence}); r.rec.ins.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0); });
+  INS_LOG.push({at:ymd(TODAY), by:L(role()), action:'每季調整', kind:'', eff:qm+'-01', file:'每季建議 '+qm, hash:'', note:'核可 '+rows.length+' 人：'+rows.map(r=>empName(r.s.id)).join('、')});
+  return rows.length;
+}
+function insQuarterCard(){
+  const qm=insQMonthNow(), rows=insQuarterRows(qm), can_=payEdit(), skip=state.insQSkip||(state.insQSkip={});
+  const chg=rows.filter(r=>r.changed), picked=chg.filter(r=>!skip[r.s.id]), sum=(a,k)=>a.reduce((t,r)=>t+r[k],0);
+  const up=chg.filter(r=>r.sugL.amt>r.cur.labor||r.sugH.amt>r.cur.health).length, dn=chg.length-up;
+  const money2=n=>(n>0?'+':n<0?'−':'')+money(Math.abs(n));
+  const row=r=>`<tr class="${r.changed?'':'muted'}"><td>${r.changed?`<input type="checkbox" data-insq="${r.s.id}" ${skip[r.s.id]?'':'checked'}${can_?'':' disabled'} aria-label="${esc(empName(r.s.id))}">`:''}</td>
+      <td>${esc(empName(r.s.id))} <span class="muted mono" style="font-size:11px">${r.s.id}</span><div class="muted" style="font-size:11px">${esc(unit(r.s.unit).zh)}</div></td>
+      <td style="white-space:normal;font-size:12px;min-width:210px">${esc(r.evidence)}</td>
+      <td class="num">${r.enrolled?money(r.cur.labor):'—'}</td><td class="num">${r.sugL?`<b>${money(r.sugL.amt)}</b>`:'—'}</td>
+      <td class="num">${r.enrolled?money(r.cur.health):'—'}</td><td class="num">${r.sugH?`<b>${money(r.sugH.amt)}</b>`:'—'}</td>
+      <td class="num">${r.changed?money2(r.dEe):'—'}</td><td class="num">${r.changed?money2(r.dEr):'—'}</td>
+      <td>${r.changed?`<span class="chip ${r.sugL.amt>r.cur.labor||r.sugH.amt>r.cur.health?'warn':'info'}">${esc(r.sugL.amt>r.cur.labor||r.sugH.amt>r.cur.health?'調高':'調低')}</span>`:r.enrolled&&r.avg!=null?`<span class="chip ok">${esc('不用調')}</span>`:''} ${r.flags.map(f=>`<span class="chip ${f.cls}">${esc(f.zh)}</span>`).join(' ')}</td></tr>`;
+  return `<section class="card" id="insQuarter"><div class="card-h"><h2>${esc(both('每季建議（1、4、7、10 月）','Quarterly review (Jan / Apr / Jul / Oct)'))}</h2>
+      <span class="ulabel" style="margin-left:10px">${esc(both('調整月份','Review month'))}</span> <select id="insQMonth">${insQuarterMonths().map(m=>`<option ${m===qm?'selected':''}>${m}</option>`).join('')}</select>
+      <div class="spacer"></div><button class="btn ghost mini" data-insqxlsx>${esc(both('匯出建議 Excel','Export'))}</button></div>
+    <div class="card-b" style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px">
+      <div class="note">${esc(both('公司每三個月依分級表調整一次投保等級：系統用「前三個月平均的經常性薪資」（本薪＋夜班津貼；時薪制為正常工時 × 時薪）對照當時有效的分級表，算出建議的勞保與健保投保金額（勞退月提繳工資跟著算），和現行的比；有差的列出來，你核對後一次核可，核可的會從調整月份 1 日起生效。還沒結算的月份與不在職的月份不算，資料不足會標出來。','Every three months the insured grades are reviewed: the system takes the average of the previous three months’ regular pay (base + shift allowance; hourly staff: regular hours × rate), finds the grade in the table in force, and compares it with the current one. Differences are listed; approve them together and they take effect from the 1st of the review month. Months not yet closed or not employed are left out; missing data is flagged.'))}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center"><span class="chip">${esc(both('前三個月：','Previous three months: '))}${insPrev3(qm).join('、')}</span>
+        <label class="chip"><input type="checkbox" id="insQOT" ${state.insQOT?'checked':''}> ${esc(both('把加班費也算進薪資（預設不算，請人資確認公司做法）','Include overtime pay (off by default — HR to confirm company practice)'))}</label></div>
+      <div class="tiles">
+        <div class="tile"><span class="k">${esc(both('需要調整','To change'))}</span><span class="v">${chg.length}</span><span class="d">${esc(both('調高 '+up+'・調低 '+dn+'・共 '+rows.length+' 人','up '+up+' · down '+dn+' · of '+rows.length))}</span></div>
+        <div class="tile"><span class="k">${esc(both('個人負擔每月變化','Employees pay / month'))}</span><span class="v" style="font-size:18px">${money2(sum(chg,'dEe'))}</span><span class="d">${esc(both('全部建議合計','all suggestions'))}</span></div>
+        <div class="tile"><span class="k">${esc(both('雇主負擔每月變化','Employer pays / month'))}</span><span class="v" style="font-size:18px">${money2(sum(chg,'dEr'))}</span><span class="d">${esc(both('不含職災','excl. occupational'))}</span></div>
+        <div class="tile"><span class="k">${esc(both('已勾選','Selected'))}</span><span class="v">${picked.length}</span><span class="d">${esc(both('核可後生效日 '+qm+'-01','effective '+qm+'-01'))}</span></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="insQApply" ${can_&&picked.length?'':'disabled'}>${esc(both('核可勾選的 '+picked.length+' 人','Approve '+picked.length+' selected'))}</button>
+        <button class="btn ghost" id="insQAll" ${can_&&chg.length?'':'disabled'}>${esc(both('全選有變動的','Select all changes'))}</button>
+        <button class="btn ghost" id="insQNone" ${can_&&chg.length?'':'disabled'}>${esc(both('全部取消','Clear'))}</button></div>
+      ${chg.length?'':`<div class="note">${esc(both('這一季沒有需要調整的人。','Nobody needs a change this quarter.'))}</div>`}
+      <div class="tablewrap" style="max-height:460px;overflow:auto"><table class="todotbl"><thead><tr><th></th><th>${bi('員工','Employee')}</th><th>${bi('前三個月經常性薪資與平均（依據）','Previous three months and average (the working)')}</th>
+        <th>${bi('勞保 現行','Labor now')}</th><th>${bi('建議','Suggested')}</th><th>${bi('健保 現行','Health now')}</th><th>${bi('建議','Suggested')}</th><th>${bi('個人每月','You / month')}</th><th>${bi('雇主每月','Er. / month')}</th><th>${bi('結果','Result')}</th></tr></thead>
+        <tbody>${rows.slice().sort((a,b)=>(b.changed-a.changed)||a.s.id.localeCompare(b.s.id)).map(row).join('')}</tbody></table></div>
+    </div></section>`;
+}
+function insQuarterSheets(qm){
+  const rows=insQuarterRows(qm);
+  return [{name:'每季建議', rows:[['每季建議 '+qm+'（前三個月：'+insPrev3(qm).join('、')+'；'+(state.insQOT?'含':'不含')+'加班費）'],['員編','姓名','單位','依據','平均經常性薪資','勞保 現行','勞保 建議','健保 現行','健保 建議','勞退月提繳工資 建議','個人每月變化','雇主每月變化','結果'],
+    ...rows.map(r=>[r.s.id,empName(r.s.id),unit(r.s.unit).zh,r.evidence,r.avg==null?'':r.avg,r.cur.labor,r.sugL?r.sugL.amt:'',r.cur.health,r.sugH?r.sugH.amt:'',r.sugP?r.sugP.amt:'',r.changed?r.dEe:0,r.changed?r.dEr:0,r.changed?'需調整':r.enrolled?'不用調':'未加保'])], widths:[10,10,10,60,14,10,10,10,10,14,12,12,10]}];
+}
 function viewPayIns(){
   const month=insMonthNow(), rows=insRows(month), T=insTotals(rows), R=insRate(month), can_=payEdit();
   const units=[...new Set(rows.map(r=>r.s.unit))].map(u=>ALL_UNITS.find(x=>x.id===u));
@@ -6757,6 +6828,7 @@ function viewPayIns(){
       </div></section>
     ${insUploadCard()}
     ${insRateCard()}
+    ${insQuarterCard()}
     <section class="card" id="insRun"><div class="card-h"><h2>${esc(both('每位員工的投保級距與保費','Grades and premiums per employee'))}</h2>
       <span class="ulabel" style="margin-left:10px">${esc(both('月份','Month'))}</span> <select id="insMonth">${PAY_MONTHS.map(m=>`<option ${m===month?'selected':''}>${m}</option>`).join('')}</select>
       <div class="spacer"></div><button class="btn mini" data-insxlsx>${esc(both('匯出核對 Excel','Export for checking'))}</button></div>
@@ -6835,6 +6907,16 @@ function insSheets(month){
 }
 BINDERS['pay:ins']=function(){
   const sm=document.getElementById('insMonth'); if(sm) sm.onchange=()=>{ state.insMonth=sm.value; render(); };
+  const qs=document.getElementById('insQMonth'); if(qs) qs.onchange=()=>{ state.insQMonth=qs.value; state.insQSkip={}; render(); };
+  const qo=document.getElementById('insQOT'); if(qo) qo.onchange=()=>{ state.insQOT=qo.checked; render(); };
+  document.querySelectorAll('[data-insq]').forEach(c=>c.onchange=()=>{ (state.insQSkip||(state.insQSkip={}))[c.dataset.insq]=!c.checked; render(); });
+  const qa=document.getElementById('insQAll'); if(qa) qa.onclick=()=>{ state.insQSkip={}; render(); };
+  const qn=document.getElementById('insQNone'); if(qn) qn.onclick=()=>{ const sk=state.insQSkip={}; insQuarterRows(insQMonthNow()).filter(r=>r.changed).forEach(r=>{ sk[r.s.id]=true; }); render(); };
+  const qp=document.getElementById('insQApply'); if(qp) qp.onclick=()=>{ if(!payEdit()) return; const qm=insQMonthNow(), skip=state.insQSkip||{}, ids=insQuarterRows(qm).filter(r=>r.changed&&!skip[r.s.id]).map(r=>r.s.id); if(!ids.length) return;
+    if(!confirm(both('確定核可 '+ids.length+' 人的投保級距調整？從 '+qm+'-01 起生效，薪資單的勞健保會跟著變。','Approve the grade change for '+ids.length+' people? It takes effect from '+qm+'-01 and changes their payslip deductions.'))) return;
+    const n=insQuarterApply(qm, ids); state.insQSkip={}; toast(both('已核可 '+n+' 人，'+qm+'-01 起生效','Approved '+n+' people, effective '+qm+'-01')); render(); };
+  const qx=document.querySelector('[data-insqxlsx]'); if(qx) qx.onclick=()=>saveBlob(buildXlsxBook(insQuarterSheets(insQMonthNow())), `每季建議_${insQMonthNow()}.xlsx`);
+
   const fileIn=document.getElementById('insFile');
   const readDraft=async(getter,name)=>{ state.insMsg=''; try{ const {text,buf}=await getter(); const d=insParseText(text,name); d.hash=buf?await insHash(buf):''; state.insDraft=d; insLog('讀取',d,d.kind?'等待人資確認':'認不出表格'); }catch(e){ state.insDraft=null; state.insMsg='讀取失敗：'+(e&&e.message||e); } render(); };
   if(fileIn) fileIn.onchange=()=>{ const f=fileIn.files[0]; if(!f||!payEdit()) return; const m=document.getElementById('insUpMsg'); if(m) m.textContent=both('讀取中…','Reading…');

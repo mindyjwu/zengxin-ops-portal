@@ -3918,3 +3918,113 @@ test.describe('11/19 meeting: upload the government notice and let the system re
   });
 });
 
+/* ================================================================ */
+/* 11/19：每季（1、4、7、10 月）依前三個月平均經常性薪資建議新級距，人資一次核可 */
+test.describe('11/19 meeting: quarterly grade review', () => {
+  const openIns = async (page, role = 'hr') => { await openPortal(page); await setRole(page, role); await go(page, 'pay', 'ins'); };
+  const rowOf = (page, id) => page.locator('#insQuarter tbody tr').filter({ hasText: id });
+
+  test('the review months, the previous three months and the default month', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => ({ p1: insPrev3('2026-10'), p2: insPrev3('2027-01'), p3: insPrev3('2026-04'), qs: insQuarterMonths(), def: insQuarterDefault() }));
+    expect(r.p1).toEqual(['2026-07', '2026-08', '2026-09']);
+    expect(r.p2).toEqual(['2026-10', '2026-11', '2026-12']);                         // 跨年
+    expect(r.p3).toEqual(['2026-01', '2026-02', '2026-03']);
+    expect(r.qs).toEqual(['2026-01', '2026-04', '2026-07', '2026-10', '2027-01', '2027-04', '2027-07', '2027-10']);
+    expect(r.def).toBe('2026-07');                                                   // 展示日期 9/8：10 月那季的 9 月還沒結算，所以預設 7 月那季
+  });
+
+  test('the suggested grade is the table grade of the three-month average (recomputed independently)', async ({ page }) => {
+    await openPortal(page);
+    const bad = await page.evaluate(() => { const qm = '2026-07', out = [], rows = insQuarterRows(qm);
+      rows.forEach(r => { if (r.avg == null) return;
+        const regs = insPrev3(qm).map(m => Math.round(calcPay(r.s.id, m).regular)), avg = Math.round(regs.reduce((a, b) => a + b, 0) / regs.length);
+        const h = insGrade(insVer('health', qm), avg).amt, l = insLaborGrade(insVer('labor', qm), avg, r.s.type === 'part').amt;
+        if (r.avg !== avg || r.sugH.amt !== h || r.sugL.amt !== l) out.push(r.s.id + ' ' + r.avg + '/' + avg); });
+      return { out, n: rows.length, changed: rows.filter(r => r.changed).length }; });
+    expect(bad.n).toBeGreaterThan(20);
+    expect(bad.changed).toBeGreaterThan(0);
+    expect(bad.out).toEqual([]);
+  });
+
+  test('when only two months are closed the average is over those two months (not divided by three)', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => { const qm = '2026-10', out = [], rows = insQuarterRows(qm);
+      rows.forEach(x => { const ms = insPrev3(qm).filter(m => m < CUR_MONTH && (!x.s.hired || x.s.hired.slice(0, 7) <= m) && onRoster(x.s, m));
+        if (!ms.length) return; const regs = ms.map(m => Math.round(calcPay(x.s.id, m).regular)), avg = Math.round(regs.reduce((a, b) => a + b, 0) / regs.length);
+        if (x.avg !== avg || x.have.length !== ms.length) out.push(x.s.id + ' ' + x.avg + '/' + avg); });
+      return { out, two: rows.filter(x => x.have.length === 2).length }; });
+    expect(r.two).toBeGreaterThan(10);
+    expect(r.out).toEqual([]);
+  });
+
+  test('a month that is not closed yet is left out and the row says so; overtime pay is only counted when ticked', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => { const a = insQuarterRows('2026-10').find(x => x.s.id === 'A004'), b = insQuarterRows('2026-07').find(x => x.s.id === 'A004');
+      state.insQOT = true; const c = insQuarterRows('2026-10').find(x => x.s.id === 'A004'); state.insQOT = false;
+      return { haveOct: a.have.length, haveJul: b.have.length, flag: a.flags.map(f => f.zh), ev: a.evidence, avgNoOT: a.avg, avgOT: c.avg }; });
+    expect(r.haveOct).toBe(2); expect(r.haveJul).toBe(3);
+    expect(r.flag).toEqual(['只有 2 個月資料']);
+    expect(r.ev).toContain('09月 還沒結算');
+    expect(r.avgOT).toBeGreaterThan(r.avgNoOT);                                      // 8 月有核准的加班
+  });
+
+  test('HR approves the changes together: the new grade starts on the 1st of the review month and the payslip follows', async ({ page }) => {
+    await openIns(page);
+    await expect(page.locator('#insQuarter')).toContainText('2026-07');
+    const before = await page.evaluate(() => { const rs = insQuarterRows('2026-07').filter(r => r.changed); return { ids: rs.map(r => r.s.id), first: rs[0].s.id, h0: rs[0].cur.health, h1: rs[0].sugH.amt,
+      jun: calcPay(rs[0].s.id, '2026-06').health, jul: calcPay(rs[0].s.id, '2026-07').health }; });
+    expect(before.ids.length).toBeGreaterThan(0);
+    await expect(page.locator('#insQuarter [data-insq]')).toHaveCount(before.ids.length);
+    await expect(page.locator('#insQApply')).toContainText(`核可勾選的 ${before.ids.length} 人`);
+    page.once('dialog', d => d.accept());
+    await page.click('#insQApply');
+    await expect(page.locator('.toast')).toContainText(`已核可 ${before.ids.length} 人`);
+    const after = await page.evaluate(id => { const ev = empRecord(id).ins.filter(x => x.date === '2026-07-01').slice(-1)[0];
+      return { ev, left: insQuarterRows('2026-07').filter(r => r.changed).length, jun: calcPay(id, '2026-06').health, jul: calcPay(id, '2026-07').health, log: INS_LOG.slice(-1)[0] }; }, before.first);
+    expect(after.ev).toMatchObject({ kind: 'adjust', health: before.h1 });
+    expect(after.ev.note).toContain('每季調整');
+    expect(after.ev.note).toContain('÷ 3');                                          // 依據寫進異動紀錄
+    expect(after.left).toBe(0);                                                      // 重算一次：沒有人還需要調整（不會重複套用）
+    expect(after.jun).toBe(before.jun);                                              // 6 月薪資單不變
+    expect(after.jul).not.toBe(before.jul);                                          // 7 月起跟著新級距
+    expect(after.log).toMatchObject({ action: '每季調整', eff: '2026-07-01' });
+    await expect(page.locator('#insQuarter')).toContainText('這一季沒有需要調整的人');
+  });
+
+  test('unticked people are left alone and stay on the list', async ({ page }) => {
+    await openIns(page);
+    const ids = await page.evaluate(() => insQuarterRows('2026-07').filter(r => r.changed).map(r => r.s.id));
+    expect(ids.length).toBeGreaterThan(1);
+    await page.uncheck(`[data-insq="${ids[0]}"]`);
+    await expect(page.locator('#insQApply')).toContainText(`核可勾選的 ${ids.length - 1} 人`);
+    page.once('dialog', d => d.accept());
+    await page.click('#insQApply');
+    const r = await page.evaluate(([skip, ok]) => ({ skipped: empRecord(skip).ins.filter(x => x.date === '2026-07-01').length, approved: empRecord(ok).ins.filter(x => x.date === '2026-07-01' && x.note.includes('每季調整')).length,
+      still: insQuarterRows('2026-07').filter(r => r.changed).map(r => r.s.id) }), [ids[0], ids[1]]);
+    expect(r.approved).toBe(1);
+    expect(r.still).toEqual([ids[0]]);
+  });
+
+  test('part-time staff use the part-time labor rule, and the Excel has every row', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => { const row = insQuarterRows('2026-07').find(x => x.s.type === 'part'), qm = '2026-07';
+      const sh = insQuarterSheets(qm); return { part: !!row, amt: row.sugL.amt, want: insLaborGrade(insVer('labor', qm), row.avg, true).amt, n: sh[0].rows.length - 2, rows: insQuarterRows(qm).length, head: sh[0].rows[1].slice(0, 2) }; });
+    expect(r.part).toBe(true); expect(r.amt).toBe(r.want);
+    expect(r.n).toBe(r.rows);
+    expect(r.head).toEqual(['員編', '姓名']);
+  });
+
+  test('the manager sees the suggestions but cannot approve them', async ({ page }) => {
+    await openIns(page, 'manager');
+    await expect(page.locator('#insQuarter')).toBeVisible();
+    await expect(page.locator('#insQApply')).toBeDisabled();
+    await expect(page.locator('#insQuarter [data-insq]').first()).toBeDisabled();
+  });
+
+  test('the guide records the quarterly review', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['每季建議', '前三個月', '核可']) await expect(page.locator('#newv35')).toContainText(w);
+  });
+});
+
