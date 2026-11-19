@@ -162,8 +162,8 @@ test.describe('Settings & permission matrix', () => {
   test('admin sees the full matrix, read-only until Edit is pressed (one merged tab)', async ({ page }) => {
     await go(page, 'perm', 'matrix');
     await expect(page.locator('[data-tab="titles"]')).toHaveCount(0);     // 10/20：「職稱對照」併入「權限對照表」
-    await expect(page.locator('.permtable thead th')).toHaveCount(16);   // capability column + 15 roles
-    await expect(page.locator('table.titlematrix thead th')).toHaveCount(16);
+    await expect(page.locator('.permtable thead tr:first-child th')).toHaveCount(16);   // capability column + 15 roles
+    await expect(page.locator('table.titlematrix thead tr:first-child th')).toHaveCount(16);
     await expect(page.locator('[data-perm]')).toHaveCount(0);            // 平常唯讀
     await expect(page.locator('[data-tcell]')).toHaveCount(0);
     await editPerms(page);
@@ -177,7 +177,7 @@ test.describe('Settings & permission matrix', () => {
   test('manager can edit the permission matrix too (20 Oct: manager and system administrator)', async ({ page }) => {
     await setRole(page, 'manager');
     await go(page, 'perm', 'matrix');
-    await expect(page.locator('.permtable thead th')).toHaveCount(16);
+    await expect(page.locator('.permtable thead tr:first-child th')).toHaveCount(16);
     await expect(page.locator('[data-perm]')).toHaveCount(0);
     await editPerms(page);
     await expect(page.locator('[data-perm]')).toHaveCount(180);
@@ -188,7 +188,7 @@ test.describe('Settings & permission matrix', () => {
     test(`${r} sees only their own column, read-only, and still gets open questions`, async ({ page }) => {
       await setRole(page, r);
       await go(page, 'perm', 'matrix');
-      await expect(page.locator('.permtable thead th')).toHaveCount(2);
+      await expect(page.locator('.permtable thead tr:first-child th')).toHaveCount(2);
       await expect(page.locator('[data-perm]')).toHaveCount(0);
       await expect(page.locator('[data-perm-edit]')).toHaveCount(0);
       await expect(page.locator('#view')).toContainText('只有管理者與系統管理員可以編輯');
@@ -1192,7 +1192,7 @@ test.describe('Updates from the 7 Oct meeting', () => {
     await expect(page.locator('#view')).toContainText('職稱對照');
     await go(page, 'perm', 'matrix');
     const tm = page.locator('#view table.titlematrix');
-    await expect(tm.locator('thead th')).toHaveCount(16);            // item column + 12 titles + 3 sub-categories
+    await expect(tm.locator('thead tr:first-child th')).toHaveCount(16);            // item column + 12 titles + 3 sub-categories
     await expect(page.locator('#view')).toContainText('已填 465 / 465');
     const row = name => tm.locator('tbody tr', { hasText: name }).first();
     const cellOf = async (rowName, title) => {
@@ -1246,7 +1246,7 @@ test.describe('Updates from the 7 Oct meeting', () => {
   test('the admin creates a sub-category under a role category and it becomes a column', async ({ page }) => {
     await go(page, 'perm', 'matrix');
     await editPerms(page);
-    const heads = page.locator('table.titlematrix thead th');
+    const heads = page.locator('table.titlematrix thead tr:first-child th');
     await expect(heads).toHaveCount(16);
     await page.selectOption('#subAddForm select[name="parent"]', 'hr');
     await page.fill('#subAddForm input[name="name"]', '實習生');
@@ -1640,13 +1640,13 @@ test.describe('CSV exports', () => {
     await openPortal(page);
     await go(page, 'perm', 'matrix');
     const rm = page.locator('table.titlematrix');
-    await expect(rm.locator('thead th')).toHaveCount(16);            // item column + 15 roles
+    await expect(rm.locator('thead tr:first-child th')).toHaveCount(16);            // item column + 15 roles
     expect(await rm.locator('tbody tr').count()).toBe(31);           // 通訊錄併入組織圖、職稱對照併入權限對照表後的項目數
     const idx = await rm.locator('thead th').evaluateAll(ths => ths.findIndex(h => h.textContent.includes('老闆')));
     await expect(rm.locator('tbody tr', { hasText: '薪資計算 › 薪資試算' }).first().locator('td').nth(idx)).toContainText('可檢視');
-    await expect(page.locator('.permtable thead th')).toHaveCount(16); // the finer table covers all 15 roles
+    await expect(page.locator('.permtable thead tr:first-child th')).toHaveCount(16); // the finer table covers all 15 roles
     await setRole(page, 'hr');
-    await expect(page.locator('.permtable thead th')).toHaveCount(2);   // others only see their own column in the finer table
+    await expect(page.locator('.permtable thead tr:first-child th')).toHaveCount(2);   // others only see their own column in the finer table
   });
 
   test('finer permissions use the Excel Yes/No format for all 15 roles and download as Excel', async ({ page }) => {
@@ -4315,5 +4315,206 @@ test.describe('10/20 meeting: approval forms go up the chart level by level', ()
   test('the guide records the approval forms', async ({ page }) => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     for (const w of ['簽核申請單', '逐層', '金額規則', '空缺', '辦理期限', '逾期', '結案']) await expect(page.locator('#newv35')).toContainText(w);
+  });
+});
+
+/* 11/19 會議：表單簽核頁面加入 filter（所有欄位皆可篩選）；主管可全選一鍵核准 */
+test.describe('11/19 meeting: filters on every column of the approval pages', () => {
+  const visibleRows = (page, sel) => page.locator(sel + ' tbody tr:not([hidden])').count();
+  const allRows = (page, sel) => page.locator(sel + ' tbody tr').count();
+
+  test('Leave approvals: every data column has a filter, the action column does not', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'hr', 'leave');
+    for (const id of ['lv-leave', 'lv-ot', 'lv-fix', 'lv-forms']) {
+      const t = `table[data-filterable="${id}"]`;
+      const heads = await page.locator(t + ' thead tr:first-child th').count();
+      const filters = await page.locator(t + ' thead tr.filters [data-tfcol]').count();
+      expect(filters, id).toBe(heads - 1);                                                // 全部欄位，除了「簽核」按鈕欄
+    }
+  });
+
+  test('Leave approvals: filtering by status, by name and by text narrows the rows; clearing brings them back', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'hr', 'leave');
+    const t = 'table[data-filterable="lv-leave"]', total = await allRows(page, t);
+    expect(total).toBeGreaterThan(10);
+    const pendingCount = await page.locator(t + ' tbody tr').evaluateAll(trs => trs.filter(r => r.cells[6].textContent.includes('待主管簽核')).length);
+    await page.selectOption(t + ' [data-tfcol="6"]', '待主管簽核');                          // 狀態
+    expect(await visibleRows(page, t)).toBe(pendingCount);
+    expect(pendingCount).toBeGreaterThan(0); expect(pendingCount).toBeLessThan(total);
+    await page.fill(t + ' [data-tfcol="0"]', 'L9999');                                       // 單號：沒有這張
+    expect(await visibleRows(page, t)).toBe(0);
+    await expect(page.locator('.tfcount').first()).toContainText('顯示 0 /');
+    await page.click('.tfclear >> nth=0');
+    expect(await visibleRows(page, t)).toBe(total);
+  });
+
+  test('Leave approvals: the filter stays after approving one request', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'hr', 'leave');
+    const t = 'table[data-filterable="lv-leave"]';
+    await page.selectOption(t + ' [data-tfcol="6"]', '待主管簽核');
+    const before = await visibleRows(page, t);
+    await page.locator(t + ' tbody tr:not([hidden]) [data-act="approve"]').first().click();
+    expect(await page.locator(t + ' [data-tfcol="6"]').inputValue()).toBe('待主管簽核');   // 重畫後篩選還在
+    expect(await visibleRows(page, t)).toBe(before - 1);
+  });
+
+  test('Approval forms: every field can be filtered (form, dept, text, amount, status, due, approver, no.)', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'manager'); await go(page, 'desk', 'biz');
+    const vis = () => page.locator('[data-bizbar="sign"]').locator('xpath=..').locator('.bizcard:not([hidden])').evaluateAll(c => c.map(x => x.dataset.bizid));
+    expect((await vis()).sort()).toEqual(['Q1', 'Q2']);
+    await page.selectOption('[data-bizf="sign:kind"]', '報價單');           expect(await vis()).toEqual(['Q2']);
+    await page.click('[data-bizfclear="sign"]');                              expect((await vis()).length).toBe(2);
+    await page.selectOption('[data-bizf="sign:dept"]', '日照');             expect(await vis()).toEqual(['Q1']);
+    await page.click('[data-bizfclear="sign"]');
+    await page.fill('[data-bizf="sign:text"]', '評鑑');                      expect(await vis()).toEqual(['Q1']);
+    await page.click('[data-bizfclear="sign"]');
+    await page.fill('[data-bizf="sign:amt"]', '50000');                       expect(await vis()).toEqual(['Q2']);
+    await page.click('[data-bizfclear="sign"]');
+    await page.selectOption('[data-bizf="sign:st"]', '逾期');               expect(await vis()).toEqual(['Q1']);
+    await page.click('[data-bizfclear="sign"]');
+    await page.fill('[data-bizf="sign:id"]', 'Q2');                           expect(await vis()).toEqual(['Q2']);
+    await page.click('[data-bizfclear="sign"]');
+    await page.fill('[data-bizf="sign:appr"]', '老闆');                      expect((await vis()).length).toBe(2);
+    await page.fill('[data-bizf="sign:who"]', '不存在的人');                 expect(await vis()).toEqual([]);
+    await expect(page.locator('[data-bizcount="sign"]')).toContainText('顯示 0 / 2');
+  });
+
+  test('Approval forms: select all approves only what the filter shows; hidden requests are untouched', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'manager'); await go(page, 'desk', 'biz');
+    page.on('dialog', d => d.accept());
+    await page.selectOption('[data-bizf="sign:kind"]', '報價單');                // 只剩 Q2
+    await page.check('#bizAll');
+    await expect(page.locator('#bizBatch')).toContainText('核准勾選的 1 筆');
+    await page.click('#bizBatch');
+    const r = await page.evaluate(() => BIZ_REQ.filter(x => ['Q1', 'Q2'].includes(x.id)).map(x => [x.id, x.cur]));
+    expect(r.sort()).toEqual([['Q1', 1], ['Q2', 2]]);                          // Q2 往下一層（老闆），Q1 沒動
+    expect(await page.locator('[data-bizf="sign:kind"]').inputValue()).toBe('報價單');   // 篩選還在
+  });
+
+  test('Approval forms: select all with no filter approves everything waiting; nothing ticked means the button stays off', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'manager'); await go(page, 'desk', 'biz');
+    page.on('dialog', d => d.accept());
+    await expect(page.locator('#bizBatch')).toBeDisabled();
+    await page.check('#bizAll');
+    await expect(page.locator('#bizBatch')).toContainText('核准勾選的 2 筆');
+    await page.click('#bizBatch');
+    expect(await page.evaluate(() => ['Q1', 'Q2'].map(i => BIZ_REQ.find(x => x.id === i).cur))).toEqual([2, 2]);
+    await expect(page.locator('#view')).toContainText('目前沒有輪到你簽核的單');
+  });
+
+  test('Approval forms: my requests can be filtered too', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'daysw'); await go(page, 'desk', 'biz');
+    await expect(page.locator('[data-bizbar="mine"]')).toBeVisible();
+    await page.selectOption('[data-bizf="mine:st"]', '已駁回');
+    expect(await page.locator('[data-bizbar="mine"]').locator('xpath=..').locator('.bizcard:not([hidden])').count()).toBe(0);
+    await page.click('[data-bizfclear="mine"]');
+    expect(await page.locator('[data-bizbar="mine"]').locator('xpath=..').locator('.bizcard:not([hidden])').count()).toBe(1);   // Q1 是日照社工自己的
+  });
+
+  test('the guide records the filters', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['請假審核', '欄位篩選', '全選']) await expect(page.locator('#newv35')).toContainText(w);
+  });
+});
+
+/* 11/19 會議延伸：薪資試算表、出勤明細、勞健退、權限對照表也都有欄位篩選 */
+test.describe('column filters on the payroll, attendance, insurance and permission tables', () => {
+  const rows = (page, id) => page.locator(`table[data-filterable="${id}"] tbody tr:not([hidden])`).count();
+  const total = (page, id) => page.locator(`table[data-filterable="${id}"] tbody tr`).count();
+  const filt = (page, id, col) => page.locator(`table[data-filterable="${id}"] [data-tfcol="${col}"]`);
+  const openAs = async (page, role, mod, tab) => { await openPortal(page); await setRole(page, role); await go(page, mod, tab); };
+  const cols = (page, id) => page.evaluate(i => { const t = document.querySelector(`table[data-filterable="${i}"]`); return [t.tHead.rows[0].cells.length, t.querySelectorAll('tr.filters [data-tfcol]').length]; }, id);
+
+  test('every table has a filter on every column (except checkbox / button columns)', async ({ page }) => {
+    await openAs(page, 'hr', 'pay', 'run');
+    expect(await cols(page, 'pay-run')).toEqual([13, 13]);
+    await go(page, 'hr', 'att');
+    expect(await cols(page, 'att-person')).toEqual([10, 10]);
+    expect(await cols(page, 'att-punchloc')).toEqual([7, 7]);
+    await go(page, 'pay', 'ins');
+    expect(await cols(page, 'ins-run')).toEqual([16, 16]);
+    const q = await cols(page, 'ins-quarter');
+    expect(q[1]).toBe(q[0] - 1);                                                           // 第一欄是勾選框，不篩選
+    await setRole(page, 'admin'); await go(page, 'perm', 'matrix');
+    expect(await cols(page, 'perm-title')).toEqual([16, 16]);
+    expect(await cols(page, 'perm-fine')).toEqual([16, 16]);
+  });
+
+  test('payroll register: filter by employee name and by pay method', async ({ page }) => {
+    await openAs(page, 'hr', 'pay', 'run');
+    const n = await total(page, 'pay-run');
+    expect(n).toBeGreaterThan(20);
+    const firstName = (await page.locator('table[data-filterable="pay-run"] tbody tr:first-child td:first-child').innerText()).trim().split(/\s+/)[0];
+    await filt(page, 'pay-run', 0).fill(firstName);
+    const byName = await rows(page, 'pay-run');
+    expect(byName).toBeGreaterThan(0); expect(byName).toBeLessThan(n);
+    await page.click('.tfclear >> nth=0');
+    expect(await rows(page, 'pay-run')).toBe(n);
+    const methods = await page.locator('table[data-filterable="pay-run"] [data-tfcol="11"] option').allTextContents();
+    expect(methods.length).toBeGreaterThan(2);                                              // 全部 + 至少兩種發薪方式
+    await filt(page, 'pay-run', 11).selectOption({ index: 1 });
+    const one = await rows(page, 'pay-run');
+    expect(one).toBeGreaterThan(0); expect(one).toBeLessThan(n);
+  });
+
+  test('attendance by person and punch locations: filter by company and by title', async ({ page }) => {
+    await openAs(page, 'hr', 'hr', 'att');
+    const n = await total(page, 'att-person');
+    await filt(page, 'att-person', 1).selectOption({ index: 1 });                           // 公司
+    const c = await rows(page, 'att-person');
+    expect(c).toBeGreaterThan(0); expect(c).toBeLessThan(n);
+    const company = await page.locator('table[data-filterable="att-person"] [data-tfcol="1"]').inputValue();
+    const bad = await page.locator('table[data-filterable="att-person"] tbody tr:not([hidden])').evaluateAll((trs, co) => trs.filter(r => !r.cells[1].textContent.includes(co)).length, company);
+    expect(bad).toBe(0);                                                                    // 留下來的每一列都是這家公司
+    const m = await total(page, 'att-punchloc');
+    expect(await page.locator('table[data-filterable="att-punchloc"] [data-tfcol="1"]').evaluate(e => e.tagName)).toBe('SELECT');   // 員工只有幾位：用下拉
+    await filt(page, 'att-punchloc', 1).selectOption({ index: 1 });
+    const one = await rows(page, 'att-punchloc');
+    expect(one).toBeGreaterThan(0); expect(one).toBeLessThan(m);
+    await filt(page, 'att-punchloc', 1).selectOption('');
+    expect(await rows(page, 'att-punchloc')).toBe(m);
+  });
+
+  test('insurance: per-employee table and quarterly suggestions can be filtered', async ({ page }) => {
+    await openAs(page, 'hr', 'pay', 'ins');
+    const n = await total(page, 'ins-run');
+    expect(n).toBeGreaterThan(20);
+    await filt(page, 'ins-run', 1).selectOption({ index: 1 });                              // 單位
+    const u = await rows(page, 'ins-run');
+    expect(u).toBeGreaterThan(0); expect(u).toBeLessThan(n);
+    const qn = await total(page, 'ins-quarter');
+    await filt(page, 'ins-quarter', 1).fill('zzzz');
+    expect(await rows(page, 'ins-quarter')).toBe(0);
+    await page.locator('table[data-filterable="ins-quarter"]').locator('xpath=ancestor::div[contains(@class,"tablewrap")]/following-sibling::div[contains(@class,"tfbar")]//button').click();
+    expect(await rows(page, 'ins-quarter')).toBe(qn);
+  });
+
+  test('permission tables: filter by item name and by a role column, also while editing', async ({ page }) => {
+    await openAs(page, 'admin', 'perm', 'matrix');
+    const n = await total(page, 'perm-title');
+    await filt(page, 'perm-title', 0).fill('員工');
+    const k = await rows(page, 'perm-title');
+    expect(k).toBeGreaterThan(0); expect(k).toBeLessThan(n);
+    await page.click('[data-perm-edit]');                                                   // 編輯中：篩選還在，也還能用
+    expect(await filt(page, 'perm-title', 0).inputValue()).toBe('員工');
+    expect(await rows(page, 'perm-title')).toBe(k);
+    await filt(page, 'perm-title', 0).fill('');
+    await page.selectOption('table[data-filterable="perm-title"] [data-tfcol="1"]', { index: 1 });   // 老闆那一欄的某個值
+    expect(await rows(page, 'perm-title')).toBeLessThan(n);
+    const f = await total(page, 'perm-fine');
+    await filt(page, 'perm-fine', 0).fill('薪資');
+    const kf = await rows(page, 'perm-fine');
+    expect(kf).toBeGreaterThan(0); expect(kf).toBeLessThan(f);
+  });
+
+  test('the filter row sits right under the header, so it does not cover it when the table scrolls', async ({ page }) => {
+    await openAs(page, 'hr', 'pay', 'ins');
+    const r = await page.evaluate(() => { const t = document.querySelector('table[data-filterable="ins-run"]'), h = t.tHead.rows[0].offsetHeight, f = t.querySelector('tr.filters th'); return [h, parseInt(f.style.top, 10)]; });
+    expect(r[1]).toBe(r[0]);
+  });
+
+  test('the guide records the new filters', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['薪資試算表', '出勤明細', '勞健退', '權限對照表']) await expect(page.locator('#newv35')).toContainText(w);
   });
 });

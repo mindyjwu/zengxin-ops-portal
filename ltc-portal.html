@@ -210,6 +210,9 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 .bizlist{display:grid;gap:12px;padding:12px}
 .bizcard{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:10px;background:var(--surface)}
 .bizcard.late{border-color:var(--crit)}
+.bizcard[hidden]{display:none}
+.tablewrap thead tr.filters th{top:33px;padding:4px 6px;text-transform:none;letter-spacing:0;font-weight:400;background:var(--surface-2);z-index:2}
+.tablewrap tr.filters input,.tablewrap tr.filters select{width:100%;min-width:70px;font-size:12px;padding:3px 6px;height:28px}
 .bizhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .bizhead .no{font-family:ui-monospace,Menlo,monospace;color:var(--ink-3);font-size:12.5px}
 .bizhead .ttl{font-weight:700;font-size:15px}
@@ -227,6 +230,13 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 .bizsteps .who{color:var(--ink-2)}
 .bizsteps li.cur{font-weight:600}
 .bizsteps li.vac{color:var(--ink-3)}
+.bizbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px 12px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.bizbar label{display:block;font-size:11.5px;color:var(--ink-3);margin-bottom:2px}
+.bizbar input,.bizbar select,.bizact input{width:100%;font:inherit;font-size:13.5px;padding:6px 8px;border:1px solid var(--line-strong);border-radius:6px;background:var(--surface);color:var(--ink)}
+.bizact input{width:auto}
+.bizbar .bizbtn{display:flex;align-items:end;gap:8px;font-size:12px}
+.bizpickrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line)}
+.bizcard .pick{display:flex;gap:8px;align-items:center}
 .bizact{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
 .bizact input{flex:1;min-width:180px}
 .blk{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line-strong);border-radius:6px;padding:6px 10px;background:var(--surface);font-size:13px}
@@ -1250,6 +1260,7 @@ function render(){
   }[key];
   v.innerHTML = fn ? fn() : '';
   (BINDERS[key]||function(){})();
+  bindTableFilters();
   if(state.module==='pay' && !payEdit()){   // 職稱對照寫「可檢視」：看得到，不能儲存版本或覆核
     v.insertAdjacentHTML('afterbegin',`<div class="note q">${esc(both('此身分在權限對照表裡對薪資計算只有「可檢視」：可以看，不能儲存版本、送出或覆核。','This role has View-only access to payroll in the title matrix: you can look, but not save versions, submit or review.'))}</div>`);
     v.querySelectorAll('[data-savever],[data-vact]').forEach(b=>{ b.disabled=true; b.title='可檢視'; });
@@ -4300,7 +4311,7 @@ function punchLocCard(){
     <div class="card-h"><h2>${esc(both('打卡位置（後台）','Punch location (back office)'))}</h2><span class="chip warn">${esc(both('只有後台看得到','Back office only'))}</span></div>
     <div class="card-b" style="display:grid;gap:8px">
       <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('正式版打卡會記錄網路位置（IP），不強制拍照；位置資訊只顯示在後台，員工的手機介面不顯示位置（10/20 會議）。打卡資料依法規保存五年。照片上傳是選填功能（之後再做，需伺服器端壓縮）。下面的 IP 與地點是虛構的示範。','The real version records the network location (IP) of each punch and does not force a photo; the location shows only in the back office, never on the employee’s phone (20 Oct meeting). Punch data is kept for five years as the law requires. Photo upload is optional and comes later (needs server-side compression). The IPs and places below are fictional demo data.'))}</div>
-      <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('日期','Date')}</th><th>${bi('員工','Employee')}</th><th>${bi('公司','Company')}</th><th>${bi('上班打卡','Punch in')}</th><th>${bi('網路位置','Network location')}</th><th>IP</th><th>${bi('提醒','Flag')}</th></tr></thead>
+      <div class="tablewrap"><table class="todotbl" data-filterable="att-punchloc"><thead><tr><th>${bi('日期','Date')}</th><th>${bi('員工','Employee')}</th><th>${bi('公司','Company')}</th><th>${bi('上班打卡','Punch in')}</th><th>${bi('網路位置','Network location')}</th><th>IP</th><th>${bi('提醒','Flag')}</th></tr></thead>
         <tbody>${rows.slice(0,12).map(r=>`<tr><td class="mono">${state.attMonth}-${String(r.d).padStart(2,'0')}</td><td>${esc(nameOf(r.s))}</td><td>${esc(both(unit(r.s.unit).zh,unit(r.s.unit).en))}</td><td class="mono">${r.t}</td><td>${esc(r.pl)}</td><td class="mono">${r.ip}</td><td>${r.flag?`<span class="chip warn">${esc(r.flag)}</span>`:''}</td></tr>`).join('')}</tbody></table></div>
     </div></section>`;
 }
@@ -4352,7 +4363,7 @@ function viewAttendance(){
     <section class="card">
       <div class="card-h"><h2>${esc(both('個人出勤明細','Attendance by person'))}</h2>
         <span class="en">${esc(both('點選列可展開個人資料','Click a row for the person record'))}</span></div>
-      <div class="tablewrap"><table>
+      <div class="tablewrap"><table data-filterable="att-person">
         <thead><tr><th>${bi('姓名','Name')}</th><th>${bi('公司','Company')}</th><th>${bi('職稱','Title')}</th>
           <th>${bi('出勤率','Rate')}</th><th>${bi('正常','On time')}</th><th>${bi('遲到','Late')}</th>
           <th>${bi('請假','Leave')}</th><th>${bi('未打卡','Missing')}</th><th>${bi('加班','OT hrs')}</th>
@@ -4495,10 +4506,10 @@ function viewLeave(){
     <section class="card">
       <div class="card-h"><h2>${esc(both('請假申請','Leave requests'))}</h2>
         <span class="en">${esc(both('以小時計，1 天 = '+WORK_DAY_H+' 小時','Counted in hours; 1 day = '+WORK_DAY_H+' h'))}</span></div>
-      <div class="tablewrap"><table>
+      <div class="tablewrap"><table data-filterable="lv-leave">
         <thead><tr><th>${bi('單號','Request')}</th><th>${bi('申請人','Employee')}</th><th>${bi('公司','Company')}</th>
           <th>${bi('假別','Leave type')}</th><th>${bi('起訖','From → to')}</th><th>${bi('時數','Hours')}</th>
-          <th>${bi('狀態','Status')}</th><th>${bi('備註','Note')}</th><th>${bi('簽核','Action')}</th></tr></thead>
+          <th>${bi('狀態','Status')}</th><th>${bi('備註','Note')}</th><th data-nofilter>${bi('簽核','Action')}</th></tr></thead>
         <tbody>${list.map(l=>`<tr>
           <td class="mono">${l.id}</td>${who(person(l.emp))}
           <td>${esc(both(LEAVE_TYPES[l.type].zh,LEAVE_TYPES[l.type].en))}</td>
@@ -4512,10 +4523,10 @@ function viewLeave(){
     </section>
     <section class="card">
       <div class="card-h"><h2>${esc(both('加班申請','Overtime requests'))}</h2></div>
-      <div class="tablewrap"><table>
+      <div class="tablewrap"><table data-filterable="lv-ot">
         <thead><tr><th>${bi('單號','Request')}</th><th>${bi('申請人','Employee')}</th><th>${bi('公司','Company')}</th>
           <th>${bi('日期','Date')}</th><th>${bi('時段','Time')}</th><th>${bi('時數','Hours')}</th><th>${bi('補償','Comp')}</th>
-          <th>${bi('狀態','Status')}</th><th>${bi('事由','Reason')}</th><th>${bi('簽核','Action')}</th></tr></thead>
+          <th>${bi('狀態','Status')}</th><th>${bi('事由','Reason')}</th><th data-nofilter>${bi('簽核','Action')}</th></tr></thead>
         <tbody>${ots.map(o=>`<tr>
           <td class="mono">${o.id}</td>${who(person(o.emp))}
           <td class="mono">${o.date}</td><td class="mono">${o.start}–${o.end}</td><td class="num">${fmtH(o.hours)}</td>
@@ -4527,10 +4538,10 @@ function viewLeave(){
     </section>
     <section class="card">
       <div class="card-h"><h2>${esc(both('補打卡申請','Missed-punch corrections'))}</h2></div>
-      <div class="tablewrap"><table>
+      <div class="tablewrap"><table data-filterable="lv-fix">
         <thead><tr><th>${bi('單號','Request')}</th><th>${bi('申請人','Employee')}</th><th>${bi('公司','Company')}</th>
           <th>${bi('日期','Date')}</th><th>${bi('類別','Punch')}</th><th>${bi('時間','Time')}</th>
-          <th>${bi('狀態','Status')}</th><th>${bi('原因','Reason')}</th><th>${bi('簽核','Action')}</th></tr></thead>
+          <th>${bi('狀態','Status')}</th><th>${bi('原因','Reason')}</th><th data-nofilter>${bi('簽核','Action')}</th></tr></thead>
         <tbody>${fixes.map(f=>`<tr>
           <td class="mono">${f.id}</td>${who(person(f.emp))}
           <td class="mono">${f.date}</td><td>${esc(both(PUNCH_KIND[f.kind].zh,PUNCH_KIND[f.kind].en))}</td><td class="mono">${f.time}</td>
@@ -4543,10 +4554,10 @@ function viewLeave(){
     <section class="card">
       <div class="card-h"><h2>${esc(both('其他表單','Other forms'))}</h2>
         <span class="en">${esc(both('預先加班、公出差旅、銷假、文件與勞健保證明','Pre-approval, off-site, cancellations, certificates'))}</span></div>
-      <div class="tablewrap"><table>
+      <div class="tablewrap"><table data-filterable="lv-forms">
         <thead><tr><th>${bi('單號','Request')}</th><th>${bi('申請人','Employee')}</th><th>${bi('公司','Company')}</th>
           <th>${bi('表單','Form')}</th><th>${bi('內容','Detail')}</th><th>${bi('日期','Date')}</th>
-          <th>${bi('狀態','Status')}</th><th>${bi('事由','Reason')}</th><th>${bi('簽核','Action')}</th></tr></thead>
+          <th>${bi('狀態','Status')}</th><th>${bi('事由','Reason')}</th><th data-nofilter>${bi('簽核','Action')}</th></tr></thead>
         <tbody>${forms.map(f=>`<tr>
           <td class="mono">${f.id}</td>${who(person(f.emp))}
           <td>${esc(both(FORM_KINDS[f.kind].zh,FORM_KINDS[f.kind].en))}</td><td style="white-space:normal;max-width:220px">${esc(L(f.what))}</td>
@@ -4561,6 +4572,48 @@ function viewLeave(){
         'Prototype note: approvals send no notifications and write to no database; reload resets them. Leave balances are computed live from approved and pending hours.'))}</div>
     </section>
   </div>`;
+}
+
+/* 通用的表格欄位篩選：在 <table data-filterable="代號"> 的表頭下自動長出一列篩選欄（選項少的欄位用下拉，其餘用文字）；
+   不要篩選的欄位（例如「簽核」按鈕欄）在 <th> 加 data-nofilter。篩選值記在 state.tf，重新繪製後仍保留。 */
+function bindTableFilters(){
+  document.querySelectorAll('#view table[data-filterable]').forEach(tb=>{
+    const id=tb.dataset.filterable, F=(state.tf||(state.tf={}))[id]||(state.tf[id]={});
+    const rows=[...tb.tBodies[0].rows]; if(!rows.length) return;
+    const head=tb.tHead.rows[tb.tHead.rows.length-1];
+    const txt=(r,i)=>(r.cells[i]?r.cells[i].textContent:'').replace(/\s+/g,' ').trim();
+    const fr=document.createElement('tr'); fr.className='filters';
+    [...head.cells].forEach((th,i)=>{
+      const td=document.createElement('th'); fr.appendChild(td);
+      if(th.hasAttribute('data-nofilter')) return;
+      const vals=[...new Set(rows.map(r=>txt(r,i)))].filter(Boolean).sort(), label=th.textContent.replace(/\s+/g,' ').trim();
+      let el;
+      if(vals.length>1 && vals.length<=8 && vals.every(v=>v.length<=14)){
+        el=document.createElement('select'); el.innerHTML='<option value="">'+esc(both('全部','All'))+'</option>'+vals.map(v=>'<option>'+esc(v)+'</option>').join('');
+      } else { el=document.createElement('input'); el.type='search'; el.placeholder=both('篩選','Filter'); el.style.cssText='width:100%;min-width:70px'; }
+      el.dataset.tfcol=i; el.setAttribute('aria-label',both('篩選','Filter')+' '+label); el.value=F[i]||'';
+      td.appendChild(el);
+    });
+    tb.tHead.appendChild(fr);
+    { const h=head.offsetHeight; if(h) fr.querySelectorAll('th').forEach(th=>{ th.style.top=h+'px'; }); }   // 篩選列固定在表頭正下方（表頭高度不一定是一行）
+    const bar=document.createElement('div'); bar.className='muted tfbar'; bar.style.cssText='font-size:12px;padding:6px 12px;display:flex;gap:10px;align-items:center';
+    bar.innerHTML='<span class="tfcount"></span><button type="button" class="btn ghost mini tfclear">'+esc(both('清除篩選','Clear filters'))+'</button>';
+    tb.closest('.tablewrap').after(bar);
+    const apply=()=>{ let n=0;
+      rows.forEach(r=>{ const ok=Object.entries(F).every(([i,v])=>!v||txt(r,+i).toLowerCase().includes(String(v).trim().toLowerCase())); r.hidden=!ok; if(ok) n++; });
+      bar.querySelector('.tfcount').textContent=both('顯示 '+n+' / '+rows.length+' 筆','Showing '+n+' / '+rows.length);
+      bar.querySelector('.tfclear').hidden=!Object.values(F).some(Boolean); };
+    let comp=false;   // 中文（注音）組字中不篩選，組字結束才篩
+    fr.querySelectorAll('[data-tfcol]').forEach(el=>{
+      const set=()=>{ F[el.dataset.tfcol]=el.value; apply(); };
+      el.addEventListener('compositionstart',()=>{ comp=true; });
+      el.addEventListener('compositionend',()=>{ comp=false; set(); });
+      el.addEventListener('input',e=>{ if(comp||e.isComposing) return; set(); });
+      el.addEventListener('change',set);
+    });
+    bar.querySelector('.tfclear').onclick=()=>{ Object.keys(F).forEach(k=>delete F[k]); fr.querySelectorAll('[data-tfcol]').forEach(el=>{ el.value=''; }); apply(); };
+    apply();
+  });
 }
 /* 簽核動作（單筆與批次共用）；回傳要顯示的訊息 */
 function signAct(l, act){
@@ -5622,6 +5675,23 @@ function bizKv(r, withApplicant){
     ${f.map(x=>cell(x.zh,x.en,esc(r.f[x.k]),String(r.f[x.k]).length>16?'wide':'')).join('')}
   </dl>`;
 }
+/* 簽核申請單的篩選：每張卡片帶著各欄位的文字，篩選列只負責顯示／隱藏卡片；篩選值記在 state.bizF，重畫後仍保留 */
+const bizStLabel = r => (r.status==='pending'?both('簽核中','In approval'):both(BIZ_STATUS[r.status].zh,BIZ_STATUS[r.status].en))+(bizLate(r)?' '+both('逾期','Overdue'):'');
+const bizAttrs = r => { const p=person(r.emp), ap=r.steps.filter(x=>x.emp).map(x=>nameOf(person(x.emp))+' '+x.role).join(' ');
+  return `data-bizid="${r.id}" data-f-id="${esc(r.id)}" data-f-kind="${esc(both(BIZ_KINDS[r.kind].zh,BIZ_KINDS[r.kind].en))}" data-f-who="${esc(p?nameOf(p)+' '+L(TITLES[p.title]):r.emp)}"
+    data-f-dept="${esc(L(DEPTS[r.dept]||{zh:'',en:''}))}" data-f-text="${esc(Object.values(r.f).join(' '))}" data-f-amt="${r.amount}" data-f-st="${esc(bizStLabel(r))}" data-f-due="${esc(bizDue(r))}" data-f-appr="${esc(ap)}"`; };
+function bizFilterBar(key, list, withWho){
+  const F=(state.bizF||(state.bizF={}))[key]||(state.bizF[key]={}), uniq=f=>[...new Set(list.map(f))].filter(Boolean).sort();
+  const txt=(k,zh,en,ph)=>`<div><label>${esc(both(zh,en))}</label><input type="search" data-bizf="${key}:${k}" value="${esc(F[k]||'')}" placeholder="${esc(ph||both('篩選','Filter'))}"></div>`;
+  const sel=(k,zh,en,vals)=>`<div><label>${esc(both(zh,en))}</label><select data-bizf="${key}:${k}"><option value="">${esc(both('全部','All'))}</option>${vals.map(v=>`<option ${F[k]===v?'selected':''}>${esc(v)}</option>`).join('')}</select></div>`;
+  const sts=[both('簽核中','In approval'),both('已核准','Approved'),both('已結案','Closed'),both('已駁回','Rejected'),both('已抽單','Withdrawn'),both('逾期','Overdue')];
+  return `<div class="bizbar" data-bizbar="${key}">
+    ${txt('id','單號','No.')}${sel('kind','表單','Form',Object.values(BIZ_KINDS).map(k=>both(k.zh,k.en)))}${withWho?txt('who','申請人','Applicant'):''}
+    ${sel('dept','部門','Dept.',uniq(r=>L(DEPTS[r.dept]||{zh:'',en:''})))}${txt('text','內容','Details')}
+    <div><label>${esc(both('金額 ≥','Amount ≥'))}</label><input type="number" min="0" step="1" data-bizf="${key}:amt" value="${esc(F.amt||'')}" placeholder="0"></div>
+    ${sel('st','狀態','Status',sts)}${txt('due','辦理期限','Due','2026-10')}${txt('appr','簽核人','Approver')}
+    <div class="bizbtn"><span class="muted bizcount" data-bizcount="${key}"></span> <button type="button" class="btn ghost mini" data-bizfclear="${key}">${esc(both('清除篩選','Clear filters'))}</button></div></div>`;
+}
 const bizToSign = () => BIZ_REQ.filter(r=>r.status==='pending'&&r.steps[r.cur]&&r.steps[r.cur].emp===me().id);
 function viewBizReq(){
   const u=me(), k=state.bizNew, mine=BIZ_REQ.filter(r=>r.emp===u.id), toSign=bizToSign(), lateN=toSign.filter(bizLate).length;
@@ -5639,15 +5709,19 @@ function viewBizReq(){
         <div style="display:flex;gap:8px;flex-wrap:wrap">${Object.entries(BIZ_KINDS).map(([id,v])=>`<button class="btn ${k===id?'':'ghost'}" data-biznew="${id}">${esc(both(v.zh,v.en))}</button>`).join('')}</div>${form}
       </div></section>
     <section class="card"><div class="card-h"><h2>${esc(both('待我簽核','Awaiting my approval'))} <span class="chip ${toSign.length?'crit':'ok'}">${toSign.length}</span>${lateN?` <span class="chip crit">${esc(both('逾期 '+lateN,'Overdue '+lateN))}</span>`:''}</h2></div>
-      ${toSign.length?`<div class="bizlist">${toSign.map(r=>`<div class="bizcard ${bizLate(r)?'late':''}">
-          <div class="bizhead"><span class="ttl">${esc(both(BIZ_KINDS[r.kind].zh,BIZ_KINDS[r.kind].en))}</span><span class="no">${r.id}</span><span class="sp"></span>${bizStatus(r)}</div>
+      ${toSign.length?`${bizFilterBar('sign',toSign,true)}
+        <div class="bizpickrow"><label class="pick"><input type="checkbox" id="bizAll" aria-label="${esc(both('全選目前顯示的申請單','Select all shown'))}"> ${esc(both('全選目前顯示的','Select all shown'))}</label>
+          <button class="btn" id="bizBatch" disabled>${esc(both('核准勾選的 0 筆','Approve selected (0)'))}</button>
+          <span class="muted" style="font-size:12px">${esc(both('先用上面的欄位篩選，再「全選」一鍵核准；也可以只勾幾筆，或逐張核准、駁回（駁回要寫理由）。','Filter first, then select all to approve at once; or tick a few, or approve / reject one by one (a rejection needs a reason).'))}</span></div>
+        <div class="bizlist">${toSign.map(r=>`<div class="bizcard ${bizLate(r)?'late':''}" ${bizAttrs(r)}>
+          <div class="bizhead"><label class="pick"><input type="checkbox" class="bizpick" data-id="${r.id}" aria-label="${esc(r.id)}"></label><span class="ttl">${esc(both(BIZ_KINDS[r.kind].zh,BIZ_KINDS[r.kind].en))}</span><span class="no">${r.id}</span><span class="sp"></span>${bizStatus(r)}</div>
           ${bizKv(r,true)}
           <div><div class="eyebrow" style="margin-bottom:4px">${esc(both('簽核進度','Progress'))}</div>${bizSteps(r)}</div>
           <div class="bizact"><input data-biznote="${r.id}" maxlength="80" placeholder="${esc(both('簽核意見（駁回必填）','Comment (required to reject)'))}" aria-label="${esc(both('簽核意見','Comment')+' '+r.id)}">
             <button class="btn mini" data-bizact="${r.id}:ok">${esc(both('核准','Approve'))}</button> <button class="btn ghost mini" data-bizact="${r.id}:reject">${esc(both('駁回','Reject'))}</button></div></div>`).join('')}</div>`
         :`<div class="empty" style="padding:14px">${esc(both('目前沒有輪到你簽核的單','Nothing waiting for you'))}</div>`}</section>
     <section class="card"><div class="card-h"><h2>${esc(both('我的申請單','My requests'))} <span class="chip">${mine.length}</span></h2></div>
-      ${mine.length?`<div class="bizlist">${mine.map(r=>`<div class="bizcard ${bizLate(r)?'late':''}">
+      ${mine.length?`${bizFilterBar('mine',mine,false)}<div class="bizlist">${mine.map(r=>`<div class="bizcard ${bizLate(r)?'late':''}" ${bizAttrs(r)}>
           <div class="bizhead"><span class="ttl">${esc(both(BIZ_KINDS[r.kind].zh,BIZ_KINDS[r.kind].en))}</span><span class="no">${r.id}</span><span class="sp"></span>${bizStatus(r)}
             ${r.status==='pending'?`<button class="btn ghost mini" data-bizwd="${r.id}">${esc(both('抽單','Withdraw'))}</button>`:''}${r.status==='approved'?`<button class="btn mini" data-bizclose="${r.id}">${esc(both('結案','Close'))}</button>`:''}</div>
           ${bizKv(r,false)}
@@ -5691,6 +5765,32 @@ BINDERS['desk:biz']=function(){
     ok(id+(act==='ok'?(res.r.status==='approved'?' 已全部核准':' 已核准，轉下一層'):' 已駁回'), id+(act==='ok'?' approved':' rejected')); });
   document.querySelectorAll('[data-bizwd]').forEach(b=>b.onclick=()=>{ const r=BIZ_REQ.find(x=>x.id===b.dataset.bizwd); if(r&&r.status==='pending'&&r.emp===me().id){ r.status='withdrawn'; ok(r.id+' 已抽單', r.id+' withdrawn'); } });
   document.querySelectorAll('[data-bizclose]').forEach(b=>b.onclick=()=>{ const res=bizClose(b.dataset.bizclose); if(res.err){ toast(res.err); return; } ok(res.r.id+' 已結案', res.r.id+' closed'); });
+  /* 篩選：只顯示／隱藏卡片 */
+  const F=(state.bizF||(state.bizF={}));
+  const matchCard=(c,f)=>Object.entries(f).every(([k,v])=>{ if(!v) return true; const d=c.dataset['f'+k[0].toUpperCase()+k.slice(1)]||'';
+    if(k==='amt') return +d>=+v; if(k==='kind'||k==='dept'||k==='st') return k==='st'?d.includes(v):d===v; return d.toLowerCase().includes(String(v).trim().toLowerCase()); });
+  const bizApply=key=>{ const bar=document.querySelector(`[data-bizbar="${key}"]`); if(!bar) return; const f=F[key]||{}, cards=[...bar.parentElement.querySelectorAll('.bizcard')]; let n=0;
+    cards.forEach(c=>{ const ok=matchCard(c,f); c.hidden=!ok; if(ok) n++; else { const pk=c.querySelector('.bizpick'); if(pk) pk.checked=false; } });
+    const cnt=document.querySelector(`[data-bizcount="${key}"]`); if(cnt) cnt.textContent=both('顯示 '+n+' / '+cards.length+' 張','Showing '+n+' / '+cards.length);
+    const clr=document.querySelector(`[data-bizfclear="${key}"]`); if(clr) clr.hidden=!Object.values(f).some(Boolean);
+    if(key==='sign') bizPickUpd(); };
+  const bizPickUpd=()=>{ const all=document.getElementById('bizAll'), btn=document.getElementById('bizBatch'); if(!all||!btn) return;
+    const vis=[...document.querySelectorAll('[data-bizbar="sign"]')].length?[...document.querySelectorAll('.bizlist .bizcard')].filter(c=>!c.hidden&&c.querySelector('.bizpick')):[];
+    const on=vis.filter(c=>c.querySelector('.bizpick').checked).length;
+    all.checked=vis.length>0&&on===vis.length; all.indeterminate=on>0&&on<vis.length; btn.disabled=on===0; btn.textContent=both('核准勾選的 '+on+' 筆','Approve selected ('+on+')'); };
+  document.querySelectorAll('[data-bizf]').forEach(el=>{ const [key,k]=el.dataset.bizf.split(':'); let comp=false;
+    const set=()=>{ (F[key]||(F[key]={}))[k]=el.value; bizApply(key); };
+    el.addEventListener('compositionstart',()=>{ comp=true; }); el.addEventListener('compositionend',()=>{ comp=false; set(); });
+    el.addEventListener('input',e=>{ if(comp||e.isComposing) return; set(); }); el.addEventListener('change',set); });
+  document.querySelectorAll('[data-bizfclear]').forEach(b=>b.onclick=()=>{ const key=b.dataset.bizfclear; F[key]={}; document.querySelectorAll(`[data-bizf^="${key}:"]`).forEach(el=>{ el.value=''; }); bizApply(key); });
+  ['sign','mine'].forEach(bizApply);
+  const ball=document.getElementById('bizAll');
+  if(ball){ ball.onchange=()=>{ document.querySelectorAll('.bizlist .bizcard').forEach(c=>{ const pk=c.querySelector('.bizpick'); if(pk&&!c.hidden) pk.checked=ball.checked; }); bizPickUpd(); };
+    document.querySelectorAll('.bizpick').forEach(c=>c.onchange=bizPickUpd);
+    document.getElementById('bizBatch').onclick=()=>{ const ids=[...document.querySelectorAll('.bizpick')].filter(c=>c.checked&&!c.closest('.bizcard').hidden).map(c=>c.dataset.id); if(!ids.length) return;
+      if(!confirm(both('確定一次核准勾選的 '+ids.length+' 筆？\n要駁回或保留，請取消後在該張按「駁回」。','Approve '+ids.length+' selected request(s) at once?\nTo reject or skip one, cancel and use that card.'))) return;
+      let okN=0, err=''; ids.forEach(id=>{ const r=bizAct(id,'ok',''); if(r.err) err=r.err; else okN++; });
+      ok('已核准 '+okN+' 筆'+(err?'；有些沒簽成：'+err:''), 'Approved '+okN); }; }
   const di=document.getElementById('bizDueIn'); if(di) di.onchange=()=>{ const v=Math.floor(+di.value); if(!(v>=1&&v<=60)||!can('perms')){ toast(both('辦理期限要在 1 到 60 天之間','The due period must be 1 to 60 days')); render(); return; } state.bizDue=v; ok('辦理期限改為 '+v+' 天','Due period set to '+v+' days'); };
   document.querySelectorAll('[data-bizrule]').forEach(i=>i.onchange=()=>{ const r=bizRules()[+i.dataset.bizrule]; if(!r||!can('perms')) return;
     if(i.dataset.f==='min'){ const v=Math.floor(+i.value); if(!(v>0)||bizRules().some(x=>x!==r&&x.min===v)){ toast(both('起算金額要大於 0，且不能與其他列重複','The amount must be above 0 and unique')); render(); return; } r.min=v; }
@@ -6454,7 +6554,7 @@ function viewPayRun(){
     <section class="card">
       <div class="card-h"><h2>${esc(both('薪資試算表','Payroll register'))} <span class="mono muted" style="font-size:12px">${month}</span></h2>
         <span class="en">${esc(both('點選員工查看計算明細與人工調整','Click an employee for the breakdown and adjustments'))}</span></div>
-      <div class="tablewrap"><table>
+      <div class="tablewrap"><table data-filterable="pay-run">
         <thead><tr><th>${bi('員工','Employee')}</th><th>${bi('計薪','Basis')}</th><th>${bi('本薪','Base')}</th><th>${bi('夜班津貼','Shift allow.')}</th><th>${bi('加班費','Overtime')}</th>
           <th>${bi('差勤扣款','Attendance')}</th><th>${bi('全勤','Bonus')}</th><th>${bi('調整','Adjust')}</th><th>${bi('應發','Gross')}</th>
           <th>${bi('代扣','Withheld')}</th><th>${bi('實發','Net')}</th><th>${bi('發薪方式','Pay method')}</th><th>${bi('警示','Flags')}</th></tr></thead>
@@ -7070,7 +7170,7 @@ function insQuarterCard(){
         <button class="btn ghost" id="insQAll" ${can_&&chg.length?'':'disabled'}>${esc(both('全選有變動的','Select all changes'))}</button>
         <button class="btn ghost" id="insQNone" ${can_&&chg.length?'':'disabled'}>${esc(both('全部取消','Clear'))}</button></div>
       ${chg.length?'':`<div class="note">${esc(both('這一季沒有需要調整的人。','Nobody needs a change this quarter.'))}</div>`}
-      <div class="tablewrap" style="max-height:460px;overflow:auto"><table class="todotbl"><thead><tr><th></th><th>${bi('員工','Employee')}</th><th>${bi('前三個月經常性薪資與平均（依據）','Previous three months and average (the working)')}</th>
+      <div class="tablewrap" style="max-height:460px;overflow:auto"><table class="todotbl" data-filterable="ins-quarter"><thead><tr><th data-nofilter></th><th>${bi('員工','Employee')}</th><th>${bi('前三個月經常性薪資與平均（依據）','Previous three months and average (the working)')}</th>
         <th>${bi('勞保 現行','Labor now')}</th><th>${bi('建議','Suggested')}</th><th>${bi('健保 現行','Health now')}</th><th>${bi('建議','Suggested')}</th><th>${bi('個人每月','You / month')}</th><th>${bi('雇主每月','Er. / month')}</th><th>${bi('結果','Result')}</th></tr></thead>
         <tbody>${rows.slice().sort((a,b)=>(b.changed-a.changed)||a.s.id.localeCompare(b.s.id)).map(row).join('')}</tbody></table></div>
     </div></section>`;
@@ -7135,7 +7235,7 @@ function viewPayIns(){
         <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('單位','Unit')}</th><th>${bi('人數','People')}</th><th>${bi('勞保 個人','Labor you')}</th><th>${bi('勞保 雇主','Labor er.')}</th><th>${bi('健保 個人','Health you')}</th><th>${bi('健保 雇主','Health er.')}</th><th>${bi('勞退 雇主','Pension er.')}</th><th>${bi('職災 雇主','Occup. er.')}</th><th>${bi('雇主合計','Employer total')}</th></tr></thead>
           <tbody>${units.map(unitRow).join('')}</tbody></table></div>
         <div class="eyebrow">${esc(both('每位員工（點一列看計算依據）','Per employee (click a row for the working)'))}</div>
-        <div class="tablewrap" style="max-height:460px;overflow:auto"><table class="todotbl"><thead><tr><th>${bi('員工','Employee')}</th><th>${bi('單位','Unit')}</th><th>${bi('薪資基準','Pay basis')}</th>
+        <div class="tablewrap" style="max-height:460px;overflow:auto"><table class="todotbl" data-filterable="ins-run"><thead><tr><th>${bi('員工','Employee')}</th><th>${bi('單位','Unit')}</th><th>${bi('薪資基準','Pay basis')}</th>
           <th>${bi('勞保投保薪資','Labor grade')}</th><th>${bi('個人','You')}</th><th>${bi('雇主','Er.')}</th><th>${bi('健保投保金額（＋眷屬）','Health grade (+deps)')}</th><th>${bi('個人','You')}</th><th>${bi('雇主','Er.')}</th>
           <th>${bi('勞退月提繳工資','Pension wage')}</th><th>${bi('雇主 6%','Er. 6%')}</th><th>${bi('自提','Voluntary')}</th><th>${bi('職災 雇主','Occup. er.')}</th><th>${bi('個人合計','Total you')}</th><th>${bi('雇主合計','Total er.')}</th><th>${bi('提醒','Flags')}</th></tr></thead>
           <tbody>${rows.map(emp).join('')}</tbody></table></div>
@@ -7601,7 +7701,7 @@ function titleMatrixCards(){
       <div class="card-h"><h2>${esc(both('職稱 × 項目名稱','Title × item'))}</h2><span class="en">${esc(both(items.length+' 個項目 · '+cols.length+' 欄 · 已填 '+filled+' / '+total,items.length+' items · '+cols.length+' columns · '+filled+' / '+total+' filled'))}</span>
         <div class="spacer" style="flex:1"></div>
         <button class="btn mini" data-titlexlsx>${esc(both('下載職稱權限對照表（Excel）','Download the title permission worksheet (Excel)'))}</button></div>
-      <div class="tablewrap"><table class="titlematrix">
+      <div class="tablewrap"><table class="titlematrix" data-filterable="perm-title">
         <thead><tr><th>${bi('項目名稱','Item')}</th>${cols.map(c=>`<th style="text-align:center">${bi(c.zh,c.en)}${edit&&c.sc?` <button class="btn ghost mini" data-subdel="${c.sc.id}" title="${esc(both('刪除子類別','Remove sub-category'))}">✕</button>`:''}</th>`).join('')}</tr></thead>
         <tbody>${items.map(it=>`<tr><td>${bi(it.zh,it.en)}</td>${cols.map(c=>{ const v=titleCell(it,c.k);
           const label=v==='可'||v==='可編輯'?`<span class="yes">${esc(v==='可'?both('可','Yes'):both('可編輯','Edit'))}</span>`:v==='可檢視'?`<span class="partial">${esc(both('可檢視','View'))}</span>`:v==='不可'?`<span class="no">${esc(both('不可','No'))}</span>`:`<span class="muted">—</span>`;
@@ -7682,7 +7782,7 @@ function viewMatrix(){
         <div class="spacer" style="flex:1"></div>
         <button class="btn mini" data-capxlsx>${esc(both('下載（Excel）','Download (Excel)'))}</button>
         ${admin&&changed?`<button class="btn ghost mini" data-permreset>${esc(both('還原預設','Restore defaults'))}</button>`:''}</div>
-      <div class="tablewrap"><table class="permtable">
+      <div class="tablewrap"><table class="permtable" data-filterable="perm-fine">
         <thead><tr><th>${bi('權限項目','Capability')}</th>
           ${cols.map(k=>`<th style="text-align:center">${bi(ROLES[k].zh,ROLES[k].en)}${ROLES[k].provisional?`<div class="muted" style="font-size:10.5px;font-weight:400">${esc(both('暫定','provisional'))}</div>`:''}</th>`).join('')}</tr></thead>
         <tbody>${CAPS.map(c=>`<tr>
