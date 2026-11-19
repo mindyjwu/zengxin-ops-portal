@@ -211,6 +211,8 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 .bizcard{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:10px;background:var(--surface)}
 .bizcard.late{border-color:var(--crit)}
 .bizcard[hidden]{display:none}
+.tablewrap thead tr.filters th{top:33px;padding:4px 6px;text-transform:none;letter-spacing:0;font-weight:400;background:var(--surface-2);z-index:2}
+.tablewrap tr.filters input,.tablewrap tr.filters select{width:100%;min-width:70px;font-size:12px;padding:3px 6px;height:28px}
 .bizhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .bizhead .no{font-family:ui-monospace,Menlo,monospace;color:var(--ink-3);font-size:12.5px}
 .bizhead .ttl{font-weight:700;font-size:15px}
@@ -4309,7 +4311,7 @@ function punchLocCard(){
     <div class="card-h"><h2>${esc(both('打卡位置（後台）','Punch location (back office)'))}</h2><span class="chip warn">${esc(both('只有後台看得到','Back office only'))}</span></div>
     <div class="card-b" style="display:grid;gap:8px">
       <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('正式版打卡會記錄網路位置（IP），不強制拍照；位置資訊只顯示在後台，員工的手機介面不顯示位置（10/20 會議）。打卡資料依法規保存五年。照片上傳是選填功能（之後再做，需伺服器端壓縮）。下面的 IP 與地點是虛構的示範。','The real version records the network location (IP) of each punch and does not force a photo; the location shows only in the back office, never on the employee’s phone (20 Oct meeting). Punch data is kept for five years as the law requires. Photo upload is optional and comes later (needs server-side compression). The IPs and places below are fictional demo data.'))}</div>
-      <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('日期','Date')}</th><th>${bi('員工','Employee')}</th><th>${bi('公司','Company')}</th><th>${bi('上班打卡','Punch in')}</th><th>${bi('網路位置','Network location')}</th><th>IP</th><th>${bi('提醒','Flag')}</th></tr></thead>
+      <div class="tablewrap"><table class="todotbl" data-filterable="att-punchloc"><thead><tr><th>${bi('日期','Date')}</th><th>${bi('員工','Employee')}</th><th>${bi('公司','Company')}</th><th>${bi('上班打卡','Punch in')}</th><th>${bi('網路位置','Network location')}</th><th>IP</th><th>${bi('提醒','Flag')}</th></tr></thead>
         <tbody>${rows.slice(0,12).map(r=>`<tr><td class="mono">${state.attMonth}-${String(r.d).padStart(2,'0')}</td><td>${esc(nameOf(r.s))}</td><td>${esc(both(unit(r.s.unit).zh,unit(r.s.unit).en))}</td><td class="mono">${r.t}</td><td>${esc(r.pl)}</td><td class="mono">${r.ip}</td><td>${r.flag?`<span class="chip warn">${esc(r.flag)}</span>`:''}</td></tr>`).join('')}</tbody></table></div>
     </div></section>`;
 }
@@ -4361,7 +4363,7 @@ function viewAttendance(){
     <section class="card">
       <div class="card-h"><h2>${esc(both('個人出勤明細','Attendance by person'))}</h2>
         <span class="en">${esc(both('點選列可展開個人資料','Click a row for the person record'))}</span></div>
-      <div class="tablewrap"><table>
+      <div class="tablewrap"><table data-filterable="att-person">
         <thead><tr><th>${bi('姓名','Name')}</th><th>${bi('公司','Company')}</th><th>${bi('職稱','Title')}</th>
           <th>${bi('出勤率','Rate')}</th><th>${bi('正常','On time')}</th><th>${bi('遲到','Late')}</th>
           <th>${bi('請假','Leave')}</th><th>${bi('未打卡','Missing')}</th><th>${bi('加班','OT hrs')}</th>
@@ -4578,7 +4580,8 @@ function bindTableFilters(){
   document.querySelectorAll('#view table[data-filterable]').forEach(tb=>{
     const id=tb.dataset.filterable, F=(state.tf||(state.tf={}))[id]||(state.tf[id]={});
     const rows=[...tb.tBodies[0].rows]; if(!rows.length) return;
-    const head=tb.tHead.rows[tb.tHead.rows.length-1], txt=(r,i)=>(r.cells[i]?r.cells[i].textContent:'').replace(/\s+/g,' ').trim();
+    const head=tb.tHead.rows[tb.tHead.rows.length-1];
+    const txt=(r,i)=>(r.cells[i]?r.cells[i].textContent:'').replace(/\s+/g,' ').trim();
     const fr=document.createElement('tr'); fr.className='filters';
     [...head.cells].forEach((th,i)=>{
       const td=document.createElement('th'); fr.appendChild(td);
@@ -4592,6 +4595,7 @@ function bindTableFilters(){
       td.appendChild(el);
     });
     tb.tHead.appendChild(fr);
+    { const h=head.offsetHeight; if(h) fr.querySelectorAll('th').forEach(th=>{ th.style.top=h+'px'; }); }   // 篩選列固定在表頭正下方（表頭高度不一定是一行）
     const bar=document.createElement('div'); bar.className='muted tfbar'; bar.style.cssText='font-size:12px;padding:6px 12px;display:flex;gap:10px;align-items:center';
     bar.innerHTML='<span class="tfcount"></span><button type="button" class="btn ghost mini tfclear">'+esc(both('清除篩選','Clear filters'))+'</button>';
     tb.closest('.tablewrap').after(bar);
@@ -6550,7 +6554,7 @@ function viewPayRun(){
     <section class="card">
       <div class="card-h"><h2>${esc(both('薪資試算表','Payroll register'))} <span class="mono muted" style="font-size:12px">${month}</span></h2>
         <span class="en">${esc(both('點選員工查看計算明細與人工調整','Click an employee for the breakdown and adjustments'))}</span></div>
-      <div class="tablewrap"><table>
+      <div class="tablewrap"><table data-filterable="pay-run">
         <thead><tr><th>${bi('員工','Employee')}</th><th>${bi('計薪','Basis')}</th><th>${bi('本薪','Base')}</th><th>${bi('夜班津貼','Shift allow.')}</th><th>${bi('加班費','Overtime')}</th>
           <th>${bi('差勤扣款','Attendance')}</th><th>${bi('全勤','Bonus')}</th><th>${bi('調整','Adjust')}</th><th>${bi('應發','Gross')}</th>
           <th>${bi('代扣','Withheld')}</th><th>${bi('實發','Net')}</th><th>${bi('發薪方式','Pay method')}</th><th>${bi('警示','Flags')}</th></tr></thead>
@@ -7166,7 +7170,7 @@ function insQuarterCard(){
         <button class="btn ghost" id="insQAll" ${can_&&chg.length?'':'disabled'}>${esc(both('全選有變動的','Select all changes'))}</button>
         <button class="btn ghost" id="insQNone" ${can_&&chg.length?'':'disabled'}>${esc(both('全部取消','Clear'))}</button></div>
       ${chg.length?'':`<div class="note">${esc(both('這一季沒有需要調整的人。','Nobody needs a change this quarter.'))}</div>`}
-      <div class="tablewrap" style="max-height:460px;overflow:auto"><table class="todotbl"><thead><tr><th></th><th>${bi('員工','Employee')}</th><th>${bi('前三個月經常性薪資與平均（依據）','Previous three months and average (the working)')}</th>
+      <div class="tablewrap" style="max-height:460px;overflow:auto"><table class="todotbl" data-filterable="ins-quarter"><thead><tr><th data-nofilter></th><th>${bi('員工','Employee')}</th><th>${bi('前三個月經常性薪資與平均（依據）','Previous three months and average (the working)')}</th>
         <th>${bi('勞保 現行','Labor now')}</th><th>${bi('建議','Suggested')}</th><th>${bi('健保 現行','Health now')}</th><th>${bi('建議','Suggested')}</th><th>${bi('個人每月','You / month')}</th><th>${bi('雇主每月','Er. / month')}</th><th>${bi('結果','Result')}</th></tr></thead>
         <tbody>${rows.slice().sort((a,b)=>(b.changed-a.changed)||a.s.id.localeCompare(b.s.id)).map(row).join('')}</tbody></table></div>
     </div></section>`;
@@ -7231,7 +7235,7 @@ function viewPayIns(){
         <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('單位','Unit')}</th><th>${bi('人數','People')}</th><th>${bi('勞保 個人','Labor you')}</th><th>${bi('勞保 雇主','Labor er.')}</th><th>${bi('健保 個人','Health you')}</th><th>${bi('健保 雇主','Health er.')}</th><th>${bi('勞退 雇主','Pension er.')}</th><th>${bi('職災 雇主','Occup. er.')}</th><th>${bi('雇主合計','Employer total')}</th></tr></thead>
           <tbody>${units.map(unitRow).join('')}</tbody></table></div>
         <div class="eyebrow">${esc(both('每位員工（點一列看計算依據）','Per employee (click a row for the working)'))}</div>
-        <div class="tablewrap" style="max-height:460px;overflow:auto"><table class="todotbl"><thead><tr><th>${bi('員工','Employee')}</th><th>${bi('單位','Unit')}</th><th>${bi('薪資基準','Pay basis')}</th>
+        <div class="tablewrap" style="max-height:460px;overflow:auto"><table class="todotbl" data-filterable="ins-run"><thead><tr><th>${bi('員工','Employee')}</th><th>${bi('單位','Unit')}</th><th>${bi('薪資基準','Pay basis')}</th>
           <th>${bi('勞保投保薪資','Labor grade')}</th><th>${bi('個人','You')}</th><th>${bi('雇主','Er.')}</th><th>${bi('健保投保金額（＋眷屬）','Health grade (+deps)')}</th><th>${bi('個人','You')}</th><th>${bi('雇主','Er.')}</th>
           <th>${bi('勞退月提繳工資','Pension wage')}</th><th>${bi('雇主 6%','Er. 6%')}</th><th>${bi('自提','Voluntary')}</th><th>${bi('職災 雇主','Occup. er.')}</th><th>${bi('個人合計','Total you')}</th><th>${bi('雇主合計','Total er.')}</th><th>${bi('提醒','Flags')}</th></tr></thead>
           <tbody>${rows.map(emp).join('')}</tbody></table></div>
@@ -7697,7 +7701,7 @@ function titleMatrixCards(){
       <div class="card-h"><h2>${esc(both('職稱 × 項目名稱','Title × item'))}</h2><span class="en">${esc(both(items.length+' 個項目 · '+cols.length+' 欄 · 已填 '+filled+' / '+total,items.length+' items · '+cols.length+' columns · '+filled+' / '+total+' filled'))}</span>
         <div class="spacer" style="flex:1"></div>
         <button class="btn mini" data-titlexlsx>${esc(both('下載職稱權限對照表（Excel）','Download the title permission worksheet (Excel)'))}</button></div>
-      <div class="tablewrap"><table class="titlematrix">
+      <div class="tablewrap"><table class="titlematrix" data-filterable="perm-title">
         <thead><tr><th>${bi('項目名稱','Item')}</th>${cols.map(c=>`<th style="text-align:center">${bi(c.zh,c.en)}${edit&&c.sc?` <button class="btn ghost mini" data-subdel="${c.sc.id}" title="${esc(both('刪除子類別','Remove sub-category'))}">✕</button>`:''}</th>`).join('')}</tr></thead>
         <tbody>${items.map(it=>`<tr><td>${bi(it.zh,it.en)}</td>${cols.map(c=>{ const v=titleCell(it,c.k);
           const label=v==='可'||v==='可編輯'?`<span class="yes">${esc(v==='可'?both('可','Yes'):both('可編輯','Edit'))}</span>`:v==='可檢視'?`<span class="partial">${esc(both('可檢視','View'))}</span>`:v==='不可'?`<span class="no">${esc(both('不可','No'))}</span>`:`<span class="muted">—</span>`;
@@ -7778,7 +7782,7 @@ function viewMatrix(){
         <div class="spacer" style="flex:1"></div>
         <button class="btn mini" data-capxlsx>${esc(both('下載（Excel）','Download (Excel)'))}</button>
         ${admin&&changed?`<button class="btn ghost mini" data-permreset>${esc(both('還原預設','Restore defaults'))}</button>`:''}</div>
-      <div class="tablewrap"><table class="permtable">
+      <div class="tablewrap"><table class="permtable" data-filterable="perm-fine">
         <thead><tr><th>${bi('權限項目','Capability')}</th>
           ${cols.map(k=>`<th style="text-align:center">${bi(ROLES[k].zh,ROLES[k].en)}${ROLES[k].provisional?`<div class="muted" style="font-size:10.5px;font-weight:400">${esc(both('暫定','provisional'))}</div>`:''}</th>`).join('')}</tr></thead>
         <tbody>${CAPS.map(c=>`<tr>
