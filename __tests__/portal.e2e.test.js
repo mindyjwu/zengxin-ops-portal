@@ -3392,7 +3392,7 @@ test.describe('11/19 meeting: payroll split into monthly, hourly and revenue-sha
 
   test('Payroll has the three pay-system tabs next to the run and the calculator; each page holds only its own content', async ({ page }) => {
     await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'run');
-    expect(await tabsOf(page)).toEqual(['run', 'calc', 'monthly', 'hourly', 'split', 'ver']);
+    expect(await tabsOf(page)).toEqual(['run', 'calc', 'monthly', 'hourly', 'split', 'ins', 'ver']);
     await expect(page.locator('#monthlyImp')).toHaveCount(0);                    // 月薪獎金匯入搬到「月薪制」
     await page.click('[data-tab="calc"]');
     await expect(page.locator('#paySplit')).toHaveCount(0);                       // 計算機頁底不再放拆帳與時薪
@@ -3660,6 +3660,109 @@ test.describe('11/19 meeting: department drives the title dropdown', () => {
   test('the guide records the department-to-title link', async ({ page }) => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
     for (const w of ['部門→職稱', '適用部門']) await expect(page.locator('#newv35')).toContainText(w);
+  });
+});
+
+/* ================================================================ */
+/* 11/19：勞保、健保、勞退分級表（依生效日換表）與每位員工的保費、稽核畫面 */
+test.describe('11/19 meeting: labor / health / pension grade tables and premiums', () => {
+  const E = (page, fn, arg) => page.evaluate(fn, arg);
+
+  test('the official tables are loaded whole and look up the right grade (boundaries, top level, part-time notes)', async ({ page }) => {
+    await openPortal(page);
+    const r = await E(page, () => {
+      const v = k => insVer(k, '2026-09');
+      return {
+        levels: [INS_TABLES.labor[0].rows.length, INS_TABLES.labor[1].rows.length, INS_TABLES.health[0].rows.length, INS_TABLES.pension[0].rows.length],
+        labor: [28000, 29500, 29501, 30300, 30301, 45800, 99999].map(x => insGrade(v('labor'), x).amt),
+        labor116: [30000, 30900, 30901, 43901, 99999].map(x => insGrade(insVer('labor', '2027-03'), x).amt),
+        part: [10000, 11100, 12000, 20000, 28600, 29000].map(x => insLaborGrade(v('labor'), x, true).amt),
+        notPart: [20000].map(x => insLaborGrade(v('labor'), x, false).amt),
+        part116: [28591, 29500, 29501].map(x => insLaborGrade(insVer('labor', '2027-03'), x, true).amt),
+        health: [29500, 29501, 150000, 150001, 303000, 303001, 400000].map(x => insGrade(v('health'), x).amt),
+        pension: [1000, 1500, 1501, 29500, 147900, 147901, 999999].map(x => insGrade(v('pension'), x).amt)
+      };
+    });
+    expect(r.levels).toEqual([11, 10, 58, 62]);                                  // 勞保 115 年 11 級、116 年 10 級；健保 58 級；勞退 62 級
+    expect(r.labor).toEqual([29500, 29500, 30300, 30300, 31800, 45800, 45800]);
+    expect(r.labor116).toEqual([30900, 30900, 31800, 45800, 45800]);
+    expect(r.part).toEqual([11100, 11100, 12540, 20008, 29500, 29500]);          // 備註三、備註二、超過備註二改依第 1 級
+    expect(r.notPart).toEqual([29500]);                                          // 非部分工時一律依主表（11,100 不是一般員工的最低級）
+    expect(r.part116).toEqual([29500, 29500, 30900]);
+    expect(r.health).toEqual([29500, 30300, 150000, 156400, 303000, 313000, 313000]);
+    expect(r.pension).toEqual([1500, 1500, 3000, 29500, 147900, 150000, 150000]);
+  });
+
+  test('premiums follow the rules: labor 20% / 70%, health 30% per head / 60% × 1.56, pension 6% (hand-checked numbers)', async ({ page }) => {
+    await openPortal(page);
+    const r = await E(page, () => { const a = insCalc('2026-09', { labor: 29500, health: 29500, pension: 29500, dep: 2, selfPct: 3 }), b = insCalc('2026-09', { health: 29500, dep: 9 });
+      return { lab: [a.lab.ee, a.lab.er], hel: [a.hel.ee1, a.hel.ee, a.hel.er], pen: [a.pen.er, a.pen.ee], dep9: b.hel.dep, tot: [a.ee, a.er] }; });
+    expect(r.lab).toEqual([738, 2581]);              // 29,500 × 12.5% × 20% = 737.5；× 70% = 2,581.25
+    expect(r.hel).toEqual([458, 1374, 1428]);        // 個人 457.5 → 458，本人＋眷屬 2 口＝1,374；雇主 1,428（與健保署負擔金額表一致）
+    expect(r.pen).toEqual([1770, 885]);
+    expect(r.dep9).toBe(3);                          // 眷屬最多計 3 口
+    expect(r.tot).toEqual([738 + 1374 + 885, 2581 + 1428 + 1770]);
+  });
+
+  test('the table and rate version follow the pay month; unverified rates are marked', async ({ page }) => {
+    await openPortal(page);
+    const r = await E(page, () => ({ a: insVer('labor', '2026-12').eff, b: insVer('labor', '2027-01').eff, c: insVer('health', '2027-06').eff,
+      ok115: insRate('2026-06').ok, ok116: insRate('2027-02').ok, p116: insCalc('2027-02', { labor: 30900 }).lab.ee, p115: insCalc('2026-02', { labor: 30900 }).lab.ee }));
+    expect(r).toMatchObject({ a: '2026-01-01', b: '2027-01-01', c: '2026-01-01', ok115: true, ok116: false });
+    expect(r.p116).toBe(803);                         // 30,900 × 13% × 20% = 803.4
+    expect(r.p115).toBe(773);                         // 30,900 × 12.5% × 20% = 772.5
+  });
+
+  test('the payroll uses the same engine: this tab equals the payslip figures for everyone', async ({ page }) => {
+    await openPortal(page);
+    const bad = await E(page, () => { const m = payDefault(), out = [];
+      insRows(m).forEach(r => { const p = calcPay(r.s.id, m);
+        if (p.labor + p.health + p.pension !== r.C.lab.ee + r.C.hel.ee + r.C.pen.ee) out.push(r.s.id + ' employee');
+        if (p.er.labor !== r.C.lab.er || p.er.health !== r.C.hel.er || p.er.pension !== r.C.pen.er) out.push(r.s.id + ' employer'); });
+      return { out, n: insRows(m).length }; });
+    expect(bad.n).toBeGreaterThan(20);
+    expect(bad.out).toEqual([]);
+  });
+
+  test('HR sees the tab: totals add up, a row opens the working, occupational rate stays “not set” until entered', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'ins');
+    await expect(page.locator('#insVers')).toContainText('勞動部 114/11/21 勞動保 2 字第 1140091863 號令');
+    await expect(page.locator('#insVers')).toContainText('已公布，尚未生效');                  // 116 年的勞保表已經載入
+    await expect(page.locator('#insVers')).toContainText('已查證');
+    const rows = page.locator('#insRun tbody tr[data-insemp]');
+    expect(await rows.count()).toBeGreaterThan(20);
+    const sums = await page.evaluate(() => { const m = insMonthNow(), t = insTotals(insRows(m)); return { ee: t.ee, er: t.er, n: t.n }; });
+    expect(sums.n).toBe(await rows.count());
+    await expect(page.locator('#insRun .tile').first()).toContainText('NT$' + sums.ee.toLocaleString('en-US'));
+    await expect(page.locator('#insRun')).toContainText('待設定');                              // 職災費率沒填，不用假數字
+    await rows.first().click();
+    const d = page.locator('aside.drawer');
+    for (const w of ['薪資基準', '勞保', '健保', '勞退', '合計', '投保異動紀錄', '全民健康保險投保金額分級表', '1140091863', '待設定']) await expect(d).toContainText(w);
+    await page.click('aside.drawer button.x');
+    const before = (await page.locator('#insRun .tile .v').nth(1).textContent());
+    await page.fill('[data-insocc="O1:industry"]', '0.21');
+    await page.locator('[data-insocc="O1:industry"]').dispatchEvent('change');
+    expect(await page.locator('#insRun .tile .v').nth(1).textContent()).not.toBe(before);   // 填了就算進雇主負擔
+    await expect(page.locator('[data-insocc="O1:industry"]')).toHaveValue('0.21');
+  });
+
+  test('the Excel for checking has one sheet for people, one per unit and one for versions; managers are view-only', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'ins');
+    const r = await page.evaluate(async () => { const sh = insSheets(insMonthNow()), t = new TextDecoder().decode(new Uint8Array(await buildXlsxBook(sh).arrayBuffer()));
+      const T = insTotals(insRows(insMonthNow()));
+      return { names: [...t.matchAll(/<sheet name="([^"]*)"/g)].map(m => m[1]), head: sh[0].rows[1].slice(0, 3), n: sh[0].rows.length - 3, totalEe: sh[0].rows[sh[0].rows.length - 1][16], T: T.ee, hasNotice: t.includes('1140091863') }; });
+    expect(r.names).toEqual(['每位員工', '單位合計', '版本與費率']);
+    expect(r.head).toEqual(['員編', '姓名', '單位']);
+    expect(r.totalEe).toBe(r.T);
+    expect(r.n).toBeGreaterThan(20);
+    expect(r.hasNotice).toBe(true);
+    await setRole(page, 'manager');
+    await expect(page.locator('[data-insocc="O1:industry"]')).toBeDisabled();
+  });
+
+  test('the guide records the insurance tab', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['勞健退', '分級表', '1140091863']) await expect(page.locator('#newv35')).toContainText(w);
   });
 });
 
