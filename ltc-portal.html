@@ -1710,7 +1710,7 @@ function viewOrgFn(){
                 <span class="r">${esc(o.en)} · ${esc(o.depts.map(d=>DEPTS[d].zh).join('、'))}</span></div>
               <div class="kids">${vis ? o.depts.map(d=>{ const ps=people.filter(p=>p.dept===d); return ps.length?
                   `<span class="leaf" style="cursor:default;color:var(--ink-3);font-size:11px">${esc(both(DEPTS[d].zh,DEPTS[d].en))}</span>`+ps.map(leaf).join('')+extras(o.id,d):extras(o.id,d); }).join('')
-                : (()=>{ const heads=people.filter(p=>['dir','sup'].includes(p.title)), rest=people.length-heads.length;   // 範圍外：只顯示主管位置，明細受限
+                : (()=>{ const heads=people.filter(p=>titleFlag(p.title,'lead')), rest=people.length-heads.length;   // 範圍外：只顯示主管位置，明細受限
                     return heads.map(p=>`<button class="leaf" data-node="${p.id}" style="color:var(--ink-3)">${esc(empName(p.id))} · ${esc(both(TITLES[p.title].zh,TITLES[p.title].en))}</button>`).join('')+
                       `<span class="leaf" style="cursor:default;color:var(--ink-3)">${esc(both(rest+' 位同仁（不在範圍內）', rest+' staff (out of scope)'))}</span>`; })()}</div>
             </div>`;}).join('')}
@@ -1732,6 +1732,7 @@ function contactPanel(){
     <div class="hd"><span class="avatar">${esc(p.zh.slice(0,1))}</span><div style="min-width:0"><b>${esc(nameOf(p))}</b> <span class="muted" style="font-size:11.5px">${esc(state.lang==='zh'?p.en:p.zh)}</span>
       <div class="muted" style="font-size:12px">${esc(both(TITLES[p.title].zh,TITLES[p.title].en))} · ${esc(both(unit(p.unit).zh,unit(p.unit).en))}</div></div></div>
     ${vis?`<dl class="kv">
+      ${facOfPerson(p)?row('機構','Facility',esc(facName(facOfPerson(p)))):''}
       ${row('部門','Dept.',esc(both(DEPTS[p.dept].zh,DEPTS[p.dept].en)))}
       ${row('分機','Ext.',`<span class="mono">${esc(p.ext)}</span>`)}
       ${row('電話','Phone',`<a class="mono" href="tel:${esc(rec.phone.replace(/[^0-9+]/g,''))}">${esc(rec.phone)}</a>`)}
@@ -1753,7 +1754,7 @@ const orgObj=(kind,key)=>kind==='title'?TITLES[key]:kind==='dept'?DEPTS[key]:ALL
 const orgUse=(kind,key)=>STAFF.filter(x=>kind==='title'?x.title===key:kind==='dept'?x.dept===key:x.unit===key).length;
 function orgCfgCard(){
   if(!canOrgCfg()) return '';
-  const head=k=>`<thead><tr><th>${bi('代號','Code')}</th><th>${bi('中文名稱','Chinese name')}</th><th>${bi('英文名稱','English name')}</th><th>${bi('使用中','In use')}</th>${k==='title'?`<th>${bi('適用部門（新增員工時選了部門才會出現）','Departments (title shows after picking one)')}</th>`:''}<th>${k==='unit'?bi('旗下部門','Departments'):bi('狀態','Status')}</th></tr></thead>`;
+  const head=k=>`<thead><tr><th>${bi('代號','Code')}</th><th>${bi('中文名稱','Chinese name')}</th><th>${bi('英文名稱','English name')}</th><th>${bi('使用中','In use')}</th>${k==='title'?`<th>${bi('適用部門（新增員工時選了部門才會出現）','Departments (title shows after picking one)')}</th><th>${bi('職稱屬性（連動薪資、積分、主管判斷）','Title flags (drive pay, CE credits, lead)')}</th>`:''}<th>${k==='unit'?bi('旗下部門','Departments'):bi('狀態','Status')}</th></tr></thead>`;
   const names=(kind,key,o)=>`<td class="mono">${esc(key)}</td>
     <td><input data-orgcfg="${kind}" data-key="${esc(key)}" data-f="zh" value="${esc(o.zh)}" maxlength="20" lang="zh-Hant" aria-label="${esc(both('中文名稱','Chinese name')+' '+key)}"></td>
     <td><input data-orgcfg="${kind}" data-key="${esc(key)}" data-f="en" value="${esc(o.en)}" maxlength="40" aria-label="${esc(both('英文名稱','English name')+' '+key)}"></td>
@@ -1761,11 +1762,27 @@ function orgCfgCard(){
   const titleDepts=(k,o)=>(o.depts=o.depts||[], `<td>${Object.entries(DEPTS).filter(([d,v])=>!v.off||o.depts.includes(d)).map(([d,v])=>{
       const on=o.depts.includes(d), used=STAFF.some(x=>x.title===k&&x.dept===d);
       return `<label class="chip" style="margin-right:6px"><input type="checkbox" data-orgtd="${esc(k)}:${d}" ${on?'checked':''} ${on&&used?'disabled title="'+esc(both('有人在用，不能移除','In use — cannot remove'))+'"':''}> ${esc(both(v.zh,v.en))}</label>`; }).join('')}</td>`);
-  const listRows=(kind,obj)=>Object.entries(obj).map(([k,o])=>`<tr class="${o.off?'muted':''}">${names(kind,k,o)}${kind==='title'?titleDepts(k,o):''}
+  const listRows=(kind,obj)=>Object.entries(obj).map(([k,o])=>`<tr class="${o.off?'muted':''}">${names(kind,k,o)}${kind==='title'?titleDepts(k,o)+`<td>${Object.entries(TITLE_FLAGS).map(([f,v])=>`<label class="chip" style="margin-right:6px"><input type="checkbox" data-orgfl="${esc(k)}:${f}" ${titleFlag(k,f)?'checked':''}> ${esc(both(v.zh,v.en))}</label>`).join('')}</td>`:''}
     <td><button class="btn ghost mini" data-orgoff="${kind}:${esc(k)}">${esc(o.off?both('啟用','Enable'):both('停用','Retire'))}</button>${o.off?` <span class="chip">${esc(both('已停用','Retired'))}</span>`:''}</td></tr>`).join('');
-  const unitRows=ALL_UNITS.map(u=>`<tr>${names('unit',u.id,u)}<td>${Object.entries(DEPTS).filter(([d,v])=>!v.off||u.depts.includes(d)).map(([d,v])=>{
+  const unitRows=ALL_UNITS.map(u=>`<tr>${names('unit',u.id,u)}<td>${u.id==='HQ'?Object.entries(DEPTS).filter(([d,v])=>!v.off||u.depts.includes(d)).map(([d,v])=>{
       const on=u.depts.includes(d), used=STAFF.some(x=>x.unit===u.id&&x.dept===d);
-      return `<label class="chip" style="margin-right:6px"><input type="checkbox" data-orgud="${u.id}:${d}" ${on?'checked':''} ${on&&used?'disabled title="'+esc(both('有人在用，不能移除','In use — cannot remove'))+'"':''}> ${esc(both(v.zh,v.en))}</label>`; }).join('')}</td></tr>`).join('');
+      return `<label class="chip" style="margin-right:6px"><input type="checkbox" data-orgud="${u.id}:${d}" ${on?'checked':''} ${on&&used?'disabled title="'+esc(both('有人在用，不能移除','In use — cannot remove'))+'"':''}> ${esc(both(v.zh,v.en))}</label>`; }).join('')
+      : `${u.depts.map(d=>`<span class="chip">${esc(both(DEPTS[d].zh,DEPTS[d].en))}</span>`).join(' ')||'—'} <span class="muted" style="font-size:12px">${esc(both('（由下面各機構的部門自動彙整）','(rolled up from the facilities below)'))}</span>`}</td></tr>`).join('');
+  const facUse=f=>STAFF.filter(x=>facOfPerson(x)===f).length;
+  const facRows=facAll().map(f=>`<tr><td class="mono">${f.id}</td><td class="mono">${esc(unit(f.oid).zh)}</td>
+      <td><input data-orgfac="${f.id}" data-f="zh" value="${esc(f.zh)}" maxlength="40" lang="zh-Hant" aria-label="${esc(both('機構中文名稱','Facility name')+' '+f.id)}"></td>
+      <td><input data-orgfac="${f.id}" data-f="en" value="${esc(f.en)}" maxlength="80" aria-label="${esc(both('機構英文名稱','Facility English name')+' '+f.id)}"></td>
+      <td><input data-orgfac="${f.id}" data-f="place" value="${esc(f.place||'')}" maxlength="20" lang="zh-Hant" placeholder="${esc(both('地點待補','place TBD'))}" aria-label="${esc(both('地點','Place')+' '+f.id)}"></td>
+      <td class="num">${facUse(f)}</td>
+      <td>${Object.entries(DEPTS).filter(([d,v])=>!v.off||facDepts(f).includes(d)).map(([d,v])=>{
+        const on=facDepts(f).includes(d), used=STAFF.some(x=>facOfPerson(x)===f&&x.dept===d);
+        return `<label class="chip" style="margin-right:6px"><input type="checkbox" data-orgfd="${f.id}:${d}" ${on?'checked':''} ${on&&used?'disabled title="'+esc(both('有人在用，不能移除','In use — cannot remove'))+'"':''}> ${esc(both(v.zh,v.en))}</label>`; }).join('')}</td></tr>`).join('');
+  const facAdd=`<form class="frm" data-facadd style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:8px">
+      <div><label>${esc(both('新增機構','Add facility'))}</label><select name="oid">${OFFICES.map(o=>`<option value="${o.id}">${esc(both(o.zh,o.en))}</option>`).join('')}</select></div>
+      <div><input name="zh" required maxlength="40" lang="zh-Hant" placeholder="${esc(both('機構全名','Facility full name'))}"></div>
+      <div><input name="place" maxlength="20" lang="zh-Hant" placeholder="${esc(both('地點（選填）','Place (optional)'))}"></div>
+      <div><button class="btn mini" type="submit">${esc(both('新增','Add'))}</button></div></form>`;
+  const flagCols=Object.entries(TITLE_FLAGS);
   const add=k=>`<form class="frm" data-orgadd="${k}" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:8px">
       <div><label>${esc(both('新增'+orgKinds[k].zh,'Add '+orgKinds[k].en))}</label><input name="zh" required maxlength="20" lang="zh-Hant" placeholder="${esc(both('中文名稱','Chinese name'))}"></div>
       <div><input name="en" maxlength="40" placeholder="${esc(both('英文名稱（選填）','English name (optional)'))}"></div>
@@ -1775,9 +1792,12 @@ function orgCfgCard(){
       <div class="note">${esc(both('部門、職稱與單位名稱只在這裡維護。改了之後，所有表單與頁面裡的「部門／職稱／單位」下拉選單（新增員工、組織圖篩選、報表篩選等）會自動同步，不用到處去改。停用的項目不再出現在下拉選單，已經在用的人照舊顯示。示範站重新整理會還原，正式版會存在資料庫。','Department, title and unit names are maintained only here. After a change every dropdown for department / title / unit across the forms and pages (add employee, org chart filter, report filters…) updates by itself. Retired items disappear from dropdowns while the people already using them are unchanged. The demo resets on reload; the real version keeps this in the database.'))}</div>
       <div><div class="eyebrow">${esc(both('職稱','Titles'))} · ${Object.keys(TITLES).length}</div><div class="tablewrap" style="max-height:300px;overflow:auto"><table class="todotbl">${head('title')}<tbody>${listRows('title',TITLES)}</tbody></table></div>${add('title')}</div>
       <div><div class="eyebrow">${esc(both('部門','Departments'))} · ${Object.keys(DEPTS).length}</div><div class="tablewrap"><table class="todotbl">${head('dept')}<tbody>${listRows('dept',DEPTS)}</tbody></table></div>${add('dept')}</div>
-      <div><div class="eyebrow">${esc(both('單位（公司）與旗下部門','Units and their departments'))}</div><div class="tablewrap"><table class="todotbl">${head('unit')}<tbody>${unitRows}</tbody></table></div>
+      <div><div class="eyebrow">${esc(both('單位（公司）與旗下部門','Units and their departments'))}</div><div class="tablewrap"><table class="todotbl">${head('unit')}<tbody>${unitRows}</tbody></table></div></div>
+      <div><div class="eyebrow">${esc(both('機構／地點與旗下部門（組織圖、新增員工的機構選單都從這裡來）','Facilities, places and their departments (drives the org chart and the facility dropdown)'))} · ${facAll().length}</div>
+        <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('代號','Code')}</th><th>${bi('所屬公司','Company')}</th><th>${bi('機構全名','Name')}</th><th>${bi('英文名稱','English name')}</th><th>${bi('地點','Place')}</th><th>${bi('使用中','In use')}</th><th>${bi('旗下部門','Departments')}</th></tr></thead><tbody>${facRows}</tbody></table></div>${facAdd}
+        <div class="legend">${esc(both('機構的部門有人在用就不能拿掉；地點空白代表需求端還沒提供，請人資補上。公司旗下的部門由各機構自動彙整。','A department with people in it cannot be removed; an empty place means the requester side has not given it yet. A company’s departments roll up from its facilities.'))}</div>
         <div class="legend">${esc(both('單位的代號與資料範圍、員工編號前綴綁在一起，目前只能改名稱與旗下部門；新增單位之後再做。各職稱需要哪些權限，仍在「權限與設定」的職稱對照表設定；新增的職稱在設定前先當一般員工。','A unit’s code is tied to data scope and the employee-number prefix, so only names and departments can change for now; adding units comes later. What each title may do is still set in the title permission matrix; a new title acts as a regular employee until set.'))}</div></div>
-    </div></section>`;
+    </div></div></section>`;
 }
 /* 組織架構（需求端 10/13 提供的組織圖 PDF）：4 個主體單位（1 協會＋3 公司）、各附設機構、業務負責人、單位與職稱。
    目前仍因業務需求動態調整，之後會逐步收斂各業務、與部分機構整合，屆時組織圖與職稱可能再統一調整；簽核流程有部分與組織圖不同，需求端再想怎麼呈現。
@@ -1788,29 +1808,48 @@ const ORG_TREE = {
   entities:[
     {oid:'O1', zh:'社團法人中華民國誠馨照顧協會', en:'Zengxin Care Association', kids:[
       {zh:'社區整合型服務中心（北區Ａ單位）', en:'Community integrated service center (North A unit)', kind:'unit'},
-      {zh:'附設新竹縣私立誠馨綜合式服務類長期照顧服務機構', en:'Affiliated comprehensive long-term care facility (Hsinchu County)', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
-        {zh:'社區整合型服務中心（南區Ａ單位）', en:'Community integrated service center (South A unit)', kind:'unit', roles:['A個管']},
-        {zh:'居家服務', en:'Home care', kind:'unit', roles:['居家服務督導','居服員']},
-        {zh:'日照服務', en:'Day care', kind:'unit', roles:['日照社工','照服員、司機']}]}]},
+      {id:'F1', place:'新竹縣', zh:'附設新竹縣私立誠馨綜合式服務類長期照顧服務機構', en:'Affiliated comprehensive long-term care facility (Hsinchu County)', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
+        {zh:'社區整合型服務中心（南區Ａ單位）', en:'Community integrated service center (South A unit)', kind:'unit', dept:'comm', roles:['A個管']},
+        {zh:'居家服務', en:'Home care', kind:'unit', dept:'home', roles:['居家服務督導','居服員']},
+        {zh:'日照服務', en:'Day care', kind:'unit', dept:'day', roles:['日照社工','照服員、司機']}]}]},
     {oid:'O4', zh:'誠馨健康股份有限公司', en:'Zengxin Health Co.', kids:[
-      {zh:'附設私立誠馨二館社區長照機構', en:'Affiliated Zengxin No. 2 community care facility', head:'業務負責人（日照主管）', headEn:'Head of operations (day care supervisor)', kids:[
-        {zh:'日照服務', en:'Day care', kind:'unit', roles:['日照社工','照服員、司機']}]}]},
+      {id:'F2', place:'', zh:'附設私立誠馨二館社區長照機構', en:'Affiliated Zengxin No. 2 community care facility', head:'業務負責人（日照主管）', headEn:'Head of operations (day care supervisor)', kids:[
+        {zh:'日照服務', en:'Day care', kind:'unit', dept:'day', roles:['日照社工','照服員、司機']}]}]},
     {oid:'O2', zh:'誠芯樂活事業股份有限公司', en:'Chengxin Leshuo Co.', kids:[
-      {zh:'附設新竹市私立誠芯居家長照機構', en:'Affiliated home care facility (Hsinchu City)', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
-        {zh:'社區整合型服務中心', en:'Community integrated service center', kind:'unit', roles:['A個管']},
-        {zh:'居家服務', en:'Home care', kind:'unit', roles:['居家服務督導','居服員']}]},
-      {zh:'附設私立誠芯三館綜合長照機構', en:'Affiliated Chengxin No. 3 comprehensive care facility', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
-        {zh:'居家服務', en:'Home care', kind:'unit', roles:['居家服務督導','居服員']},
-        {zh:'日照服務', en:'Day care', kind:'unit', roles:['日照社工','照服員、司機']}]}]},
+      {id:'F3', place:'新竹市', zh:'附設新竹市私立誠芯居家長照機構', en:'Affiliated home care facility (Hsinchu City)', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
+        {zh:'社區整合型服務中心', en:'Community integrated service center', kind:'unit', dept:'comm', roles:['A個管']},
+        {zh:'居家服務', en:'Home care', kind:'unit', dept:'home', roles:['居家服務督導','居服員']}]},
+      {id:'F4', place:'', zh:'附設私立誠芯三館綜合長照機構', en:'Affiliated Chengxin No. 3 comprehensive care facility', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
+        {zh:'居家服務', en:'Home care', kind:'unit', dept:'home', roles:['居家服務督導','居服員']},
+        {zh:'日照服務', en:'Day care', kind:'unit', dept:'day', roles:['日照社工','照服員、司機']}]}]},
     {oid:'O3', zh:'牛津樂活事業股份有限公司', en:'Oxford Leshuo Co.', kids:[
-      {zh:'附設新竹縣私立牛津居家長照機構', en:'Affiliated home care facility (Hsinchu County)', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
-        {zh:'居家服務', en:'Home care', kind:'unit', roles:['居家服務督導','居服員']}]}]}
+      {id:'F5', place:'新竹縣', zh:'附設新竹縣私立牛津居家長照機構', en:'Affiliated home care facility (Hsinchu County)', head:'業務負責人（居服主管）', headEn:'Head of operations (home care lead)', kids:[
+        {zh:'居家服務', en:'Home care', kind:'unit', dept:'home', roles:['居家服務督導','居服員']}]}]}
   ],
   floating:[
     {zh:'日照主管', en:'Day care supervisor', zhTo:['誠馨協會綜合式機構的日照服務','誠馨二館的日照服務'], enTo:['day care at the association’s comprehensive facility','day care at Zengxin No. 2']},
     {zh:'A個管主管', en:'A-unit case-management lead', zhTo:['北區Ａ單位','南區Ａ單位（A個管）'], enTo:['North A unit','South A unit (A case manager)']}
   ]
 };
+
+/* ===== 組織架構單一來源 =====
+   「公司（單位）→ 機構／地點 → 部門 → 職稱」只在 ORG_TREE（機構與旗下部門）、TITLES（職稱與適用部門）兩處維護。
+   正式組織圖、通訊錄、新增員工與員工資料的下拉選單、報表篩選，全部由這裡長出來。 */
+const deptOrder = ds => Object.keys(DEPTS).filter(d=>ds.includes(d));
+const facAll = () => ORG_TREE.entities.flatMap(e=>(e.kids||[]).filter(k=>k.kind!=='unit').map(f=>Object.assign(f,{oid:e.oid})));
+const facDepts = f => deptOrder((f.kids||[]).map(k=>k.dept).filter(Boolean));
+const facsOfUnit = oid => facAll().filter(f=>f.oid===oid);
+const facById = id => facAll().find(f=>f.id===id);
+/* 員工所屬機構：有填就用；沒填（舊資料）就取該公司第一個有這個部門的機構 */
+const facOfPerson = p => facById(p.fac) || facsOfUnit(p.unit).find(f=>facDepts(f).includes(p.dept)) || null;
+const facName = f => f ? both(f.zh,f.en)+(f.place?'（'+f.place+'）':'') : '—';
+OFFICES.forEach(o=>Object.defineProperty(o,'depts',{get(){ return deptOrder(facsOfUnit(o.id).flatMap(facDepts)); }, configurable:true, enumerable:true}));
+/* 職稱屬性（HR 在組織架構設定勾選）：取代程式裡寫死的職稱代號 */
+const TITLE_FLAGS = {hourly:{zh:'時薪／拆帳',en:'Hourly / revenue-share'}, driver:{zh:'司機計薪',en:'Driver pay'}, ce:{zh:'需繼續教育積分',en:'CE credits'}, lead:{zh:'單位主管',en:'Unit lead'}};
+const titleFlag = (k,f) => !!(TITLES[k]&&TITLES[k].flags&&TITLES[k].flags[f]);
+const titlesWith = f => Object.keys(TITLES).filter(k=>titleFlag(k,f));
+Object.values(TITLES).forEach(t=>{ t.flags=t.flags||{}; });
+[['hca','hourly'],['drv','driver'],['ca','ce'],['hca','ce'],['sup','ce'],['rn','ce'],['dir','lead'],['sup','lead']].forEach(([k,f])=>{ TITLES[k].flags[f]=true; });
 function orgNodeHTML(n){
   const roles=(n.roles||[]).map(r=>`<span class="chip">${esc(r)}</span>`).join(' ');
   return `<li><div class="orgbox ${n.kind==='unit'?'unit':''}"><b>${esc(state.lang==='zh'?n.zh:n.en)}</b>${state.lang==='zh'?'':` <span class="muted">${esc(n.zh)}</span>`}
@@ -1820,7 +1859,7 @@ function orgNodeHTML(n){
 function titleStructureCard(){
   const T=ORG_TREE, nm=n=>esc(state.lang==='zh'?n.zh:n.en);
   const unitBox=u=>`<div class="orgbox unit sm"><b>${nm(u)}</b>${(u.roles||[]).length?`<div class="roles">${u.roles.map(r=>`<span class="chip">${esc(r)}</span>`).join('')}</div>`:''}</div>`;
-  const facBlock=f=>`<div class="fac"><div class="orgbox sm"><b>${nm(f)}</b>${f.head?`<div class="muted hd">${esc(state.lang==='zh'?f.head:f.headEn)}</div>`:''}</div>
+  const facBlock=f=>`<div class="fac"><div class="orgbox sm"><b>${nm(f)}</b>${f.place&&!f.zh.includes(f.place)?` <span class="muted">（${esc(f.place)}）</span>`:''}${f.head?`<div class="muted hd">${esc(state.lang==='zh'?f.head:f.headEn)}</div>`:''}</div>
       ${(f.kids||[]).length?`<div class="units">${f.kids.map(unitBox).join('')}</div>`:''}</div>`;
   const staffBlock=n=>`<div class="orgbox sm"><b>${nm(n)}</b></div>${(n.kids||[]).map(k=>`<div class="orgbox sm sub"><b>${nm(k)}</b></div>`).join('')}`;
   return `<section class="card orgf">
@@ -1891,12 +1930,34 @@ BINDERS['ann:orgcfg']=function(){
     if(c.checked){ if(!u.depts.includes(d)) u.depts.push(d); } else u.depts=u.depts.filter(x=>x!==d);
     done((c.checked?'已把部門加到 ':'已把部門從 ')+u.zh+(c.checked?'':' 移除'));
   });
+  document.querySelectorAll('[data-orgfl]').forEach(c=>c.onchange=()=>{
+    const [tk,f]=c.dataset.orgfl.split(':'); TITLES[tk].flags[f]=c.checked;
+    done('已'+(c.checked?'勾選':'取消')+'「'+TITLES[tk].zh+'」的「'+TITLE_FLAGS[f].zh+'」');
+  });
+  document.querySelectorAll('[data-orgfac]').forEach(i=>i.onchange=()=>{
+    const f=facById(i.dataset.orgfac), k=i.dataset.f, v=i.value.trim();
+    if(k==='zh'&&!v){ toast(both('機構名稱不能空白','The facility name cannot be blank')); render(); return; }
+    f[k]=k==='en'&&!v?f.zh:v; done('已把機構 '+f.id+' 的'+(k==='place'?'地點':'名稱')+'改成 '+(v||'（空白）'));
+  });
+  document.querySelectorAll('[data-orgfd]').forEach(c=>c.onchange=()=>{
+    const [fid,d]=c.dataset.orgfd.split(':'), f=facById(fid);
+    if(c.checked){ if(!facDepts(f).includes(d)) (f.kids=f.kids||[]).push({zh:DEPTS[d].zh,en:DEPTS[d].en,kind:'unit',dept:d,roles:[]}); }
+    else f.kids=(f.kids||[]).filter(k=>k.dept!==d);
+    done((c.checked?'已把部門加到 ':'已把部門從 ')+f.zh+(c.checked?'':' 移除'));
+  });
+  document.querySelectorAll('[data-facadd]').forEach(f=>f.onsubmit=e=>{
+    e.preventDefault(); const fd=new FormData(f), zh=String(fd.get('zh')||'').trim(); if(!zh) return;
+    if(facAll().some(x=>x.zh===zh)){ toast(both('已經有同名的機構：'+zh,'That facility already exists: '+zh)); return; }
+    const ent=ORG_TREE.entities.find(x=>x.oid===fd.get('oid')), id='F'+(facAll().length+1+(state.orgSeq=(state.orgSeq||0)+1)*100);
+    ent.kids.push({id,place:String(fd.get('place')||'').trim(),zh,en:zh,head:'業務負責人',headEn:'Head of operations',kids:[]});
+    done('已新增機構：'+zh+'（請勾選它旗下的部門）');
+  });
   document.querySelectorAll('[data-orgadd]').forEach(f=>f.onsubmit=e=>{
     e.preventDefault(); const kind=f.dataset.orgadd, fd=new FormData(f), zh=String(fd.get('zh')||'').trim(), en=String(fd.get('en')||'').trim()||zh;
     if(!zh) return;
     if(dup(kind,'',zh)){ toast(both('已經有同名的'+orgKinds[kind].zh+'：'+zh,'That name is already used: '+zh)); return; }
     const obj=kind==='title'?TITLES:DEPTS, key=(kind==='title'?'t':'d')+(state.orgSeq=(state.orgSeq||0)+1);
-    obj[key]=kind==='title'?{zh,en,depts:[]}:{zh,en};
+    obj[key]=kind==='title'?{zh,en,depts:[],flags:{}}:{zh,en};
     done('已新增'+orgKinds[kind].zh+'：'+zh+(kind==='dept'?'（請在下面的「單位與旗下部門」勾選它屬於哪些單位，新增員工的部門選單才會出現）':'（請在職稱表勾選它適用哪些部門，新增員工選了部門才會出現）'));
   });
 };
@@ -2021,11 +2082,15 @@ function nextEmpNo(unitId){
 function openAddEmp(){
   if(!can('editEmp')) return;
   const units=ALL_UNITS, u0=units[1].id;
-  const deptOpts=u=>unit(u).depts.filter(d=>!DEPTS[d].off).map(d=>`<option value="${d}">${esc(both(DEPTS[d].zh,DEPTS[d].en))}</option>`).join('');
+  /* 公司 → 機構／地點 → 部門 → 職稱：每一層都由組織架構單一來源長出來；共用行政沒有機構，部門直接取自公司 */
+  const facOpts=u=>{ const l=facsOfUnit(u); return l.length ? l.map(f=>`<option value="${f.id}">${esc(facName(f))}</option>`).join('') : `<option value="">${esc(both('（共用行政：不分機構）','(shared admin: no facility)'))}</option>`; };
+  const deptsOf=(u,f)=>(f&&facById(f)?facDepts(facById(f)):unit(u).depts).filter(d=>!DEPTS[d].off);
+  const deptOpts=(u,f)=>deptsOf(u,f).map(d=>`<option value="${d}">${esc(both(DEPTS[d].zh,DEPTS[d].en))}</option>`).join('');
   /* 選了部門，職稱選單只列這個部門的職稱（依組織架構設定）；部門沒有職稱時提示去設定 */
   const titleOpts=d=>{ const l=titlesFor(d); return l.length ? l.map(([k,v])=>`<option value="${k}" ${k==='ca'?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')
     : `<option value="">${esc(both('（這個部門還沒有設定職稱）','(no titles set for this department yet)'))}</option>`; };
-  const firstDept=u=>unit(u).depts.filter(d=>!DEPTS[d].off)[0];
+  const firstDept=(u,f)=>deptsOf(u,f)[0];
+  const firstFac=u=>(facsOfUnit(u)[0]||{}).id||'';
   document.getElementById('overlay').innerHTML=`
     <div class="scrim" data-close></div>
     <aside class="drawer" role="dialog" aria-modal="true">
@@ -2038,8 +2103,11 @@ function openAddEmp(){
           <div><label>${esc(both('員工編號（自動）','Employee no. (automatic)'))}</label><input id="neNo" class="mono" value="${nextEmpNo(u0)}" readonly></div>
         </div>
         <div class="row">
-          <div><label>${esc(both('部門','Department'))}</label><select name="dept" id="neDept">${deptOpts(u0)}</select></div>
-          <div><label>${esc(both('職稱','Title'))}</label><select name="title" id="neTitle" required>${titleOpts(firstDept(u0))}</select></div>
+          <div><label>${esc(both('機構／地點','Facility / place'))}</label><select name="fac" id="neFac">${facOpts(u0)}</select></div>
+          <div><label>${esc(both('部門','Department'))}</label><select name="dept" id="neDept">${deptOpts(u0,firstFac(u0))}</select></div>
+        </div>
+        <div class="row">
+          <div><label>${esc(both('職稱','Title'))}</label><select name="title" id="neTitle" required>${titleOpts(firstDept(u0,firstFac(u0)))}</select></div>
         </div>
         <div class="row">
           <div><label>${esc(both('姓名','Name'))}</label><input name="name" required maxlength="20"></div>
@@ -2054,15 +2122,16 @@ function openAddEmp(){
     </aside>`;
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{ closeOverlay(); render(); });
   const u=document.getElementById('neUnit');
-  const dsel=document.getElementById('neDept'), tsel=document.getElementById('neTitle');
-  u.onchange=()=>{ document.getElementById('neNo').value=nextEmpNo(u.value); dsel.innerHTML=deptOpts(u.value); tsel.innerHTML=titleOpts(dsel.value); };
+  const dsel=document.getElementById('neDept'), tsel=document.getElementById('neTitle'), fsel=document.getElementById('neFac');
+  u.onchange=()=>{ document.getElementById('neNo').value=nextEmpNo(u.value); fsel.innerHTML=facOpts(u.value); dsel.innerHTML=deptOpts(u.value,fsel.value); tsel.innerHTML=titleOpts(dsel.value); };
+  fsel.onchange=()=>{ dsel.innerHTML=deptOpts(u.value,fsel.value); tsel.innerHTML=titleOpts(dsel.value); };   // 機構 → 部門 → 職稱
   dsel.onchange=()=>{ tsel.innerHTML=titleOpts(dsel.value); };   // 部門 → 職稱連動
   document.getElementById('newEmpForm').onsubmit=e=>{
     e.preventDefault(); const fd=new FormData(e.target), unitId=fd.get('unit'), tk=fd.get('title');
     const id=nextEmpNo(unitId);
     LEGACY_NO[id]='E'+(9000+STAFF.length);              // 示範資料的亂數種子
-    const lead=STAFF.find(x=>x.unit===unitId&&(x.title==='dir'||x.title==='sup'));
-    STAFF.push(linkTitle({id, zh:TITLES[tk].zh, en:TITLES[tk].en, unit:unitId, title:tk, titleKey:tk, dept:fd.get('dept'), hired:fd.get('hired'),
+    const lead=STAFF.find(x=>x.unit===unitId&&titleFlag(x.title,'lead'));
+    STAFF.push(linkTitle({id, zh:TITLES[tk].zh, en:TITLES[tk].en, unit:unitId, fac:fd.get('fac')||'', title:tk, titleKey:tk, dept:fd.get('dept'), hired:fd.get('hired'),
       ext:'—', band:'G1', salary:can('salary')?(+fd.get('salary')||0):0, type:'full', mgr:lead?lead.id:'H002', mobile:'', status:'active', statusSince:'', prevNo:(fd.get('prevNo')||'').toString().trim()}));
     empRecord(id).basic.name=fd.get('name').toString().trim();
     closeOverlay(); state.q=''; toast(both('已新增 '+id+'（編號自動帶入）',id+' added (number filled in automatically)'));
@@ -2618,6 +2687,7 @@ function openPerson(id){
         <dl class="kv">
           ${visible?kvRow('姓名','Name',esc(rec.basic.name)):''}
           <dt>${esc(both('員工編號','Employee no.'))}</dt><dd class="mono">${p.id}</dd>
+          ${facOfPerson(p)?`<dt>${esc(both('機構／地點','Facility / place'))}</dt><dd>${esc(facName(facOfPerson(p)))}</dd>`:''}
           <dt>${esc(both('部門','Department'))}</dt><dd>${esc(both(DEPTS[p.dept].zh,DEPTS[p.dept].en))}</dd>
           <dt>${esc(both('直屬主管','Reports to'))}</dt><dd>${mgr?esc(nameOf(mgr)+' · '+L(TITLES[mgr.title])):esc(both('無','—'))}</dd>
           <dt>${esc(both('到職日','Hire date'))}</dt><dd class="mono">${visible?p.hired:'—'}</dd>
@@ -3884,7 +3954,7 @@ BINDERS['desk:query']=function(){
    依需求端 10/14 提供的「長照人員繼續教育積分」資料整理：衛福部長照人員積分系統的查詢畫面（總表、點數字進入課程清單），
    以及人事／教育訓練現在用 Excel 統計的積分總表（每人一張工作表，總表看每個人的進度、補強明年度的課程）。
    規則取自 Excel 表頭與積分系統畫面，實際以主管機關規定為準；人員與課程紀錄是示範資料（課程名稱與積分取自 Excel 的常見課程，不放任何真實人員的紀錄）。 */
-const CE_TITLES = ['ca','hca','sup','rn'];                       // 需要長照繼續教育積分的職稱：照服員、居服員、居家服務督導、護理師
+const CE_TITLES = { includes:k=>titleFlag(k,'ce'), map:f=>titlesWith('ce').map(f) };                       // 需要長照繼續教育積分的職稱：照服員、居服員、居家服務督導、護理師
 const CE_COLS = ['pro','qual','ethic','law','fire','emerg','infect','gender','indig','divers'];
 const CE_NAME = {
   pro:{zh:'專業課程',en:'Professional'}, qual:{zh:'專業品質',en:'Quality'}, ethic:{zh:'專業倫理',en:'Ethics'}, law:{zh:'專業法規',en:'Regulations'},
@@ -5781,8 +5851,8 @@ const HOURLY_WAGE = {A007:220, B006:215, C003:200, A010:220, B009:220, C002:225,
    一般員工：月薪制（固定月薪）；居服員（全職與兼職）：時薪制，做多少拿多少；
    日照司機（雙重角色）：開車部分月薪制（固定，不分大小月）＋居服部分時薪制。
    拆帳制（項目制）另外處理，目前不需修改。 */
-const isHourlyPay = p => p.type==='part' || p.title==='hca';
-const isDriver = p => p.title==='drv';
+const isHourlyPay = p => p.type==='part' || titleFlag(p.title,'hourly');
+const isDriver = p => titleFlag(p.title,'driver');
 const payBasis = p => isHourlyPay(p)?'hourly':isDriver(p)?'driver':'monthly';
 /* 10/28：拆帳制＝誠馨綜合式、誠芯居家、誠芯三館的居服員；時薪制＝牛津居家的居服員；其他月薪；日照司機月薪＋拆帳 B 方案。計算引擎仍用示範時薪估算居服員，正式拆帳見薪資計算機頁底 */
 const payLabel = p => (p.title==='hca'&&p.unit!=='O3') ? {zh:'拆帳制（示範以時薪估算）',en:'Revenue-share (demo estimated hourly)'} : isDriver(p) ? {zh:'司機：月薪＋拆帳（方案 B）',en:'Driver: monthly + revenue-share (plan B)'} : PAY_BASIS_LABEL[payBasis(p)];
