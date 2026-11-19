@@ -847,7 +847,7 @@ test.describe('Grounded content (9/20 meeting minutes, deck, v2.0 spec)', () => 
     await setRole(page, 'hr');
     await go(page, 'pay', 'calc');
     await page.selectOption('#calcForm [name=part]', 'split');
-    await expect(page.locator('#calcOut')).toContainText('拆帳制請看薪資計算機頁底');
+    await expect(page.locator('#calcOut')).toContainText('拆帳制請到「薪資計算 › 拆帳制」頁籤');
   });
 
   test('a manager fills in a mid-year review from the team reviews page', async ({ page }) => {
@@ -2960,7 +2960,7 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
   test('revenue-share pay uses the 28 Oct pay table: weekday vs holiday, plans A/B, bonus bracket, remote allowance', async ({ page }) => {
     await openPortal(page);
     await importCsv(page, ROWS2);
-    await go(page, 'pay', 'calc');
+    await go(page, 'pay', 'split');
     const card = page.locator('#paySplit');
     await expect(card).toContainText('拆帳薪資：NT$558');             // 甲：163（平日）+ 195（假日總薪）；乙：100 × 2
     await expect(card).toContainText('偏鄉津貼：NT$600');             // 甲服務五峰的 1 個案 × 600
@@ -2976,7 +2976,7 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
     const r = await page.evaluate(() => [splitBonus(19999), splitBonus(20000), splitBonus(39999), splitBonus(45000), splitBonus(98010), SPLIT_RATES.length]);
     expect(r).toEqual([0, 1000, 3000, 4000, 5000, 36]);
     await importCsv(page, ROWS2);
-    await go(page, 'pay', 'calc');
+    await go(page, 'pay', 'split');
     await page.locator('[data-splitplan="測試員乙"]').selectOption('B');
     await expect(page.locator('#paySplit')).toContainText('拆帳薪資：NT$552');   // 甲 A 358 + 乙 B 194
   });
@@ -2984,7 +2984,7 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
   test('the revenue-share section exports to Excel', async ({ page }) => {
     await openPortal(page);
     await importCsv(page, ROWS2);
-    await go(page, 'pay', 'calc');
+    await go(page, 'pay', 'split');
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#splitXlsx')]);
     expect(dl.suggestedFilename()).toBe('拆帳制計薪_2026-10.xlsx');
     const buf = fs.readFileSync(await dl.path());
@@ -2998,7 +2998,7 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
     await importCsv(page, [HEAD2,
       ['T-1', 'BA07', '協助沐浴及洗頭', '1', '測試員甲', '2026-10-05', '60', '325', '正常班', '竹北市'],
       ['T-2', 'BA07', '協助沐浴及洗頭', '0', '測試員甲', '2026-10-06', '0', '325', '正常班', '竹北市']]);
-    await go(page, 'pay', 'calc');
+    await go(page, 'pay', 'split');
     await expect(page.locator('#paySplit')).toContainText('拆帳薪資：NT$163');      // 只算 1 次（0 次不當成 1 次）
     await expect(page.locator('#paySplit')).toContainText('服務金額：NT$325');
   });
@@ -3027,7 +3027,7 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
   test('Oxford hourly card: demo data, per-person results, settings change the result, export', async ({ page }) => {
     await openPortal(page);
     await setRole(page, 'hr');
-    await go(page, 'pay', 'calc');
+    await go(page, 'pay', 'hourly');
     const card = page.locator('#payOx');
     await expect(card).toContainText('還沒有資料');
     await card.locator('#oxDemo').click();
@@ -3057,7 +3057,7 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
   test('Oxford hourly: a flat template import matches columns by name and a deductions file updates people', async ({ page }) => {
     await openPortal(page);
     await setRole(page, 'hr');
-    await go(page, 'pay', 'calc');
+    await go(page, 'pay', 'hourly');
     const head = await page.evaluate(() => oxCols(oxCfg()).map(c => c[1]));
     const row = head.map(h => h === '工號' ? 'OXHR950' : h === '姓名' ? '測試' : h === '早期到職級距（是／否）' ? '是' : h === '平日服務分鐘數（本薪）' ? '9000' : '0');
     const csv = [head.join(','), row.join(',')].join('\n');
@@ -3073,7 +3073,7 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
   test('Oxford hourly: only HR imports and edits the rules; the manager sees the card read-only', async ({ page }) => {
     await openPortal(page);
     await setRole(page, 'manager');
-    await go(page, 'pay', 'calc');
+    await go(page, 'pay', 'hourly');
     await expect(page.locator('#payOx')).toBeVisible();
     await expect(page.locator('#oxFile')).toHaveCount(0);
     await expect(page.locator('#oxForm')).toHaveCount(0);
@@ -3082,8 +3082,8 @@ test.describe('Payroll: 仁寶 hours and the revenue-share draft (22 Oct)', () =
 
   test('without an import the draft asks for the 仁寶 file', async ({ page }) => {
     await openPortal(page);
-    await go(page, 'pay', 'calc');
-    await expect(page.locator('#paySplit')).toContainText('先到「業務資料整合');
+    await go(page, 'pay', 'split');
+    await expect(page.locator('#paySplit')).toContainText('請在上方上傳仁寶服務記錄');
   });
 
   test('imported 仁寶 hours replace the demo hours for a matching hourly worker', async ({ page }) => {
@@ -3135,6 +3135,7 @@ test.describe('Monthly pay: bonus import, A-code reward and allowances (4 Nov)',
   const csv = rows => '﻿' + rows.map(r => r.join(',')).join('\r\n') + '\r\n';
   const BH = ['公司別', '部門別', '姓名', '工號', '獎金類別', '數量', '金額', '說明'];
   const goRun = async page => { await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'run'); };
+  const goMonthly = async page => { await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'monthly'); };   // 獎金與 A 碼匯入在「月薪制」頁籤
 
   test('monthly pay shows base and professional allowance separately and still adds up', async ({ page }) => {
     await openPortal(page);
@@ -3146,7 +3147,7 @@ test.describe('Monthly pay: bonus import, A-code reward and allowances (4 Nov)',
   });
 
   test('bonus Excel: visits x 50, over-cases x 100, incentive lump sum, bad rows reported', async ({ page }) => {
-    await goRun(page);
+    await goMonthly(page);
     const month = await page.evaluate(() => payDefault());
     const before = await page.evaluate(m => calcPay('A004', m).gross, month);
     await page.setInputFiles('#bonusFile', { name: 'bonus.csv', mimeType: 'text/csv', buffer: Buffer.from(csv([BH,
@@ -3165,7 +3166,7 @@ test.describe('Monthly pay: bonus import, A-code reward and allowances (4 Nov)',
   });
 
   test('A-code roster: only AA11, 50% pool, split by day-care care attendants’ workdays', async ({ page }) => {
-    await goRun(page);
+    await goMonthly(page);
     await page.setInputFiles('#aFile', { name: 'a.csv', mimeType: 'text/csv', buffer: Buffer.from(csv([['序號', '服務代碼', '小計', '服務日期'],
       ['1', 'AA05', '4000', '"115/09/01,115/09/02"'], ['2', 'AA11', '800', '"115/09/01,115/09/02"'], ['3', 'AA11', '1200', '115/09/03']]), 'utf8') });
     await expect(page.locator('#monthlyImp')).toContainText('AA11 小計 NT$2,000');
@@ -3181,11 +3182,11 @@ test.describe('Monthly pay: bonus import, A-code reward and allowances (4 Nov)',
   test('only HR can import; the manager only views; the template is downloadable', async ({ page }) => {
     await openPortal(page);
     await setRole(page, 'manager');
-    await go(page, 'pay', 'run');
+    await go(page, 'pay', 'monthly');
     await expect(page.locator('#bonusFile')).toHaveCount(0);
     await expect(page.locator('#bonusTpl')).toBeVisible();
     await setRole(page, 'hr');
-    await go(page, 'pay', 'run');
+    await go(page, 'pay', 'monthly');
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#bonusTpl')]);
     expect(dl.suggestedFilename()).toMatch(/^月薪制獎金匯入範本_\d{4}-\d{2}\.xlsx$/);
     const text = fs.readFileSync(await dl.path()).toString('utf8');
@@ -3374,3 +3375,76 @@ test.describe('11/19 meeting: leave display, form jumps, missed punches, sign fi
     for (const w of ['11/19 會議後的第一批修改', '1天2小時', '表單追蹤', '其他日期', '全選', '課程積分暫緩']) await expect(sec).toContainText(w);
   });
 });
+
+/* ================================================================ */
+/* 11/19 會議：薪資計算拆成月薪制、時薪制、拆帳制三個頁籤 */
+test.describe('11/19 meeting: payroll split into monthly, hourly and revenue-share tabs', () => {
+  const csvOf = rows => '\ufeff' + rows.map(r => r.join(',')).join('\r\n') + '\r\n';
+  const HEAD2 = ['案號', '服務項目代碼', '服務項目類別', '項目服務次數', '居服員姓名', '服務日期', '服務時間長度(分)', '項目單價', '加班類型', '居住(區)'];
+  const ROWS2 = [HEAD2,
+    ['T-1', 'BA07', '協助沐浴及洗頭', '1', '測試員甲', '2026-10-05', '60', '325', '正常班', '竹北市'],
+    ['T-2', 'BA07', '協助沐浴及洗頭', '1', '測試員甲', '2026-10-06', '60', '325', '國定假日', '五峰鄉'],
+    ['T-3', 'BA20', '陪伴服務', '2', '測試員乙', '2026-10-07', '30', '175', '正常班', '竹北市'],
+    ['T-4', 'XX99', '未知項目', '1', '測試員乙', '2026-10-08', '30', '100', '正常班', '竹北市']];
+  const tabsOf = page => page.locator('[data-tab]').evaluateAll(es => es.map(e => e.dataset.tab));
+
+  test('Payroll has the three pay-system tabs next to the run and the calculator; each page holds only its own content', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'run');
+    expect(await tabsOf(page)).toEqual(['run', 'calc', 'monthly', 'hourly', 'split', 'ver']);
+    await expect(page.locator('#monthlyImp')).toHaveCount(0);                    // 月薪獎金匯入搬到「月薪制」
+    await page.click('[data-tab="calc"]');
+    await expect(page.locator('#paySplit')).toHaveCount(0);                       // 計算機頁底不再放拆帳與時薪
+    await expect(page.locator('#payOx')).toHaveCount(0);
+    await expect(page.locator('#calcForm')).toBeVisible();                        // 薪資計算機與薪資試算保留
+    await page.click('[data-tab="monthly"]');
+    await expect(page.locator('#view h2').first()).toHaveText('月薪制');
+    await expect(page.locator('#monthlyImp')).toBeVisible();
+    await page.click('[data-tab="hourly"]');
+    await expect(page.locator('#payOx')).toBeVisible();
+    await page.click('[data-tab="split"]');
+    await expect(page.locator('#splitFile')).toBeVisible();
+    await expect(page.locator('#paySplit')).toBeVisible();
+    await setRole(page, 'employee');                                              // 一般員工看不到薪資計算
+    await expect(page.locator('[data-mod="pay"]')).toHaveCount(0);
+  });
+
+  test('revenue-share: upload the 仁寶 file right on its own tab (no trip to Business data integration)', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'split');
+    await expect(page.locator('#paySplit')).toContainText('請在上方上傳仁寶服務記錄');
+    await page.setInputFiles('#splitFile', { name: 'oct.csv', mimeType: 'text/csv', buffer: Buffer.from(csvOf(ROWS2), 'utf8') });
+    const card = page.locator('#paySplit');
+    await expect(card).toContainText('拆帳薪資：NT$558');
+    await expect(card).toContainText('合計：NT$1,158');
+    await expect(page.locator('#splitMsg')).toContainText('已匯入');
+    await page.click('#splitClear');
+    await expect(page.locator('#paySplit')).toContainText('請在上方上傳仁寶服務記錄');
+    await setRole(page, 'manager');                                               // 只能檢視的身分不能上傳
+    await expect(page.locator('#splitFile')).toHaveCount(0);
+  });
+
+  test('monthly tab: base + allowance per person; drivers get a “monthly + revenue-share” option that changes their pay', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'monthly');
+    const first = page.locator('#view table tbody tr').first();
+    await expect(first.locator('td.num')).toHaveCount(4);                          // 底薪、專業加給、月薪、拆帳金額
+    const drv = await page.evaluate(() => { const d = STAFF.find(s => isDriver(s)); return d ? d.id : null; });
+    expect(drv).not.toBeNull();
+    const before = await page.evaluate(id => calcPay(id, payDefault()).lines.map(l => l.zh), drv);
+    expect(before).toContain('居服時薪收入（司機兼居服）');                       // 預設維持原本的示範算法
+    await page.selectOption(`[data-drvmode="${drv}"]`, 'split');
+    await page.fill(`[data-drvsplit="${drv}"]`, '5000');
+    await page.locator(`[data-drvsplit="${drv}"]`).dispatchEvent('change');
+    const after = await page.evaluate(id => { const c = calcPay(id, payDefault()); return { zh: c.lines.map(l => l.zh), amt: (c.lines.find(l => l.zh.startsWith('拆帳收入')) || {}).amt }; }, drv);
+    expect(after.zh).toContain('拆帳收入（司機兼居服，方案 B）');
+    expect(after.zh).not.toContain('居服時薪收入（司機兼居服）');
+    expect(after.amt).toBe(5000);
+    await setRole(page, 'manager');                                               // 主管只能看
+    await expect(page.locator(`[data-drvmode="${drv}"]`)).toBeDisabled();
+  });
+
+  test('the guide records the three pay tabs', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    const sec = page.locator('#newv35');
+    for (const w of ['薪資計算拆成三個頁籤', '月薪＋拆帳', '在拆帳制頁籤直接上傳']) await expect(sec).toContainText(w);
+  });
+});
+
