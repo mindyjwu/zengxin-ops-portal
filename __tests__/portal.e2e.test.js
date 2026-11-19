@@ -3549,7 +3549,7 @@ test.describe('11/19 meeting: org settings drive every department / title / unit
     await page.click('aside.drawer button.x');
     await go(page, 'ann', 'orgcfg');
     const key = await page.evaluate(() => Object.keys(DEPTS).find(k => DEPTS[k].zh === '營運企劃'));
-    await page.check(`[data-orgud="O2:${key}"]`);                                      // 放進誠芯
+    await page.check(`[data-orgfd="F3:${key}"]`);                                      // 放進誠芯
     await openAddEmp(page);
     await page.selectOption('#neUnit', 'O2');
     expect(await opts(page, '#neDept')).toContain('營運企劃');
@@ -3590,7 +3590,7 @@ test.describe('11/19 meeting: org settings drive every department / title / unit
     await page.fill('[data-orgadd="title"] input[name="zh"]', '社工');
     await page.click('[data-orgadd="title"] button');
     await expect(page.locator('.toast')).toContainText('已經有同名');
-    await expect(page.locator('[data-orgud="O1:day"]')).toBeDisabled();                // 協會的日照有人在用
+    await expect(page.locator('[data-orgfd="F1:day"]')).toBeDisabled();                // 協會的日照有人在用
   });
 
   test('the guide records the org settings', async ({ page }) => {
@@ -3648,7 +3648,7 @@ test.describe('11/19 meeting: department drives the title dropdown', () => {
     await page.fill('[data-orgadd="dept"] input[name="zh"]', '營運企劃');
     await page.click('[data-orgadd="dept"] button');
     const key = await page.evaluate(() => Object.keys(DEPTS).find(k => DEPTS[k].zh === '營運企劃'));
-    await page.check(`[data-orgud="O2:${key}"]`);
+    await page.check(`[data-orgfd="F3:${key}"]`);
     await go(page, 'hr', 'emp'); await page.click('[data-newemp]');
     await page.selectOption('#neUnit', 'O2'); await page.selectOption('#neDept', key);
     await expect(page.locator('#neTitle option')).toHaveText('（這個部門還沒有設定職稱）');
@@ -4028,3 +4028,92 @@ test.describe('11/19 meeting: quarterly grade review', () => {
   });
 });
 
+
+/* 11/19 會議：組織架構單一來源（公司 → 機構／地點 → 部門 → 職稱） */
+test.describe('11/19 meeting: org single source of truth', () => {
+  const openCfg = async page => { await openPortal(page); await setRole(page, 'hr'); await go(page, 'ann', 'orgcfg'); };
+  const addEmp = async page => { await go(page, 'hr', 'emp'); await page.click('[data-newemp]'); };
+  const opts = (page, sel) => page.locator(sel + ' option').allTextContents();
+
+  test('the add-employee form cascades company → facility → department → title', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await addEmp(page);
+    expect(await opts(page, '#neFac')).toHaveLength(1);                                  // 協會：綜合式機構
+    await page.selectOption('#neUnit', 'O2');
+    const fac = await opts(page, '#neFac');
+    expect(fac).toHaveLength(2);
+    expect(fac.join('|')).toContain('誠芯居家'); expect(fac.join('|')).toContain('三館');
+    await page.selectOption('#neFac', 'F3');                                             // 誠芯居家：居服、社區整合型
+    expect(await opts(page, '#neDept')).toEqual(['居服', '社區整合型中心']);
+    await page.selectOption('#neFac', 'F4');                                             // 三館：日照、居服
+    expect(await opts(page, '#neDept')).toEqual(['日照', '居服']);
+    await page.selectOption('#neUnit', 'HQ');
+    expect(await opts(page, '#neFac')).toEqual(['（共用行政：不分機構）']);
+    expect(await opts(page, '#neDept')).toContain('經營管理');
+  });
+
+  test('a new person carries the chosen facility and it is shown', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await addEmp(page);
+    await page.selectOption('#neUnit', 'O2'); await page.selectOption('#neFac', 'F4'); await page.selectOption('#neDept', 'day');
+    await page.fill('#newEmpForm input[name="name"]', '機構示範');
+    await page.click('#newEmpForm button[type="submit"]');
+    expect(await page.evaluate(() => STAFF[STAFF.length - 1].fac)).toBe('F4');
+    await expect(page.locator('aside.drawer')).toContainText('三館');
+    await expect(page.locator('aside.drawer')).toContainText('機構／地點');
+  });
+
+  test('existing staff default to the first facility that has their department', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => ({ b4: facOfPerson(person('B004')).id, b5: facOfPerson(person('B005')).id, c2: facOfPerson(person('C002')).id, a6: facOfPerson(person('A006')).id, h3: facOfPerson(person('H003')) }));
+    expect(r).toEqual({ b4: 'F4', b5: 'F3', c2: 'F5', a6: 'F1', h3: null });
+  });
+
+  test('HR edits a facility: name, place, departments — the dropdown and the org chart follow', async ({ page }) => {
+    await openCfg(page);
+    await page.fill('[data-orgfac="F4"][data-f="place"]', '新竹縣');
+    await page.press('[data-orgfac="F4"][data-f="place"]', 'Tab');
+    await page.check('[data-orgfd="F4:comm"]');                                          // 三館加上社區整合型
+    await addEmp(page); await page.selectOption('#neUnit', 'O2');
+    expect(await opts(page, '#neFac')).toContain('附設私立誠芯三館綜合長照機構（新竹縣）');
+    await page.selectOption('#neFac', 'F4');
+    expect(await opts(page, '#neDept')).toContain('社區整合型中心');
+    await page.click('aside.drawer button.x');
+    await go(page, 'ann', 'org');
+    await expect(page.locator('.orgf')).toContainText('（新竹縣）');                      // 組織圖也看到地點
+  });
+
+  test('a department in use cannot be removed from its facility; a new facility can be added', async ({ page }) => {
+    await openCfg(page);
+    await expect(page.locator('[data-orgfd="F3:home"]')).toBeDisabled();                  // 誠芯居家有居服員在用
+    await page.fill('[data-facadd] input[name="zh"]', '示範新機構');
+    await page.click('[data-facadd] button');
+    expect(await page.evaluate(() => facAll().some(f => f.zh === '示範新機構' && f.oid === 'O1'))).toBe(true);
+    await expect(page.locator('[data-orgfac][data-f="zh"]')).toHaveCount(6);
+    await page.fill('[data-facadd] input[name="zh"]', '示範新機構');
+    await page.click('[data-facadd] button');
+    await expect(page.locator('.toast')).toContainText('已經有同名');
+  });
+
+  test('company departments roll up from facilities', async ({ page }) => {
+    await openPortal(page);
+    expect(await page.evaluate(() => unit('O2').depts)).toEqual(['day', 'home', 'comm']);
+    expect(await page.evaluate(() => unit('O3').depts)).toEqual(['home']);
+  });
+
+  test('title flags drive pay type, CE credits and lead lookup instead of hard-coded titles', async ({ page }) => {
+    await openCfg(page);
+    expect(await page.evaluate(() => [isHourlyPay(person('A010')), isDriver(person('A008')), ceEligible(person('A004')), ceEligible(person('A008'))])).toEqual([true, true, true, false]);
+    await page.uncheck('[data-orgfl="hca:hourly"]');
+    expect(await page.evaluate(() => isHourlyPay(person('A010')))).toBe(false);          // 居服員取消「時薪／拆帳」
+    await page.check('[data-orgfl="drv:ce"]');
+    expect(await page.evaluate(() => ceEligible(person('A008')))).toBe(true);            // 司機勾選「需繼續教育積分」
+    await page.uncheck('[data-orgfl="dir:lead"]');
+    await addEmp(page); await page.selectOption('#neUnit', 'O4'); await page.selectOption('#neDept', 'day');
+    await page.fill('#newEmpForm input[name="name"]', '主管示範'); await page.click('#newEmpForm button[type="submit"]');
+    expect(await page.evaluate(() => STAFF[STAFF.length - 1].mgr)).toBe('H002');          // 日照主管不再是主管 → 退回管理者
+  });
+
+  test('the guide records the single source', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['組織架構單一來源', '機構／地點', '尚未統一']) await expect(page.locator('#newv35')).toContainText(w);
+  });
+});
