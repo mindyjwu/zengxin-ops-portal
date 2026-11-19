@@ -4217,8 +4217,103 @@ test.describe('10/20 meeting: approval forms go up the chart level by level', ()
     expect(await page.evaluate(i => BIZ_REQ.find(x => x.id === i).status, id)).toBe('approved');
   });
 
+  const pathOf = (page, id) => page.evaluate(i => bizPath(i).steps.map(s => s.role + (s.emp ? '=' + s.emp : '=空缺')), id);
+
+  test('the path follows the V3 chart for each position, not the demo reporting line', async ({ page }) => {
+    await openPortal(page);
+    expect(await pathOf(page, 'A004')).toEqual(['日照社工=A005', '日照主管（業務負責人）=A001', '管理者=H002', '老闆=H001']);   // 照服員：先到日照社工
+    expect(await pathOf(page, 'B004')).toEqual(['日照社工=B008', '日照主管（業務負責人）=B001', '管理者=H002', '老闆=H001']);   // 只找同一家公司的人
+    expect(await pathOf(page, 'H006')).toEqual(['HR（人資主管）=H003', '管理者=H002', '老闆=H001']);                       // 教育訓練專員：先到人資
+    expect(await pathOf(page, 'H004')).toEqual(['管理者=H002', '老闆=H001']);                                             // 會計：直接到管理者
+    expect(await pathOf(page, 'A005')).toEqual(['日照主管（業務負責人）=A001', '管理者=H002', '老闆=H001']);                 // 日照社工從自己的位置往上
+  });
+
+  test('a position on the chart with nobody in it is shown as vacant and skipped', async ({ page }) => {
+    await openPortal(page);
+    expect(await pathOf(page, 'A010')).toEqual(['居家服務督導=A009', '居服主管（業務負責人）=空缺', '管理者=H002', '老闆=H001']);
+    expect(await pathOf(page, 'A006')).toEqual(['A個管主管=空缺', '管理者=H002', '老闆=H001']);
+    await setRole(page, 'hca'); await go(page, 'desk', 'biz');
+    await file(page, 'quote', { who: 'X', amount: '5000' });
+    await expect(page.locator('#view')).toContainText('居服主管（業務負責人）：空缺（略過）');
+    expect(await page.evaluate(() => { const r = BIZ_REQ[0]; return [r.cur, r.steps.length, r.steps.filter(s => s.emp).length]; })).toEqual([0, 4, 3]);
+    await setRole(page, 'manager'); await go(page, 'desk', 'biz');
+    const mgrId = await page.evaluate(() => BIZ_REQ[0].id);
+    expect(await toSignIds(page)).not.toContain(mgrId);
+  });
+
+  test('after the supervisor signs, the vacant level is skipped and it lands on the manager', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hca'); await go(page, 'desk', 'biz');
+    await file(page, 'quote', { who: 'X', amount: '5000' });
+    const id = await page.evaluate(() => BIZ_REQ[0].id);
+    await setRole(page, 'homesup'); await go(page, 'desk', 'biz');
+    await page.click(`[data-bizact="${id}:ok"]`);
+    expect(await page.evaluate(i => BIZ_REQ.find(x => x.id === i).cur, id)).toBe(2);       // 空缺略過，直接到管理者
+    await setRole(page, 'manager'); await go(page, 'desk', 'biz');
+    expect(await toSignIds(page)).toContain(id);
+  });
+
+  test('a title that is not on the V3 chart falls back to the reporting line and says so', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => { const p = bizPath('A002'); return [p.fallback, p.steps.map(s => s.emp)]; });   // 護理師
+    expect(r).toEqual([true, ['A001', 'H002', 'H001']]);
+  });
+
+  test('amount levels count only real approvers, so a vacant position never leaves a request with nobody', async ({ page }) => {
+    await open(page, 'manager');
+    await page.click('[data-bizradd]');
+    await page.selectOption('[data-bizrule="1"][data-f="levels"]', '1');
+    const ids = await page.evaluate(() => bizChain('A010', 10000).steps.map(s => s.emp));
+    expect(ids).toEqual(['A009']);                                                          // 第 1 層是居家服務督導
+    const ids2 = await page.evaluate(() => bizChain('A006', 10000).steps.map(s => s.emp));
+    expect(ids2).toEqual([null, 'H002']);                                                    // 空缺不算一層，第 1 個真正的人是管理者
+  });
+
+  test('the request records the applicant’s department and shows it', async ({ page }) => {
+    await open(page, 'daysw');
+    await file(page, 'trip2', trip);
+    expect(await page.evaluate(() => BIZ_REQ[0].dept)).toBe('day');
+    await expect(page.locator('#view')).toContainText('日照');
+  });
+
+  test('a request past its due date is marked overdue and the approver is reminded', async ({ page }) => {
+    await open(page, 'manager');
+    await expect(page.locator('#view')).toContainText('逾期');                                // Q1 十月初送出，超過 3 天
+    expect(await page.evaluate(() => bizLate(BIZ_REQ.find(r => r.id === 'Q1')))).toBe(true);
+    expect(await page.evaluate(() => bizLate(BIZ_REQ.find(r => r.id === 'Q2')))).toBe(false);   // Q2 昨天送出，還在期限內
+    await page.click('#todoBtn');
+    await expect(page.locator('#view')).toContainText('簽核申請單待簽');
+    await expect(page.locator('#view')).toContainText('逾期');
+  });
+
+  test('the due period is set by the manager / admin and changes what counts as overdue', async ({ page }) => {
+    await open(page, 'manager');
+    await page.fill('#bizDueIn', '30'); await page.press('#bizDueIn', 'Tab');
+    expect(await page.evaluate(() => bizLate(BIZ_REQ.find(r => r.id === 'Q1')))).toBe(false);
+    await page.fill('#bizDueIn', '0'); await page.press('#bizDueIn', 'Tab');
+    await expect(page.locator('.toast')).toContainText('1 到 60 天');
+    await setRole(page, 'daysw'); await go(page, 'desk', 'biz');
+    await expect(page.locator('#bizDueIn')).toHaveCount(0);
+  });
+
+  test('an approved request is closed by the applicant or HR, nobody else', async ({ page }) => {
+    await open(page, 'boss');
+    await file(page, 'quote', { who: 'X', amount: '100' });                                 // 老闆送出直接核准
+    const id = await page.evaluate(() => BIZ_REQ[0].id);
+    await page.click(`[data-bizclose="${id}"]`);
+    expect(await page.evaluate(i => BIZ_REQ.find(x => x.id === i).status, id)).toBe('closed');
+    await file(page, 'quote', { who: 'Y', amount: '100' });
+    const id2 = await page.evaluate(() => BIZ_REQ[0].id);
+    await setRole(page, 'daysw');
+    expect((await page.evaluate(i => bizClose(i), id2)).err).toContain('只有申請人或人資');
+    await setRole(page, 'hr'); await go(page, 'desk', 'biz');
+    await expect(page.locator('#view')).toContainText('待結案');
+    await page.click(`[data-bizclose="${id2}"]`);
+    expect(await page.evaluate(i => BIZ_REQ.find(x => x.id === i).status, id2)).toBe('closed');
+    expect((await page.evaluate(i => bizClose(i), id2)).err).toContain('核准後才能結案');   // 不能重複結案
+  });
+
   test('the guide records the approval forms', async ({ page }) => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
-    for (const w of ['簽核申請單', '逐層', '金額規則']) await expect(page.locator('#newv35')).toContainText(w);
+    for (const w of ['簽核申請單', '逐層', '金額規則', '空缺', '辦理期限', '逾期', '結案']) await expect(page.locator('#newv35')).toContainText(w);
   });
 });
