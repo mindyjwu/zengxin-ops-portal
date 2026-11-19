@@ -2154,12 +2154,105 @@ const INS_RATES = [
    note:'尚未查證：116 年費率拆分、健保費率與眷口數，請人資對照公告確認後再使用。'}
 ];
 const insDate = m => m.length===7 ? m+'-01' : m;
-const insVer  = (kind, month) => { const d=insDate(month), v=INS_TABLES[kind].filter(x=>x.eff<=d).sort((a,b)=>a.eff<b.eff?1:-1)[0]; return v||INS_TABLES[kind].slice().sort((a,b)=>a.eff<b.eff?-1:1)[0]; };
-const insRate = month => { const d=insDate(month), r=INS_RATES.filter(x=>x.eff<=d).sort((a,b)=>a.eff<b.eff?1:-1)[0]; return r||INS_RATES[0]; };
+const insLive = kind => INS_TABLES[kind].filter(x=>!x.void);   // 已作廢的版本不再使用，但紀錄保留
+const insVer  = (kind, month) => { const d=insDate(month), v=insLive(kind).filter(x=>x.eff<=d).sort((a,b)=>a.eff<b.eff?1:-1)[0]; return v||insLive(kind).slice().sort((a,b)=>a.eff<b.eff?-1:1)[0]; };
+const insAmts = (kind, month) => insVer(kind, month||CUR_MONTH).rows.map(r=>r[2]);   // 下拉選單用：目前有效版本的各級金額
+const insRatesLive = () => INS_RATES.filter(x=>!x.void);
+const insRate = month => { const d=insDate(month), r=insRatesLive().filter(x=>x.eff<=d).sort((a,b)=>a.eff<b.eff?1:-1)[0]; return r||insRatesLive().slice().sort((a,b)=>a.eff<b.eff?-1:1)[0]; };
 /* 薪資落在哪一級：第一個「上限 ≥ 薪資」的級距；超過最高級就用最高級的金額 */
 function insGrade(ver, pay){
   const rows=ver.rows; let i=rows.findIndex(r=>r[1]==null||pay<=r[1]); if(i<0) i=rows.length-1;
   return {level:i+1, lo:rows[i][0], hi:rows[i][1], amt:rows[i][2]};
+}
+
+/* ---------- 政府公告讀取：PDF（或貼上的文字）→ 分級表（11/19 會議：人資只要上傳新公告） ----------
+   流程：讀出文字 → 認出是哪一種表、生效日、文號 → 逐級抓出區間與金額 → 自動檢查 → 與現行版本比對 → 人資確認後才生效。
+   讀取不保證每種版面都成功，所以一定要有預覽與人工確認；認不出或檢查沒過的檔案不會生效。 */
+let __pdfjsReady=null;
+function insLoadPdfjs(){
+  if(window.pdfjsLib) return Promise.resolve();
+  return __pdfjsReady||(__pdfjsReady=new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src='vendor/pdfjs/pdf.min.js';
+    sc.onload=()=>{ pdfjsLib.GlobalWorkerOptions.workerSrc='vendor/pdfjs/pdf.worker.min.js'; res(); };
+    sc.onerror=()=>{ __pdfjsReady=null; rej(new Error('讀不到 PDF 讀取元件（vendor/pdfjs），請確認網站檔案完整')); }; document.head.appendChild(sc); }));
+}
+/* PDF → 文字：依垂直位置把同一行的字串接起來（欄距大就補空白），左右兩欄的表會合成同一行 */
+async function insPdfText(buf){
+  await insLoadPdfjs();
+  const doc=await pdfjsLib.getDocument({data:new Uint8Array(buf.slice(0))}).promise, out=[];
+  for(let pn=1; pn<=doc.numPages; pn++){
+    const tc=await (await doc.getPage(pn)).getTextContent();
+    const its=tc.items.filter(i=>i.str&&i.str.trim()!=='').map(i=>({s:i.str, x:i.transform[4], y:i.transform[5], w:i.width, h:Math.abs(i.transform[3])||10}));
+    const groups=[]; its.sort((a,b)=>b.y-a.y).forEach(i=>{ const g=groups.find(q=>Math.abs(q.y-i.y)<=Math.max(2,i.h*0.35)); if(g) g.items.push(i); else groups.push({y:i.y, items:[i]}); });
+    groups.sort((a,b)=>b.y-a.y).forEach(g=>{ g.items.sort((a,b)=>a.x-b.x); let line='', end=null;
+      g.items.forEach(i=>{ if(end!=null&&i.x-end>Math.max(3,i.h*0.3)) line+=' '; line+=i.s; end=i.x+i.w; }); out.push(line); });
+    out.push('');
+  }
+  return out.join('\n');
+}
+const insNum = t => +String(t).replace(/,/g,'');
+const insTwDate = (y,m,d) => (+y+1911)+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+function insParseText(text, fileName){
+  const flat=text.replace(/\s+/g,''), d={fileName:fileName||'', kind:null, rows:[], extras:null, eff:'', effFrom:'', effOk:false, doc:'', checks:[]};
+  const kind=flat.includes('勞工保險投保薪資分級表')?'labor':flat.includes('全民健康保險投保金額分級表')?'health':flat.includes('勞工退休金月提繳分級表')?'pension':null;
+  if(!kind) return d;
+  d.kind=kind;
+  const em=flat.match(/自(\d{2,3})年(\d{1,2})月(\d{1,2})日(?:起)?(施行|生效)/);
+  if(em){ d.eff=insTwDate(em[1],em[2],em[3]); d.effFrom='公告內文'; d.effOk=true; d.effWord=em[4]; }
+  else { const fm=String(fileName||'').match(/(\d{3})[._\-年]?(\d{1,2})[._\-月]?(\d{1,2})(?!\d)/); if(fm&&+fm[1]>=100&&+fm[2]<=12&&+fm[3]<=31){ d.eff=insTwDate(fm[1],fm[2],fm[3]); d.effFrom='檔名（內文沒有寫，請確認）'; } }
+  const noTitle=flat.replace(/勞工保險投保薪資分級表|全民健康保險投保金額分級表|勞工退休金月提繳分級表/g,'');   // 標題有時排在文號中間
+  const dm=noTitle.match(/中華民國(\d+)年(\d+)月(\d+)日(?:勞動部)?(勞動[^\d]{1,4})(\d+)字第(\d+)號令/);
+  d.doc = dm ? '勞動部 '+dm[1]+'/'+dm[2]+'/'+dm[3]+' '+dm[4]+' '+dm[5]+' 字第 '+dm[6]+' 號令'+(em?'（'+(+em[1])+'/'+(+em[2])+'/'+(+em[3])+' '+em[4]+'）':'') : '（檔案內文沒有公告文號）';
+  const T=text, rows=[], seen=new Set(), push=(lv,a,b,dn,up,amt)=>{ lv=+lv; if(seen.has(lv)) return; seen.add(lv); rows.push({lv, lo:dn?null:insNum(a), hi:up?null:(b?insNum(b):insNum(a)), amt:insNum(amt)}); };
+  if(kind==='labor') for(const m of T.matchAll(/第\s*(\d+)\s*級\s*([\d,]+)\s*元(?:\s*至\s*([\d,]+)\s*元|\s*(以下)|\s*(以上))?\s*([\d,]+)\s*元/g)) push(m[1],m[2],m[3],m[4],m[5],m[6]);
+  if(kind==='pension') for(const m of T.matchAll(/(?:第\s*\d+\s*組\s*)?(?<![\d,])(\d{1,2})\s+([\d,]+)\s*元(?:\s*至\s*([\d,]+)\s*元|\s*(以下)|\s*(以上))\s*([\d,]+)\s*元/g)) push(m[1],m[2],m[3],m[4],m[5],m[6]);
+  if(kind==='health') for(const m of T.matchAll(/(?<![\d,])(\d{1,2})\s+([\d,]{5,7})\s+([\d,]+)(?:\s*-\s*([\d,]+)|\s*(以下)|\s*(以上))/g)) push(m[1],m[3],m[4],m[5],m[6],m[2]);
+  rows.sort((a,b)=>a.lv-b.lv); d.levels=rows.map(r=>r.lv); d.rows=rows.map(r=>[r.lo,r.hi,r.amt]);
+  if(kind==='labor'){   // 備註二（薪資未達最低工資的各級）、備註三（部分工時 2 級）
+    const i2=flat.indexOf('二、職業訓練'), i3=flat.indexOf('三、部分工時'), i4=flat.indexOf('四、依身心障礙者');
+    const pairs=(a,b)=>a<0?[]:[...flat.slice(a,b<0?undefined:b).replace(/[備註]/g,'').matchAll(/([\d,]+)元[（(][\d,]+元(?:以下者?|至[\d,]+元)[）)]/g)].map(m=>insNum(m[1]));
+    d.extras={low:pairs(i2,i3), partTime:pairs(i3,i4)};
+  }
+  return d;
+}
+/* 自動檢查：級數連續、第一級「以下」最後一級「以上」、區間沒有缺口、金額逐級遞增、金額等於區間上限 */
+function insDraftChecks(d){
+  const c=[], add=(ok,zh,warn)=>c.push({ok,zh,warn:!!warn});   // warn＝提醒：不擋啟用，但要看一下
+  if(!d.kind){ add(false,'認不出這是哪一種分級表（勞保、健保、勞退）；請確認上傳的是政府公告的分級表，或改用「貼上文字」'); return c; }
+  add(true,'認出這是「'+INS_KINDS[d.kind].table+'」');
+  const R=d.rows, n=R.length, min={labor:5,health:30,pension:40}[d.kind];
+  add(n>=min, n>=min ? '讀到 '+n+' 級' : '只讀到 '+n+' 級，少於預期（至少 '+min+' 級），可能是版面讀不全');
+  add(d.levels.every((l,i)=>l===i+1), d.levels.every((l,i)=>l===i+1) ? '級數編號從 1 連續到 '+n : '級數編號不連續（'+d.levels.join(',')+'）');
+  add(n>0&&R[0][0]==null&&R[n-1][1]==null, '第一級是「以下」、最後一級是「以上」');
+  let gap=null; for(let i=1;i<n;i++){ if(R[i][0]!=null&&R[i-1][1]!=null&&R[i][0]!==R[i-1][1]+1){ gap=i+1; break; } }
+  add(gap==null,gap==null?'每一級的區間首尾相接，沒有缺口':'第 '+gap+' 級的下限和上一級的上限接不起來');
+  let bad=null; for(let i=0;i<n;i++){ if(R[i][1]!=null&&R[i][2]!==R[i][1]){ bad=i+1; break; } }
+  add(bad==null,bad==null?'每一級的月投保金額等於該級區間的上限':'第 '+bad+' 級的金額和區間上限不一樣');
+  let inc=null; for(let i=1;i<n;i++){ if(R[i][2]<=R[i-1][2]){ inc=i+1; break; } }
+  add(inc==null,inc==null?'金額逐級遞增':'第 '+inc+' 級的金額沒有比上一級高');
+  if(d.kind==='labor'){ const ok=d.extras&&d.extras.partTime.length===2&&d.extras.low.length>=10; add(true, ok?'讀到備註二（'+d.extras.low.length+' 級）與備註三（部分工時 '+d.extras.partTime.join('、')+'）':'沒讀到備註二、三（部分工時與薪資未達最低工資的級距），將沿用上一版的設定，請確認', !ok); }
+  const okDate=/^\d{4}-\d{2}-\d{2}$/.test(d.eff||'')&&!isNaN(new Date(d.eff));
+  add(okDate&&d.effOk, !okDate ? '請填入生效日' : d.effOk ? '生效日 '+d.eff+'（來源：'+d.effFrom+'）' : '生效日 '+d.eff+' 來自'+d.effFrom+'，請勾選確認');
+  return c;
+}
+/* 和現行版本比對：同一天生效的會被取代；否則和生效日之前的最近一版比 */
+function insDraftDiff(d){
+  if(!d.kind||!d.rows.length||!d.eff) return null;
+  const live=insLive(d.kind), same=live.find(v=>v.eff===d.eff), base=same||live.filter(v=>v.eff<d.eff).sort((a,b)=>a.eff<b.eff?1:-1)[0];
+  if(!base) return {base:null};
+  const A=new Set(base.rows.map(r=>r[2])), B=new Set(d.rows.map(r=>r[2]));
+  return {base, replace:!!same, identical:JSON.stringify(base.rows)===JSON.stringify(d.rows), nBase:base.rows.length, nNew:d.rows.length,
+    added:[...B].filter(x=>!A.has(x)), removed:[...A].filter(x=>!B.has(x))};
+}
+async function insHash(buf){ try{ const h=await crypto.subtle.digest('SHA-256', buf); return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join(''); }catch(e){ return ''; } }
+const INS_LOG = [];   // 上傳與決定的紀錄（誰、何時、哪個檔案、雜湊、結果），給稽核看
+const insLog = (action, d, note) => INS_LOG.push({at:ymd(TODAY), by:L(role()), action, kind:d.kind||'', eff:d.eff||'', file:d.fileName||'', hash:d.hash||'', note:note||''});
+function insActivate(d){
+  const live=insLive(d.kind), same=live.find(v=>v.eff===d.eff), prev=live.filter(v=>v.eff<d.eff).sort((a,b)=>a.eff<b.eff?1:-1)[0];
+  if(same){ same.void={by:L(role()), at:ymd(TODAY), reason:'被新上傳的同一生效日版本取代'}; }
+  const base=same||prev, ex=d.extras&&d.extras.partTime.length===2&&d.extras.low.length>=10 ? d.extras : base&&base.partTime ? {partTime:base.partTime, low:base.low} : null;
+  const v={id:d.kind+'-'+d.eff+'-u'+(state.insSeq=(state.insSeq||0)+1), eff:d.eff, doc:d.doc, file:d.fileName, rows:d.rows, src:'upload', hash:d.hash||'', at:ymd(TODAY), by:L(role())};
+  if(d.kind==='labor'&&ex){ v.partTime=ex.partTime; v.low=ex.low; }
+  INS_TABLES[d.kind].push(v); insLog('啟用',d,same?'取代同一生效日的舊版':'新增版本'); state.insDraft=null; return v;
 }
 /* 勞保：部分工時且薪資低於最低工資者（分級表備註二、三）：11,100／12,540 兩級，再往上依備註二各級，超過最後一級改依第 1 級 */
 function insLaborGrade(ver, pay, partTime){
@@ -2386,7 +2479,7 @@ function secIns(p, rec){
       <div class="tile"><span class="k">${esc(both('勞退提繳','Pension contribution'))}</span><span class="v" style="font-size:17px">${rec.pension}%</span><span class="d">${esc(both('雇主提繳；員工自提 '+rec.selfPension+'%','Employer; employee voluntary '+rec.selfPension+'%'))}</span></div>
       <div class="tile"><span class="k">${esc(both('狀態','Status'))}</span><span class="v" style="font-size:17px">${quit?esc(both('已退保','Withdrawn')):esc(both('投保中','Enrolled'))}</span><span class="d mono">${quit?quit.date:rec.ins[0].date}</span></div>
     </div>
-    ${cur.labor<gradeFor(p.salary,LABOR_GRADES)?`<div class="note q">${esc(both('投保薪資低於目前月薪對應級距，請確認是否需調整（高薪低報風險）。','Insured salary is below the grade for current pay — check whether an adjustment is due.'))}</div>`:''}
+    ${cur.labor<gradeFor(p.salary,insAmts('labor'))?`<div class="note q">${esc(both('投保薪資低於目前月薪對應級距，請確認是否需調整（高薪低報風險）。','Insured salary is below the grade for current pay — check whether an adjustment is due.'))}</div>`:''}
     <div class="eyebrow">${esc(both('加退保與調整紀錄','Enrollment history'))}</div>
     <div class="tablewrap"><table>
       <thead><tr><th>${bi('日期','Date')}</th><th>${bi('類別','Event')}</th><th>${bi('勞保級距','Labor grade')}</th><th>${bi('健保級距','Health grade')}</th><th>${bi('勞保自付','Labor share')}</th><th>${bi('健保自付','Health share')}</th><th>${bi('說明','Note')}</th></tr></thead>
@@ -2398,8 +2491,8 @@ function secIns(p, rec){
     ${addBox('ins', both('新增加退保／調整','Add enrollment event'), `<div class="row">
       ${fld('日期','Date','date','date','required value="'+ymd(TODAY)+'"')}
       ${sel('類別','Event','kind',INS_EVENT)}
-      <div><label>${esc(both('勞保投保薪資','Labor grade'))}</label><select name="labor">${LABOR_GRADES.map(g=>`<option ${g===gradeFor(p.salary,LABOR_GRADES)?'selected':''}>${g}</option>`).join('')}</select></div>
-      <div><label>${esc(both('健保投保金額','Health grade'))}</label><select name="health">${HEALTH_GRADES.map(g=>`<option ${g===gradeFor(p.salary,HEALTH_GRADES)?'selected':''}>${g}</option>`).join('')}</select></div>
+      <div><label>${esc(both('勞保投保薪資','Labor grade'))}</label><select name="labor">${insAmts('labor').map(g=>`<option ${g===gradeFor(p.salary,insAmts('labor'))?'selected':''}>${g}</option>`).join('')}</select></div>
+      <div><label>${esc(both('健保投保金額','Health grade'))}</label><select name="health">${insAmts('health').map(g=>`<option ${g===gradeFor(p.salary,insAmts('health'))?'selected':''}>${g}</option>`).join('')}</select></div>
       ${fld('眷屬人數','Dependants','dep','number','min="0" max="10" value="'+rec.dep+'"')}
     </div>${fld('說明','Note','note')}${fld('申報文件','Filing document','file','file','accept=".pdf,.jpg,.png"')}`)}
     <div class="legend">${esc(both('級距與費率為示意（勞保 12.5% × 20%、健保 5.17% × 30%，眷屬最多計 3 口），實際以勞保局、健保署公告為準。',
@@ -6254,7 +6347,7 @@ const NIGHT_FIELDS = [
 function calcDefaults(empId, month){
   if(!empId) return {empId:'', month, part:false, monthly:40000, hourly:PAY_CFG.minHourly, regH:0, wd1:0, wd2:0, rd1:0, rd2:0, rd3:0, hol:0,
     lv_sick:0, lv_personal:0, lv_family:0, lv_menstrual:0, lv_paid:0, lateMin:0, bonus:true, homeH:0, homeRate:PAY_CFG.minHourly, allow:0, visits:0, overN:0, aReward:0, incentive:0, settleComp:0, settleAnnual:0,
-    eve:0, night:0, eveRate:PAY_CFG.eveRate, nightRate:PAY_CFG.nightRate, nightInBase:PAY_CFG.nightInOTBase, laborG:gradeFor(40000,LABOR_GRADES), healthG:gradeFor(40000,HEALTH_GRADES), dep:0, selfPct:0, addAmt:0, dedAmt:0};
+    eve:0, night:0, eveRate:PAY_CFG.eveRate, nightRate:PAY_CFG.nightRate, nightInBase:PAY_CFG.nightInOTBase, laborG:gradeFor(40000,insAmts('labor')), healthG:gradeFor(40000,insAmts('health')), dep:0, selfPct:0, addAmt:0, dedAmt:0};
   const i=payInputs(empId, month), c={...i};
   DEDUCT_LEAVES.forEach(k=>c['lv_'+k]=i.leave[k]||0);
   c.lv_paid=Object.entries(i.leave).filter(([k])=>!DEDUCT_LEAVES.includes(k)).reduce((a,[,h])=>a+h,0);
@@ -6309,8 +6402,8 @@ function viewPayCalc(){
         <div class="row">${num('allow','專業加給（含在月薪內）','Professional allowance (within monthly pay)','NT$')}${num('visits','訪案數（每案 50）','Visits (50 each)','案')}${num('overN','超案數（每案 100）','Over-cases (100 each)','案')}${num('aReward','日照 A 碼獎勵','Day-care A-code reward','NT$')}${num('incentive','激勵獎金','Incentive bonus','NT$')}${num('settleComp','補休結算','Comp-time settlement','h')}${num('settleAnnual','特休結算','Annual-leave settlement','h')}</div>
         <div class="eyebrow">${esc(both('勞健保與勞退','Insurance & pension'))}</div>
         <div class="row">
-          <div><label>${esc(both('勞保投保薪資','Labor grade'))}</label><select name="laborG"><option value="0">${esc(both('未投保','None'))}</option>${LABOR_GRADES.map(g=>`<option ${g==c.laborG?'selected':''}>${g}</option>`).join('')}</select></div>
-          <div><label>${esc(both('健保投保金額','Health grade'))}</label><select name="healthG"><option value="0">${esc(both('未投保','None'))}</option>${HEALTH_GRADES.map(g=>`<option ${g==c.healthG?'selected':''}>${g}</option>`).join('')}</select></div>
+          <div><label>${esc(both('勞保投保薪資','Labor grade'))}</label><select name="laborG"><option value="0">${esc(both('未投保','None'))}</option>${insAmts('labor').map(g=>`<option ${g==c.laborG?'selected':''}>${g}</option>`).join('')}</select></div>
+          <div><label>${esc(both('健保投保金額','Health grade'))}</label><select name="healthG"><option value="0">${esc(both('未投保','None'))}</option>${insAmts('health').map(g=>`<option ${g==c.healthG?'selected':''}>${g}</option>`).join('')}</select></div>
           ${num('dep','健保眷屬','Dependants','')}
           <div><label>${esc(both('勞退自提','Voluntary pension'))} <span class="muted">(%)</span></label><input type="number" name="selfPct" value="${c.selfPct}" min="0" max="6" step="1"></div>
         </div>
@@ -6564,13 +6657,76 @@ function insRows(month){ const units=activeUnitIds(); return STAFF.filter(s=>uni
 const insTotals = rows => rows.reduce((a,r)=>{ const c=r.C; a.n++; a.lab.ee+=c.lab.ee; a.lab.er+=c.lab.er; a.hel.ee+=c.hel.ee; a.hel.er+=c.hel.er; a.pen.ee+=c.pen.ee; a.pen.er+=c.pen.er; a.occ+=c.occ.er||0; a.occN+=(c.occ.rate==null&&r.enrolled)?1:0; a.ee+=c.ee; a.er+=c.er; return a; },
   {n:0, lab:{ee:0,er:0}, hel:{ee:0,er:0}, pen:{ee:0,er:0}, occ:0, occN:0, ee:0, er:0});
 const pct = x => +(x*100).toFixed(2)+'%';
+
+function insDraftHtml(d){
+  const checks=insDraftChecks(d), allOk=checks.every(c=>c.ok), df=insDraftDiff(d), can_=payEdit();
+  const row=(r,i)=>`<tr><td class="num">${i}</td><td class="num">${r[0]==null?'—':money(r[0])}</td><td class="num">${r[1]==null?'—':money(r[1])}</td><td class="num"><b>${money(r[2])}</b></td></tr>`;
+  const R=d.rows, show=R.length>9?[...R.slice(0,5).map((r,i)=>row(r,i+1)), `<tr><td colspan="4" class="muted" style="text-align:center">⋯ ${R.length-8} ${esc(both('級省略','levels hidden'))} ⋯</td></tr>`, ...R.slice(-3).map((r,i)=>row(r,R.length-2+i))]:R.map((r,i)=>row(r,i+1));
+  return `<div class="card" style="box-shadow:none;border:1px solid var(--line-strong)" id="insDraft">
+    <div class="card-h"><h2 style="font-size:15px">${esc(both('讀取結果','Read result'))}：${esc(d.fileName)}</h2>${d.hash?`<span class="mono muted" style="font-size:11px">SHA-256 ${esc(d.hash.slice(0,16))}…</span>`:''}</div>
+    <div class="card-b" style="display:grid;grid-template-columns:minmax(0,1fr);gap:10px">
+      ${d.kind?`<div class="todostrip"><span class="chip acc">${esc(INS_KINDS[d.kind].table)}</span><span class="chip">${esc(d.doc)}</span><span class="chip">${R.length} ${esc(both('級','levels'))}</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"><label for="insEff"><b>${esc(both('生效日','Effective date'))}</b></label>
+        <input type="date" id="insEff" value="${esc(d.eff||'')}"${can_?'':' disabled'}>
+        ${d.effFrom&&d.effFrom!=='公告內文'&&d.effFrom!=='人資填寫'?`<label class="chip ${d.effOk?'ok':'warn'}"><input type="checkbox" id="insEffOk"${d.effOk?' checked':''}${can_?'':' disabled'}> ${esc(both('我確認這個生效日正確（來源：'+d.effFrom+'）','I confirm this date (from: '+d.effFrom+')'))}</label>`:''}</div>`:''}
+      <div class="eyebrow">${esc(both('自動檢查','Automatic checks'))}</div>
+      <ul style="margin:0;padding-left:0;list-style:none;font-size:13px;line-height:1.8">${checks.map(c=>`<li>${!c.ok?'<span class="chip crit">✗</span>':c.warn?'<span class="chip warn">!</span>':'<span class="chip ok">✓</span>'} ${esc(c.zh)}</li>`).join('')}</ul>
+      ${df&&df.base?`<div class="eyebrow">${esc(both('和現行版本比對','Compared with the version in force'))}</div>
+        <div class="note ${df.identical?'':'q'}">${esc(df.identical
+          ? '和「'+df.base.file+'」（生效日 '+df.base.eff+'）完全相同'+(df.replace?'；生效日相同，確認後會取代它（舊版保留為「已作廢」）。':'。')
+          : '比較對象：「'+df.base.file+'」（生效日 '+df.base.eff+'）'+(df.replace?'，生效日相同，確認後會取代它（舊版保留為「已作廢」）':'')+'。級數 '+df.nBase+' → '+df.nNew+'；新增的金額：'+(df.added.length?df.added.map(x=>x.toLocaleString('en-US')).join('、'):'無')+'；移除的金額：'+(df.removed.length?df.removed.map(x=>x.toLocaleString('en-US')).join('、'):'無')+'。')}</div>`
+        : d.kind&&d.eff?`<div class="note">${esc(both('這是這種表的第一個版本，沒有可以比對的舊版。','This is the first version of this table; there is nothing to compare with.'))}</div>`:''}
+      ${R.length?`<div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('級','Level')}</th><th>${bi('薪資下限','From')}</th><th>${bi('薪資上限','To')}</th><th>${bi('月投保金額','Insured amount')}</th></tr></thead><tbody>${show.join('')}</tbody></table></div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="insConfirm" ${can_&&allOk?'':'disabled'}>${esc(both('確認啟用（從 '+(d.eff||'—')+' 起適用）','Confirm (applies from '+(d.eff||'—')+')'))}</button>
+        <button class="btn ghost" id="insDiscard">${esc(both('放棄','Discard'))}</button></div>
+      ${allOk?'':`<div class="muted" style="font-size:12.5px">${esc(both('有檢查沒過就不能啟用；如果是版面讀不全，請改用「貼上文字」，或確認檔案是不是政府公告的原檔。','Activation is blocked while any check fails. If the layout could not be read, try pasting the text or check that the file is the original notice.'))}</div>`}
+    </div></div>`;
+}
+function insUploadCard(){
+  const can_=payEdit(), d=state.insDraft;
+  return `<section class="card" id="insUp"><div class="card-h"><h2>${esc(both('上傳政府公告','Upload a government notice'))}</h2><span class="chip acc">${esc(both('只在你的瀏覽器裡讀取，不會上傳','Read in your browser only'))}</span></div>
+    <div class="card-b" style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px">
+      <div class="note">${esc(both('政府公告新的分級表時，把 PDF 上傳到這裡：系統會自動認出是勞保、健保還是勞退、抓出生效日與每一級的金額，檢查有沒有缺漏，並和現行版本比對；你核對過、按「確認啟用」才會生效，不會自動生效。生效後，薪資單、每位員工的保費與各處下拉選單都會依生效日自動換用新表，舊表保留。','Upload the new grade table PDF when it is published. The system recognises the table, reads the effective date and every level, checks it for gaps and compares it with the version in force. It only takes effect after you review it and press Confirm. Once active, payslips, per-employee premiums and every dropdown switch to the new table from its effective date; the old table is kept.'))}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">${can_?`<input type="file" id="insFile" accept=".pdf,.txt" aria-label="${esc(both('選擇政府公告的分級表（PDF）','Choose the grade table notice (PDF)'))}"> <button class="btn ghost mini" id="insPasteToggle">${esc(both('改貼上文字','Paste text instead'))}</button>`:`<span class="muted">${esc(both('此身分只能檢視，不能上傳。','View only — uploading is not allowed for this role.'))}</span>`}</div>
+      <div id="insPasteBox" ${state.insPaste?'':'hidden'}><textarea id="insPaste" rows="6" style="width:100%" placeholder="${esc(both('把分級表的文字貼在這裡（含標題與生效日）','Paste the table text here (with its title and effective date)'))}"></textarea>
+        <div style="margin-top:6px"><button class="btn mini" id="insPasteGo">${esc(both('讀取貼上的文字','Read the pasted text'))}</button></div></div>
+      <div id="insUpMsg" class="muted" style="font-size:12.5px" role="status">${esc(state.insMsg||'')}</div>
+      ${d?insDraftHtml(d):''}
+      ${INS_LOG.length?`<div><div class="eyebrow">${esc(both('上傳與決定紀錄','Upload and decision log'))}</div><div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('日期','Date')}</th><th>${bi('誰','Who')}</th><th>${bi('動作','Action')}</th><th>${bi('保險','Insurance')}</th><th>${bi('生效日','Effective')}</th><th>${bi('檔案','File')}</th><th>${bi('備註','Note')}</th></tr></thead><tbody>${INS_LOG.slice().reverse().map(l=>`<tr><td class="mono">${l.at}</td><td>${esc(l.by)}</td><td>${esc(l.action)}</td><td>${esc(l.kind?INS_KINDS[l.kind].zh:'')}</td><td class="mono">${l.eff}</td><td style="white-space:normal">${esc(l.file)}${l.hash?`<div class="mono muted" style="font-size:11px">${esc(l.hash.slice(0,16))}…</div>`:''}</td><td style="white-space:normal">${esc(l.note)}</td></tr>`).join('')}</tbody></table></div></div>`:''}
+    </div></section>`;
+}
+function insRateCard(){
+  const can_=payEdit(), rs=INS_RATES.slice().sort((a,b)=>a.eff<b.eff?-1:1);
+  return `<section class="card" id="insRates"><div class="card-h"><h2>${esc(both('費率版本','Rate versions'))}</h2></div>
+    <div class="card-b" style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px">
+      <div class="note">${esc(both('費率不在分級表的公告裡，政府另外公告（例如勞保費率每年調整）。公告有變時，在這裡新增一個有生效日的版本；沒有查證過的請不要勾「已查證」，畫面與計算明細會標出來。','Rates are not part of the grade-table notices; the government announces them separately. When they change, add a version with an effective date here. Leave “verified” unticked if you have not checked it — screens and workings will say so.'))}</div>
+      <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('生效日','Effective')}</th><th>${bi('勞保 普通事故＋就保','Labor')}</th><th>${bi('健保 費率／眷口數','Health')}</th><th>${bi('勞退 雇主','Pension er.')}</th><th>${bi('依據','Basis')}</th><th>${bi('狀態','Status')}</th><th></th></tr></thead>
+        <tbody>${rs.map((r,i)=>`<tr class="${r.void?'muted':''}"><td class="mono">${r.eff}</td><td class="num">${pct(r.labor.ord)} + ${pct(r.labor.emp)} = ${pct(r.labor.ord+r.labor.emp)}</td><td class="num">${pct(r.health.rate)} / ${r.health.avgDep}</td><td class="num">${pct(r.pension.er)}</td>
+          <td style="white-space:normal;font-size:12px">${esc(r.src.join('；'))}${r.by?`<div class="muted" style="font-size:11px">${esc(r.at)} · ${esc(r.by)}</div>`:''}</td>
+          <td>${r.void?`<span class="chip">${esc(both('已作廢','Void'))}</span><div class="muted" style="font-size:11px">${esc(r.void.reason)}</div>`:r.ok?`<span class="chip ok">${esc(both('已查證','Verified'))}</span>`:`<span class="chip warn">${esc(both('尚未查證','Not verified'))}</span>`}</td>
+          <td>${can_&&!r.void&&r.by?`<button class="btn ghost mini" data-insvoid="r:${r.eff}">${esc(both('作廢','Void'))}</button>`:''}</td></tr>`).join('')}</tbody></table></div>
+      ${can_?`<form id="insRateForm" class="frm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;align-items:end">
+        <div><label>${esc(both('生效日','Effective'))}</label><input type="date" name="eff" required></div>
+        <div><label>${esc(both('勞保普通事故 %','Labor ordinary %'))}</label><input type="number" name="ord" step="0.01" min="0" max="30" required placeholder="11.5"></div>
+        <div><label>${esc(both('就業保險 %','Employment %'))}</label><input type="number" name="emp" step="0.01" min="0" max="10" required placeholder="1"></div>
+        <div><label>${esc(both('健保費率 %','Health rate %'))}</label><input type="number" name="health" step="0.01" min="0" max="15" required placeholder="5.17"></div>
+        <div><label>${esc(both('平均眷口數','Avg. dependants'))}</label><input type="number" name="dep" step="0.01" min="0" max="3" required placeholder="0.56"></div>
+        <div><label>${esc(both('勞退雇主 %','Pension er. %'))}</label><input type="number" name="pen" step="0.01" min="6" max="30" required placeholder="6"></div>
+        <div style="grid-column:1/-1"><label>${esc(both('依據（公告名稱、文號或網址，必填）','Basis (notice, number or link — required)'))}</label><input name="src" required maxlength="200" style="width:100%"></div>
+        <div><label class="chip"><input type="checkbox" name="ok"> ${esc(both('我已對照公告查證','I checked it against the notice'))}</label></div>
+        <div><button class="btn" type="submit">${esc(both('新增費率版本','Add rate version'))}</button></div></form>`:''}
+    </div></section>`;
+}
 function viewPayIns(){
   const month=insMonthNow(), rows=insRows(month), T=insTotals(rows), R=insRate(month), can_=payEdit();
   const units=[...new Set(rows.map(r=>r.s.unit))].map(u=>ALL_UNITS.find(x=>x.id===u));
   const verRow=kind=>{ const cur=insVer(kind,month), all=INS_TABLES[kind].slice().sort((a,b)=>a.eff<b.eff?-1:1);
-    return all.map(v=>{ const first=v.rows[0][2], last=v.rows[v.rows.length-1][2], st=v===cur?(v.eff<=insDate(month)?'使用中':'最早版本（此月份之前無版本）'):v.eff>insDate(month)?'已公布，尚未生效':'已被新版取代';
-      return `<tr class="${v===cur?'':'muted'}"><td>${esc(both(INS_KINDS[kind].zh,INS_KINDS[kind].en))}</td><td class="mono">${v.eff}</td><td style="white-space:normal">${esc(v.doc)}<div class="muted" style="font-size:11px">${esc(v.file)}</div></td>
-        <td class="num">${v.rows.length}</td><td class="num">${money(first)} – ${money(last)}</td><td><span class="chip ${v===cur?'ok':''}">${esc(st)}</span></td></tr>`; }).join(''); };
+    return all.map(v=>{ const first=v.rows[0][2], last=v.rows[v.rows.length-1][2], st=v.void?'已作廢':v===cur?(v.eff<=insDate(month)?'使用中':'最早版本（此月份之前無版本）'):v.eff>insDate(month)?'已公布，尚未生效':'已被新版取代';
+      const from=v.src==='upload'?both('人資上傳 ','Uploaded ')+v.at+' · '+v.by+(v.hash?' · SHA-256 '+v.hash.slice(0,10)+'…':''):both('需求端提供的公告','Supplied by the requester');
+      return `<tr class="${v===cur&&!v.void?'':'muted'}"><td>${esc(both(INS_KINDS[kind].zh,INS_KINDS[kind].en))}</td><td class="mono">${v.eff}</td><td style="white-space:normal">${esc(v.doc)}<div class="muted" style="font-size:11px">${esc(v.file)}</div><div class="muted" style="font-size:11px">${esc(from)}</div></td>
+        <td class="num">${v.rows.length}</td><td class="num">${money(first)} – ${money(last)}</td><td><span class="chip ${v===cur&&!v.void?'ok':''}">${esc(st)}</span>${v.void?`<div class="muted" style="font-size:11px">${esc(v.void.reason)}</div>`:''}</td>
+        <td>${can_&&!v.void&&v.src==='upload'?`<button class="btn ghost mini" data-insvoid="v:${kind}:${v.id}">${esc(both('作廢','Void'))}</button>`:''}</td></tr>`; }).join(''); };
   const emp=r=>{ const c=r.C;
     return `<tr data-insemp="${r.s.id}" style="cursor:pointer"><td>${esc(empName(r.s.id))} <span class="muted mono" style="font-size:11px">${r.s.id}</span></td><td>${esc(unit(r.s.unit).zh)}</td>
       <td class="num">${money(r.basis)}</td>
@@ -6586,8 +6742,8 @@ function viewPayIns(){
   return `<div class="grid">
     <section class="card" id="insVers"><div class="card-h"><h2>${esc(both('分級表版本與費率','Grade-table versions and rates'))}</h2><span class="mono muted" style="font-size:12px">${month}</span></div>
       <div class="card-b" style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px">
-        <div class="note">${esc(both('系統依薪資月份自動選用當時有效的分級表與費率；政府公告新版時，上傳新表就會從生效日起自動套用（下一批功能）。表格資料取自需求端 11/19 提供的政府公告。','The system picks the grade tables and rates in force for the pay month. When the government publishes a new table, uploading it will apply from its effective date (coming next). The data comes from the official notices supplied on 19 Nov.'))}</div>
-        <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('保險','Insurance')}</th><th>${bi('生效日','Effective')}</th><th>${bi('公告文號與檔案','Notice and file')}</th><th>${bi('級數','Levels')}</th><th>${bi('投保金額範圍','Range')}</th><th>${bi('狀態','Status')}</th></tr></thead>
+        <div class="note">${esc(both('系統依薪資月份自動選用當時有效的分級表與費率；政府公告新版時，到下面「上傳政府公告」上傳，確認後就會從生效日起自動套用。表格資料取自需求端 11/19 提供的政府公告。','The system picks the grade tables and rates in force for the pay month. When the government publishes a new table, upload it below and, once confirmed, it applies from its effective date. The data comes from the official notices supplied on 19 Nov.'))}</div>
+        <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('保險','Insurance')}</th><th>${bi('生效日','Effective')}</th><th>${bi('公告文號與檔案','Notice and file')}</th><th>${bi('級數','Levels')}</th><th>${bi('投保金額範圍','Range')}</th><th>${bi('狀態','Status')}</th><th></th></tr></thead>
           <tbody>${['labor','health','pension'].map(verRow).join('')}</tbody></table></div>
         <div><div class="eyebrow">${esc(both('這個月適用的費率（生效日 '+R.eff+'）','Rates in force (effective '+R.eff+')'))} ${R.ok?`<span class="chip ok">${esc(both('已查證','Verified'))}</span>`:`<span class="chip warn">${esc(both('尚未查證','Not yet verified'))}</span>`}</div>
           <div class="todostrip"><span class="chip">${esc(both('勞保','Labor'))} ${pct(R.labor.ord+R.labor.emp)}（${pct(R.labor.ord)}＋${esc(both('就保','emp.'))} ${pct(R.labor.emp)}）· ${esc(both('個人','you'))} ${pct(R.labor.ee)} / ${esc(both('雇主','employer'))} ${pct(R.labor.er)}</span>
@@ -6599,6 +6755,8 @@ function viewPayIns(){
           <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('單位','Unit')}</th><th>${bi('行業別費率 %','Industry rate %')}</th><th>${bi('上下班災害費率 %','Commuting rate %')}</th></tr></thead>
             <tbody>${units.map(u=>`<tr><td>${esc(u.zh)}</td><td>${occCell(u,'industry')}</td><td>${occCell(u,'commute')}</td></tr>`).join('')}</tbody></table></div></div>
       </div></section>
+    ${insUploadCard()}
+    ${insRateCard()}
     <section class="card" id="insRun"><div class="card-h"><h2>${esc(both('每位員工的投保級距與保費','Grades and premiums per employee'))}</h2>
       <span class="ulabel" style="margin-left:10px">${esc(both('月份','Month'))}</span> <select id="insMonth">${PAY_MONTHS.map(m=>`<option ${m===month?'selected':''}>${m}</option>`).join('')}</select>
       <div class="spacer"></div><button class="btn mini" data-insxlsx>${esc(both('匯出核對 Excel','Export for checking'))}</button></div>
@@ -6677,6 +6835,29 @@ function insSheets(month){
 }
 BINDERS['pay:ins']=function(){
   const sm=document.getElementById('insMonth'); if(sm) sm.onchange=()=>{ state.insMonth=sm.value; render(); };
+  const fileIn=document.getElementById('insFile');
+  const readDraft=async(getter,name)=>{ state.insMsg=''; try{ const {text,buf}=await getter(); const d=insParseText(text,name); d.hash=buf?await insHash(buf):''; state.insDraft=d; insLog('讀取',d,d.kind?'等待人資確認':'認不出表格'); }catch(e){ state.insDraft=null; state.insMsg='讀取失敗：'+(e&&e.message||e); } render(); };
+  if(fileIn) fileIn.onchange=()=>{ const f=fileIn.files[0]; if(!f||!payEdit()) return; const m=document.getElementById('insUpMsg'); if(m) m.textContent=both('讀取中…','Reading…');
+    readDraft(async()=>{ const buf=await f.arrayBuffer(); const pdf=/\.pdf$/i.test(f.name)||f.type==='application/pdf'; return {buf, text: pdf?await insPdfText(buf):new TextDecoder().decode(buf)}; }, f.name); };
+  const pt=document.getElementById('insPasteToggle'); if(pt) pt.onclick=()=>{ state.insPaste=!state.insPaste; document.getElementById('insPasteBox').hidden=!state.insPaste; };
+  const pg=document.getElementById('insPasteGo'); if(pg) pg.onclick=()=>{ const t=document.getElementById('insPaste').value; if(!t.trim()||!payEdit()) return; readDraft(async()=>({buf:new TextEncoder().encode(t).buffer, text:t}), '貼上的文字'); };
+  const ef=document.getElementById('insEff'); if(ef) ef.onchange=()=>{ const d=state.insDraft; if(!d||!payEdit()) return; d.eff=ef.value; d.effFrom='人資填寫'; d.effOk=!!ef.value; render(); };
+  const eo=document.getElementById('insEffOk'); if(eo) eo.onchange=()=>{ const d=state.insDraft; if(!d||!payEdit()) return; d.effOk=eo.checked; render(); };
+  const cf=document.getElementById('insConfirm'); if(cf) cf.onclick=()=>{ const d=state.insDraft; if(!d||!payEdit()||insDraftChecks(d).some(c=>!c.ok)) return; const v=insActivate(d);
+    toast(both('已啟用 '+INS_KINDS[d.kind].zh+'分級表（'+v.eff+' 起）；薪資單與各處選單會依生效日自動換表','Activated '+INS_KINDS[d.kind].en+' table (from '+v.eff+')')); render(); };
+  const dc=document.getElementById('insDiscard'); if(dc) dc.onclick=()=>{ const d=state.insDraft; if(d) insLog('放棄',d,'人資沒有啟用'); state.insDraft=null; state.insMsg=''; render(); };
+  document.querySelectorAll('[data-insvoid]').forEach(b=>b.onclick=()=>{ if(!payEdit()) return; const [t,a,b2]=b.dataset.insvoid.split(':');
+    const reason=(window.prompt(both('作廢的原因（至少 5 個字）：','Reason for voiding (at least 5 characters):'))||'').trim(); if(reason.length<5){ toast(both('請寫下作廢的原因（至少 5 個字）','Please give a reason (at least 5 characters)')); return; }
+    const v=t==='v'?INS_TABLES[a].find(x=>x.id===b2):INS_RATES.find(x=>x.eff===a&&!x.void);
+    if(!v) return; v.void={by:L(role()), at:ymd(TODAY), reason};
+    INS_LOG.push({at:ymd(TODAY), by:L(role()), action:'作廢', kind:t==='v'?a:'', eff:v.eff, file:t==='v'?v.file:'費率版本', hash:v.hash||'', note:reason}); toast(both('已作廢，舊紀錄保留','Voided; the record is kept')); render(); });
+  const rf=document.getElementById('insRateForm'); if(rf) rf.onsubmit=e=>{ e.preventDefault(); if(!payEdit()) return; const fd=new FormData(rf), eff=String(fd.get('eff'));
+    if(insRatesLive().some(r=>r.eff===eff)){ toast(both('這個生效日已經有費率版本，請先作廢它再新增','A rate version already exists for this date; void it first')); return; }
+    const f=k=>+fd.get(k), src=String(fd.get('src')).trim(), ok=fd.get('ok')==='on';
+    INS_RATES.push({eff, ok, labor:{ord:f('ord')/100, emp:f('emp')/100, ee:0.2, er:0.7, gov:0.1}, health:{rate:f('health')/100, ee:0.3, er:0.6, gov:0.1, avgDep:f('dep'), maxDep:3}, pension:{er:f('pen')/100, eeMax:0.06},
+      src:[src], note:ok?'人資新增並對照公告查證。':'人資新增，尚未查證。', by:L(role()), at:ymd(TODAY)});
+    INS_LOG.push({at:ymd(TODAY), by:L(role()), action:'新增費率', kind:'', eff, file:'費率版本', hash:'', note:src+(ok?'（已查證）':'（尚未查證）')}); toast(both('已新增費率版本，從 '+eff+' 起適用','Rate version added, effective '+eff)); render(); };
+
   document.querySelectorAll('[data-insemp]').forEach(r=>r.onclick=()=>openInsAudit(r.dataset.insemp, insMonthNow()));
   const x=document.querySelector('[data-insxlsx]'); if(x) x.onclick=()=>saveBlob(buildXlsxBook(insSheets(insMonthNow())), `勞健退核對_${insMonthNow()}.xlsx`);
   document.querySelectorAll('[data-insocc]').forEach(i=>i.onchange=()=>{ if(!payEdit()) return; const [u,k]=i.dataset.insocc.split(':'), v=i.value.trim();

@@ -3766,3 +3766,155 @@ test.describe('11/19 meeting: labor / health / pension grade tables and premiums
   });
 });
 
+/* ================================================================ */
+/* 11/19：上傳政府公告自動讀取（真實的政府 PDF）、預覽、檢查、比對、確認後生效、作廢與紀錄 */
+test.describe('11/19 meeting: upload the government notice and let the system read it', () => {
+  const GOV = path.resolve(__dirname, 'fixtures/gov');
+  const FILES = { labor115: '勞工保險投保薪資分級表_115.1.1.pdf', labor116: '勞工保險投保薪資分級表_116.1.1.pdf', health: '全民健康保險投保金額分級表115.01.01.pdf', pension: '勞工退休金月提繳分級表1150101.pdf' };
+  const openIns = async (page, role = 'hr') => { await openPortal(page); await setRole(page, role); await go(page, 'pay', 'ins'); };
+  const upload = async (page, key) => { await page.setInputFiles('#insFile', { name: FILES[key], mimeType: 'application/pdf', buffer: fs.readFileSync(path.join(GOV, FILES[key])) }); await expect(page.locator('#insDraft')).toBeVisible(); };
+  const paste = async (page, text) => { if (await page.locator('#insPaste').isHidden()) await page.click('#insPasteToggle'); await page.fill('#insPaste', text); await page.click('#insPasteGo'); await expect(page.locator('#insDraft')).toBeVisible(); };
+  /* 自己編的小表（只測流程用）：每行 第 N 級 區間 金額 */
+  const mini = (eff, amts = [32000, 33300, 34800, 36300, 38200, 40100]) => ['勞工保險投保薪資分級表', eff ? `自 ${eff} 施行` : ''].concat(amts.map((a, i) => {
+    const lo = i ? amts[i - 1] + 1 : null; return i === 0 ? `第 1 級 ${a.toLocaleString('en-US')} 元以下 ${a.toLocaleString('en-US')} 元` : i === amts.length - 1 ? `第 ${i + 1} 級 ${lo.toLocaleString('en-US')} 元以上 ${a.toLocaleString('en-US')} 元` : `第 ${i + 1} 級 ${lo.toLocaleString('en-US')} 元至 ${a.toLocaleString('en-US')} 元 ${a.toLocaleString('en-US')} 元`; })).join('\n');
+
+  test('the four real notices are read correctly: type, effective date, notice number, every level', async ({ page }) => {
+    await openIns(page);
+    const want = { labor115: ['勞工保險投保薪資分級表', '1140091863', '11 級'], labor116: ['勞工保險投保薪資分級表', '1150092891', '10 級'], pension: ['勞工退休金月提繳分級表', '1140153598', '62 級'], health: ['全民健康保險投保金額分級表', '檔案內文沒有公告文號', '58 級'] };
+    for (const [key, words] of Object.entries(want)) {
+      await upload(page, key);
+      for (const w of words) await expect(page.locator('#insDraft')).toContainText(w);
+      if (key === 'health') { await expect(page.locator('#insDraft .chip.crit')).toHaveCount(1); await page.check('#insEffOk'); }   // 唯一沒過的是「生效日要人資確認」
+      await expect(page.locator('#insDraft .chip.crit')).toHaveCount(0);                    // 自動檢查全部通過
+      await expect(page.locator('#insDraft')).toContainText('完全相同');                       // 和已載入的版本逐級相同
+      await page.click('#insDiscard');
+    }
+  });
+
+  test('what is read equals the official tables level by level (read through the page, compared with the loaded versions)', async ({ page }) => {
+    await openIns(page);
+    const out = {};
+    for (const [key, kind, i] of [['labor115', 'labor', 0], ['labor116', 'labor', 1], ['health', 'health', 0], ['pension', 'pension', 0]]) {
+      await upload(page, key);
+      out[key] = await page.evaluate(([k, idx]) => ({ same: JSON.stringify(state.insDraft.rows) === JSON.stringify(INS_TABLES[k][idx].rows), n: state.insDraft.rows.length, eff: state.insDraft.eff, low: state.insDraft.extras && state.insDraft.extras.low.length }), [kind, i]);
+      await page.click('#insDiscard');
+    }
+    expect(out.labor115).toEqual({ same: true, n: 11, eff: '2026-01-01', low: 15 });
+    expect(out.labor116).toEqual({ same: true, n: 10, eff: '2027-01-01', low: 16 });
+    expect(out.health).toMatchObject({ same: true, n: 58, eff: '2026-01-01' });
+    expect(out.pension).toMatchObject({ same: true, n: 62, eff: '2026-01-01' });
+  });
+
+  test('the health notice does not state its effective date: it is taken from the file name and must be confirmed', async ({ page }) => {
+    await openIns(page); await upload(page, 'health');
+    await expect(page.locator('#insEff')).toHaveValue('2026-01-01');
+    await expect(page.locator('#insDraft')).toContainText('檔名');
+    await expect(page.locator('#insConfirm')).toBeDisabled();                           // 沒勾「我確認」不能啟用
+    await page.check('#insEffOk');
+    await expect(page.locator('#insConfirm')).toBeEnabled();
+    const guess = await page.evaluate(() => ['1150101', '115.01.01', '115_1_1', '(116.1.1)', '勞退1170615版'].map(n => insParseText('勞工保險投保薪資分級表', n).eff));
+    expect(guess).toEqual(['2026-01-01', '2026-01-01', '2026-01-01', '2027-01-01', '2028-06-15']);
+  });
+
+  test('uploading the same notice again replaces it; the old version is kept as void and the numbers do not change', async ({ page }) => {
+    await openIns(page);
+    const before = await page.evaluate(() => insTotals(insRows(insMonthNow())).er);
+    await upload(page, 'labor115');
+    await expect(page.locator('#insDraft')).toContainText('確認後會取代它');
+    await page.click('#insConfirm');
+    await expect(page.locator('.toast')).toContainText('已啟用');
+    const r = await page.evaluate(() => ({ ids: INS_TABLES.labor.map(v => v.id + (v.void ? ':void' : '')), er: insTotals(insRows(insMonthNow())).er, up: INS_TABLES.labor.find(v => v.src === 'upload') }));
+    expect(r.ids.filter(x => x.endsWith(':void'))).toHaveLength(1);
+    expect(r.er).toBe(before);
+    expect(r.up.hash).toMatch(/^[0-9a-f]{64}$/);                                         // 留下原始檔的 SHA-256
+    await expect(page.locator('#insVers')).toContainText('已作廢');
+    await expect(page.locator('#insVers')).toContainText('人資上傳');
+    await expect(page.locator('#insUp')).toContainText('啟用');                            // 上傳與決定紀錄
+  });
+
+  test('a new table takes effect from its date: earlier months keep the old table; dropdowns and suggested grades follow', async ({ page }) => {
+    await openIns(page);
+    await paste(page, mini('117 年 1 月 1 日'));
+    await expect(page.locator('#insDraft')).toContainText('2028-01-01');
+    await expect(page.locator('#insDraft')).toContainText('沒讀到備註二、三');                  // 提醒，但不擋
+    await expect(page.locator('#insConfirm')).toBeEnabled();
+    await page.click('#insConfirm');
+    const r = await page.evaluate(() => ({ a: insVer('labor', '2027-12').eff, b: insVer('labor', '2028-01').eff, g: insGrade(insVer('labor', '2028-03'), 31000).amt, old: insGrade(insVer('labor', '2027-12'), 31000).amt,
+      carried: insVer('labor', '2028-03').partTime }));
+    expect(r).toMatchObject({ a: '2027-01-01', b: '2028-01-01', g: 32000, old: 31800 });
+    expect(r.carried).toEqual([11100, 12540]);                                           // 沒讀到備註時沿用上一版
+    // 一份從 2026-06 起適用的表：目前月份（2026-09）的版本改了，下拉選單與建議投保薪資都跟著改
+    const before = await page.evaluate(() => [insAmts('labor').length, insRowFor(person('A004'), '2026-09').sugL.amt]);
+    expect(before).toEqual([11, 38200]);
+    await paste(page, mini('115 年 6 月 1 日', [30000, 31000, 33000, 35000, 37000, 41000]));
+    await page.click('#insConfirm');
+    const after = await page.evaluate(() => [insAmts('labor'), insRowFor(person('A004'), '2026-09').sugL.amt, insRowFor(person('A004'), '2026-05').sugL.amt]);
+    expect(after).toEqual([[30000, 31000, 33000, 35000, 37000, 41000], 41000, 38200]);   // 薪資 38,000：新表 41,000；5 月還是舊表 38,200
+  });
+
+  test('bad files are blocked: not a table, a gap in the levels, or a missing date', async ({ page }) => {
+    await openIns(page);
+    await paste(page, '這是一段不相干的文字');
+    await expect(page.locator('#insDraft')).toContainText('認不出這是哪一種分級表');
+    await expect(page.locator('#insConfirm')).toBeDisabled();
+    await page.click('#insDiscard');
+    await paste(page, mini('', [32000, 33300, 34800, 36300, 38200, 40100]).replace('33,301 元至', '33,305 元至'));   // 第 3 級下限接不起來
+    await expect(page.locator('#insDraft')).toContainText('接不起來');
+    await expect(page.locator('#insConfirm')).toBeDisabled();
+    await page.click('#insDiscard');
+    await paste(page, mini(''));                                                          // 內文與檔名都沒有生效日
+    await expect(page.locator('#insDraft')).toContainText('請填入生效日');
+    await expect(page.locator('#insConfirm')).toBeDisabled();
+    await page.fill('#insEff', '2029-01-01'); await page.locator('#insEff').dispatchEvent('change');
+    await expect(page.locator('#insConfirm')).toBeEnabled();                              // 人資親手填的日期就算確認
+  });
+
+  test('voiding an uploaded version needs a reason and puts the previous version back in force; everything is logged', async ({ page }) => {
+    await openIns(page);
+    await paste(page, mini('自 118 年 1 月 1 日施行'));
+    await page.click('#insConfirm');
+    expect(await page.evaluate(() => insVer('labor', '2029-05').eff)).toBe('2029-01-01');
+    page.once('dialog', d => d.accept('短'));
+    await page.click('[data-insvoid^="v:labor"]');
+    await expect(page.locator('.toast')).toContainText('至少 5 個字');
+    expect(await page.evaluate(() => insVer('labor', '2029-05').eff)).toBe('2029-01-01');   // 原因太短：沒有作廢
+    page.once('dialog', d => d.accept('這份是測試用的錯誤版本'));
+    await page.click('[data-insvoid^="v:labor"]');
+    expect(await page.evaluate(() => insVer('labor', '2029-05').eff)).toBe('2027-01-01');   // 回到上一版
+    expect(await page.evaluate(() => INS_LOG.map(l => l.action))).toEqual(['讀取', '啟用', '作廢']);
+    await expect(page.locator('#insUp')).toContainText('這份是測試用的錯誤版本');
+  });
+
+  test('HR can add a rate version with a basis; unverified ones are marked and used from their date', async ({ page }) => {
+    await openIns(page);
+    await page.fill('#insRateForm [name="eff"]', '2028-01-01');
+    await page.fill('#insRateForm [name="ord"]', '12.5'); await page.fill('#insRateForm [name="emp"]', '1');
+    await page.fill('#insRateForm [name="health"]', '5.17'); await page.fill('#insRateForm [name="dep"]', '0.55'); await page.fill('#insRateForm [name="pen"]', '6');
+    await page.fill('#insRateForm [name="src"]', '勞保局 117 年費率公告（測試）');
+    await page.click('#insRateForm button[type="submit"]');
+    await expect(page.locator('.toast')).toContainText('已新增費率版本');
+    const r = await page.evaluate(() => ({ ok: insRate('2028-02').ok, p: insCalc('2028-02', { labor: 30000 }).lab.ee, dep: insRate('2028-02').health.avgDep, before: insRate('2027-12').eff }));
+    expect(r).toEqual({ ok: false, p: 810, dep: 0.55, before: '2027-01-01' });             // 30,000 × 13.5% × 20% = 810；沒勾查證就標「尚未查證」
+    await expect(page.locator('#insRates')).toContainText('勞保局 117 年費率公告（測試）');
+    await page.fill('#insRateForm [name="eff"]', '2028-01-01');                           // 同一天已經有了：擋下
+    await page.fill('#insRateForm [name="ord"]', '12'); await page.fill('#insRateForm [name="emp"]', '1'); await page.fill('#insRateForm [name="health"]', '5.17');
+    await page.fill('#insRateForm [name="dep"]', '0.56'); await page.fill('#insRateForm [name="pen"]', '6'); await page.fill('#insRateForm [name="src"]', 'x');
+    await page.click('#insRateForm button[type="submit"]');
+    await expect(page.locator('.toast')).toContainText('已經有費率版本');
+  });
+
+  test('only HR (editor) can upload: the manager sees the result but has no upload, and the demo has no other role with it', async ({ page }) => {
+    await openIns(page, 'manager');
+    await expect(page.locator('#insFile')).toHaveCount(0);
+    await expect(page.locator('#insRateForm')).toHaveCount(0);
+    await expect(page.locator('#insVers')).toBeVisible();
+    await setRole(page, 'employee');
+    await expect(page.locator('[data-mod="pay"]')).toHaveCount(0);
+  });
+
+  test('the guide records the upload', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['上傳政府公告', '確認啟用', '作廢']) await expect(page.locator('#newv35')).toContainText(w);
+  });
+});
+
