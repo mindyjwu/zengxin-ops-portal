@@ -531,6 +531,10 @@ const STAFF = RAW.map(r=>({
   mobile:'09'+LEGACY_NO[r[0]].slice(1,3)+'-'+LEGACY_NO[r[0]].slice(3)+'8-'+LEGACY_NO[r[0]].slice(2)+'1'
 }));
 STAFF.forEach(linkTitle);
+/* 部門 → 職稱（依組織圖）：新增員工時，選了部門，職稱選單只出現這個部門的職稱。預設值取自目前人員的「部門＋職稱」配對，HR 可在「組織架構設定」調整 */
+Object.values(TITLES).forEach(t=>{ t.depts=t.depts||[]; });
+RAW.forEach(r=>{ const t=TITLES[r[3]]; if(!t.depts.includes(r[4])) t.depts.push(r[4]); });
+const titlesFor = (dept, keep) => titleList(keep).filter(([k,v])=>(v.depts||[]).includes(dept)||k===keep);
 const person = id => STAFF.find(s=>s.id===id);
 /* 在職狀態（9/30 會議：在職、留職停薪、離職）。示範資料：兩位同仁帶有狀態，其餘皆在職 */
 const EMP_STATUS = {active:{zh:'在職',en:'Active',cls:'ok'}, loa:{zh:'留職停薪',en:'Unpaid leave of absence',cls:'warn'}, left:{zh:'離職',en:'Resigned',cls:''}};
@@ -1748,12 +1752,15 @@ const orgObj=(kind,key)=>kind==='title'?TITLES[key]:kind==='dept'?DEPTS[key]:ALL
 const orgUse=(kind,key)=>STAFF.filter(x=>kind==='title'?x.title===key:kind==='dept'?x.dept===key:x.unit===key).length;
 function orgCfgCard(){
   if(!canOrgCfg()) return '';
-  const head=k=>`<thead><tr><th>${bi('代號','Code')}</th><th>${bi('中文名稱','Chinese name')}</th><th>${bi('英文名稱','English name')}</th><th>${bi('使用中','In use')}</th><th>${k==='unit'?bi('旗下部門','Departments'):bi('狀態','Status')}</th></tr></thead>`;
+  const head=k=>`<thead><tr><th>${bi('代號','Code')}</th><th>${bi('中文名稱','Chinese name')}</th><th>${bi('英文名稱','English name')}</th><th>${bi('使用中','In use')}</th>${k==='title'?`<th>${bi('適用部門（新增員工時選了部門才會出現）','Departments (title shows after picking one)')}</th>`:''}<th>${k==='unit'?bi('旗下部門','Departments'):bi('狀態','Status')}</th></tr></thead>`;
   const names=(kind,key,o)=>`<td class="mono">${esc(key)}</td>
     <td><input data-orgcfg="${kind}" data-key="${esc(key)}" data-f="zh" value="${esc(o.zh)}" maxlength="20" lang="zh-Hant" aria-label="${esc(both('中文名稱','Chinese name')+' '+key)}"></td>
     <td><input data-orgcfg="${kind}" data-key="${esc(key)}" data-f="en" value="${esc(o.en)}" maxlength="40" aria-label="${esc(both('英文名稱','English name')+' '+key)}"></td>
     <td class="num">${orgUse(kind,key)}</td>`;
-  const listRows=(kind,obj)=>Object.entries(obj).map(([k,o])=>`<tr class="${o.off?'muted':''}">${names(kind,k,o)}
+  const titleDepts=(k,o)=>(o.depts=o.depts||[], `<td>${Object.entries(DEPTS).filter(([d,v])=>!v.off||o.depts.includes(d)).map(([d,v])=>{
+      const on=o.depts.includes(d), used=STAFF.some(x=>x.title===k&&x.dept===d);
+      return `<label class="chip" style="margin-right:6px"><input type="checkbox" data-orgtd="${esc(k)}:${d}" ${on?'checked':''} ${on&&used?'disabled title="'+esc(both('有人在用，不能移除','In use — cannot remove'))+'"':''}> ${esc(both(v.zh,v.en))}</label>`; }).join('')}</td>`);
+  const listRows=(kind,obj)=>Object.entries(obj).map(([k,o])=>`<tr class="${o.off?'muted':''}">${names(kind,k,o)}${kind==='title'?titleDepts(k,o):''}
     <td><button class="btn ghost mini" data-orgoff="${kind}:${esc(k)}">${esc(o.off?both('啟用','Enable'):both('停用','Retire'))}</button>${o.off?` <span class="chip">${esc(both('已停用','Retired'))}</span>`:''}</td></tr>`).join('');
   const unitRows=ALL_UNITS.map(u=>`<tr>${names('unit',u.id,u)}<td>${Object.entries(DEPTS).filter(([d,v])=>!v.off||u.depts.includes(d)).map(([d,v])=>{
       const on=u.depts.includes(d), used=STAFF.some(x=>x.unit===u.id&&x.dept===d);
@@ -1873,6 +1880,11 @@ BINDERS['ann:orgcfg']=function(){
     const [kind,key]=b.dataset.orgoff.split(':'), o=orgObj(kind,key); o.off=!o.off;
     done((o.off?'已停用 ':'已啟用 ')+L(o)+(o.off&&orgUse(kind,key)?'（'+orgUse(kind,key)+' 人使用中，照舊顯示）':''));
   });
+  document.querySelectorAll('[data-orgtd]').forEach(c=>c.onchange=()=>{
+    const [tk,d]=c.dataset.orgtd.split(':'), t=TITLES[tk];
+    if(c.checked){ if(!t.depts.includes(d)) t.depts.push(d); } else t.depts=t.depts.filter(x=>x!==d);
+    done((c.checked?'已讓「':'已讓「')+t.zh+(c.checked?'」出現在 ':'」不再出現在 ')+DEPTS[d].zh+' 的職稱選單');
+  });
   document.querySelectorAll('[data-orgud]').forEach(c=>c.onchange=()=>{
     const [uid,d]=c.dataset.orgud.split(':'), u=ALL_UNITS.find(x=>x.id===uid);
     if(c.checked){ if(!u.depts.includes(d)) u.depts.push(d); } else u.depts=u.depts.filter(x=>x!==d);
@@ -1883,8 +1895,8 @@ BINDERS['ann:orgcfg']=function(){
     if(!zh) return;
     if(dup(kind,'',zh)){ toast(both('已經有同名的'+orgKinds[kind].zh+'：'+zh,'That name is already used: '+zh)); return; }
     const obj=kind==='title'?TITLES:DEPTS, key=(kind==='title'?'t':'d')+(state.orgSeq=(state.orgSeq||0)+1);
-    obj[key]={zh,en};
-    done('已新增'+orgKinds[kind].zh+'：'+zh+(kind==='dept'?'（請在下面的「單位與旗下部門」勾選它屬於哪些單位，新增員工的部門選單才會出現）':''));
+    obj[key]=kind==='title'?{zh,en,depts:[]}:{zh,en};
+    done('已新增'+orgKinds[kind].zh+'：'+zh+(kind==='dept'?'（請在下面的「單位與旗下部門」勾選它屬於哪些單位，新增員工的部門選單才會出現）':'（請在職稱表勾選它適用哪些部門，新增員工選了部門才會出現）'));
   });
 };
 
@@ -2009,6 +2021,10 @@ function openAddEmp(){
   if(!can('editEmp')) return;
   const units=ALL_UNITS, u0=units[1].id;
   const deptOpts=u=>unit(u).depts.filter(d=>!DEPTS[d].off).map(d=>`<option value="${d}">${esc(both(DEPTS[d].zh,DEPTS[d].en))}</option>`).join('');
+  /* 選了部門，職稱選單只列這個部門的職稱（依組織架構設定）；部門沒有職稱時提示去設定 */
+  const titleOpts=d=>{ const l=titlesFor(d); return l.length ? l.map(([k,v])=>`<option value="${k}" ${k==='ca'?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')
+    : `<option value="">${esc(both('（這個部門還沒有設定職稱）','(no titles set for this department yet)'))}</option>`; };
+  const firstDept=u=>unit(u).depts.filter(d=>!DEPTS[d].off)[0];
   document.getElementById('overlay').innerHTML=`
     <div class="scrim" data-close></div>
     <aside class="drawer" role="dialog" aria-modal="true">
@@ -2022,7 +2038,7 @@ function openAddEmp(){
         </div>
         <div class="row">
           <div><label>${esc(both('部門','Department'))}</label><select name="dept" id="neDept">${deptOpts(u0)}</select></div>
-          <div><label>${esc(both('職稱','Title'))}</label><select name="title">${titleList().map(([k,v])=>`<option value="${k}" ${k==='ca'?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}</select></div>
+          <div><label>${esc(both('職稱','Title'))}</label><select name="title" id="neTitle" required>${titleOpts(firstDept(u0))}</select></div>
         </div>
         <div class="row">
           <div><label>${esc(both('姓名','Name'))}</label><input name="name" required maxlength="20"></div>
@@ -2037,7 +2053,9 @@ function openAddEmp(){
     </aside>`;
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{ closeOverlay(); render(); });
   const u=document.getElementById('neUnit');
-  u.onchange=()=>{ document.getElementById('neNo').value=nextEmpNo(u.value); document.getElementById('neDept').innerHTML=deptOpts(u.value); };
+  const dsel=document.getElementById('neDept'), tsel=document.getElementById('neTitle');
+  u.onchange=()=>{ document.getElementById('neNo').value=nextEmpNo(u.value); dsel.innerHTML=deptOpts(u.value); tsel.innerHTML=titleOpts(dsel.value); };
+  dsel.onchange=()=>{ tsel.innerHTML=titleOpts(dsel.value); };   // 部門 → 職稱連動
   document.getElementById('newEmpForm').onsubmit=e=>{
     e.preventDefault(); const fd=new FormData(e.target), unitId=fd.get('unit'), tk=fd.get('title');
     const id=nextEmpNo(unitId);

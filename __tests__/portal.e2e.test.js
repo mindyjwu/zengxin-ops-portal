@@ -3600,3 +3600,66 @@ test.describe('11/19 meeting: org settings drive every department / title / unit
   });
 });
 
+/* ================================================================ */
+/* 11/18 會議紀錄：新增員工時，選了部門，職稱選單自動連動該部門的職稱（依組織圖） */
+test.describe('11/19 meeting: department drives the title dropdown', () => {
+  const openAddEmp = async (page, role = 'hr') => { await openPortal(page); await setRole(page, role); await go(page, 'hr', 'emp'); await page.click('[data-newemp]'); };
+  const titles = page => page.locator('#neTitle option').allTextContents();
+
+  test('picking a department lists only that department’s titles, and switching company refreshes both', async ({ page }) => {
+    await openAddEmp(page);
+    expect(await page.inputValue('#neDept')).toBe('day');                              // 預設：協會的第一個部門
+    expect(await titles(page)).toEqual(['日照主管', '社工', '護理師', '照服員', '司機']);
+    await page.selectOption('#neDept', 'home');
+    expect(await titles(page)).toEqual(['居家服務督導', '居服員']);
+    await page.selectOption('#neDept', 'comm');
+    expect(await titles(page)).toEqual(['個案管理員']);
+    await page.selectOption('#neUnit', 'HQ');                                         // 換公司：部門與職稱一起更新
+    expect(await page.inputValue('#neDept')).toBe('exec');
+    expect(await titles(page)).toEqual(['老闆', '管理者']);
+    await page.selectOption('#neDept', 'adm');
+    expect(await titles(page)).toEqual(['人資', '教育訓練專員', '會計']);
+  });
+
+  test('HR sets which departments a title belongs to; the add-employee form follows', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'ann', 'orgcfg');
+    await page.check('[data-orgtd="rn:comm"]');                                        // 護理師也屬於社區整合型中心
+    await expect(page.locator('.toast')).toContainText('護理師');
+    await expect(page.locator('[data-orgtd="rn:day"]')).toBeDisabled();                 // 有人在用的配對不能拿掉
+    await page.fill('[data-orgadd="title"] input[name="zh"]', '行政助理');
+    await page.click('[data-orgadd="title"] button');
+    await expect(page.locator('.toast')).toContainText('勾選它適用哪些部門');
+    await go(page, 'hr', 'emp'); await page.click('[data-newemp]');
+    await page.selectOption('#neDept', 'comm');
+    expect(await titles(page)).toEqual(['個案管理員', '護理師']);                      // 新勾選的出現；新職稱還沒指定部門，不出現
+    await page.selectOption('#neDept', 'home');
+    expect(await titles(page)).not.toContain('行政助理');
+    await page.click('aside.drawer button.x');
+    await go(page, 'ann', 'orgcfg');
+    const key = await page.evaluate(() => Object.keys(TITLES).find(k => TITLES[k].zh === '行政助理'));
+    await page.check(`[data-orgtd="${key}:home"]`);
+    await go(page, 'hr', 'emp'); await page.click('[data-newemp]');
+    await page.selectOption('#neDept', 'home');
+    expect(await titles(page)).toContain('行政助理');
+  });
+
+  test('a department with no titles says so and cannot be submitted', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'ann', 'orgcfg');
+    await page.fill('[data-orgadd="dept"] input[name="zh"]', '營運企劃');
+    await page.click('[data-orgadd="dept"] button');
+    const key = await page.evaluate(() => Object.keys(DEPTS).find(k => DEPTS[k].zh === '營運企劃'));
+    await page.check(`[data-orgud="O2:${key}"]`);
+    await go(page, 'hr', 'emp'); await page.click('[data-newemp]');
+    await page.selectOption('#neUnit', 'O2'); await page.selectOption('#neDept', key);
+    await expect(page.locator('#neTitle option')).toHaveText('（這個部門還沒有設定職稱）');
+    await page.fill('#newEmpForm input[name="name"]', '測試新人');
+    await page.click('#newEmpForm button[type="submit"]');
+    await expect(page.locator('#newEmpForm')).toBeVisible();                            // 沒選到職稱，表單送不出去
+  });
+
+  test('the guide records the department-to-title link', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['部門→職稱', '適用部門']) await expect(page.locator('#newv35')).toContainText(w);
+  });
+});
+
