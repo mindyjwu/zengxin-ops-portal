@@ -277,6 +277,23 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] 新增員工 fills in the number by company (A011, B010, C004, H007; the next A012) and the new person works in payroll, attendance and reports; 系統設定 › 員工編號規則 changes the next number — *…add employee fills in the number…*; *…a new employee works in payroll…*; *…the employee-number rule is editable…*
 - [ ] 系統說明: mobile clock-in already works, only cloud storage is missing, API Token noted from the summary — *…system info says mobile clock-in works…*
 
+### Phase 12: Updates from the 11/19 meeting and after
+
+- [ ] 私人秘書: leave and attendance hours read “1天2小時” (1 day = 8 h), half hours keep one decimal (“1天2.5小時”); every form (leave, overtime, missed punch, others) jumps to 表單追蹤 after submitting; 補忘刷 lists the days with a missing punch in a dropdown and has “其他日期” for the rest.
+- [ ] 私人秘書 › 表單 › 表單簽核: a filter on every data column; “全選” ticks only the rows the filter shows; 核准勾選的 N 筆 asks once, then approves; single approve / reject still works.
+- [ ] 薪資計算 has 薪資試算, 薪資計算機, 月薪制, 時薪制, 拆帳制, 勞健退 and 版本與覆核; the three pay tabs follow the 薪資試算 permission (HR edits, manager and owner view).
+- [ ] 薪資計算 › 勞健退: each person shows the labor / health / pension grade and the employee and employer amounts, the click-through calculation names the table version; the table in force changes with the pay month; the unit totals add up; Excel export has three sheets.
+- [ ] 勞健退 › 上傳政府公告: a real government PDF is recognised, checked (consecutive levels, no gaps, increasing amounts), compared with the current version and only takes effect after the preview is confirmed; a bad or unrecognised file cannot be activated; a version can be voided with a reason of at least 5 characters.
+- [ ] 勞健退 › 每季建議: suggestions use the average of the previous three months; HR ticks and approves once; the effective date and the insurance-change record are right; running it twice does not apply twice; manager and owner cannot approve.
+- [ ] 薪資試算 › 薪資發放簽收清冊: Excel with one A4 sheet per person; a negative net pay gets no receipt but a 薪資代扣繳款單.
+- [ ] 公告欄 › 組織架構設定 (HR and system admin only): renaming a title, department or unit changes every dropdown, the org chart and the people list; a retired item leaves the dropdowns but stays on people who have it; blank and duplicate names are refused.
+- [ ] 組織架構設定 › 機構／地點與旗下部門: five facilities with place and departments; a department in use cannot be removed; a facility can be added; the company’s departments roll up from its facilities; the title table has the four flags (時薪／拆帳, 司機計薪, 需繼續教育積分, 單位主管) and the pay, CE and lead logic follows them.
+- [ ] 新增員工 cascades company → facility / place → department → title; the new person carries the facility and it shows in the employee drawer and the contact card.
+- [ ] 私人秘書 › 簽核申請單: 報價單, 出差申請, 零佣金申請; the path follows org chart V3 for the applicant’s position (照服員 → 日照社工 → 日照主管 → 管理者 → 老闆), vacant positions show “空缺（略過）” and are skipped, titles not on V3 fall back to the reporting line and say so; only the person whose turn it is can approve; a rejection needs a reason; withdraw while open; nobody approves their own request; the owner’s own request is approved on submit.
+- [ ] 簽核申請單: the amount rule cuts the levels (only real approvers count); only the manager and system admin edit the rules and the due period; a request past its due date shows 逾期 and appears in 今日待辦; an approved request is closed by the applicant or HR and then reads 已結案.
+- [ ] 簽核申請單 filters: every field filters (no., form, applicant, dept, details, amount ≥, status, due, approver); “全選” approves only what is shown; the filter survives approving one request.
+- [ ] Column filters on 人事 › 請假審核 (four tables), 薪資試算表, 個人出勤明細, 打卡位置, 勞健退 (per employee, quarterly) and 權限對照表 (both tables, also while editing): text or dropdown per column, 顯示 x / y 筆, 清除篩選; the filter row sits right under the header; totals and exports still cover all rows.
+
 ---
 
 ## Known Gaps & Open Questions
@@ -297,6 +314,9 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [x] **Decided:** 預先加班單 is approval only and does not pay; overtime is paid from the 加班單.
 - [x] **Decided:** there is no overnight shift at present (`NIGHT_SHIFT = false`).
 - [x] **Decided:** staff without a bank account can be paid in cash and sign a receipt list.
+- [ ] **Open (approval forms):** form fields, the amount thresholds per level, the due period, who closes a request, vacant positions (skip or name a stand-in), who may file, whether 出差申請 and 公出差旅單 merge, notifications and stand-ins.
+- [ ] **Open (org single source):** the permission matrix columns (requester Excel) are still a separate table from the titles; the role text on the org chart is not linked to the titles; the “home care worker outside Oxford = revenue-share” rule is hard-coded; the places of 二館 and 三館 are empty.
+- [ ] **Open (insurance):** reconciliation against the labor and health insurance bills (needs a bill sample); the 2027 labor rate split (13%) is unverified; the occupational-accident rate per unit is for HR to enter; whether overtime pay counts as regular pay.
 - [ ] No persistence, login, notifications or audit trail: prototype only.
 
 ---
