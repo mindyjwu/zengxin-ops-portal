@@ -20,10 +20,10 @@ const as = async email => { const a = request.agent(app); expect((await a.post('
 const PDF = (extra = '') => Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\n' + extra);
 const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from('rest')]);
 let day = 0;
-/** 員工甲送一張請假單（每次用不同日期，避免重疊），回傳單號 id */
+/** 員工甲送一張請假單（每次用不同日期，避免重疊；假別輪流用，免得某一種的額度被用完），回傳單號 id */
 async function newLeave(a) {
-  day += 1; const d = `2031-03-${String(day + 1).padStart(2, '0')}`;
-  const r = await a.post('/api/leave').send({ leaveType: 'personal', start: `${d}T08:00:00+08:00`, end: `${d}T17:00:00+08:00`, hours: 8, reason: '測試' });
+  day += 1; const d = `2031-03-${String((day % 27) + 1).padStart(2, '0')}`, type = ['personal', 'sick', 'annual'][day % 3];
+  const r = await a.post('/api/leave').send({ leaveType: type, start: `${d}T08:00:00+08:00`, end: `${d}T17:00:00+08:00`, hours: 8, reason: '測試' });
   expect(r.status).toBe(201); return r.body.id;
 }
 const up = (a, id, name, buf, type = 'application/octet-stream') => a.post(`/api/requests/${id}/attachments`).set('x-filename', encodeURIComponent(name)).set('content-type', type).send(buf);
@@ -60,6 +60,23 @@ describe('uploading', () => {
     expect((await up(a, id, 'sheet.xlsx', Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from('zip')]))).status).toBe(201);
     expect((await up(a, id, 'old.doc', Buffer.concat([Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.from('ole')]))).status).toBe(201);
     expect((await up(a, id, 'cam.heic', Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypheic')]))).status).toBe(201);
+  });
+  test('every format the portal upload boxes promise is accepted by the backend (and nothing extra)', async () => {
+    const html = require('fs').readFileSync(require('path').join(__dirname, '..', 'ltc-portal.html'), 'utf8');
+    const list = n => JSON.parse(html.match(new RegExp(`const ${n}=(\\[[^\\]]*\\])`))[1].replace(/'/g, '"'));
+    const promised = [...list('UP_IMG'), ...list('UP_DOC')].sort();
+    expect(Object.keys(require('../server/attachments').TYPES).sort()).toEqual(promised);        // 網站與後端的清單不能各改各的
+  });
+  test('each promised format passes with its own content and fails with someone else’s', async () => {
+    const st = createStorage({ storageDriver: 'memory' });
+    const save = (ext, buf, n) => saveAttachment({ db, storage: st, ownerKind: 'request', ownerId: 9000 + n, user: { id: 'J020003' }, rawName: 'f.' + ext, buffer: buf });   // 每個類型各用一個擁有者，不受「每張單最多 5 個」影響
+    const ok = { webp: Buffer.concat([Buffer.from('RIFF'), Buffer.from([1, 2, 3, 4]), Buffer.from('WEBPVP8 ')]), gif: Buffer.from('GIF89a....'), tif: Buffer.from([0x49, 0x49, 0x2a, 0x00, 1, 2]), tiff: Buffer.from([0x4d, 0x4d, 0x00, 0x2a, 1, 2]),
+      bmp: Buffer.from('BM......'), csv: Buffer.from('姓名,金額\n甲,100\n'), txt: Buffer.from('一般文字'), pptx: Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04]), Buffer.from('z')]), ppt: Buffer.concat([Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]), Buffer.from('o')]) };
+    let n = 0;
+    for (const [ext, buf] of Object.entries(ok)) expect([ext, (await save(ext, buf, ++n)).error]).toEqual([ext, undefined]);
+    for (const ext of ['webp', 'gif', 'tif', 'bmp']) expect([ext, (await save(ext, PDF(), ++n)).code]).toEqual([ext, 415]);
+    expect((await save('txt', Buffer.from([0x4d, 0x5a, 0x00, 0x00, 0x03]), ++n)).code).toBe(415);      // 含空位元組的二進位檔不能偽裝成文字檔
+    expect((await save('csv', Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from('a\u0000,\u0000b')]), ++n)).error).toBeUndefined();   // UTF-16 文字（有 BOM）放行
   });
   test('size limit is enforced while the body is being read', async () => {
     const a = await as('a@example.test'), id = await newLeave(a);

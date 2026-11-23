@@ -14,17 +14,23 @@ const express = require('express');
 const crypto = require('crypto');
 const { sha256 } = require('./storage');
 
+/* 允許的類型要和網站上傳欄位承諾的一模一樣（ltc-portal.html 的 UP_IMG、UP_DOC；有測試比對），否則網站說可以、後端卻拒絕 */
 const TYPES = {
-  pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', heic: 'image/heic', heif: 'image/heif',
-  doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', heic: 'image/heic', heif: 'image/heif', webp: 'image/webp', gif: 'image/gif', tif: 'image/tiff', tiff: 'image/tiff', bmp: 'image/bmp',
+  pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', csv: 'text/csv',
+  ppt: 'application/vnd.ms-powerpoint', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', txt: 'text/plain'
 };
 const starts = (b, bytes, at = 0) => b.length >= at + bytes.length && bytes.every((x, i) => b[at + i] === x);
 const MAGIC = {
   pdf: b => starts(b, [0x25, 0x50, 0x44, 0x46, 0x2d]), png: b => starts(b, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), jpg: b => starts(b, [0xff, 0xd8, 0xff]),
-  heic: b => starts(b, [0x66, 0x74, 0x79, 0x70], 4), zip: b => starts(b, [0x50, 0x4b, 0x03, 0x04]), ole: b => starts(b, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])
+  heic: b => starts(b, [0x66, 0x74, 0x79, 0x70], 4), zip: b => starts(b, [0x50, 0x4b, 0x03, 0x04]), ole: b => starts(b, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]),
+  webp: b => starts(b, [0x52, 0x49, 0x46, 0x46]) && starts(b, [0x57, 0x45, 0x42, 0x50], 8), gif: b => starts(b, [0x47, 0x49, 0x46, 0x38]) && (b[4] === 0x37 || b[4] === 0x39) && b[5] === 0x61,
+  tiff: b => starts(b, [0x49, 0x49, 0x2a, 0x00]) || starts(b, [0x4d, 0x4d, 0x00, 0x2a]), bmp: b => starts(b, [0x42, 0x4d]),
+  text: b => starts(b, [0xff, 0xfe]) || starts(b, [0xfe, 0xff]) || !b.subarray(0, 8192).includes(0)           // 文字檔沒有固定開頭：只擋含空位元組的二進位檔（UTF-16 有 BOM 才放行）
 };
-const KIND_OF = { pdf: 'pdf', png: 'png', jpg: 'jpg', jpeg: 'jpg', heic: 'heic', heif: 'heic', docx: 'zip', xlsx: 'zip', doc: 'ole', xls: 'ole' };
+const KIND_OF = { pdf: 'pdf', png: 'png', jpg: 'jpg', jpeg: 'jpg', heic: 'heic', heif: 'heic', webp: 'webp', gif: 'gif', tif: 'tiff', tiff: 'tiff', bmp: 'bmp',
+  docx: 'zip', xlsx: 'zip', pptx: 'zip', doc: 'ole', xls: 'ole', ppt: 'ole', csv: 'text', txt: 'text' };
 const OWNER_KINDS = ['request', 'biz_request', 'insurance_notice'];
 const MAX_PER_OWNER = 5;
 
