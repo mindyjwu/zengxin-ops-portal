@@ -96,6 +96,7 @@ jobs:
             -e SESSION_SECRET=ci-only-session-secret-ci-only-session-secret \
             -e GOOGLE_CLIENT_ID=ci.apps.googleusercontent.com -e ALLOWED_DOMAIN=example.com \
             -e ALLOWED_ORIGINS=https://portal.example.com -e TRUSTED_HOPS=1 \
+            -e STORAGE_DRIVER=gcs -e STORAGE_BUCKET=ci-only-files \
             zengxin-api
       - name: Smoke test
         run: scripts/smoke.sh http://localhost:8080

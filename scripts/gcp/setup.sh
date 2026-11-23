@@ -5,7 +5,7 @@
 say "專案與服務"
 run gcloud config set project "$PROJECT_ID"
 run gcloud services enable run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com \
-  cloudscheduler.googleapis.com iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com cloudresourcemanager.googleapis.com monitoring.googleapis.com logging.googleapis.com
+  cloudscheduler.googleapis.com storage.googleapis.com iam.googleapis.com iamcredentials.googleapis.com sts.googleapis.com cloudresourcemanager.googleapis.com monitoring.googleapis.com logging.googleapis.com
 
 say "容器映像倉庫"
 exists gcloud artifacts repositories describe "$AR_REPO" --location "$REGION" || run gcloud artifacts repositories create "$AR_REPO" --repository-format=docker --location "$REGION" --description="誠馨入口的容器映像"
@@ -54,6 +54,10 @@ exists gcloud iam workload-identity-pools providers describe github-actions --lo
 if [ "$DRY_RUN" = 1 ]; then PROJECT_NUMBER="<專案編號>"; else PROJECT_NUMBER="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')"; fi
 runq gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER_SA" --role=roles/iam.workloadIdentityUser \
   --member="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/attribute.repository/${GITHUB_REPO}"
+
+say "附件與檔案：私有的 Cloud Storage 儲存桶（診斷證明、政府公告 PDF 原始檔）；只有執行用服務帳號能讀寫，不開放公開存取"
+exists gcloud storage buckets describe "gs://$FILES_BUCKET" || run gcloud storage buckets create "gs://$FILES_BUCKET" --location="$REGION" --uniform-bucket-level-access --public-access-prevention
+runq gcloud storage buckets add-iam-policy-binding "gs://$FILES_BUCKET" --member="serviceAccount:$RUNTIME_SA" --role=roles/storage.objectUser
 
 say "備份：每週把整個資料庫匯出到私有的 Cloud Storage（保留 90 天），與 Cloud SQL 自動備份是兩層"
 exists gcloud storage buckets describe "gs://$BACKUP_BUCKET" || run gcloud storage buckets create "gs://$BACKUP_BUCKET" --location="$REGION" --uniform-bucket-level-access --public-access-prevention

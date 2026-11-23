@@ -7,7 +7,9 @@ const { makeSession, readSession, parseCookies, limiter } = require('./auth');
 const { can, requireCap, canViewPage, canEditPage, pageCode } = require('./permissions');
 const { clientIp, punchRecord } = require('../backend/punch-ip');
 const { employeesRouter } = require('./employees');
-const { requestsRouter } = require('./requests');
+const { requestsRouter, canSee, OPEN } = require('./requests');
+const { requestAttachmentsRouter } = require('./attachments');
+const { createStorage } = require('./storage');
 const { svcRouter } = require('./svc');
 const { hourlyRouter } = require('./hourly');
 const { payslipsRouter } = require('./pay-months');
@@ -15,9 +17,12 @@ const { splitRouter } = require('./split');
 const { salaryRouter } = require('./salary');
 const path = require('path');
 
-function createApp({ db, verifyGoogle, config }) {
+function createApp({ db, verifyGoogle, config, storage }) {
   const cfg = { sessionSecret: '', allowedDomain: '', allowedOrigins: [], trustedHops: 1, devLogin: false, production: false, googleClientId: '', ...config };
   if (cfg.production && cfg.sessionSecret.length < 32) throw new Error('正式環境必須設定至少 32 字元的 SESSION_SECRET');
+  /* 檔案儲存層：index.js 依環境變數建好傳進來；測試與本機沒傳就用記憶體；正式環境沒傳就不收附件（回 503），不會偷偷存到會消失的地方 */
+  const files = storage !== undefined ? storage : (cfg.production ? null : createStorage({ storageDriver: 'memory' }));
+  const maxUploadBytes = cfg.maxUploadBytes || 10 * 1024 * 1024;
   const app = express();
   app.disable('x-powered-by');
   // 一般請求上限 50KB；仁寶彙總那一條路由自己放寬到 4MB（在 svc.js）
@@ -134,10 +139,14 @@ function createApp({ db, verifyGoogle, config }) {
   app.use('/api/pay/split', needLogin, splitRouter({ db, audit }));
   app.use('/api/pay/salary', needLogin, salaryRouter({ db, audit }));
   app.use('/api/payslips', needLogin, payslipsRouter({ db, audit }));
+  app.use('/api/requests/:id/attachments', needLogin, requestAttachmentsRouter({ db, audit, storage: files, maxBytes: maxUploadBytes, canSee, OPEN }));
   app.use('/api', needLogin, requestsRouter({ db, audit }));
   app.use(express.static(path.join(__dirname, '..', 'web'), { index: 'index.html', maxAge: 0 }));
 
-  app.use((err, req, res, next) => { console.error(err); res.status(500).json({ error: 'server_error' }); });   // eslint-disable-line no-unused-vars
+  app.use((err, req, res, next) => {
+    if (err && err.type === 'entity.too.large') return res.status(413).json({ error: 'file_too_large', maxBytes: maxUploadBytes });
+    console.error(err); res.status(500).json({ error: 'server_error' });
+  });   // eslint-disable-line no-unused-vars
   return app;
 }
 

@@ -8,7 +8,7 @@ const { createDb, tempDatabase } = require('../server/db');
 const { createApp } = require('../server/app');
 const { bootstrapAdmin } = require('../server/bootstrap');
 
-const GOOD = { NODE_ENV: 'production', DATABASE_URL: 'postgres://u:p@/db?host=/cloudsql/p:r:i', SESSION_SECRET: 'x'.repeat(40), GOOGLE_CLIENT_ID: 'id.apps.googleusercontent.com', ALLOWED_DOMAIN: 'example.com', ALLOWED_ORIGINS: 'https://portal.example.com', TRUSTED_HOPS: '1' };
+const GOOD = { NODE_ENV: 'production', DATABASE_URL: 'postgres://u:p@/db?host=/cloudsql/p:r:i', SESSION_SECRET: 'x'.repeat(40), GOOGLE_CLIENT_ID: 'id.apps.googleusercontent.com', ALLOWED_DOMAIN: 'example.com', ALLOWED_ORIGINS: 'https://portal.example.com', TRUSTED_HOPS: '1', STORAGE_DRIVER: 'gcs', STORAGE_BUCKET: 'zengxin-test-files' };
 const realPg = process.env.TEST_PG_ADMIN_URL ? test : test.skip;
 
 describe('production configuration', () => {
@@ -17,7 +17,7 @@ describe('production configuration', () => {
   });
   test('everything that is missing is listed at once, not one by one', () => {
     let msg = ''; try { loadConfig({ NODE_ENV: 'production' }); } catch (e) { msg = e.message; }
-    for (const k of ['DATABASE_URL', 'SESSION_SECRET', 'GOOGLE_CLIENT_ID', 'ALLOWED_DOMAIN', 'ALLOWED_ORIGINS', 'TRUSTED_HOPS']) expect(msg).toContain(k);
+    for (const k of ['DATABASE_URL', 'SESSION_SECRET', 'GOOGLE_CLIENT_ID', 'ALLOWED_DOMAIN', 'ALLOWED_ORIGINS', 'TRUSTED_HOPS', 'STORAGE_DRIVER']) expect(msg).toContain(k);
   });
   test('weak or unsafe values are refused', () => {
     const bad = o => { try { loadConfig({ ...GOOD, ...o }); return ''; } catch (e) { return e.message; } };
@@ -28,6 +28,24 @@ describe('production configuration', () => {
     expect(bad({ TRUSTED_HOPS: '9' })).toContain('TRUSTED_HOPS'); expect(bad({ TRUSTED_HOPS: 'x' })).toContain('TRUSTED_HOPS'); expect(bad({ TRUSTED_HOPS: '' })).toContain('TRUSTED_HOPS');
     expect(bad({ DEV_LOGIN: '1' })).toContain('DEV_LOGIN'); expect(bad({ PORT: '99999' })).toContain('PORT');
     expect(loadConfig({ ...GOOD, SEED: '1' }).seed).toBe(false);                                         // 正式環境不會寫入示範資料
+  });
+  test('file storage: production must use Cloud Storage with a valid bucket; local and memory are refused', () => {
+    const bad = o => { try { loadConfig({ ...GOOD, ...o }); return ''; } catch (e) { return e.message; } };
+    expect(loadConfig(GOOD)).toMatchObject({ storageDriver: 'gcs', storageBucket: 'zengxin-test-files', maxUploadBytes: 10 * 1024 * 1024 });
+    expect(bad({ STORAGE_DRIVER: 'local', STORAGE_DIR: '/tmp/x' })).toContain('正式環境要用 gcs');      // Cloud Run 的磁碟重啟就消失
+    expect(bad({ STORAGE_DRIVER: 'memory' })).toContain('正式環境要用 gcs');
+    expect(bad({ STORAGE_DRIVER: '', STORAGE_DIR: '' })).toContain('STORAGE_DRIVER');                    // 沒設：預設是記憶體，正式環境不接受
+    expect(bad({ STORAGE_BUCKET: '' })).toContain('STORAGE_BUCKET');
+    expect(bad({ STORAGE_BUCKET: 'Bad Bucket!' })).toContain('STORAGE_BUCKET');
+    expect(bad({ STORAGE_DRIVER: 'ftp' })).toContain('STORAGE_DRIVER：只能是');
+    expect(bad({ MAX_UPLOAD_MB: '0' })).toContain('MAX_UPLOAD_MB'); expect(bad({ MAX_UPLOAD_MB: '99' })).toContain('MAX_UPLOAD_MB'); expect(bad({ MAX_UPLOAD_MB: 'x' })).toContain('MAX_UPLOAD_MB');
+    expect(loadConfig({ ...GOOD, MAX_UPLOAD_MB: '5' }).maxUploadBytes).toBe(5 * 1024 * 1024);
+  });
+  test('outside production the storage defaults to memory, or to a local folder when one is given', () => {
+    expect(loadConfig({})).toMatchObject({ storageDriver: 'memory', storageDir: '' });
+    expect(loadConfig({ STORAGE_DIR: '/tmp/zx' })).toMatchObject({ storageDriver: 'local', storageDir: '/tmp/zx' });
+    expect(() => loadConfig({ STORAGE_DRIVER: 'local' })).toThrow('STORAGE_DIR');
+    expect(() => loadConfig({ STORAGE_DRIVER: 'gcs' })).toThrow('STORAGE_BUCKET');
   });
   test('outside production there are safe defaults for development', () => {
     expect(loadConfig({})).toMatchObject({ production: false, trustedHops: 1, devLogin: false, databaseUrl: '' });

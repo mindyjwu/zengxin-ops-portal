@@ -164,4 +164,4 @@ function requestsRouter({ db, audit }) {
   return r;
 }
 
-module.exports = { requestsRouter, canAct };
+module.exports = { requestsRouter, canAct, canSee, OPEN };

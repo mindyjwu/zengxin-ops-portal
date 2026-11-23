@@ -4,6 +4,7 @@ const { createApp } = require('./app');
 const { googleVerifier } = require('./auth');
 const { loadConfig } = require('./config');
 const { bootstrapAdmin } = require('./bootstrap');
+const { createStorage } = require('./storage');
 
 (async () => {
   const cfg = loadConfig(process.env);
@@ -11,8 +12,9 @@ const { bootstrapAdmin } = require('./bootstrap');
   if (cfg.seed) await require('./seed').seed(db);   // 開發用：寫入虛構示範員工
   const boot = await bootstrapAdmin(db, { email: cfg.bootstrapAdminEmail }); if (boot.created) console.log(`已建立第一位系統管理員 ${boot.created}（${cfg.bootstrapAdminEmail}）；之後可以把 BOOTSTRAP_ADMIN_EMAIL 拿掉`);
   const verifyGoogle = cfg.googleClientId ? googleVerifier(cfg.googleClientId) : async () => { throw new Error('GOOGLE_CLIENT_ID 沒設定'); };
-  const app = createApp({ db, verifyGoogle, config: cfg });
-  const server = app.listen(cfg.port, () => console.log(`API listening on ${cfg.port} (${cfg.databaseUrl ? 'PostgreSQL' : 'PGlite in-memory'})`));
+  const storage = createStorage(cfg);
+  const app = createApp({ db, verifyGoogle, config: cfg, storage });
+  const server = app.listen(cfg.port, () => console.log(`API listening on ${cfg.port} (${cfg.databaseUrl ? 'PostgreSQL' : 'PGlite in-memory'}, 檔案儲存：${storage.name})`));
   let stopping = false;
   const stop = signal => {
     if (stopping) return; stopping = true; console.log(`收到 ${signal}，停止接新請求並收尾`);

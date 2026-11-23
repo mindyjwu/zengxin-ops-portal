@@ -14,7 +14,7 @@ GitHub（程式庫）─ GitHub Actions ─(免金鑰登入)─▶ Artifact Regi
 - **Cloud Run**：跑我們的容器，用多少算多少；新版本先不接流量、測過才切過去，壞了可以一行指令回到上一版。
 - **Cloud SQL**：正式資料庫（PostgreSQL 16，台灣 asia-east1），有刪除保護、每日備份保留 14 份、時間點還原 7 天。
 - **Secret Manager**：資料庫連線字串與工作階段密鑰（隨機產生，不會顯示、不進程式庫）。
-- **Artifact Registry**：存容器映像。**Cloud Storage**：每週一份完整匯出，與 Cloud SQL 自己的備份是兩層。
+- **Artifact Registry**：存容器映像。**Cloud Storage**：兩個私有儲存桶 —— 每週一份完整匯出（與 Cloud SQL 自己的備份是兩層），以及附件儲存桶（診斷證明、政府公告 PDF 原始檔；只有執行用服務帳號能讀寫，`setup.sh` 建立，名稱預設「專案ID-zengxin-files」，伺服器用 `STORAGE_DRIVER=gcs`＋`STORAGE_BUCKET` 連它）。
 - **GitHub Actions ↔ Google**：用 Workload Identity Federation，**不用下載任何金鑰檔**；只有本程式庫的 `main` 分支能部署。
 
 ## 從零到上線（約半天，大部分是等）
