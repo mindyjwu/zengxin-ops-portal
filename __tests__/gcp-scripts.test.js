@@ -24,6 +24,13 @@ describe('setup.sh (dry run)', () => {
     for (const s of ['--retained-backups-count=14', '--enable-point-in-time-recovery', '--retained-transaction-log-days=7', '--deletion-protection', '--public-access-prevention', '--uniform-bucket-level-access', '--versioning',
       'zengxin-weekly-export', '--schedule=0 4 * * 0', 'sqladmin.googleapis.com/v1/projects/zengxin-test/instances/zengxin-pg/export', 'portal-weekly.sql.gz', 'cloudsql.instances.export', '--budget-amount=3000TWD', '--region=asia-east1']) expect(out).toContain(s);
   });
+  test('there is a private bucket for attachments, and only the runtime account can use it', () => {
+    expect(out).toContain('storage.googleapis.com');
+    expect(out).toContain('gcloud storage buckets create gs://zengxin-test-zengxin-files --location=asia-east1 --uniform-bucket-level-access --public-access-prevention');
+    expect(out).toContain('gcloud storage buckets add-iam-policy-binding gs://zengxin-test-zengxin-files --member=serviceAccount:zengxin-run@zengxin-test.iam.gserviceaccount.com --role=roles/storage.objectUser');
+    expect(out).not.toMatch(/allUsers|allAuthenticatedUsers/);
+    expect(sh('scripts/gcp/setup.sh', { ...BASE, FILES_BUCKET: 'my-files' }).stdout).toContain('buckets create gs://my-files ');
+  });
   test('GitHub can deploy only from this repository\'s main branch, with no key file', () => {
     expect(out).toContain("assertion.repository=='mindyjwu/zengxin-ops-portal' && assertion.ref=='refs/heads/main'");
     expect(out).toContain('attribute.repository/mindyjwu/zengxin-ops-portal'); expect(out).not.toMatch(/keys create|--key-file|credentials\.json/);
@@ -51,6 +58,11 @@ describe('deploy.sh (dry run)', () => {
     const o = sh('scripts/gcp/deploy.sh', BASE, [IMG]).stdout;
     for (const s of ['--set-secrets SESSION_SECRET=zengxin-session-secret:latest,DATABASE_URL=zengxin-database-url:latest', '--add-cloudsql-instances zengxin-test:asia-east1:zengxin-pg', 'NODE_ENV=production', 'ALLOWED_DOMAIN=example.com', 'ALLOWED_ORIGINS=https://portal.example.com', '--max-instances 4', '--service-account zengxin-run@zengxin-test.iam.gserviceaccount.com']) expect(o).toContain(s);
     expect(o).not.toMatch(/SESSION_SECRET=[^z]/); expect(o).not.toContain('DEV_LOGIN');
+  });
+  test('the runtime is told to keep files in Cloud Storage (so production starts), and the bucket can be renamed', () => {
+    const o = sh('scripts/gcp/deploy.sh', BASE, [IMG]).stdout;
+    expect(o).toContain('@STORAGE_DRIVER=gcs@STORAGE_BUCKET=zengxin-test-zengxin-files');
+    expect(sh('scripts/gcp/deploy.sh', { ...BASE, FILES_BUCKET: 'my-files' }, [IMG]).stdout).toContain('@STORAGE_BUCKET=my-files');
   });
   test('the first-admin setting is passed only when given', () => {
     expect(sh('scripts/gcp/deploy.sh', BASE, [IMG]).stdout).not.toContain('BOOTSTRAP_ADMIN_EMAIL');

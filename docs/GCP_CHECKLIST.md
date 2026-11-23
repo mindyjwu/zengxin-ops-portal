@@ -26,6 +26,7 @@ DRY_RUN=1 scripts/gcp/setup.sh                                 # 先預覽會做
 scripts/gcp/setup.sh                                           # 建：Cloud SQL、祕密、服務帳號、免金鑰部署、備份、排程、預算
 ```
 - [ ] 預覽看過、實際執行成功；把最後印出的三個變數記下來（第 E 區要用）。
+- [ ] 在主控台確認附件儲存桶（預設「專案ID-zengxin-files」）存在、**沒有公開存取**，而且只有 `zengxin-run` 服務帳號有 `Storage Object User` 角色。部署後用一個測試帳號上傳一張請假附件並下載，確認雜湊值檢查通過（第一次接真實 Cloud Storage，要實測一次）。
 - [ ] 在主控台確認：Cloud SQL 有「刪除保護」、自動備份開著、時間點還原開著。
 
 ## D. Google 登入（OAuth，約 10 分）

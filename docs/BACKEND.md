@@ -14,6 +14,7 @@
 - `server/employees.js`：員工與角色管理 API（新增、修改、停用、改角色、CSV 批次匯入）
 - `web/`：**連後端版網站**。登入頁（`index.html`）→ 應用程式（`app.html`＋`main.js`：首頁、申請、我的申請、待我簽核、稽核紀錄）；員工管理頁（`admin.html`）。沒有行內腳本與樣式，內容安全政策才能收緊。和展示版（`ltc-portal.html`，放在 GitHub Pages）完全分開
 - `server/requests.js`、`server/leave-rules.js`：請假、加班、補打卡與簽核 API（`/api/leave`、`/api/overtime`、`/api/punch-fix`、`/api/requests`、`/api/requests/inbox`、`/api/requests/:id/approve|reject|withdraw|cancel`、`/api/leave/balance`）；設計說明見 `docs/learn/03-requests-design.md`
+- `server/storage.js`、`server/attachments.js`：**檔案儲存層與附件**（見下面「檔案儲存」）
 - `Dockerfile`：打包成容器
 
 ## 本機執行
@@ -35,6 +36,10 @@ npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@exam
 | `ALLOWED_ORIGINS` | 網頁網址（逗號分隔），擋跨站請求 | 必填 |
 | `TRUSTED_HOPS` | 伺服器前面有幾層可信任的代理（決定怎麼讀真實 IP，要實測） | 必填 |
 | `BOOTSTRAP_ADMIN_EMAIL` | 第一位系統管理員（員工名冊是空的時才建立一次） | 只有第一次部署 |
+| `STORAGE_DRIVER` | 檔案放哪裡：`memory`（只在記憶體，測試）、`local`（本機資料夾）、`gcs`（Google Cloud Storage） | 必填，只能是 `gcs` |
+| `STORAGE_BUCKET` | Cloud Storage 儲存桶名稱（`STORAGE_DRIVER=gcs` 時） | 必填（`setup.sh` 會建，預設「專案ID-zengxin-files」） |
+| `STORAGE_DIR` | 本機資料夾（`STORAGE_DRIVER=local`；沒指定驅動但有設這個，就用 local） | 不能用（Cloud Run 的磁碟重啟就消失） |
+| `MAX_UPLOAD_MB` | 附件大小上限，1 到 25，預設 10 | 選填 |
 | `DEV_LOGIN` | 假登入，只在非正式環境有效 | 不要設（設了會拒絕啟動） |
 
 ## 上線
@@ -49,6 +54,15 @@ npm run server:dev       # 開 http://localhost:8080 ：假登入（manager@exam
 3. 因為登入用 email 對到員工，先把你的測試 Gmail 加成員工：用假登入以 `manager@example.test` 進 `/admin.html` 新增，或改 `server/seed.js` 的示範 email。
 4. 開 http://localhost:8080 ，按「用 Google 登入」。
 **正式環境不要設 `DEV_LOGIN`，也不要用個人專案放真實員工資料。**
+
+## 檔案儲存與附件（/api/requests/:id/attachments）
+**為什麼先做這一層：** 之後拿到 Cloud Storage，只要設兩個環境變數（`STORAGE_DRIVER=gcs`、`STORAGE_BUCKET`），其他程式不用改；在那之前用記憶體或本機資料夾照樣開發與測試。
+- 介面（`server/storage.js`）：`put`、`get`、`exists`、`delete`、`list`，三種實作（記憶體、本機、GCS）通過同一組測試。鍵由系統產生（`attachments/類別/擁有者/年/隨機碼.副檔名`），不含使用者輸入的檔名；已存在的鍵不能被覆蓋；本機實作先寫暫存檔再改名。
+- 資料表 `attachments`（`011_attachments.sql`）：誰、何時、檔名、類型、大小、SHA-256、儲存位置、保存期限（預設五年，申請單的附件跟申請單一致）。**不能改、不能刪列**，「刪除」只是標記 `deleted_at`，檔案先保留：個資保存與刪除政策還待確認，所以不立刻抹掉，之後再做到期清除。`owner_kind` 已預留 `biz_request`（簽核申請單）與 `insurance_notice`（勞健退公告 PDF 原始檔）。
+- API（請假、加班、補打卡申請單）：`POST`（檔案內容放在請求本文，檔名放標頭 `X-Filename`，要先用 `encodeURIComponent`）、`GET`（列表，只有中繼資料）、`GET /:aid`（下載）、`DELETE /:aid`。上傳與刪除只有**申請人本人、而且單還在簽核中**；看與下載是申請人、直屬主管、有管理權限者。
+- 檢查：白名單（pdf、png、jpg、jpeg、heic、heif、doc、docx、xls、xlsx）；副檔名要和檔案開頭的位元組一致；每張單最多 5 個；大小上限由 `MAX_UPLOAD_MB` 決定。下載一律當附件下載並加沙盒標頭；每次上傳、下載、刪除都寫稽核紀錄；下載時重算雜湊值，不一致就拒絕（500 `integrity_check_failed`）並寫稽核。
+- 沒設定儲存（正式環境沒傳 storage）時回 503 `storage_not_configured`，不會偷偷存在會消失的地方。
+- **還沒做：** 網頁畫面（請假單附件上傳按鈕）、簽核申請單與勞健退公告接上這一層、保存期限到期的清除排程、病毒掃描、GCS 驅動對真實 Cloud Storage 的驗證（目前只用假的 client 測過，拿到儲存桶後要實測一次）。
 
 ## 仁寶匯入與儀表板（/api/svc）
 - `POST /api/svc/imports`：瀏覽器解析後只送彙總（需「居服個案」可編輯）；取代同月份舊資料；稽核 `svc_import`。

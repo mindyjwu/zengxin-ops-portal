@@ -5,7 +5,7 @@
 . "$(dirname "$0")/lib.sh"; load_config
 IMAGE="${1:?用法：scripts/gcp/deploy.sh 映像網址（例如 asia-east1-docker.pkg.dev/專案/zengxin/api:標籤）}"
 : "${ALLOWED_DOMAIN:?要設定 ALLOWED_DOMAIN}"; : "${PORTAL_URL:?要設定 PORTAL_URL（https://...）}"; : "${GOOGLE_CLIENT_ID:?要設定 GOOGLE_CLIENT_ID}"
-ENVV="^@^NODE_ENV=production@ALLOWED_DOMAIN=${ALLOWED_DOMAIN}@ALLOWED_ORIGINS=${PORTAL_URL}@GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}@TRUSTED_HOPS=${TRUSTED_HOPS}"   # ^@^ 讓值裡可以有逗號
+ENVV="^@^NODE_ENV=production@ALLOWED_DOMAIN=${ALLOWED_DOMAIN}@ALLOWED_ORIGINS=${PORTAL_URL}@GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}@TRUSTED_HOPS=${TRUSTED_HOPS}@STORAGE_DRIVER=gcs@STORAGE_BUCKET=${FILES_BUCKET}"   # ^@^ 讓值裡可以有逗號
 [ -n "${BOOTSTRAP_ADMIN_EMAIL:-}" ] && ENVV="${ENVV}@BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL}"   # 只有第一次部署才需要（員工名冊是空的時建立第一位管理員）
 COMMON=(--image "$IMAGE" --region "$REGION" --project "$PROJECT_ID" --service-account "$RUNTIME_SA" --add-cloudsql-instances "$CONNECTION"
   --set-secrets "SESSION_SECRET=zengxin-session-secret:latest,DATABASE_URL=zengxin-database-url:latest" --set-env-vars "$ENVV"

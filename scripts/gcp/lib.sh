@@ -13,6 +13,6 @@ load_config() {
   : "${PROJECT_ID:?請先設定 PROJECT_ID（複製 scripts/gcp/config.env.example 成 config.env 後填寫，或用環境變數）}"
   REGION="${REGION:-asia-east1}"; SERVICE="${SERVICE:-zengxin-portal}"; SQL_INSTANCE="${SQL_INSTANCE:-zengxin-pg}"; DB_NAME="${DB_NAME:-portal}"; DB_USER="${DB_USER:-portal_app}"
   AR_REPO="${AR_REPO:-zengxin}"; RUNTIME_SA="zengxin-run@${PROJECT_ID}.iam.gserviceaccount.com"; DEPLOYER_SA="zengxin-deployer@${PROJECT_ID}.iam.gserviceaccount.com"; SCHEDULER_SA="zengxin-scheduler@${PROJECT_ID}.iam.gserviceaccount.com"
-  BACKUP_BUCKET="${BACKUP_BUCKET:-${PROJECT_ID}-zengxin-backups}"; CONNECTION="${PROJECT_ID}:${REGION}:${SQL_INSTANCE}"
+  BACKUP_BUCKET="${BACKUP_BUCKET:-${PROJECT_ID}-zengxin-backups}"; FILES_BUCKET="${FILES_BUCKET:-${PROJECT_ID}-zengxin-files}"; CONNECTION="${PROJECT_ID}:${REGION}:${SQL_INSTANCE}"
   MIN_INSTANCES="${MIN_INSTANCES:-1}"; MAX_INSTANCES="${MAX_INSTANCES:-4}"; TRUSTED_HOPS="${TRUSTED_HOPS:-1}"; SQL_TIER="${SQL_TIER:-db-g1-small}"
 }
