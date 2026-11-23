@@ -4795,3 +4795,170 @@ test.describe('every long table can be filtered, and phone tap targets are big e
     for (const w of ['所有長表', '8 列', '手機上篩選列預設收起', '40px']) await expect(page.locator('#newv35')).toContainText(w);
   });
 });
+
+/* 欄位排序：點表頭排序（11/23） */
+test.describe('click a column header to sort', () => {
+  const heads = (page, sel) => page.locator(sel + ' thead tr:first-child th');
+  const col = (page, sel, i) => page.evaluate(([s, k]) => [...document.querySelectorAll(s + ' tbody tr')].filter(r => !r.hidden && r.cells.length > 1).map(r => r.cells[k].textContent.replace(/\s+/g, ' ').trim()), [sel, i]);
+  const nums = a => a.map(x => +x.replace(/[^\d.-]/g, ''));
+  const PAY = 'table[data-filterable="pay-run"]';
+  const openPay = async page => { await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'run'); };
+
+  test('how each kind of cell is read for sorting', async ({ page }) => {
+    await openPortal(page);
+    const k = await page.evaluate(() => Object.fromEntries(['NT$45,800', 'NT$ 9,000', '95.5%', '12 筆', '4小時', '1天', '1天2.5小時', '1d 2h', '-NT$500', '—', '', '待設定', '2026-09-08', 'A010', '3'].map(t => [t, cellSortKey(t)])));
+    expect(k['NT$45,800']).toEqual({ n: 45800 }); expect(k['NT$ 9,000']).toEqual({ n: 9000 }); expect(k['95.5%']).toEqual({ n: 95.5 }); expect(k['12 筆']).toEqual({ n: 12 });
+    expect(k['4小時']).toEqual({ n: 4 }); expect(k['1天']).toEqual({ n: 8 }); expect(k['1天2.5小時']).toEqual({ n: 10.5 }); expect(k['1d 2h']).toEqual({ n: 10 });   // 1 天 = 8 小時
+    expect(k['-NT$500']).toEqual({ n: -500 });
+    expect(k['—']).toBeNull(); expect(k['']).toBeNull(); expect(k['待設定']).toBeNull();
+    expect(k['2026-09-08']).toEqual({ s: '2026-09-08' }); expect(k['A010']).toEqual({ s: 'A010' });                  // 日期與編號不當數字
+  });
+
+  test('amounts sort by value, a second click reverses, a third restores the original order', async ({ page }) => {
+    await openPay(page);
+    const orig = await col(page, PAY, 8);
+    await heads(page, PAY).nth(8).click();
+    const asc = nums(await col(page, PAY, 8)); expect(asc).toEqual([...asc].sort((a, b) => a - b));
+    expect(asc[0]).toBeLessThan(asc[asc.length - 1]);
+    expect(await heads(page, PAY).nth(8).getAttribute('aria-sort')).toBe('ascending');
+    await heads(page, PAY).nth(8).click();
+    const desc = nums(await col(page, PAY, 8)); expect(desc).toEqual([...desc].sort((a, b) => b - a));
+    expect(await heads(page, PAY).nth(8).getAttribute('aria-sort')).toBe('descending');
+    await heads(page, PAY).nth(8).click();
+    expect(await col(page, PAY, 8)).toEqual(orig);
+    expect(await heads(page, PAY).nth(8).getAttribute('aria-sort')).toBe('none');
+  });
+
+  test('9,000 sorts before 10,000 (by value, not by letters), and IDs sort naturally (A9 before A10)', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => {
+      document.getElementById('view').innerHTML = `<div class="tablewrap"><table data-filterable="t-nat"><thead><tr><th>編號</th><th>金額</th></tr></thead><tbody>
+        ${[['A10','NT$10,000'],['A9','NT$9,000'],['A100','NT$100'],['A2','NT$2,500'],['A1','NT$99,999'],['A11','NT$1'],['A3','NT$20'],['A4','NT$30']].map(x => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('')}</tbody></table></div>`;
+      bindTableFilters(); bindTableSort();
+      const out = {}; const read = i => [...document.querySelectorAll('table[data-filterable="t-nat"] tbody tr')].map(r => r.cells[i].textContent);
+      const h = document.querySelectorAll('table[data-filterable="t-nat"] thead tr:first-child th');
+      h[1].click(); out.amt = read(1); h[1].click(); h[1].click(); h[0].click(); out.id = read(0); return out;
+    });
+    expect(r.amt).toEqual(['NT$1', 'NT$20', 'NT$30', 'NT$100', 'NT$2,500', 'NT$9,000', 'NT$10,000', 'NT$99,999']);
+    expect(r.id).toEqual(['A1', 'A2', 'A3', 'A4', 'A9', 'A10', 'A11', 'A100']);
+  });
+
+  test('durations sort by hours (4 hours before 1 day), in both languages', async ({ page }) => {
+    await openPortal(page);
+    for (const lang of ['zh', 'en']) {
+      const r = await page.evaluate(l => {
+        state.lang = l; render();
+        const id = 't-dur-' + l;                                                              // 每種語言用不同代號（同一個代號的排序狀態會被記住）
+        document.getElementById('view').innerHTML = `<div class="tablewrap"><table data-filterable="${id}"><thead><tr><th>名稱</th><th>時數</th></tr></thead><tbody>
+          ${[24, 4, 8, 10.5, 16, 2, 9, 40].map((h, i) => `<tr><td>r${i}</td><td>${fmtDH(h)}</td></tr>`).join('')}</tbody></table></div>`;
+        bindTableFilters(); bindTableSort(); document.querySelectorAll(`table[data-filterable="${id}"] thead tr:first-child th`)[1].click();
+        return [...document.querySelectorAll(`table[data-filterable="${id}"] tbody tr`)].map(r => r.cells[1].textContent);
+      }, lang);
+      expect(r.length).toBe(8);
+      const hours = r.map(x => { const m = x.match(/^(?:(\d+)(?:天|d))?\s*(?:(\d+(?:\.\d+)?)(?:小時|h))?$/); return (+(m[1] || 0)) * 8 + (+(m[2] || 0)); });
+      expect(hours).toEqual([2, 4, 8, 9, 10.5, 16, 24, 40]);                                   // 由小到大：2 小時 … 1 天 … 5 天
+    }
+  });
+
+  test('empty values and “—” always go last, both ways', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => {
+      document.getElementById('view').innerHTML = `<div class="tablewrap"><table data-filterable="t-empty"><thead><tr><th>名稱</th><th>金額</th></tr></thead><tbody>
+        ${[['a','NT$5'],['b','—'],['c','NT$1'],['d',''],['e','NT$3'],['f','待設定'],['g','NT$2'],['h','NT$4']].map(x => `<tr><td>${x[0]}</td><td>${x[1]}</td></tr>`).join('')}</tbody></table></div>`;
+      bindTableFilters(); bindTableSort(); const h = document.querySelectorAll('table[data-filterable="t-empty"] thead tr:first-child th')[1];
+      const read = () => [...document.querySelectorAll('table[data-filterable="t-empty"] tbody tr')].map(r => r.cells[0].textContent).join('');
+      h.click(); const asc = read(); h.click(); const desc = read(); return { asc, desc };
+    });
+    expect(r.asc.slice(0, 5)).toBe('cgeha');                              // c(1) g(2) e(3) h(4) a(5)，空白的 b d f 在後面
+    expect(r.asc.slice(5).split('').sort().join('')).toBe('bdf');
+    expect(r.desc.slice(0, 5)).toBe('ahegc');                             // a(5) h(4) e(3) g(2) c(1)
+    expect(r.desc.slice(5).split('').sort().join('')).toBe('bdf');        // 反向排序，空白仍在最後
+  });
+
+  test('sorting and filtering work together: hidden rows stay hidden, visible rows are sorted', async ({ page }) => {
+    await openPay(page);
+    await page.locator(PAY + ' [data-tfcol="1"]').selectOption({ index: 1 });                          // 篩一種計薪方式
+    const n = await page.locator(PAY + ' tbody tr:not([hidden])').count(), total = await page.locator(PAY + ' tbody tr').count();
+    expect(n).toBeLessThan(total);
+    await heads(page, PAY).nth(8).click(); await heads(page, PAY).nth(8).click();
+    expect(await page.locator(PAY + ' tbody tr:not([hidden])').count()).toBe(n);
+    const v = nums(await col(page, PAY, 8)); expect(v).toEqual([...v].sort((a, b) => b - a));
+  });
+
+  test('the order survives a redraw (language switch) and the arrow stays', async ({ page }) => {
+    await openPay(page);
+    await heads(page, PAY).nth(8).click();
+    const before = await col(page, PAY, 8);
+    await page.click('[data-lang="en"]');
+    expect(await col(page, PAY, 8)).toEqual(before);
+    expect(await heads(page, PAY).nth(8).getAttribute('aria-sort')).toBe('ascending');
+  });
+
+  test('the keyboard works: tab to a header and press Enter or Space', async ({ page }) => {
+    await openPay(page);
+    const h = heads(page, PAY).nth(8); await h.focus();
+    await page.keyboard.press('Enter'); expect(await h.getAttribute('aria-sort')).toBe('ascending');
+    await page.keyboard.press('Space'); expect(await h.getAttribute('aria-sort')).toBe('descending');
+    expect(await h.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('typing in a filter box never sorts, and the columns that hold buttons or tick boxes are not sortable', async ({ page }) => {
+    await openPay(page);
+    await page.locator(PAY + ' [data-tfcol="0"]').fill('A');
+    expect(await page.locator(PAY + ' thead th[aria-sort="ascending"],' + PAY + ' thead th[aria-sort="descending"]').count()).toBe(0);
+    await go(page, 'hr', 'leave');
+    const t = 'table[data-filterable="lv-leave"]', last = await heads(page, t).count();
+    expect(await heads(page, t).nth(last - 1).getAttribute('aria-sort')).toBeNull();               // 最後一欄是「簽核」按鈕
+  });
+
+  test('a table with group headings sorts inside each group and the headings stay put', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'admin'); await go(page, 'doc', 'cmp104');
+    const t = page.locator('table:has(tr.filters)').filter({ hasText: '104' }).first();
+    const shape = () => t.locator('tbody tr').evaluateAll(trs => trs.map(r => (r.cells.length === 1 && r.cells[0].colSpan > 1) ? 'G' : 'r').join(''));
+    const before = await shape();
+    expect(before).toMatch(/^G(r+G)+r+$/);                                                           // 標題與資料列是交錯的（G r r G r …），不是標題全擠在最上面
+    await t.locator('thead tr:first-child th.sortable').first().click();
+    expect(await shape()).toBe(before);                                                              // 分組標題的位置不變，只有各組裡面在排
+    const groups = await t.locator('tbody tr').evaluateAll(trs => { const out = []; let cur = null; trs.forEach(r => { if (r.cells.length === 1 && r.cells[0].colSpan > 1) { cur = []; out.push(cur); } else if (cur) cur.push(r.cells[0].textContent.trim()); }); return out; });
+    for (const g of groups) { const s = [...g].sort((a, b) => new Intl.Collator('zh-Hant-TW', { numeric: true, sensitivity: 'base' }).compare(a, b)); expect(g).toEqual(s); }
+    expect(groups.length).toBeGreaterThan(1);                                                         // 至少兩組，才看得出「有沒有跨組亂排」
+    const grouped = () => t.locator('tbody tr').evaluateAll(trs => { const out = []; let cur = null; trs.forEach(r => { if (r.cells.length === 1 && r.cells[0].colSpan > 1) { cur = { h: r.textContent.trim(), ids: [] }; out.push(cur); } else if (cur) cur.ids.push(r.cells[0].textContent.trim()); }); return out; });
+    const asc = await grouped();
+    await t.locator('thead tr:first-child th.sortable').first().click();                          // 第二下：由大到小，每一列仍在原本那一組
+    const desc = await grouped();
+    expect(desc.map(g => g.h)).toEqual(asc.map(g => g.h));
+    asc.forEach((g, i) => { expect([...desc[i].ids].sort()).toEqual([...g.ids].sort()); expect(desc[i].ids).toEqual([...g.ids].sort((x, y) => new Intl.Collator('zh-Hant-TW', { numeric: true, sensitivity: 'base' }).compare(y, x))); });
+  });
+
+  test('the employee table and the sign-forms table can be sorted too, and rows still open when clicked', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'hr', 'emp');
+    expect(await page.locator('.emptable thead tr:first-child th.sortable').count()).toBeGreaterThan(5);
+    await page.locator('.emptable thead tr:first-child th.sortable').first().click();
+    const ids = await page.evaluate(() => [...document.querySelectorAll('.emptable tbody tr[data-emp]')].map(r => r.dataset.emp));
+    expect(ids).toEqual([...ids].sort((a, b) => new Intl.Collator('zh-Hant-TW', { numeric: true }).compare(a, b)));
+    await page.locator('.emptable tbody tr[data-emp]').first().click();
+    await expect(page.locator('aside.drawer')).toBeVisible();                                         // 排完序，點列還是開得了員工資料
+  });
+
+  test('columns made of buttons or checkboxes are not sortable (even without a no-filter mark)', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'admin'); await go(page, 'ann', 'orgcfg');
+    const info = await page.evaluate(() => { const tb = [...document.querySelectorAll('#view table')].find(x => /^auto:ann:orgcfg/.test(x.dataset.sortid || '')); const rows = [...tb.tBodies[0].rows]; const hs = [...tb.tHead.rows[0].cells];
+      const btn = hs.map((h, i) => rows.filter(r => r.cells[i] && r.cells[i].querySelector('button,input[type=checkbox]')).length > rows.length / 2);
+      return { btnSortable: hs.filter((h, i) => btn[i] && h.classList.contains('sortable')).length, btnCols: btn.filter(Boolean).length, plainSortable: hs.filter((h, i) => !btn[i] && h.classList.contains('sortable')).length }; });
+    expect(info.btnCols).toBeGreaterThan(0);
+    expect(info.btnSortable).toBe(0);                                                               // 全是按鈕／勾選框的欄不能排序
+    expect(info.plainSortable).toBeGreaterThan(0);                                                  // 其他欄照常可排
+  });
+
+  test('on a phone the sortable headers are big enough to tap', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPortal(page); await page.evaluate(() => { state.role = 'hr'; state.module = 'pay'; state.tab = 'run'; render(); });   // 手機上角色下拉收起了，直接設定
+    const h = await heads(page, PAY).nth(8).evaluate(e => e.getBoundingClientRect().height);
+    expect(h).toBeGreaterThanOrEqual(40);
+  });
+
+  test('the guide records the sorting', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['點表頭排序', '第三下', '1 天 = 8 小時', '空白']) await expect(page.locator('#newv35')).toContainText(w);
+  });
+});
