@@ -460,8 +460,14 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 .todocard .tablewrap{max-height:none;overflow-x:auto}
 .leafwrap{display:flex;gap:4px;align-items:center}.leafwrap .leaf{flex:1;min-width:0}.orgdel{padding:2px 7px;min-width:26px}
 .leaf.extra{border-style:dashed}
-/* 手機／觸控：按鈕、下拉與輸入框至少 40px 高，才點得準（桌面版不變） */
+/* 手機／觸控：按鈕、下拉與輸入框至少 40px 高，才點得準（桌面版不變）；勾選框至少 24px（WCAG 2.2 最小點擊範圍），選檔案的欄位與文字連結也放大 */
+.tftoggle{display:none}
+@media (max-width:760px){ .tftoggle{display:inline-flex} tr.filters.tfcollapsed{display:none} }
 @media (max-width:760px), (pointer:coarse){
+  input[type=checkbox], input[type=radio]{ width:24px; height:24px; min-height:24px; margin:6px }
+  input[type=file]{ min-height:44px; padding:6px; font-size:14px }
+  input[type=file]::file-selector-button{ min-height:36px; padding:6px 14px; margin-right:10px }
+  a.tlink{ display:inline-flex; align-items:center; min-height:40px }
   button:not(.navitem):not(.tabs button), a.btn, select, input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]){ min-height:40px }
   .btn.mini, .btn.ghost.mini{ padding-top:8px; padding-bottom:8px }
   .tabs button{ min-height:40px }
@@ -1507,7 +1513,7 @@ function viewArchScope(){
     <div class="note">${esc(both(
       '本原型依 9/20、9/30 會議紀錄、需求簡報、v2.0 開發規格，以及提供的 104 截圖建置。人員、姓名、出勤與薪資數字皆為示範資料，不是真實資料。',
       'This prototype follows the 20 and 30 Sept meeting minutes, the requirements deck, the v2.0 spec and the 104 screenshots provided. People, names, attendance and pay figures are demo data, not real records.'))}
-      <a href="guide.html" style="margin-left:6px">${esc(both('使用指南','User guide'))} →</a></div>
+      <a class="tlink" href="guide.html" style="margin-left:6px">${esc(both('使用指南','User guide'))} →</a></div>
     <section class="card">
       <div class="card-h"><h2>${esc(both('行動項目：要結案的 12 件事','Action items: 12 things to close'))}</h2>
         <span class="en">${esc(both('整理自 44 項決議與追蹤事項；建議只是提案','Distilled from 44 decisions and follow-ups; recommendations are proposals'))}</span></div>
@@ -4651,19 +4657,37 @@ function viewLeave(){
   </div>`;
 }
 
-/* 通用的表格欄位篩選：在 <table data-filterable="代號"> 的表頭下自動長出一列篩選欄（選項少的欄位用下拉，其餘用文字）；
-   不要篩選的欄位（例如「簽核」按鈕欄）在 <th> 加 data-nofilter。篩選值記在 state.tf，重新繪製後仍保留。 */
+/* 通用的表格欄位篩選：在表頭下自動長出一列篩選欄（選項少的欄位用下拉，其餘用文字）。
+   ① 明確標了 <table data-filterable="代號"> 的表一定有；② 其他表格只要有 8 列以上、單列表頭、沒有合併儲存格、自己沒有篩選，也自動加上（長表一律能篩選，不用一張一張標）。
+   不要篩選的欄位（例如「簽核」按鈕欄）在 <th> 加 data-nofilter；表頭沒有文字的欄位（勾選框欄）也不篩。
+   篩選只影響畫面顯示，合計與匯出仍是全部資料。篩選值記在 state.tf，重新繪製後仍保留。
+   手機上篩選列預設收起（一排十幾個欄位太擠），按「篩選」展開；有篩選條件時自動展開。 */
+const AUTO_FILTER_MIN_ROWS = 8;
+function autoFilterable(tb){
+  if(tb.matches('.cetable,.emptable,.cal')||tb.querySelector('tr.filters,[data-cf],[data-fcol]')) return false;
+  const body=tb.tBodies[0]; if(!body||body.rows.length<AUTO_FILTER_MIN_ROWS) return false;
+  if(!tb.tHead||tb.tHead.rows.length!==1||tb.tHead.rows[0].cells.length<2) return false;
+  /* 合併儲存格：只有「整列一格的分組標題」（tbody 裡單一儲存格橫跨整列）可以；其他合併方式欄位對不齊，不自動篩 */
+  if([...tb.querySelectorAll('[colspan],[rowspan]')].some(c=>c.hasAttribute('rowspan')||!c.closest('tbody')||c.parentElement.cells.length!==1)) return false;
+  return !!tb.closest('.tablewrap');
+}
 function bindTableFilters(){
-  document.querySelectorAll('#view table[data-filterable]').forEach(tb=>{
-    const id=tb.dataset.filterable, F=(state.tf||(state.tf={}))[id]||(state.tf[id]={});
-    const rows=[...tb.tBodies[0].rows]; if(!rows.length) return;
+  let autoN=0;
+  document.querySelectorAll('#view table').forEach(tb=>{
+    let id=tb.dataset.filterable;
+    if(!id){ if(!autoFilterable(tb)) return; id='auto:'+state.module+':'+(state.tab||'-')+':'+(autoN++); }
+    const F=(state.tf||(state.tf={}))[id]||(state.tf[id]={}), open=(state.tfOpen||(state.tfOpen={}));
+    const allRows=[...tb.tBodies[0].rows], isGroup=r=>r.cells.length===1&&r.cells[0].colSpan>1, rows=allRows.filter(r=>!isGroup(r)); if(!rows.length) return;   // 分組標題列不算資料列
     const head=tb.tHead.rows[tb.tHead.rows.length-1];
-    const txt=(r,i)=>(r.cells[i]?r.cells[i].textContent:'').replace(/\s+/g,' ').trim();
-    const fr=document.createElement('tr'); fr.className='filters';
+    /* 儲存格裡有下拉或輸入框（例如月薪制的計薪方式、組織架構設定的名稱）：比對目前的值，不是全部選項的文字 */
+    const txt=(r,i)=>{ const c=r.cells[i]; if(!c) return ''; const ctl=c.querySelector('select,input:not([type=checkbox]):not([type=radio]):not([type=hidden])');
+      return String(ctl?(ctl.tagName==='SELECT'?((ctl.selectedOptions[0]||{}).textContent||''):ctl.value):c.textContent).replace(/\s+/g,' ').trim(); };
+    const fr=document.createElement('tr'); fr.className='filters'; fr.id='tf-'+id.replace(/[^a-z0-9]+/gi,'-');
     [...head.cells].forEach((th,i)=>{
       const td=document.createElement('th'); fr.appendChild(td);
-      if(th.hasAttribute('data-nofilter')) return;
-      const vals=[...new Set(rows.map(r=>txt(r,i)))].filter(Boolean).sort(), label=th.textContent.replace(/\s+/g,' ').trim();
+      const label=th.textContent.replace(/\s+/g,' ').trim();
+      if(th.hasAttribute('data-nofilter')||!label) return;
+      const vals=[...new Set(rows.map(r=>txt(r,i)))].filter(Boolean).sort();
       let el;
       if(vals.length>1 && vals.length<=8 && vals.every(v=>v.length<=14)){
         el=document.createElement('select'); el.innerHTML='<option value="">'+esc(both('全部','All'))+'</option>'+vals.map(v=>'<option>'+esc(v)+'</option>').join('');
@@ -4673,13 +4697,20 @@ function bindTableFilters(){
     });
     tb.tHead.appendChild(fr);
     { const h=head.offsetHeight; if(h) fr.querySelectorAll('th').forEach(th=>{ th.style.top=h+'px'; }); }   // 篩選列固定在表頭正下方（表頭高度不一定是一行）
-    const bar=document.createElement('div'); bar.className='muted tfbar'; bar.style.cssText='font-size:12px;padding:6px 12px;display:flex;gap:10px;align-items:center';
-    bar.innerHTML='<span class="tfcount"></span><button type="button" class="btn ghost mini tfclear">'+esc(both('清除篩選','Clear filters'))+'</button>';
+    const bar=document.createElement('div'); bar.className='muted tfbar'; bar.style.cssText='font-size:12px;padding:6px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap';
+    bar.innerHTML='<button type="button" class="btn ghost mini tftoggle" aria-expanded="false"></button><span class="tfcount"></span><button type="button" class="btn ghost mini tfclear">'+esc(both('清除篩選','Clear filters'))+'</button>';
     tb.closest('.tablewrap').after(bar);
+    const tog=bar.querySelector('.tftoggle');
+    const active=()=>Object.values(F).filter(Boolean).length;
+    const paint=()=>{ const n=active(), isOpen=!!open[id]||n>0; fr.classList.toggle('tfcollapsed',!isOpen); tog.setAttribute('aria-expanded',String(isOpen));
+      tog.disabled=n>0;                                                              // 有篩選條件時一定展開：按鈕改成顯示條件數，不假裝能收起
+      tog.textContent=n>0?both('篩選中 ('+n+')','Filtering ('+n+')'):isOpen?both('收起篩選','Hide filters'):both('篩選','Filters'); };
     const apply=()=>{ let n=0;
       rows.forEach(r=>{ const ok=Object.entries(F).every(([i,v])=>!v||txt(r,+i).toLowerCase().includes(String(v).trim().toLowerCase())); r.hidden=!ok; if(ok) n++; });
+      let grp=null, any=false;                                                       // 分組標題：底下至少有一列還顯示才留著
+      allRows.concat([null]).forEach(r=>{ if(r===null||isGroup(r)){ if(grp) grp.hidden=active()>0&&!any; grp=r; any=false; } else if(!r.hidden) any=true; });
       bar.querySelector('.tfcount').textContent=both('顯示 '+n+' / '+rows.length+' 筆','Showing '+n+' / '+rows.length);
-      bar.querySelector('.tfclear').hidden=!Object.values(F).some(Boolean); };
+      bar.querySelector('.tfclear').hidden=!active(); paint(); };
     let comp=false;   // 中文（注音）組字中不篩選，組字結束才篩
     fr.querySelectorAll('[data-tfcol]').forEach(el=>{
       const set=()=>{ F[el.dataset.tfcol]=el.value; apply(); };
@@ -4688,6 +4719,7 @@ function bindTableFilters(){
       el.addEventListener('input',e=>{ if(comp||e.isComposing) return; set(); });
       el.addEventListener('change',set);
     });
+    tog.onclick=()=>{ open[id]=!open[id]; paint(); };
     bar.querySelector('.tfclear').onclick=()=>{ Object.keys(F).forEach(k=>delete F[k]); fr.querySelectorAll('[data-tfcol]').forEach(el=>{ el.value=''; }); apply(); };
     apply();
   });
@@ -4940,7 +4972,7 @@ function viewDocGuides(){
   <div class="grid">
     <div class="note">${esc(both('完整的操作說明請看「使用指南」頁；也可以直接在網站上跟著步驟操作一次（導覽會自動切換身分與頁面，並標出要點的地方）。',
       'The full instructions are on the User guide page; you can also run a guided walkthrough that switches role and page for you and highlights what to click.'))}
-      <a href="guide.html" style="margin-left:6px">${esc(both('開啟使用指南','Open user guide'))} →</a></div>
+      <a class="tlink" href="guide.html" style="margin-left:6px">${esc(both('開啟使用指南','Open user guide'))} →</a></div>
     <section class="card">
       <div class="card-h"><h2>${esc(both('導覽情境','Guided walkthroughs'))}</h2></div>
       <div class="tablewrap"><table><tbody>${TOURS.map(t=>`<tr><td><b>${esc(t.zh)}</b><div class="muted" style="font-size:12px">${esc(both('身分：'+ROLES[t.role].zh,'Role: '+ROLES[t.role].en))} · ${t.steps.length} ${esc(both('步','steps'))}</div></td>

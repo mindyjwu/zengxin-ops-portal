@@ -4485,7 +4485,7 @@ test.describe('column filters on the payroll, attendance, insurance and permissi
     const qn = await total(page, 'ins-quarter');
     await filt(page, 'ins-quarter', 1).fill('zzzz');
     expect(await rows(page, 'ins-quarter')).toBe(0);
-    await page.locator('table[data-filterable="ins-quarter"]').locator('xpath=ancestor::div[contains(@class,"tablewrap")]/following-sibling::div[contains(@class,"tfbar")]//button').click();
+    await page.locator('table[data-filterable="ins-quarter"]').locator('xpath=ancestor::div[contains(@class,"tablewrap")]/following-sibling::div[contains(@class,"tfbar")]//button[contains(@class,"tfclear")]').click();
     expect(await rows(page, 'ins-quarter')).toBe(qn);
   });
 
@@ -4659,5 +4659,139 @@ test.describe('every role, every page, both languages, desktop and phone width',
     }
     expect(bad).toEqual([]);
     expect(errors).toEqual([]);
+  });
+});
+
+/* 所有長表都能篩選、手機上好點（11/23） */
+test.describe('every long table can be filtered, and phone tap targets are big enough', () => {
+  const visibleRows = (page, id) => page.locator(`#view table:has(tr#tf-${id}) tbody tr:not([hidden])`).count();
+
+  test('every table with 8 or more rows has a filter row (apart from the ones that have their own filters or no header)', async ({ page }) => {
+    test.setTimeout(240000);
+    await openPortal(page);
+    const roles = ['admin', 'hr', 'manager', 'boss', 'training', 'accountant', 'daydir', 'employee'], missing = [];
+    for (const role of roles) {
+      await page.evaluate(r => { state.role = r; state.lang = 'zh'; render(); }, role);
+      const mods = await page.evaluate(() => MODULES.filter(m => modVisible(m)).map(m => ({ id: m.id, tabs: m.tabs.length ? m.tabs.filter(t => tabAllowed(m, t)).map(t => t.id) : [null] })));
+      for (const m of mods) for (const t of m.tabs) {
+        await page.evaluate(([mm, tt]) => { state.module = mm; state.tab = tt; render(); }, [m.id, t]);
+        const bad = await page.evaluate(() => [...document.querySelectorAll('#view table')].filter(tb => {
+          const rows = tb.tBodies[0] ? tb.tBodies[0].rows.length : 0;
+          if (rows < 8 || !tb.tHead || !tb.tHead.rows.length) return false;                    // 沒有表頭的清單不算
+          if (tb.matches('.cetable') || tb.closest('#calcOut')) return false;                 // 課程積分總表有自己的篩選；計算結果不是資料表
+          return !tb.querySelector('tr.filters,[data-cf],[data-fcol]');
+        }).map(tb => (tb.closest('section,.card') || document).querySelector('h2')?.innerText || '?'));
+        if (bad.length) missing.push(`${role} ${m.id}:${t || '-'} ${bad.join(',')}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  test('a long reference table filters by keyword (the follow-up list has 30 rows)', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'admin'); await go(page, 'doc', 'meeting');
+    const t = page.locator('table:has(tr.filters)').last(), total = await t.locator('tbody tr').count();
+    expect(total).toBeGreaterThanOrEqual(8);
+    const word = (await t.locator('tbody tr').first().locator('td').nth(1).innerText()).trim().slice(0, 4);
+    await t.locator('[data-tfcol="1"]').fill(word);
+    const shown = await t.locator('tbody tr:not([hidden])').count();
+    expect(shown).toBeGreaterThan(0); expect(shown).toBeLessThan(total);
+    await expect(page.locator('.tfcount').last()).toContainText(`顯示 ${shown} / ${total}`);
+  });
+
+  test('a table with group headings keeps a heading only when something under it still shows', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'admin'); await go(page, 'doc', 'cmp104');
+    const t = page.locator('table:has(tr.filters)').filter({ hasText: '104' }).first();                // 47 列、有分組標題的那一張
+    const groups = await t.locator('tbody tr').evaluateAll(trs => trs.filter(r => r.cells.length === 1 && r.cells[0].colSpan > 1).length);
+    expect(groups).toBeGreaterThan(0);
+    await t.locator('[data-tfcol="0"]').fill('zzzzzz');
+    expect(await t.locator('tbody tr:not([hidden])').count()).toBe(0);                      // 沒有任何符合：連分組標題也收起來
+    await t.locator('[data-tfcol="0"]').fill('');
+    expect(await t.locator('tbody tr:not([hidden])').count()).toBe(await t.locator('tbody tr').count());
+  });
+
+  test('with a partial match only the headings that still have rows under them stay', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'admin'); await go(page, 'doc', 'cmp104');
+    const t = page.locator('table:has(tr.filters)').filter({ hasText: '104' }).first();
+    const info = await t.locator('tbody tr').evaluateAll(trs => { const g = r => r.cells.length === 1 && r.cells[0].colSpan > 1; let cur = -1; const under = []; trs.forEach(r => { if (g(r)) { cur++; under.push([]); } else if (cur >= 0) under[cur].push(r.cells[0].textContent.trim()); }); return under; });
+    expect(info.length).toBeGreaterThan(1);
+    const word = info.find(u => u.length)[0].slice(0, 3);                                          // 取某一組底下的一個字
+    await t.locator('[data-tfcol="0"]').fill(word);
+    const res = await t.locator('tbody tr').evaluateAll(trs => { const g = r => r.cells.length === 1 && r.cells[0].colSpan > 1; return { groupsShown: trs.filter(r => g(r) && !r.hidden).length, rowsShown: trs.filter(r => !g(r) && !r.hidden).length }; });
+    expect(res.rowsShown).toBeGreaterThan(0);
+    expect(res.groupsShown).toBeGreaterThan(0);                                                    // 有符合的那組標題還在
+    expect(res.groupsShown).toBeLessThanOrEqual(info.length);
+    const noMatchGroups = info.filter(u => !u.some(x => x.toLowerCase().includes(word.toLowerCase()))).length;
+    if (noMatchGroups) expect(res.groupsShown).toBe(info.length - noMatchGroups);                  // 沒有任何符合的組，標題收起來
+  });
+
+  test('inputs and dropdowns inside cells are filtered by their current value', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'ann', 'orgcfg');
+    const t = page.locator('table:has(tr.filters)').first(), total = await t.locator('tbody tr').count();
+    const name = await t.locator('tbody tr').first().locator('input').first().inputValue();       // 名稱放在輸入框裡
+    await t.locator('[data-tfcol="1"]').fill(name);
+    const shown = await t.locator('tbody tr:not([hidden])').count();
+    expect(shown).toBeGreaterThan(0); expect(shown).toBeLessThan(total);
+  });
+
+  test('on a phone the filter row starts folded, opens with the button, and stays open while a filter is set', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPortal(page);
+    await page.evaluate(() => { state.role = 'admin'; state.module = 'doc'; state.tab = 'meeting'; render(); });
+    const t = page.locator('table:has(tr.filters)').last();
+    await expect(t.locator('tr.filters')).toBeHidden();
+    const tog = page.locator('.tftoggle').last();
+    await expect(tog).toBeVisible(); await expect(tog).toHaveAttribute('aria-expanded', 'false');
+    await tog.click(); await expect(t.locator('tr.filters')).toBeVisible(); await expect(tog).toHaveAttribute('aria-expanded', 'true');
+    await t.locator('[data-tfcol="1"]').fill('a');
+    await expect(tog).toBeDisabled(); await expect(tog).toContainText('篩選中 (1)');              // 有條件時一定展開，按鈕不假裝能收起
+    await expect(t.locator('tr.filters')).toBeVisible();
+    await page.locator('.tfclear').last().click();
+    await expect(t.locator('tr.filters')).toBeVisible(); await expect(tog).toBeEnabled();         // 清掉條件後維持展開，由使用者自己收
+    await tog.click();
+    await expect(t.locator('tr.filters')).toBeHidden();
+  });
+
+  test('a filter that is already set shows the filter row on a phone even if the user never opened it', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'admin'); await go(page, 'doc', 'meeting');
+    await page.locator('table:has(tr.filters)').last().locator('[data-tfcol="1"]').fill('a');         // 在桌面設定條件
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.evaluate(() => render());                                                            // 換成手機寬度後重畫
+    const t = page.locator('table:has(tr.filters)').last();
+    await expect(t.locator('tr.filters')).toBeVisible();                                            // 沒按過「篩選」，條件也不會被藏起來
+    await expect(page.locator('.tftoggle').last()).toContainText('篩選中 (1)');
+  });
+
+  test('on a desktop the filter row is simply there, without a toggle button', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'admin'); await go(page, 'doc', 'meeting');
+    await expect(page.locator('table:has(tr.filters)').last().locator('tr.filters')).toBeVisible();
+    await expect(page.locator('.tftoggle').last()).toBeHidden();
+  });
+
+  test('phone: every button, dropdown, text box and link is at least 40px tall; every checkbox at least 24px', async ({ page }) => {
+    test.setTimeout(240000);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPortal(page);
+    const small = [];
+    for (const role of ['admin', 'hr', 'manager', 'employee', 'boss', 'daydir', 'training', 'accountant']) {
+      await page.evaluate(r => { state.role = r; state.lang = 'zh'; render(); }, role);
+      const mods = await page.evaluate(() => MODULES.filter(m => modVisible(m)).map(m => ({ id: m.id, tabs: m.tabs.length ? m.tabs.filter(t => tabAllowed(m, t)).map(t => t.id) : [null] })));
+      for (const m of mods) for (const t of m.tabs) {
+        await page.evaluate(([mm, tt]) => { state.module = mm; state.tab = tt; render(); }, [m.id, t]);
+        const r = await page.evaluate(() => {
+          const vis = e => { const b = e.getBoundingClientRect(), s = getComputedStyle(e); return b.width > 0 && b.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; };
+          return [...document.querySelectorAll('#app button,#app a[href],#app select,#app input:not([type=hidden]),#app [role=tab]')].filter(vis).filter(e => {
+            const cb = e.type === 'checkbox' || e.type === 'radio', box = cb && e.closest('label') ? e.closest('label') : e, b = box.getBoundingClientRect();
+            return cb ? (b.height < 24 || b.width < 24) : b.height < 40;
+          }).map(e => e.tagName.toLowerCase() + '.' + String(e.className).split(' ')[0] + ' ' + Math.round(e.getBoundingClientRect().height));
+        });
+        if (r.length) small.push(`${role} ${m.id}:${t || '-'} ${r.slice(0, 3).join(', ')}`);
+      }
+    }
+    expect(small).toEqual([]);
+  });
+
+  test('the guide records the table filters and the phone tap sizes', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['所有長表', '8 列', '手機上篩選列預設收起', '40px']) await expect(page.locator('#newv35')).toContainText(w);
   });
 });
