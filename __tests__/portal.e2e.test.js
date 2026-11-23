@@ -4523,6 +4523,6 @@ test.describe('column filters on the payroll, attendance, insurance and permissi
 test.describe('11/23 backend: file storage layer is recorded in the guide', () => {
   test('the guide says what exists, what is not done and what still needs checking', async ({ page }) => {
     await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
-    for (const w of ['檔案儲存層', 'Google Cloud Storage', '雜湊值', '還沒做', '拿到儲存桶後要實測']) await expect(page.locator('#newv35')).toContainText(w);
+    for (const w of ['檔案儲存層', 'Google Cloud Storage', '雜湊值', '還沒做', '拿到儲存桶後要實測', '拒絕啟動', 'STORAGE_DRIVER']) await expect(page.locator('#newv35')).toContainText(w);
   });
 });
