@@ -461,6 +461,12 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
 .leafwrap{display:flex;gap:4px;align-items:center}.leafwrap .leaf{flex:1;min-width:0}.orgdel{padding:2px 7px;min-width:26px}
 .leaf.extra{border-style:dashed}
 /* 手機／觸控：按鈕、下拉與輸入框至少 40px 高，才點得準（桌面版不變）；勾選框至少 24px（WCAG 2.2 最小點擊範圍），選檔案的欄位與文字連結也放大 */
+th.sortable{cursor:pointer;user-select:none}
+th.sortable::after{content:'↕';margin-left:4px;font-size:10px;opacity:0}
+th.sortable:hover::after,th.sortable:focus-visible::after{opacity:.55}
+th.sortable[aria-sort=ascending]::after{content:'▲';opacity:1}
+th.sortable[aria-sort=descending]::after{content:'▼';opacity:1}
+th.sortable:focus-visible{outline:2px solid var(--accent,#1F6B57);outline-offset:-2px}
 .tftoggle{display:none}
 @media (max-width:760px){ .tftoggle{display:inline-flex} tr.filters.tfcollapsed{display:none} }
 @media (max-width:760px), (pointer:coarse){
@@ -468,6 +474,8 @@ tbody tr[aria-selected="true"]{background:var(--accent-soft)}
   input[type=file]{ min-height:44px; padding:6px; font-size:14px }
   input[type=file]::file-selector-button{ min-height:36px; padding:6px 14px; margin-right:10px }
   a.tlink{ display:inline-flex; align-items:center; min-height:40px }
+  th.sortable{ min-height:40px; padding-top:12px; padding-bottom:12px }
+  th.sortable::after{ opacity:.4 }
   button:not(.navitem):not(.tabs button), a.btn, select, input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]){ min-height:40px }
   .btn.mini, .btn.ghost.mini{ padding-top:8px; padding-bottom:8px }
   .tabs button{ min-height:40px }
@@ -1334,6 +1342,7 @@ function render(){
   v.innerHTML = fn ? fn() : '';
   (BINDERS[key]||function(){})();
   bindTableFilters();
+  bindTableSort();
   linkLabels();
   restoreDrafts();
   if(state.module==='pay' && !payEdit()){   // 職稱對照寫「可檢視」：看得到，不能儲存版本或覆核
@@ -4676,12 +4685,11 @@ function bindTableFilters(){
   document.querySelectorAll('#view table').forEach(tb=>{
     let id=tb.dataset.filterable;
     if(!id){ if(!autoFilterable(tb)) return; id='auto:'+state.module+':'+(state.tab||'-')+':'+(autoN++); }
+    tb.dataset.sortid=id;                                                            // 排序用同一個代號記住排序狀態
     const F=(state.tf||(state.tf={}))[id]||(state.tf[id]={}), open=(state.tfOpen||(state.tfOpen={}));
     const allRows=[...tb.tBodies[0].rows], isGroup=r=>r.cells.length===1&&r.cells[0].colSpan>1, rows=allRows.filter(r=>!isGroup(r)); if(!rows.length) return;   // 分組標題列不算資料列
     const head=tb.tHead.rows[tb.tHead.rows.length-1];
-    /* 儲存格裡有下拉或輸入框（例如月薪制的計薪方式、組織架構設定的名稱）：比對目前的值，不是全部選項的文字 */
-    const txt=(r,i)=>{ const c=r.cells[i]; if(!c) return ''; const ctl=c.querySelector('select,input:not([type=checkbox]):not([type=radio]):not([type=hidden])');
-      return String(ctl?(ctl.tagName==='SELECT'?((ctl.selectedOptions[0]||{}).textContent||''):ctl.value):c.textContent).replace(/\s+/g,' ').trim(); };
+    const txt=cellText;
     const fr=document.createElement('tr'); fr.className='filters'; fr.id='tf-'+id.replace(/[^a-z0-9]+/gi,'-');
     [...head.cells].forEach((th,i)=>{
       const td=document.createElement('th'); fr.appendChild(td);
@@ -4722,6 +4730,76 @@ function bindTableFilters(){
     tog.onclick=()=>{ open[id]=!open[id]; paint(); };
     bar.querySelector('.tfclear').onclick=()=>{ Object.keys(F).forEach(k=>delete F[k]); fr.querySelectorAll('[data-tfcol]').forEach(el=>{ el.value=''; }); apply(); };
     apply();
+  });
+}
+/* 儲存格的文字：裡面有下拉或輸入框（例如月薪制的計薪方式、組織架構設定的名稱）就取目前的值，不是全部選項的文字 */
+function cellText(r,i){
+  const c=r.cells[i]; if(!c) return '';
+  const ctl=c.querySelector('select,input:not([type=checkbox]):not([type=radio]):not([type=hidden])');
+  return String(ctl?(ctl.tagName==='SELECT'?((ctl.selectedOptions[0]||{}).textContent||''):ctl.value):c.textContent).replace(/\s+/g,' ').trim();
+}
+/* ---------- 點表頭排序（所有有篩選的表格，加上員工資料與表單簽核） ----------
+   點一下由小到大、再點由大到小、第三下回到原本的順序。數字照數值排（NT$9,000 排在 NT$10,000 前面、4小時排在 1天 前面），
+   日期與編號照字排（A9 排在 A10 前面）；空白與「—」永遠排最後；有分組標題的表只在每一組裡面排。
+   排序狀態記在 state.ts，重新繪製後仍保留。 */
+const SORT_COLL = new Intl.Collator('zh-Hant-TW', {numeric:true, sensitivity:'base'});
+const SORT_EMPTY = /^(|—|-|–|n\/a|待設定|待補)$/i;
+function cellSortKey(t){
+  t=String(t).trim(); if(SORT_EMPTY.test(t)) return null;
+  let m=t.match(/^(\d+(?:\.\d+)?)\s*(?:天|d)(?:\s*(\d+(?:\.\d+)?)\s*(?:小時|h))?$/i);        // 1天2.5小時 ／ 1d 2.5h：換成小時（1 天 = 8 小時）
+  if(m) return {n:(+m[1])*WORK_DAY_H+(+m[2]||0)};
+  m=t.match(/^(\d+(?:\.\d+)?)\s*(?:小時|h)$/i); if(m) return {n:+m[1]};
+  m=t.match(/^([-−+])?\s*(?:NT\$|\$)?\s*([-−+])?(\d[\d,]*(?:\.\d+)?)\s*(?:%|[A-Za-z]{1,4}|[一-鿿]{1,2})?$/);   // NT$45,800 ／ 95.5% ／ 12 筆
+  if(m){ const v=+m[3].replace(/,/g,''); return {n:(m[1]==='-'||m[1]==='−'||m[2]==='-'||m[2]==='−')?-v:v}; }
+  return {s:t};
+}
+function bindTableSort(){
+  const MAP=[['.emptable','emp'],['#signTable','sign']];
+  document.querySelectorAll('#view table').forEach(tb=>{
+    let id=tb.dataset.sortid; if(!id){ const m=MAP.find(([sel])=>tb.matches(sel)); id=m&&m[1]; }
+    if(!id||!tb.tHead||!tb.tHead.rows.length||!tb.tBodies[0]) return;
+    const all=[...tb.tBodies[0].rows], isGroup=r=>r.cells.length===1&&r.cells[0].colSpan>1, rows=all.filter(r=>!isGroup(r));
+    if(rows.length<2) return;
+    rows.forEach((r,k)=>{ r.dataset.i=k; });                                         // 原本的順序（第三下要回得去）
+    const S=(state.ts||(state.ts={}));
+    const heads=[...tb.tHead.rows[0].cells], cols=[];
+    heads.forEach((th,i)=>{
+      if(th.hasAttribute('data-nofilter')||!th.textContent.replace(/\s+/g,' ').trim()) return;
+      const act=rows.filter(r=>r.cells[i]&&r.cells[i].querySelector('button,input[type=checkbox]')).length;
+      if(act>rows.length/2) return;                                                    // 按鈕、勾選框的欄不排序
+      const keys=rows.map(r=>cellSortKey(cellText(r,i))), filled=keys.filter(Boolean);
+      if(!filled.length) return;
+      cols.push({i,th,keys:new Map(rows.map((r,k)=>[r,keys[k]])),num:filled.filter(k=>k.n!==undefined).length>=Math.ceil(filled.length*0.8)});
+    });
+    if(!cols.length) return;
+    const order=()=>{
+      const st=S[id]; const c=st&&cols.find(x=>x.i===st.col);
+      const val=k=>k&&(c.num?(k.n!==undefined?k:null):k);                                // 數字欄裡不是數字的值（例如「待設定」）當空白，排最後
+      const cmp=(a,b)=>{
+        const idx=(+a.dataset.i)-(+b.dataset.i);
+        if(!c) return idx;
+        const ka=val(c.keys.get(a)), kb=val(c.keys.get(b));
+        if(!ka||!kb) return ka?-1:kb?1:idx;                                              // 空白永遠在最後，不管由小到大還是由大到小
+        const d=c.num?(ka.n-kb.n):SORT_COLL.compare(ka.s!==undefined?ka.s:String(ka.n),kb.s!==undefined?kb.s:String(kb.n));
+        return d?(st.dir==='desc'?-d:d):idx;
+      };
+      const out=[]; let cur=[];
+      all.forEach(r=>{ if(isGroup(r)){ out.push(cur.sort(cmp)); out.push([r]); cur=[]; } else cur.push(r); });
+      out.push(cur.sort(cmp));
+      out.flat().forEach(r=>tb.tBodies[0].appendChild(r));                              // 依新順序重排（資料列的事件與狀態跟著搬，不會遺失）
+      cols.forEach(x=>{ const on=st&&st.col===x.i; x.th.setAttribute('aria-sort',on?(st.dir==='desc'?'descending':'ascending'):'none'); });
+    };
+    cols.forEach(x=>{
+      const th=x.th; th.classList.add('sortable'); th.tabIndex=0; th.setAttribute('aria-sort','none');
+      th.title=both('點一下排序（再點反向，第三下回到原順序）','Click to sort (again to reverse, third click restores)');
+      const go=()=>{ const st=S[id]; if(!st||st.col!==x.i) S[id]={col:x.i,dir:'asc'}; else if(st.dir==='asc') st.dir='desc'; else delete S[id]; order(); };
+      th.onclick=e=>{ if(e.target.closest('button,input,select,a')) return; go(); };
+      th.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); } };
+    });
+    order();
+    /* 加了排序箭頭後表頭可能變高：篩選列固定的位置要重新量，才會貼在表頭正下方、捲動時不蓋住表頭 */
+    const fr=tb.querySelector('tr.filters[id^="tf-"]'), h=tb.tHead.rows[0].offsetHeight;
+    if(fr&&h) fr.querySelectorAll('th').forEach(x=>{ x.style.top=h+'px'; });
   });
 }
 /* 簽核動作（單筆與批次共用）；回傳要顯示的訊息 */
