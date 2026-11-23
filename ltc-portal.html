@@ -1189,7 +1189,7 @@ function renderShell(){
   const nt=document.getElementById('navToggle'); if(nt) nt.onclick=()=>{ state.navOpen=!state.navOpen; render(); };
   const tb=document.getElementById('todoBtn'); if(tb) tb.onclick=()=>{ state.module='hr'; state.tab='todo'; render(); };
   document.querySelectorAll('[data-theme-set]').forEach(b=>b.onclick=()=>{ setTheme(b.dataset.themeSet); render(); });
-  document.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{ state.lang=b.dataset.lang; render(); });
+  document.querySelectorAll('[data-lang]').forEach(b=>b.onclick=()=>{ state.pendingDrafts=captureDrafts(); state.lang=b.dataset.lang; render(); });
   document.getElementById('roleSel').onchange = e=>{
     state.role=e.target.value; state.office='ALL'; state.empId=null; state.nodeId=null;
     if(role().selfOnly){ state.module='desk'; state.tab='home'; }   // 員工登入即進入私人秘書
@@ -1242,6 +1242,73 @@ function toast(msg){
 }
 function closeOverlay(){ document.getElementById('overlay').innerHTML=''; state.empId=null; state.nodeId=null; }
 
+/* ---------- 表單小工具（所有表單共用） ----------
+   ① 標籤連到欄位：原本 <label> 只是旁邊的文字，點它不會跳到欄位、讀屏軟體也讀不到；每次畫完自動把標籤接到它旁邊的欄位。
+   ② 必填欄位只填空白不算填寫：擋下並指出是哪一欄。
+   ③ 切換中文／English 時，已經填一半的表單內容保留（重畫畫面前先存、畫完再放回去）。 */
+let lblSeq = 0;
+function linkLabels(){
+  document.querySelectorAll('#app label:not([for])').forEach(l=>{
+    if(l.querySelector('input,select,textarea')) return;                       // 欄位包在標籤裡面：本來就連著
+    const isCtl=c=>c&&c.matches&&c.matches('input:not([type=hidden]),select,textarea');
+    let c=isCtl(l.nextElementSibling)?l.nextElementSibling:null;
+    if(!c&&l.parentElement){                                                    // 沒有緊鄰的欄位：同一個區塊只有「一個標籤、一個欄位」才連（不猜）
+      const labs=l.parentElement.querySelectorAll(':scope > label'), ctl=l.parentElement.querySelectorAll('input:not([type=hidden]),select,textarea');
+      if(labs.length===1&&ctl.length===1) c=ctl[0];
+    }
+    if(!c||c.getAttribute('aria-label')||c.getAttribute('aria-labelledby')) return;
+    if(!c.id) c.id='fld'+(++lblSeq);
+    if(document.querySelector('label[for="'+c.id+'"]')) return;
+    l.htmlFor=c.id;
+  });
+  /* 還是沒有名稱的欄位：依序用 ① 提示文字 ② 表格裡「列標題・欄標題」③ 篩選下拉的第一個選項（例如「全部單位」）當名稱 */
+  document.querySelectorAll('#app input:not([type=hidden]):not([type=checkbox]):not([type=radio]),#app select,#app textarea').forEach(c=>{
+    if(c.getAttribute('aria-label')||c.getAttribute('aria-labelledby')||c.title||c.closest('label')||(c.id&&document.querySelector('label[for="'+c.id+'"]'))) return;
+    const r=c.getBoundingClientRect(); if(!r.width&&!r.height) return;
+    let n=c.getAttribute('placeholder')||'';
+    const td=c.closest('td');
+    if(!n&&td){ const tr=td.parentElement, tb=tr.closest('table'), rowH=tr.cells[0]&&tr.cells[0]!==td?tr.cells[0].textContent.replace(/\s+/g,' ').trim():'',
+      colH=tb&&tb.tHead&&tb.tHead.rows[0]&&tb.tHead.rows[0].cells[td.cellIndex]?tb.tHead.rows[0].cells[td.cellIndex].textContent.replace(/\s+/g,' ').trim():''; n=[rowH,colH].filter(Boolean).join(' · '); }
+    if(!n&&c.tagName==='SELECT'&&c.options[0]&&['ALL',''].includes(c.options[0].value)) n=c.options[0].textContent.trim();
+    if(!n&&c.tagName==='SELECT'&&c.options[0]&&/^\d{4}-\d{2}$/.test(c.options[0].textContent.trim())) n=both('月份','Month');   // 月份下拉（2026-09 這種選項）
+    if(n) c.setAttribute('aria-label',n.slice(0,80));
+  });
+}
+document.addEventListener('submit',e=>{
+  const f=e.target; if(!(f&&f.matches&&f.closest('#app'))) return;
+  const bad=[...f.elements].find(x=>x.required&&['text','search','textarea','email','tel','url'].includes(x.type)&&x.value&&!x.value.trim());
+  if(!bad) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const lb=bad.id&&f.querySelector('label[for="'+bad.id+'"]'), name=(lb?lb.textContent:bad.getAttribute('aria-label')||bad.name||'').trim();
+  bad.setAttribute('aria-invalid','true'); bad.focus();
+  toast(both('請填寫「'+name+'」，只有空白不算','Please fill in “'+name+'” — spaces alone do not count'));
+},true);
+function captureDrafts(){
+  const d={};
+  document.querySelectorAll('#view form[id]').forEach(f=>{
+    const els=[...f.elements].filter(e=>e.name&&!['file','submit','button','hidden','password'].includes(e.type)), o={};
+    els.forEach(e=>{ if(els.filter(x=>x.name===e.name).length>1) return;     // 同名欄位很多個（例如整排勾選框）就不存，免得放錯
+      o[e.name]=e.type==='checkbox'?e.checked:e.value; });
+    d[f.id]=o;
+  });
+  return d;
+}
+function restoreDrafts(){
+  const d=state.pendingDrafts; if(!d) return; state.pendingDrafts=null;
+  Object.entries(d).forEach(([id,o])=>{
+    const f=document.getElementById(id); if(!f||f.tagName!=='FORM') return;
+    Object.entries(o).forEach(([n,v])=>{ const e=[...f.elements].find(x=>x.name===n); if(!e) return; if(e.type==='checkbox') e.checked=!!v; else e.value=v; });
+    f.dispatchEvent(new Event('input',{bubbles:true})); f.dispatchEvent(new Event('change',{bubbles:true}));      // 讓「幾小時」這類即時計算跟著更新
+  });
+}
+/* 時間重疊：同一個人、還有效的單（待簽、待人資、已核准）才算；已駁回、抽單、銷假的不擋 */
+const LIVE_ST = ['pending','countersign','approved'];
+const leaveClash = (emp, from, fromT, to, toT) => LEAVE.find(x=>x.emp===emp && LIVE_ST.includes(x.status) && (from+' '+fromT)<(x.to+' '+x.toT) && (to+' '+toT)>(x.from+' '+x.fromT));
+const hm = t => { const [h,m]=String(t).split(':').map(Number); return h*60+m; };
+const slotOf = (start,end) => [hm(start), hm(end)<=hm(start)?hm(end)+1440:hm(end)];     // 跨夜（22:00–02:00）把結束加一天
+const slotsClash = (a,b) => a[0]<b[1] && a[1]>b[0];
+const otClash = (emp, date, start, end) => OT_REQ.find(x=>x.emp===emp && LIVE_ST.includes(x.status) && x.date===date && slotsClash(slotOf(start,end),slotOf(x.start,x.end)));
+const preotClash = (emp, date, start, end) => FORMS.find(x=>x.emp===emp && x.kind==='preot' && LIVE_ST.includes(x.status) && x.date===date && slotsClash(slotOf(start,end),slotOf(x.fromT,x.toT)));
 function render(){
   renderShell();
   const v=document.getElementById('view');
@@ -1261,6 +1328,8 @@ function render(){
   v.innerHTML = fn ? fn() : '';
   (BINDERS[key]||function(){})();
   bindTableFilters();
+  linkLabels();
+  restoreDrafts();
   if(state.module==='pay' && !payEdit()){   // 職稱對照寫「可檢視」：看得到，不能儲存版本或覆核
     v.insertAdjacentHTML('afterbegin',`<div class="note q">${esc(both('此身分在權限對照表裡對薪資計算只有「可檢視」：可以看，不能儲存版本、送出或覆核。','This role has View-only access to payroll in the title matrix: you can look, but not save versions, submit or review.'))}</div>`);
     v.querySelectorAll('[data-savever],[data-vact]').forEach(b=>{ b.disabled=true; b.title='可檢視'; });
@@ -1715,7 +1784,7 @@ function viewOrgFn(){
       <span class="en">${esc(both(hits+' / '+STAFF.length+' 人 · '+OFFICES.length+' 個主體單位＋共用行政（示範人員）',hits+' / '+STAFF.length+' people · '+OFFICES.length+' entities + shared admin (demo staff)'))}</span>
       <div class="spacer"></div>
       <select id="orgDept" title="${esc(both('部門篩選','Filter by department'))}"><option value="ALL">${esc(both('全部部門','All departments'))}</option>${deptList(dd).map(([d,v])=>`<option value="${d}" ${d===dd?'selected':''}>${esc(both(v.zh,v.en))}</option>`).join('')}</select>
-      <input type="search" id="orgQ" placeholder="${esc(both('搜尋姓名、職稱、分機','Search name, title, extension'))}" value="${esc(state.dirQ)}" style="min-width:210px">
+      <input type="search" id="orgQ" aria-label="${esc(both('搜尋姓名、職稱、分機','Search name, title, extension'))}" placeholder="${esc(both('搜尋姓名、職稱、分機','Search name, title, extension'))}" value="${esc(state.dirQ)}" style="min-width:210px">
       ${canOrgEdit()?`<button class="btn ghost mini" data-orgedit-toggle aria-pressed="${ed}">${esc(ed?both('完成編輯','Done editing'):both('編輯組織圖（增加／刪除／改文字）','Edit chart (add / remove / edit labels)'))}</button>`:`<span class="muted" style="font-size:12.5px">${esc(both('只有管理者與系統管理員可以增減組織圖','Only the manager and system administrator can add or remove people'))}</span>`}
       <span class="chip ${scopeLocked()?'warn':'acc'}">${esc(scopeLocked()
         ? both('灰階部分超出您的資料範圍','Dimmed parts are outside your data scope')
@@ -3006,7 +3075,7 @@ function myOT(){
       <span class="en">${esc(both('本月已申請 '+fmtH(used)+' / '+OT_MONTH_CAP_H+' 小時','This month '+fmtH(used)+' / '+OT_MONTH_CAP_H+' h'))}</span></div>
     <form id="otForm" class="card-b frm" data-used="${used}">
       <div class="row">
-        <div><label>${esc(both('加班日期','Date'))}</label><input type="date" name="date" value="${state.otDate||ymd(TODAY)}" required></div>
+        <div><label>${esc(both('加班日期','Date'))}</label><input type="date" name="date" value="${state.otDate||ymd(TODAY)}" max="${ymd(TODAY)}" required></div>
         <div><label>${esc(both('開始時間','Start'))}</label><input type="time" name="start" value="${SHIFT.end}" step="1800" required></div>
         <div><label>${esc(both('結束時間','End'))}</label><input type="time" name="end" value="19:00" step="1800" required></div>
         <div><label>${esc(both('加班時數','Hours'))}</label><div class="calc" id="otCalc"></div></div>
@@ -3197,6 +3266,9 @@ BINDERS['hr:mylog']=function(){
       if(h<=0){ toast(both('請假時數需大於 0','Leave hours must be greater than 0')); return; }
       if(over){ toast(both(b.t.zh+'剩餘時數不足','Not enough '+b.t.en+' balance')); return; }
       const fd=new FormData(lf);
+      const clash=leaveClash(u.id, fd.get('from'), fd.get('fromT'), fd.get('to'), fd.get('toT'));
+      if(clash){ const w=clash.from+' '+clash.fromT+' → '+(clash.to===clash.from?'':clash.to+' ')+clash.toT;
+        toast(both('和假單 '+clash.id+'（'+w+'）時間重疊；要改請先把那張抽單','Overlaps leave '+clash.id+' ('+w+'); withdraw that one first to change it')); return; }
       const r=mkLeave(nextId('L',LEAVE), u.id, fd.get('type'), fd.get('from'), fd.get('fromT'), fd.get('to'), fd.get('toT'),
         ymd(TODAY), 'pending', {zh:fd.get('reason'),en:fd.get('reason')});
       const up=fd.get('file'); if(up&&up.name) r.file=up.name;     // 只記檔名（示範；要等雲端儲存串接才會真正保存檔案）
@@ -3220,6 +3292,9 @@ BINDERS['hr:mylog']=function(){
       e.preventDefault(); const {h,over}=calc();
       if(h<=0){ toast(both('加班時數需大於 0','Overtime must be greater than 0')); return; }
       if(over){ toast(both('超過每月 '+OT_MONTH_CAP_H+' 小時加班上限','Exceeds the '+OT_MONTH_CAP_H+' h monthly cap')); return; }
+      if(of.date.value>ymd(TODAY)){ toast(both('加班單是事後申請，不能選還沒到的日期；還沒發生的加班請用「預先加班單」','An overtime form is filed after the fact; for a future date use the pre-approval form')); return; }
+      const oc=otClash(u.id, of.date.value, of.start.value, of.end.value);
+      if(oc){ toast(both('和加班單 '+oc.id+'（'+oc.date+' '+oc.start+'–'+oc.end+'）時段重疊；要改請先把那張抽單','Overlaps overtime '+oc.id+' ('+oc.date+' '+oc.start+'–'+oc.end+'); withdraw that one first')); return; }
       const fd=new FormData(of);
       const r={id:nextId('OT',OT_REQ), emp:u.id, date:fd.get('date'), start:fd.get('start'), end:fd.get('end'), hours:h,
         comp:fd.get('comp'), filed:ymd(TODAY), status:'pending', note:{zh:fd.get('reason'),en:fd.get('reason')}};
@@ -3342,7 +3417,7 @@ function deskMenu(groups, cur, attr){
     g.items.map(i=>`<button data-${attr}="${i.id}" aria-current="${i.id===cur}"><span>${esc(lbl(i))}</span>${i.badge?`<span class="chip warn">${i.badge}</span>`:''}</button>`).join('')
   ).join('')}</nav>`;
 }
-const monthSelect = (id, months, cur) => `<select id="${id}">${months.map(m=>`<option ${m===cur?'selected':''}>${m}</option>`).join('')}</select>`;
+const monthSelect = (id, months, cur) => `<select id="${id}" aria-label="${esc(both('月份','Month'))}">${months.map(m=>`<option ${m===cur?'selected':''}>${m}</option>`).join('')}</select>`;
 
 /* ---------------- 首頁 ---------------- */
 function dayTags(ds, r, dow){
@@ -3705,6 +3780,8 @@ BINDERS['desk:forms']=function(){
     pf.oninput=calc; calc();
     pf.onsubmit=e=>{ e.preventDefault(); const h=calc();
       if(h<=0){ toast(both('加班時數需大於 0','Overtime must be greater than 0')); return; }
+      const pc=preotClash(u.id, pf.date.value, pf.start.value, pf.end.value);
+      if(pc){ toast(both('和預先加班單 '+pc.id+'（'+pc.date+' '+pc.fromT+'–'+pc.toT+'）時段重疊；要改請先把那張抽單','Overlaps pre-approval '+pc.id+' ('+pc.date+' '+pc.fromT+'–'+pc.toT+'); withdraw that one first')); return; }
       const r=deskNewForm('preot',{date:pf.date.value, fromT:pf.start.value, toT:pf.end.value, hours:h,
         what:{zh:'預計加班 '+fmtH(h)+' 小時',en:'Planned overtime '+fmtH(h)+' h'}, note:{zh:pf.reason.value,en:pf.reason.value}});
       done(r,'預先加班單已送出','pre-approval submitted');
@@ -5542,7 +5619,7 @@ function viewApprovalPath(){
         'Approvals basically follow the company org chart, with the steps linked in automatically; the levels follow the administrative org chart and the amount can change how many apply. The path below follows each demo person’s reporting line upwards. For flexibility there is also a custom flow: for special cases or forms, a manager can adjust the approval nodes by hand. Amount thresholds and exceptions are set once the requester side supplies the rules.'))}</div>
       <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:end">
         <div><label style="font-size:12px;color:var(--ink-3)">${esc(both('申請人','Requester'))}</label>
-          <select id="pathEmp">${list.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${x.id} ${esc(empName(x.id))} · ${esc(L(TITLES[x.title]))}</option>`).join('')}</select></div>
+          <select id="pathEmp" aria-label="${esc(both('申請人','Requester'))}">${list.map(x=>`<option value="${x.id}" ${x.id===sel?'selected':''}>${x.id} ${esc(empName(x.id))} · ${esc(L(TITLES[x.title]))}</option>`).join('')}</select></div>
         <label style="display:inline-flex;gap:6px;align-items:center;font-size:13px;${canEdit?'':'opacity:.6'}"><input type="checkbox" id="pathCustom" ${custom?'checked':''} ${canEdit?'':'disabled'}>${esc(both('自訂流程（特殊表單）','Custom flow (special form)'))}</label>
         ${custom?`<button class="btn ghost mini" data-pathreset>${esc(both('還原為組織圖','Back to the org chart'))}</button>`:''}
       </div>

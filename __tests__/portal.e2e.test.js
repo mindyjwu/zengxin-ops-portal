@@ -4526,3 +4526,138 @@ test.describe('11/23 backend: file storage layer is recorded in the guide', () =
     for (const w of ['檔案儲存層', 'Google Cloud Storage', '雜湊值', '還沒做', '拿到儲存桶後要實測', '拒絕啟動', 'STORAGE_DRIVER']) await expect(page.locator('#newv35')).toContainText(w);
   });
 });
+
+/* 員工操作的各種情況：填表防呆、標籤、語言切換、所有身分所有頁面不出錯（11/23 全面檢查後補的測試） */
+test.describe('employee journeys: forms are safe and easy to fill in', () => {
+  const openForms = async (page, role = 'employee') => { await openPortal(page); await setRole(page, role); await go(page, 'desk', 'forms'); };
+  const form = (page, id) => page.click(`[data-dform="${id}"]`);
+  const counts = page => page.evaluate(() => ({ leave: LEAVE.length, ot: OT_REQ.length, forms: FORMS.length }));
+  const leave = async (page, from, fromT, to, toT, reason = '測試') => {
+    await form(page, 'leave');
+    await page.fill('#leaveForm [name=from]', from); await page.selectOption('#leaveForm [name=fromT]', fromT);
+    await page.fill('#leaveForm [name=to]', to); await page.selectOption('#leaveForm [name=toT]', toT); await page.fill('#leaveForm [name=reason]', reason);
+    await page.click('#leaveForm button[type=submit]');
+  };
+  const ot = async (page, date, start, end, reason = '加班') => {
+    await form(page, 'ot'); await page.fill('#otForm [name=date]', date); await page.fill('#otForm [name=start]', start); await page.fill('#otForm [name=end]', end); await page.fill('#otForm [name=reason]', reason);
+    await page.click('#otForm button[type=submit]');
+  };
+  const toastText = page => page.locator('.toast').last().innerText();
+
+  test('clicking a label focuses its field, and every field can be found by its label', async ({ page }) => {
+    await openForms(page);
+    await page.click('#leaveForm label:has-text("事由")');
+    expect(await page.evaluate(() => document.activeElement.name)).toBe('reason');
+    for (const l of ['假別', '事由']) await expect(page.getByLabel(l)).toHaveCount(1);
+  });
+
+  test('a required field with only spaces is refused and the field is named', async ({ page }) => {
+    await openForms(page);
+    const n0 = await counts(page);
+    await leave(page, '2026-09-21', '08:00', '2026-09-21', '17:00', '    ');
+    await expect(page.locator('.toast').last()).toContainText('請填寫「事由」');
+    await ot(page, '2026-09-02', '17:00', '19:00', '   ');
+    await expect(page.locator('.toast').last()).toContainText('請填寫');
+    await form(page, 'trip');
+    for (const [k, v] of [['from', '2026-09-15'], ['fromT', '09:00'], ['to', '2026-09-15'], ['toT', '12:00'], ['place', '   '], ['reason', '訪視']]) await page.fill(`#tripForm [name=${k}]`, v);
+    await page.click('#tripForm button[type=submit]');
+    await expect(page.locator('.toast').last()).toContainText('請填寫');
+    expect(await counts(page)).toEqual(n0);                                              // 三張都沒有送出
+    expect(await page.getAttribute('#tripForm [name=place]', 'aria-invalid')).toBe('true');
+  });
+
+  test('leave: the same or a partly overlapping time is refused, an adjacent time is fine, and withdrawing frees the slot', async ({ page }) => {
+    await openForms(page);
+    await leave(page, '2026-09-22', '08:00', '2026-09-22', '12:00');
+    await expect(page.locator('.toast').last()).toContainText('已送出請假');
+    const id = (await page.evaluate(() => LEAVE[LEAVE.length - 1].id)), n1 = (await counts(page)).leave;
+    await leave(page, '2026-09-22', '08:00', '2026-09-22', '12:00');
+    await expect(page.locator('.toast').last()).toContainText('時間重疊'); await expect(page.locator('.toast').last()).toContainText(id);
+    await leave(page, '2026-09-22', '10:00', '2026-09-22', '14:00');
+    await expect(page.locator('.toast').last()).toContainText('時間重疊');
+    expect((await counts(page)).leave).toBe(n1);
+    await leave(page, '2026-09-22', '13:00', '2026-09-22', '17:00');                       // 緊接著的下午：不重疊
+    await expect(page.locator('.toast').last()).toContainText('已送出請假');
+    await page.evaluate(i => { LEAVE.find(x => x.id === i).status = 'withdrawn'; }, id);   // 抽單之後，同一段時間又可以請
+    await leave(page, '2026-09-22', '08:00', '2026-09-22', '12:00');
+    await expect(page.locator('.toast').last()).toContainText('已送出請假');
+  });
+
+  test('overtime: overlap is refused (also across midnight), adjacent is fine, a future date points to the pre-approval form', async ({ page }) => {
+    await openForms(page);
+    await ot(page, '2026-09-02', '17:00', '19:00'); await expect(page.locator('.toast').last()).toContainText('加班申請已送出');
+    await ot(page, '2026-09-02', '18:00', '20:00'); expect(await toastText(page)).toContain('時段重疊');
+    await ot(page, '2026-09-02', '19:00', '20:00'); expect(await toastText(page)).toContain('加班申請已送出');
+    await ot(page, '2026-09-03', '22:00', '02:00'); expect(await toastText(page)).toContain('4 小時');     // 跨夜算 4 小時
+    await ot(page, '2026-09-03', '23:00', '01:00'); expect(await toastText(page)).toContain('時段重疊');    // 跨夜也會重疊
+    const n = (await counts(page)).ot;
+    await form(page, 'ot'); await page.evaluate(() => document.querySelector('#otForm [name=date]').removeAttribute('max'));   // 繞過瀏覽器的日期上限，測程式自己的檢查
+    await page.fill('#otForm [name=date]', '2027-01-01'); await page.fill('#otForm [name=start]', '17:00'); await page.fill('#otForm [name=end]', '19:00'); await page.fill('#otForm [name=reason]', '加班');
+    await page.click('#otForm button[type=submit]');
+    expect(await toastText(page)).toContain('預先加班單');
+    expect((await counts(page)).ot).toBe(n);
+  });
+
+  test('pre-approval: a future slot can be filed, overlapping it is refused, and the later overtime form for the same time is fine', async ({ page }) => {
+    await openForms(page);
+    const pre = async (date, s, e) => { await form(page, 'preot'); await page.fill('#preotForm [name=date]', date); await page.fill('#preotForm [name=start]', s); await page.fill('#preotForm [name=end]', e); await page.fill('#preotForm [name=reason]', '趕案'); await page.click('#preotForm button[type=submit]'); };
+    await pre('2026-09-30', '17:00', '19:00'); expect(await toastText(page)).toContain('預先加班單已送出');
+    await pre('2026-09-30', '18:00', '20:00'); expect(await toastText(page)).toContain('時段重疊');
+    await ot(page, '2026-09-02', '17:00', '19:00'); expect(await toastText(page)).toContain('加班申請已送出');
+  });
+
+  test('switching language keeps what was typed and recalculates', async ({ page }) => {
+    await openForms(page);
+    await page.fill('#leaveForm [name=reason]', '半填的事由'); await page.selectOption('#leaveForm [name=type]', 'sick');
+    await page.fill('#leaveForm [name=from]', '2026-09-21'); await page.fill('#leaveForm [name=to]', '2026-09-21');
+    await page.click('[data-lang="en"]');
+    expect(await page.inputValue('#leaveForm [name=reason]')).toBe('半填的事由');
+    expect(await page.inputValue('#leaveForm [name=type]')).toBe('sick');
+    expect(await page.inputValue('#leaveForm [name=from]')).toBe('2026-09-21');
+    await expect(page.locator('#leaveCalc')).toContainText('d');                         // 「1天」變成「1d」：即時計算有跟著重算
+    await page.click('[data-lang="zh"]');
+    expect(await page.inputValue('#leaveForm [name=reason]')).toBe('半填的事由');
+  });
+
+  test('the guide records what was found, what was fixed and what is still open', async ({ page }) => {
+    await page.goto('file://' + path.resolve(__dirname, '../guide.html'));
+    for (const w of ['員工操作全面檢查', '重複請假', '只打空白', '524', '補請假可以追溯多久', '沒有真人試用']) await expect(page.locator('#newv35')).toContainText(w);
+  });
+  test('a form opened fresh is empty again (the saved text is only for the language switch)', async ({ page }) => {
+    await openForms(page);
+    await page.fill('#leaveForm [name=reason]', '舊的');
+    await page.click('[data-lang="en"]'); await page.click('[data-lang="zh"]');
+    await form(page, 'ot'); await form(page, 'leave');
+    expect(await page.inputValue('#leaveForm [name=reason]')).toBe('');
+  });
+});
+
+test.describe('every role, every page, both languages, desktop and phone width', () => {
+  test('nothing throws, nothing shows undefined / NaN, nothing overflows sideways, every field has a name', async ({ page }) => {
+    test.setTimeout(240000);
+    const errors = [];
+    page.on('pageerror', e => errors.push('pageerror: ' + e.message)); page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+    await openPortal(page);
+    const roles = await page.evaluate(() => Object.keys(ROLES));
+    const bad = [];
+    for (const size of [{ width: 1366, height: 900 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(size);
+      for (const role of roles) for (const lang of ['zh', 'en']) {
+        await page.evaluate(([r, l]) => { state.role = r; state.lang = l; render(); }, [role, lang]);
+        const mods = await page.evaluate(() => MODULES.filter(m => modVisible(m)).map(m => ({ id: m.id, tabs: m.tabs.length ? m.tabs.filter(t => tabAllowed(m, t)).map(t => t.id) : [null] })));
+        for (const m of mods) for (const t of m.tabs) {
+          await page.evaluate(([mm, tt]) => { state.module = mm; state.tab = tt; render(); }, [m.id, t]);
+          const r = await page.evaluate(() => {
+            const txt = document.getElementById('app').innerText, vis = e => { const b = e.getBoundingClientRect(), s = getComputedStyle(e); return b.width > 0 && b.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; };
+            const named = e => e.getAttribute('aria-label') || e.getAttribute('aria-labelledby') || e.title || e.closest('label') || (e.id && document.querySelector(`label[for="${e.id}"]`));
+            return { text: /undefined|NaN|\[object Object\]/.test(txt), wide: document.documentElement.scrollWidth > window.innerWidth + 1,
+              unnamed: [...document.querySelectorAll('#view input:not([type=hidden]),#view select,#view textarea')].filter(e => vis(e) && !named(e)).length };
+          });
+          if (r.text || r.wide || r.unnamed) bad.push(`${size.width} ${role}/${lang}/${m.id}:${t || '-'} ${JSON.stringify(r)}`);
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+});
