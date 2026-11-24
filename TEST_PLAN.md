@@ -296,6 +296,7 @@ This flow is **manual** end to end; its individual steps are covered by the test
 - [ ] Clicking a form label focuses its field; switching 中文／English keeps a half-filled form and recalculates the hours; opening a form fresh is empty.
 - [ ] Every role on every page, in both languages, at desktop and phone width: no error, no “undefined/NaN”, no sideways scroll, every field has a name (automated: “every role, every page…”).
 - [ ] Column filters on 人事 › 請假審核 (four tables), 薪資試算表, 個人出勤明細, 打卡位置, 勞健退 (per employee, quarterly) and 權限對照表 (both tables, also while editing): text or dropdown per column, 顯示 x / y 筆, 清除篩選; the filter row sits right under the header; totals and exports still cover all rows.
+- [ ] Column sorting (11/23): click a header → ▲ ascending, again → ▼ descending, third click restores the original order; NT$9,000 sorts before NT$10,000, A9 before A10, "1天2.5小時" by hours (1 day = 8 h); blank / — / 待設定 always last in both directions; group headings stay put and rows sort inside each group; the 簽核 button columns are not sortable; sort + filter work together and survive a language switch; keyboard Enter/Space works; at 390px headers are ≥ 40px tall; employee table rows still open the drawer after sorting.
 
 ---
 
