@@ -1087,9 +1087,15 @@ function payEdit(){
   const it=permItems().find(x=>x.key==='pay:run');
   return it ? titleCell(it,col)==='可編輯' : false;
 }
+/* 計薪制度依公司別（11/25 會議）：誠馨協會、誠芯＝月薪＋拆帳；牛津＝月薪＋時薪；誠馨健康＝月薪。畫面上選了哪些公司，就顯示那些公司制度的聯集（選「全部公司」＝三種都有）。
+   共用行政（HQ）先當成月薪（會議沒提到，待確認）。不在表內的單位保守地三種都顯示。 */
+const PAY_SYSTEMS = {O1:['monthly','split'], O2:['monthly','split'], O3:['monthly','hourly'], O4:['monthly'], HQ:['monthly']};
+const paySystemsOf = ids => { const s=new Set(); ids.forEach(id=>(PAY_SYSTEMS[id]||['monthly','hourly','split']).forEach(x=>s.add(x))); return s; };
+const paySplitOk = unitId => paySystemsOf([unitId]).has('split');
 function itemAllowed(modId, tabId){
   const col=roleColLive(), m=MODULES.find(x=>x.id===modId);
-  if(modId==='pay' && ['monthly','hourly','split','ins'].includes(tabId)) return itemAllowed('pay','run');   // 三種計薪頁籤：權限同「薪資試算」
+  if(modId==='pay' && ['monthly','hourly','split'].includes(tabId)) return itemAllowed('pay','run') && paySystemsOf(activeUnitIds()).has(tabId);   // 三種計薪頁籤：權限同「薪資試算」，再依目前的公司別只留該公司有的制度
+  if(modId==='pay' && tabId==='ins') return itemAllowed('pay','run');
   if(modId==='desk' && tabId==='biz') return itemAllowed('desk','forms');   // 簽核申請單：權限同「表單」
   if(modId==='ann' && tabId==='orgcfg') return canOrgCfg();   // 組織架構設定：人資與系統管理員
   if(modId==='hr' && tabId==='todo') return ['emp','att','leave'].some(t=>itemAllowed('hr',t));   // 待辦不在 Excel 內：只要看得到人事的任一頁就看得到
@@ -7692,7 +7698,7 @@ function viewPayMonthly(){
   const month=payDefault(), can_=payEdit(), units=activeUnitIds();
   const list=STAFF.filter(s=>units.includes(s.unit)&&onRoster(s,month)&&!isHourlyPay(s));
   const dm=state.driverMode||{}, ds=state.driverSplit||{};
-  const row=s=>{ const a=proAllow(s), drv=isDriver(s), mode=dm[s.id]||'hourly';
+  const row=s=>{ const a=proAllow(s), drv=isDriver(s)&&paySplitOk(s.unit), mode=dm[s.id]||'hourly';   // 司機的「月薪＋拆帳」只給有拆帳制的公司
     return `<tr><td>${esc(s.id)} ${esc(empName(s.id))}</td><td>${esc(unit(s.unit).zh)}</td><td>${esc(L(TITLES[s.title]))}</td>
       <td class="num">${money(s.salary-a)}</td><td class="num">${money(a)}</td><td class="num"><b>${money(s.salary)}</b></td>
       <td>${drv?`<select data-drvmode="${s.id}" aria-label="${esc(both('司機計薪方式','Driver pay method'))}"${can_?'':' disabled'}>

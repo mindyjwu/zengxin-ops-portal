@@ -5151,3 +5151,47 @@ test.describe('Revenue-share pay: the 25 Nov rules (incentives, transport, addit
     expect(d.w['測試員乙']).toMatchObject({ man: 120 + 40 + 50 + 10, stat: 220, ded: 300 + 70 });          // 勞保、健保、勞退（含合併名稱）都算代扣；責任險、強制執行是其他扣項
   });
 });
+
+test.describe('Pay systems follow the company (25 Nov meeting)', () => {
+  const tabsOf = page => page.evaluate(() => { const m = MODULES.find(x => x.id === 'pay'); return ['monthly', 'hourly', 'split'].filter(id => tabAllowed(m, m.tabs.find(t => t.id === id))); });
+  const pick = async (page, v) => { await page.selectOption('#offSel', v); };
+
+  test('each company shows only its own pay systems; “all companies” shows all three', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'run');
+    expect(await tabsOf(page)).toEqual(['monthly', 'hourly', 'split']);                               // 全部公司：三種都有
+    await pick(page, 'O1'); expect(await tabsOf(page)).toEqual(['monthly', 'split']);                  // 誠馨協會（附設機構）：月薪＋拆帳
+    await pick(page, 'O2'); expect(await tabsOf(page)).toEqual(['monthly', 'split']);                  // 誠芯：月薪＋拆帳
+    await pick(page, 'O3'); expect(await tabsOf(page)).toEqual(['monthly', 'hourly']);                 // 牛津：月薪＋時薪
+    await pick(page, 'O4'); expect(await tabsOf(page)).toEqual(['monthly']);                           // 誠馨健康：只有月薪
+    await pick(page, 'HQ'); expect(await tabsOf(page)).toEqual(['monthly']);                           // 共用行政：先當月薪
+  });
+
+  test('the tab buttons really disappear, and switching company while on a hidden tab lands on a tab that exists', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'split');
+    await expect(page.locator('[data-tab="split"]')).toBeVisible();
+    await pick(page, 'O3');                                                                            // 牛津沒有拆帳制
+    await expect(page.locator('[data-tab="split"]')).toHaveCount(0);
+    await expect(page.locator('[data-tab="hourly"]')).toHaveCount(1);
+    expect(await page.evaluate(() => state.tab)).not.toBe('split');                                    // 原本停在拆帳制，自動換到看得到的頁籤
+    await expect(page.locator('#view')).not.toBeEmpty();
+    await pick(page, 'O4'); await expect(page.locator('[data-tab="hourly"]')).toHaveCount(0); await expect(page.locator('[data-tab="monthly"]')).toHaveCount(1);
+  });
+
+  test('permissions still apply on top: a role without payroll access sees none of the three, whatever the company', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'employee');
+    expect(await tabsOf(page)).toEqual([]);
+  });
+
+  test('a driver gets the “monthly + revenue-share” option only in a company that has revenue-share pay', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'monthly');
+    await expect(page.locator('[data-drvmode]').first()).toBeVisible();                               // 全部公司：司機有兩種計薪方式
+    const r = await page.evaluate(() => ({ o1: paySplitOk('O1'), o2: paySplitOk('O2'), o3: paySplitOk('O3'), o4: paySplitOk('O4'), hq: paySplitOk('HQ') }));
+    expect(r).toEqual({ o1: true, o2: true, o3: false, o4: false, hq: false });
+    expect(await page.evaluate(() => [...paySystemsOf(['ZZ'])].sort())).toEqual(['hourly', 'monthly', 'split']);   // 不在表內的單位保守地三種都顯示，不會把人藏起來
+    const before = await page.locator('[data-drvmode]').count();
+    await page.evaluate(() => { person('A008').unit = 'O4'; render(); });                              // 把一位示範司機放到沒有拆帳制的誠馨健康
+    await expect(page.locator('[data-drvmode="A008"]')).toHaveCount(0);                                // 他的「月薪＋拆帳」選項不見了
+    await expect(page.locator('[data-drvmode="B007"]')).toHaveCount(1);                                // 誠芯的司機仍然有
+    expect(await page.locator('[data-drvmode]').count()).toBe(before - 1);
+  });
+});
