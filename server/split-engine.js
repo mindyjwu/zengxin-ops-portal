@@ -17,6 +17,7 @@ const EXTRAS = [
 ];
 const DEFAULT_CONFIG = { rates: svcCfg.rates, bonus: svcCfg.bonus, remote: { areas: svcCfg.remote.areas, allow: svcCfg.remote.allow }, extras: EXTRAS };
 
+/** 業績獎金依「拆帳薪資累積金額」（itemPay）的區間（11/25 會議確認，不是服務金額） */
 const bonusOf = (cfg, amt) => { for (const [lo, hi, b] of cfg.bonus) if (amt >= lo && amt <= hi) return b; return amt > 100000 ? cfg.bonus[cfg.bonus.length - 1][2] : 0; };
 
 /** inp：{ items: [{code, name, n, nh, amount}], billed, remoteCases, plan: 'A'|'B', extras: {k: 金額} } */
@@ -29,7 +30,7 @@ function pay(cfg, inp) {
     const wk = plan === 'B' ? r.B : r.A, hol = plan === 'B' ? r.hB : r.hA, amt = (it.n - it.nh) * wk + it.nh * hol;
     lines.push({ code: it.code, name: it.name, nWeekday: it.n - it.nh, nHoliday: it.nh, price: wk, holidayPrice: hol, amount: Math.round(amt * 100) / 100, unpaid: false }); itemRaw += amt;
   }
-  const itemPay = Math.round(itemRaw), bonus = bonusOf(cfg, inp.billed || 0), remote = (inp.remoteCases || 0) * cfg.remote.allow;
+  const itemPay = Math.round(itemRaw), bonus = bonusOf(cfg, itemPay), remote = (inp.remoteCases || 0) * cfg.remote.allow;
   const adds = [], deducts = [];
   for (const e of cfg.extras) { const v = Math.round(+((inp.extras || {})[e.k]) || 0); if (!v) continue; (e.kind === 'add' ? adds : deducts).push({ k: e.k, item: e.label, amount: v }); }
   const addSum = adds.reduce((a, x) => a + x.amount, 0), C = deducts.reduce((a, x) => a + x.amount, 0), A = itemPay + bonus + remote + addSum, net = A - C;

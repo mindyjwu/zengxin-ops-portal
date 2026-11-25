@@ -113,6 +113,14 @@ describe('import, dashboard and workers', () => {
 });
 
 describe('revenue-share pay', () => {
+  test('the performance bonus follows the accumulated item pay, not the billed amount (25 Nov meeting)', async () => {
+    const mgr = await as('manager@example.test');
+    await mgr.post('/api/svc/imports').send(payloadOf([HEAD, ['T-B1', 'BA07', '協助沐浴及洗頭', '130', '測試員甲', '2026-12-05', '60', '325', '正常班', '竹北市', '機構一', '已簽退']]).p);
+    const w = (await mgr.get('/api/svc/pay?month=2026-12')).body.workers[0];
+    expect(w.billed).toBe(42250);                            // 服務金額 42,250 落在 40,000 區間（獎金 4,000）……
+    expect(w.itemPay).toBe(21190);                           // ……但拆帳薪資 130 × 163 ＝ 21,190，落在 20,000 區間
+    expect(w.bonus).toBe(1000);                              // 以拆帳薪資為準
+  });
   test('matches the demo site: pay table, weekday/holiday, plans A/B, remote allowance, zero counts, unknown codes', async () => {
     const mgr = await as('manager@example.test');
     await mgr.post('/api/svc/imports').send(payloadOf(ROWS).p);

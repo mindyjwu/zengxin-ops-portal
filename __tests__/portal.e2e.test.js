@@ -5020,17 +5020,21 @@ test.describe('Revenue-share pay: the 25 Nov rules (incentives, transport, addit
     await expect(card).toContainText('還有其他月份');                                    // AA 明細混了九月的一列
     await expect(card).toContainText('交通津貼表沒有月份欄');
     await expect(card).toContainText('手動登錄的勞保、健保、勞退代扣');                  // 提醒之後接自動代扣會重複
-    await expect(card).not.toContainText('業績獎金基準待確認');                          // 這份資料兩種基準算出來都是 0，不吵人
   });
 
-  test('when the two possible bonus bases give different totals, both numbers are shown', async ({ page }) => {
-    const big = [...SVC, ['T-9', 'BA07', '協助沐浴及洗頭', '100', '測試員甲', '2026-10-09', '60', '325', '正常班', '竹北市']];   // 服務金額 32,500 → 3,000；拆帳薪資約 16,300 → 0
-    await openPortal(page); await upload(page, book({ svc: big })); await go(page, 'pay', 'split');
-    const card = page.locator('#paySplit');
-    await expect(card).toContainText('業績獎金基準待確認');
-    await expect(card).toContainText('現在用「服務金額」當基準');
-    const d = await data(page); expect(d.tot.bonus).toBe(3000);
-    await expect(card).toContainText('若改用「拆帳薪資（所得）」，合計會是 NT$0');
+  test('the performance bonus follows the accumulated item pay (拆帳薪資), not the billed amount (25 Nov meeting)', async ({ page }) => {
+    const big = (n) => [...SVC, ['T-9', 'BA07', '協助沐浴及洗頭', String(n), '測試員甲', '2026-10-09', '60', '325', '正常班', '竹北市']];
+    await openPortal(page); await upload(page, book({ svc: big(100) })); await go(page, 'pay', 'split');
+    let d = await data(page);
+    expect(d.w['測試員甲'].amt).toBeGreaterThan(30000);                                  // 服務金額 32,500＋：若以服務金額為基準會是 3,000
+    expect(d.w['測試員甲']).toMatchObject({ pay: 358 + 163 * 100, bonus: 0 });   // 拆帳薪資＝原本的 358（平日 163＋假日 195）＋ 100 次 × 163 ＝ 16,658 → 未達 20,000，獎金 0
+    await expect(page.locator('#paySplit')).toContainText('拆帳薪資累積金額');
+    await expect(page.locator('#paySplit')).not.toContainText('業績獎金基準待確認');
+    await go(page, 'svc', 'case'); await page.click('#svcClear');
+    await upload(page, book({ svc: big(130) })); d = await data(page);
+    expect(d.w['測試員甲'].pay).toBeGreaterThanOrEqual(20000); expect(d.w['測試員甲'].pay).toBeLessThan(30000);
+    expect(d.w['測試員甲'].bonus).toBe(1000);                                            // 拆帳薪資落在 20,000 區間（服務金額會落在 40,000 區間 → 4,000）
+    expect(d.tot.bonus).toBe(1000);
   });
 
   test('keeps only totals: no ID numbers, client names or remarks stay in the page state', async ({ page }) => {
