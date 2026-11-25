@@ -5289,3 +5289,111 @@ test.describe('Monthly pay: base, professional allowance and other allowance (25
     expect(r.name).toBe('測試新人'); expect(r.sal).toBe(35000); expect(r.x).toMatchObject({ base: 30000, prof: 3000, other: 2000 });
   });
 });
+
+/* ================================================================ */
+/* 11/25 會議：拆帳金額表由人資在頁面自行調整（版本、生效月份） */
+test.describe('Revenue-share amounts: HR edits the pay table (25 Nov meeting)', () => {
+  const csvOf = rows => '﻿' + rows.map(r => r.join(',')).join('\r\n') + '\r\n';
+  const HEAD2 = ['案號', '服務項目代碼', '服務項目類別', '項目服務次數', '居服員姓名', '服務日期', '服務時間長度(分)', '項目單價', '加班類型', '居住(區)'];
+  const ROWS = [HEAD2,
+    ['T-1', 'BA07', '協助沐浴及洗頭', '1', '測試員甲', '2026-10-05', '60', '325', '正常班', '竹北市'],
+    ['T-2', 'BA07', '協助沐浴及洗頭', '1', '測試員甲', '2026-10-06', '60', '325', '國定假日', '五峰鄉'],
+    ['T-3', 'BA20', '陪伴服務', '2', '測試員乙', '2026-10-07', '30', '175', '正常班', '竹北市'],
+    ['T-4', 'XX99', '未知項目', '1', '測試員乙', '2026-10-08', '30', '100', '正常班', '竹北市']];
+  const open = async (page, rows = ROWS, role = 'hr') => {
+    await openPortal(page); await go(page, 'svc', 'case');                                              // 預設身分可匯入；匯入後再換成要測的身分
+    await page.setInputFiles('#svcFile', { name: 'oct.csv', mimeType: 'text/csv', buffer: Buffer.from(csvOf(rows), 'utf8') });
+    await expect(page.locator('#svcDash')).toBeVisible(); await setRole(page, role); await go(page, 'pay', 'split');
+    await page.locator('#splitCfgBox summary').click();
+  };
+  const idx = (page, code) => page.evaluate(c => splitVers()[0].rates.findIndex(r => r.code === c), code);
+  const setIn = async (page, sel, v) => { await page.locator(sel).fill(String(v)); await page.locator(sel).blur(); };
+  const save = async (page, eff, note = '測試') => { await page.fill('#splitEff', eff); await page.fill('#splitNote', note); await page.click('#splitSave'); };
+  const card = page => page.locator('#paySplit');
+
+  test('the default version is exactly the 28 Oct table, so nothing changes until HR edits', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => ({ same: JSON.stringify(splitCfgRates(splitCfgFor('2026-10'))) === JSON.stringify(SPLIT_RATES), bonus: splitCfgFor('2026-10').bonus, allow: splitCfgFor('2026-10').allow, n: splitVers().length }));
+    expect(r.same).toBe(true); expect(r.bonus).toEqual([[0, 19999, 0], [20000, 29999, 1000], [30000, 39999, 3000], [40000, 49999, 4000], [50000, 100000, 5000]]); expect(r.allow).toBe(600); expect(r.n).toBe(1);
+  });
+
+  test('editing an item amount and saving a new version changes pay from the effective month; earlier months keep the old version', async ({ page }) => {
+    await open(page); await expect(card(page)).toContainText('拆帳薪資：NT$558');
+    const i = await idx(page, 'BA07');
+    await setIn(page, `[data-scr="${i}"][data-f="A"]`, 200);                                           // 計薪-A 163 → 200（假日總薪自動變 200＋32＝232）
+    await expect(page.locator('#splitCfg')).toContainText('有未儲存的修改');
+    await expect(card(page)).toContainText('拆帳薪資：NT$558');                                          // 還沒儲存，不影響計算
+    await save(page, '2026-10');
+    await expect(card(page)).toContainText('拆帳薪資：NT$632');                                          // 甲：200＋232；乙：200
+    const v = await page.evaluate(() => ({ sep: splitCfgFor('2026-09').id, oct: splitCfgFor('2026-10').id, dec: splitCfgFor('2026-12').id, n: splitVers().length, by: splitVers()[1].by }));
+    expect(v.sep).toBe('v0'); expect(v.oct).not.toBe('v0'); expect(v.dec).toBe(v.oct); expect(v.n).toBe(2);
+    expect(v.by).toBeTruthy();                                                                          // 留修改人與時間
+    await expect(page.locator('#splitCfg tbody').last()).toContainText('測試');                          // 版本紀錄有這一筆
+  });
+
+  test('bonus brackets and the remote allowance are editable too', async ({ page }) => {
+    const rows = [...ROWS, ['T-9', 'BA07', '協助沐浴及洗頭', '130', '測試員甲', '2026-10-09', '60', '325', '正常班', '竹北市']];   // 甲的拆帳薪資 21,548 → 20,000 區間
+    await open(page, rows);
+    await expect(card(page)).toContainText('業績獎金：NT$1,000'); await expect(card(page)).toContainText('偏鄉津貼：NT$600');
+    await setIn(page, '[data-sbn="1"][data-c="2"]', 1500); await setIn(page, '#splitAllow', 700);
+    await save(page, '2026-10', '調整獎金與偏鄉');
+    await expect(card(page)).toContainText('業績獎金：NT$1,500'); await expect(card(page)).toContainText('偏鄉津貼：NT$700');
+  });
+
+  test('a service code that is missing from the table can be added, and then it is paid', async ({ page }) => {
+    await open(page); await expect(card(page)).toContainText('XX99');                                   // 「不在給付表」的提醒
+    await page.click('#splitAddRow'); const n = await page.evaluate(() => state.splitDraft.rates.length);
+    await setIn(page, `[data-scr="${n - 1}"][data-f="code"]`, 'XX99'); await setIn(page, `[data-scr="${n - 1}"][data-f="name"]`, '未知項目');
+    await setIn(page, `[data-scr="${n - 1}"][data-f="A"]`, 50); await setIn(page, `[data-scr="${n - 1}"][data-f="B"]`, 50);
+    await save(page, '2026-10', '新增 XX99');
+    await expect(card(page)).toContainText('拆帳薪資：NT$608');                                          // 乙多 50（XX99 × 1）
+    await expect(card(page)).not.toContainText('不在給付表');
+  });
+
+  test('a version that would break the rules cannot be saved, and the reasons are listed', async ({ page }) => {
+    await open(page);
+    await setIn(page, '[data-sbn="2"][data-c="0"]', 30500);                                             // 下限沒有接在前一個上限之後
+    await setIn(page, '[data-scr="0"][data-f="A"]', -5);                                                // 負數
+    await expect(page.locator('#splitCfg [role="alert"]')).toContainText('不能重疊或留空'); await expect(page.locator('#splitCfg [role="alert"]')).toContainText('整數');
+    await page.fill('#splitEff', '2026-10'); await page.click('#splitSave');
+    expect(await page.evaluate(() => splitVers().length)).toBe(1);                                      // 沒有存成新版本
+    await expect(page.locator('#splitCfg [role="alert"]')).toBeVisible();
+    await page.click('#splitDiscard'); await expect(page.locator('#splitCfg [role="alert"]')).toHaveCount(0);
+    const dup = await page.evaluate(() => { const D = splitCfgCheck({ eff: '2026-10', rates: [{ code: 'A1', name: 'x', price: 1, priceN: 1, A: 1, aA: 0, B: 1, aB: 0, lead: 0 }, { code: 'A1', name: 'x', price: 1, priceN: 1, A: 1, aA: 0, B: 1, aB: 0, lead: 0 }], bonus: [[0, 10, 1]], allow: 600 }); return D; });
+    expect(dup.join('；')).toContain('重複');
+    expect(await page.evaluate(() => splitCfgCheck({ eff: '2026-10', rates: [{ code: '服務未遇', name: 'a', price: 1, priceN: 1, A: 1, aA: 0, B: 1, aB: 0, lead: 0 }, { code: '服務未遇', name: 'b', price: 1, priceN: 1, A: 1, aA: 0, B: 1, aB: 0, lead: 0 }], bonus: [[0, 10, 1]], allow: 600 }))).toEqual([]);   // 同碼別、不同名稱可以（現有的「服務未遇」兩列）
+  });
+
+  test('the effective month is required, and a draft started without picking a version begins from the version that applies to the month shown', async ({ page }) => {
+    await open(page);
+    await setIn(page, '#splitAllow', 650); await page.fill('#splitNote', '沒填月份'); await page.click('#splitSave');
+    await expect(page.locator('#splitCfg [role="alert"]')).toContainText('生效月份'); expect(await page.evaluate(() => splitVers().length)).toBe(1);   // 沒選生效月份不能存
+    await save(page, '2026-10', '十月版');                                                                 // 補上月份就能存
+    await page.evaluate(() => { state.splitVerSel = null; state.splitDraft = null; render(); });          // 沒指定版本：顯示與編輯都要以「這個月（匯入檔的 10 月）套用的版本」為準
+    await page.locator('#splitCfgBox').evaluate(el => { el.open = true; });
+    await setIn(page, '[data-scr="0"][data-f="lead"]', 1);
+    expect(await page.evaluate(() => [state.splitDraft.from === splitCfgFor('2026-10').id, state.splitDraft.allow])).toEqual([true, 650]);
+  });
+
+  test('saving with the same effective month replaces that version instead of piling up; the version list can be viewed', async ({ page }) => {
+    await open(page);
+    await setIn(page, '#splitAllow', 650); await save(page, '2026-10', '第一次');
+    await page.locator('#splitCfgBox').evaluate(el => { el.open = true; });
+    await setIn(page, '#splitAllow', 700); await save(page, '2026-10', '第二次');
+    const r = await page.evaluate(() => ({ n: splitVers().length, allow: splitCfgFor('2026-10').allow, note: splitCfgFor('2026-10').note }));
+    expect(r).toEqual({ n: 2, allow: 700, note: '第二次' });
+    await page.locator('#splitVerSel').selectOption('v0'); await expect(page.locator('#splitAllow')).toHaveValue('600');   // 看舊版
+    await setIn(page, '[data-scr="0"][data-f="A"]', 721);                                         // 從舊版開始改：草稿的其他欄位要是舊版的值（偏鄉 600），不是目前最新版的 700
+    expect(await page.evaluate(() => [state.splitDraft.from, state.splitDraft.allow])).toEqual(['v0', 600]);
+  });
+
+  test('roles that can only view see the table but cannot edit or save', async ({ page }) => {
+    await open(page, ROWS, 'manager');
+    expect(await page.evaluate(() => payEdit())).toBe(false);
+    await expect(page.locator('#splitCfg')).toContainText('只能檢視');
+    await expect(page.locator('#splitAddRow')).toHaveCount(0); await expect(page.locator('#splitSave')).toHaveCount(0);
+    await expect(page.locator('[data-scr="0"][data-f="A"]')).toBeDisabled();
+    await page.evaluate(() => { const i = document.querySelector('[data-scr="0"][data-f="A"]'); i.disabled = false; i.value = '999'; i.dispatchEvent(new Event('change')); });
+    expect(await page.evaluate(() => [splitVers()[0].rates[0].A, !!state.splitDraft])).toEqual([720, false]);   // 就算硬改欄位，程式也擋下，不會產生草稿
+  });
+});
