@@ -26,7 +26,9 @@ describe('engine', () => {
     expect(S.pay(cfg, { items: [{ ...ba07, n: 0, nh: 0, amount: 0 }] }).itemPay).toBe(0);                       // 次數 0 不計
   });
   test('bonus brackets, remote allowance, and unknown codes block publishing', () => {
-    const b = a => S.pay(cfg, { items: [], billed: a }).bonus;
+    /* 業績獎金依「拆帳薪資累積金額」（11/25 會議確認）；用每次 1 元的測試給付項，次數就等於拆帳薪資。服務金額故意給一個超大的數字，證明不再被採用 */
+    const cfgT = { ...cfg, rates: [{ code: 'T1', name: '測試項目', price: 1, priceN: 1, A: 1, B: 1, hA: 1, hB: 1, lead: 0 }] };
+    const b = a => S.pay(cfgT, { items: [{ code: 'T1', name: '測試項目', n: a, nh: 0 }], billed: 999999 }).bonus;
     expect([b(19999), b(20000), b(29999), b(30000), b(49999), b(50000), b(100000), b(100001), b(0)]).toEqual([0, 1000, 1000, 3000, 4000, 5000, 5000, 5000, 0]);
     expect(S.pay(cfg, { items: [], remoteCases: 3 }).remote).toBe(1800);
     const u = S.pay(cfg, { items: [{ code: 'XX99', name: '未知', n: 2, nh: 0 }] });

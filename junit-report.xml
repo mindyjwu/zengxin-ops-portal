@@ -1,97 +1,77 @@
-<testsuites id="" name="" tests="28" failures="1" skipped="0" errors="0" time="39.953483999999996">
-<testsuite name="portal.e2e.test.js" timestamp="2026-10-23T22:10:24.337Z" hostname="chromium" tests="28" failures="1" skipped="0" time="36.955" errors="0">
-<testcase name="Payroll night-shift allowance › rotating nurse is paid per evening shift and OT base includes it" classname="portal.e2e.test.js" time="1.351">
+<testsuites id="" name="" tests="15" failures="1" skipped="0" errors="0" time="19.779133">
+<testsuite name="portal.e2e.test.js" timestamp="2026-11-25T17:20:11.728Z" hostname="chromium" tests="15" failures="1" skipped="0" time="18.271" errors="0">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › reads the four extra sheets and adds them up per worker; the service subtotal is unchanged" classname="portal.e2e.test.js" time="1.242">
 </testcase>
-<testcase name="Payroll night-shift allowance › no overnight shifts are rostered while the center has none" classname="portal.e2e.test.js" time="1.204">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › says what could not be matched and what was assumed" classname="portal.e2e.test.js" time="1.324">
 </testcase>
-<testcase name="Payroll night-shift allowance › day-shift staff get no allowance" classname="portal.e2e.test.js" time="1.237">
-</testcase>
-<testcase name="Payroll night-shift allowance › calculator adds allowance per shift and can exclude it from the OT base" classname="portal.e2e.test.js" time="1.421">
-</testcase>
-<testcase name="Payroll night-shift allowance › calculator includes a part-timer&apos;s allowance in their OT rate" classname="portal.e2e.test.js" time="1.367">
-</testcase>
-<testcase name="Payroll night-shift allowance › leave is counted against the evening or overnight shift worked that day" classname="portal.e2e.test.js" time="1.112">
-</testcase>
-<testcase name="Payroll night-shift allowance › partial leave on an overnight shift keeps the allowance" classname="portal.e2e.test.js" time="1.203">
-</testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › payroll, attendance and reports open on the month of the demo date" classname="portal.e2e.test.js" time="2.246">
-</testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide has the pre-MVP checklist and the follow-up message" classname="portal.e2e.test.js" time="1.117">
-</testcase>
-<testcase name="Grounded content (9/20 meeting minutes, deck, v2.0 spec) › the user guide links only to walkthroughs that exist" classname="portal.e2e.test.js" time="1.498">
-</testcase>
-<testcase name="Updates from the 9/30 meeting › unpaid leave and resignation drop out of payroll from the effective month" classname="portal.e2e.test.js" time="1.177">
-</testcase>
-<testcase name="Updates from the 7 Oct meeting › a new employee works in payroll, attendance and reports" classname="portal.e2e.test.js" time="1.678">
-</testcase>
-<testcase name="Cash pay for staff without a bank account › payroll run lists cash-paid staff with a receipt list to export" classname="portal.e2e.test.js" time="1.335">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › the performance bonus follows the accumulated item pay (拆帳薪資), not the billed amount (25 Nov meeting)" classname="portal.e2e.test.js" time="1.219">
 <system-out>
 <![CDATA[
-[[ATTACHMENT|test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/test-failed-1.png]]
+[[ATTACHMENT|test-results/portal.e2e-Revenue-share-p-5a09e-lled-amount-25-Nov-meeting--chromium/test-failed-1.png]]
 
-[[ATTACHMENT|test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/video.webm]]
+[[ATTACHMENT|test-results/portal.e2e-Revenue-share-p-5a09e-lled-amount-25-Nov-meeting--chromium/video.webm]]
 
-[[ATTACHMENT|test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/error-context.md]]
+[[ATTACHMENT|test-results/portal.e2e-Revenue-share-p-5a09e-lled-amount-25-Nov-meeting--chromium/error-context.md]]
 ]]>
 </system-out>
-<failure message="expect(received).toBe(expected) // Object.is equality" type="expect.toBe">
-<![CDATA[  [chromium] › portal.e2e.test.js:1404:3 › Cash pay for staff without a bank account › payroll run lists cash-paid staff with a receipt list to export 
+<failure message="expect(received).toMatchObject(expected)" type="expect.toMatchObject">
+<![CDATA[  [chromium] › portal.e2e.test.js:5025:3 › Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › the performance bonus follows the accumulated item pay (拆帳薪資), not the billed amount (25 Nov meeting) 
 
-    Error: expect(received).toBe(expected) // Object.is equality
+    Error: expect(received).toMatchObject(expected)
 
-    Expected: "現金發薪簽收清冊_2026-08.csv"
-    Received: "download"
+    - Expected  - 1
+    + Received  + 1
 
-      1413 |     await expect(list.locator('tbody tr')).toHaveCount(3);          // 2 staff + total
-      1414 |     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('[data-cashcsv]')]);
-    > 1415 |     expect(dl.suggestedFilename()).toBe('現金發薪簽收清冊_2026-08.csv');
-           |                                    ^
-      1416 |     const lines = fs.readFileSync(await dl.path(), 'utf8').replace(/^﻿/, '').trim().split('\n');
-      1417 |     expect(lines[0]).toContain('領款人簽名');
-      1418 |     expect(lines.length).toBe(4);
-        at /home/user/zengxin-ops-portal/__tests__/portal.e2e.test.js:1415:36
+      Object {
+    -   "bonus": 0,
+    +   "bonus": 3000,
+        "pay": 16658,
+      }
+
+      5028 |     let d = await data(page);
+      5029 |     expect(d.w['測試員甲'].amt).toBeGreaterThan(30000);                                  // 服務金額 32,500＋：若以服務金額為基準會是 3,000
+    > 5030 |     expect(d.w['測試員甲']).toMatchObject({ pay: 358 + 163 * 100, bonus: 0 });   // 拆帳薪資＝原本的 358（平日 163＋假日 195）＋ 100 次 × 163 ＝ 16,658 → 未達 20,000，獎金 0
+           |                         ^
+      5031 |     await expect(page.locator('#paySplit')).toContainText('拆帳薪資累積金額');
+      5032 |     await expect(page.locator('#paySplit')).not.toContainText('業績獎金基準待確認');
+      5033 |     await go(page, 'svc', 'case'); await page.click('#svcClear');
+        at /home/user/zengxin-ops-portal/__tests__/portal.e2e.test.js:5030:25
 
     attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    ../test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/test-failed-1.png
+    ../test-results/portal.e2e-Revenue-share-p-5a09e-lled-amount-25-Nov-meeting--chromium/test-failed-1.png
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
     attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
-    ../test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/video.webm
+    ../test-results/portal.e2e-Revenue-share-p-5a09e-lled-amount-25-Nov-meeting--chromium/video.webm
     ────────────────────────────────────────────────────────────────────────────────────────────────
 
-    Error Context: ../test-results/portal.e2e-Cash-pay-for-st-039f9-th-a-receipt-list-to-export-chromium/error-context.md
+    Error Context: ../test-results/portal.e2e-Revenue-share-p-5a09e-lled-amount-25-Nov-meeting--chromium/error-context.md
 ]]>
 </failure>
 </testcase>
-<testcase name="Cash pay for staff without a bank account › payroll CSV has a pay-method column and no overnight column" classname="portal.e2e.test.js" time="1.395">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › keeps only totals: no ID numbers, client names or remarks stay in the page state" classname="portal.e2e.test.js" time="1.057">
 </testcase>
-<testcase name="CSV exports › admin cannot export the payroll (financial) report" classname="portal.e2e.test.js" time="1.003">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › finds columns by their header text, not by letters, so a re-ordered sheet still reads" classname="portal.e2e.test.js" time="1.014">
 </testcase>
-<testcase name="CSV exports › daydir cannot export the payroll (financial) report" classname="portal.e2e.test.js" time="0.95">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › a month with no incentive rows says so; a sheet missing its columns is reported, not silently skipped" classname="portal.e2e.test.js" time="1.272">
 </testcase>
-<testcase name="CSV exports › the user guide explains how to estimate cloud storage, with numbers that match the estimator" classname="portal.e2e.test.js" time="2.417">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › names match even with stray spaces, and the transport sheet follows the incentive sheet’s month" classname="portal.e2e.test.js" time="1.002">
 </testcase>
-<testcase name="CSV exports › the scope page leads with 12 action items and keeps the long logs collapsed" classname="portal.e2e.test.js" time="1.61">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › a transport sheet has no month: it is assumed to be the incentive sheet’s month, so another month gets nothing and says so" classname="portal.e2e.test.js" time="1.396">
 </testcase>
-<testcase name="Meeting agenda in the guide › guide lists the six agenda items with a message colleagues can copy" classname="portal.e2e.test.js" time="1.068">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › without the extra sheets (CSV or a plain workbook) the page works as before and tells how to add them" classname="portal.e2e.test.js" time="1.164">
 </testcase>
-<testcase name="Formal org chart layout, upload formats, version and revision date › guide, index and mobile app show the same version and a revision date" classname="portal.e2e.test.js" time="1.24">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › the Excel export has the new columns" classname="portal.e2e.test.js" time="1.273">
 </testcase>
-<testcase name="v3.2 section in the guide › records the csv support, upload formats and revision date, with a table of import formats" classname="portal.e2e.test.js" time="1.003">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › insurance data from the workbook: the listed rows are used until “automatic” is chosen, then each person is deducted once" classname="portal.e2e.test.js" time="1.227">
 </testcase>
-<testcase name="v3.3: org chart V3 approval levels and cloud plan comparison › the guide records the 20 Oct update and the repaired agenda table" classname="portal.e2e.test.js" time="1.103">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › typing the insurance data on the page works too: days prorate labor insurance and pension but not health; inputs are clamped" classname="portal.e2e.test.js" time="1.626">
 </testcase>
-<testcase name="10/20 permissions: system admin read-only, HR and manager scopes, org chart editing › manager sees everyone’s pay but cannot change payroll" classname="portal.e2e.test.js" time="1.277">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › team-lead allowance: a ticked lead gets the table’s 4% column for each item they served, and the hand-keyed 組長津貼 is not counted twice" classname="portal.e2e.test.js" time="1.248">
 </testcase>
-<testcase name="10/20 payroll categories › three pay categories: monthly staff, hourly home care workers (full and part time), drivers with monthly plus hourly" classname="portal.e2e.test.js" time="1.153">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › the Excel export also has the team-lead and insurance columns" classname="portal.e2e.test.js" time="1.158">
 </testcase>
-<testcase name="10/20 payroll categories › calculator: the driver’s home-care hours and rate add a separate hourly line" classname="portal.e2e.test.js" time="1.238">
-</testcase>
-<testcase name="Payroll: 仁寶 hours and the revenue-share draft (22 Oct) › revenue-share draft: unit price x count x ratio, default and per-item ratios" classname="portal.e2e.test.js" time="1.441">
-</testcase>
-<testcase name="Payroll: 仁寶 hours and the revenue-share draft (22 Oct) › without an import the draft asks for the 仁寶 file" classname="portal.e2e.test.js" time="1.065">
-</testcase>
-<testcase name="Payroll: 仁寶 hours and the revenue-share draft (22 Oct) › imported 仁寶 hours replace the demo hours for a matching hourly worker" classname="portal.e2e.test.js" time="1.046">
+<testcase name="Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions) › every kind of hand-keyed insurance withholding row is recognised (labor, health, pension, and combined names), while other deductions are not" classname="portal.e2e.test.js" time="1.049">
 </testcase>
 </testsuite>
 </testsuites>

@@ -1087,9 +1087,15 @@ function payEdit(){
   const it=permItems().find(x=>x.key==='pay:run');
   return it ? titleCell(it,col)==='可編輯' : false;
 }
+/* 計薪制度依公司別（11/25 會議）：誠馨協會、誠芯＝月薪＋拆帳；牛津＝月薪＋時薪；誠馨健康＝月薪。畫面上選了哪些公司，就顯示那些公司制度的聯集（選「全部公司」＝三種都有）。
+   共用行政（HQ）先當成月薪（會議沒提到，待確認）。不在表內的單位保守地三種都顯示。 */
+const PAY_SYSTEMS = {O1:['monthly','split'], O2:['monthly','split'], O3:['monthly','hourly'], O4:['monthly'], HQ:['monthly']};
+const paySystemsOf = ids => { const s=new Set(); ids.forEach(id=>(PAY_SYSTEMS[id]||['monthly','hourly','split']).forEach(x=>s.add(x))); return s; };
+const paySplitOk = unitId => paySystemsOf([unitId]).has('split');
 function itemAllowed(modId, tabId){
   const col=roleColLive(), m=MODULES.find(x=>x.id===modId);
-  if(modId==='pay' && ['monthly','hourly','split','ins'].includes(tabId)) return itemAllowed('pay','run');   // 三種計薪頁籤：權限同「薪資試算」
+  if(modId==='pay' && ['monthly','hourly','split'].includes(tabId)) return itemAllowed('pay','run') && paySystemsOf(activeUnitIds()).has(tabId);   // 三種計薪頁籤：權限同「薪資試算」，再依目前的公司別只留該公司有的制度
+  if(modId==='pay' && tabId==='ins') return itemAllowed('pay','run');
   if(modId==='desk' && tabId==='biz') return itemAllowed('desk','forms');   // 簽核申請單：權限同「表單」
   if(modId==='ann' && tabId==='orgcfg') return canOrgCfg();   // 組織架構設定：人資與系統管理員
   if(modId==='hr' && tabId==='todo') return ['emp','att','leave'].some(t=>itemAllowed('hr',t));   // 待辦不在 Excel 內：只要看得到人事的任一頁就看得到
@@ -1508,7 +1514,7 @@ const ACTIONS = [
   {type:'data', zh:'繼續教育積分匯入', en:'Continuing-education import',
    rec:'', need:'10/20 已定：只有教育訓練專員可新增、修改與匯入（一次匯入整份檔案）；政府積分系統只能逐人查詢，所以仍用 Excel 匯入。請教育訓練照範本整理資料試匯', owner:'教育訓練', due:'10/28', go:['私人秘書 › 課程','desk','course']},
   {type:'data', zh:'拆帳制薪資規則', en:'Revenue-share pay rules',
-   rec:'', need:'10/28、11/4 已收到給付表與月薪制規則並放進原型。請確認：業績獎金區間的金額基準；月薪制是否還有全勤獎金與夜班津貼（新規則沒列）；生理假與家庭照顧假是否扣薪（新規則只列病假、事假）；補休與特休結算的時間點；底薪與專業加給每人的金額；AA 碼與多人分配、交通津貼與加扣項怎麼匯入；牛津時薪制已放進原型，另需確認缺工獎勵與其他公司是否同規則', owner:'人資／財務', due:'11/11', go:['薪資計算 › 薪資計算機','pay','calc']},
+   rec:'', need:'10/28、11/4 已收到給付表與月薪制規則並放進原型。請確認：月薪制是否還有全勤獎金與夜班津貼（新規則沒列）；生理假與家庭照顧假是否扣薪（新規則只列病假、事假）；補休與特休結算的時間點；底薪與專業加給每人的金額；AA 碼與多人分配、交通津貼與加扣項怎麼匯入；牛津時薪制已放進原型，另需確認缺工獎勵與其他公司是否同規則', owner:'人資／財務', due:'11/11', go:['薪資計算 › 薪資計算機','pay','calc']},
   {type:'it', zh:'衛福部積分系統串接', en:'MOHW points-system connection',
    rec:'', need:'IT 先確認串接是否被允許與技術限制；過渡用現有 Excel 格式匯入；帳號密碼不放進網站或程式庫', owner:'IT', due:'待訂', go:['私人秘書 › 課程','desk','course']},
   {type:'it', zh:'手機打卡上線規格與中文輸入法測試', en:'Mobile clock-in go-live and input-method test',
@@ -6734,7 +6740,7 @@ function payRulesCard(){
         <li>${esc(both('給付表有 36 個碼別（10/28 提供）：每項有政府單價（一般區、原民區）和計薪金額，方案 A（一般居服員）、方案 B（日照司機的居服部分），國定假日與休息日另有「假日總薪」。各單位的拆帳金額目前一樣。','The pay table has 36 codes (provided 28 Oct): each with the government price (general and indigenous area) and pay amounts for plan A (ordinary home care workers) and plan B (day-care drivers’ home care), plus holiday total pay. The amounts are the same across units for now.'))}</li>
         <li>${esc(both('適用機構：','Facilities where it applies: '))}${SPLIT_FACILITIES.map(x=>esc(x)).join('；')}</li>
         <li>${esc(both('項目單價跟隨政府支付碼，過去十年未調整；若政府或老闆調整則另議。','Unit prices follow the government payment codes, unchanged for ten years; if the government or the owner changes them it will be discussed then.'))}</li>
-        <li>${esc(both('其他項目：業績獎金（依當月服務金額區間 0／1,000／3,000／4,000／5,000）、偏鄉津貼（五峰、尖石、關西、峨眉，每案每月 600）、交通津貼（10、20 公里以上）、其他加項與扣項、勞健保代扣、服務獎勵金（AA 碼）。','Other items: performance bonus by monthly billed-amount bracket, remote allowance (五峰, 尖石, 關西, 峨眉; 600 per case per month), transport allowance (10 and 20 km), other additions and deductions, insurance withholding, and AA-code government incentives.'))}</li>
+        <li>${esc(both('其他項目：業績獎金（依當月拆帳薪資累積金額的區間 0／1,000／3,000／4,000／5,000）、偏鄉津貼（五峰、尖石、關西、峨眉，每案每月 600）、交通津貼（10、20 公里以上）、其他加項與扣項、勞健保代扣、服務獎勵金（AA 碼）。','Other items: performance bonus by the bracket of the month’s accumulated item pay, remote allowance (五峰, 尖石, 關西, 峨眉; 600 per case per month), transport allowance (10 and 20 km), other additions and deductions, insurance withholding, and AA-code government incentives.'))}</li>
         <li>${esc(both('原型在「薪資計算 › 拆帳制」頁籤，用仁寶檔算拆帳薪資、業績獎金與偏鄉津貼（其餘項目還沒算）。','The prototype calculates item pay, bonus and remote allowance from the 仁寶 file on the Payroll › Revenue-share tab (the other items are not calculated yet).'))}</li></ul>
       <div class="eyebrow">${esc(both('月薪制（11/4 需求端提供）','Monthly pay (provided 4 Nov)'))}</div>
       <ul style="margin:0;padding-left:20px;line-height:1.8">
@@ -7122,7 +7128,7 @@ function splitData(g){
       ld+=v.n*r.lead;
       pay+=(v.n-v.nh)*(pl==='B'?r.B:r.A)+v.nh*(pl==='B'?r.hB:r.hA);
     });
-    const bonus=splitBonus(w.amt), rem=w.rem*REMOTE_ALLOW;
+    const bonus=splitBonus(Math.floor(pay)), rem=w.rem*REMOTE_ALLOW;   // 業績獎金依「拆帳薪資累積金額」的區間（11/25 會議確認，不是服務金額）
     const aa=Math.round((aaM[k]||{}).amt||0), trip=Math.round((trM[k]||{}).amt||0), add=Math.round(addM[k]||0), ded=Math.round(dedM[k]||0), total=pay+bonus+rem;   // total 維持原意（服務計薪小計）；司機「月薪＋拆帳」用它
     const isLead=!!leadOn[k], leadAvail=Math.round(ld), lead=isLead?leadAvail:0;
     /* 勞健退自動代扣（個人負擔）：勞保、勞退依投保日數 ÷ 30 計，健保整月不按日數（待確認）；有投保資料、且選了「自動」才採用，沒有的照扣項清冊 */
@@ -7143,7 +7149,7 @@ function splitData(g){
     autoMode, insN:workers.filter(w=>w.auto).length, insOut:Object.keys(insIn).filter(k=>!wk.has(k)).length,
     hasAdds:!!(X&&X.adds), hasDeds:!!(X&&X.deds), hasAA:!!(X&&X.aa), hasTrip:!!(X&&X.trip), problems:X?X.problems:[],
     statDed:((X&&X.deds&&X.deds.rows)||[]).filter(r=>r.mo===mo&&/勞保|健保|勞退/.test(r.item)).length};
-  return {months,mo,items,workers,dflt,ex,tot:{bonusPay:workers.reduce((a,w)=>a+splitBonus(w.pay),0),amt:sum('amt'),pay:sum('pay'),bonus:sum('bonus'),rem:sum('rem'),total:sum('total'),un:sum('un'),aa:sum('aa'),trip:sum('trip'),add:sum('add'),ded:sum('ded'),lead:sum('lead'),stat:sum('stat'),man:sum('man'),net:sum('net')}};
+  return {months,mo,items,workers,dflt,ex,tot:{amt:sum('amt'),pay:sum('pay'),bonus:sum('bonus'),rem:sum('rem'),total:sum('total'),un:sum('un'),aa:sum('aa'),trip:sum('trip'),add:sum('add'),ded:sum('ded'),lead:sum('lead'),stat:sum('stat'),man:sum('man'),net:sum('net')}};
 }
 /* 拆帳制畫面上的資料來源說明與提醒：讀到哪些、對不上的、月份假設、手動代扣可能重複 */
 function splitExtraNotes(d){
@@ -7189,11 +7195,10 @@ function paySplitCard(){
     <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
       <label class="muted" for="splitMonth" style="font-size:12.5px">${esc(both('月份','Month'))}</label><select id="splitMonth">${d.months.map(m=>`<option value="${m}" ${m===mo?'selected':''}>${m}</option>`).join('')}</select>
       <label class="muted" for="splitDefault" style="font-size:12.5px">${esc(both('預設方案','Default plan'))}</label><select id="splitDefault"><option value="A" ${d.dflt==='A'?'selected':''}>A</option><option value="B" ${d.dflt==='B'?'selected':''}>B</option></select></div>
-    <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('算法（10/28 給付表）：每個服務項目有固定的計薪金額，平日用「計薪」、國定假日與休息日用「假日總薪」；方案 A 是一般居服員，方案 B 是兼居服的日照司機。業績獎金依當月服務金額（單價 × 次數）的區間給；偏鄉津貼＝服務五峰、尖石、關西、峨眉的個案數 × 600 元。','Rule (28 Oct pay table): each service item has a fixed pay amount; weekday pay on normal days and holiday total pay on national holidays and rest days. Plan A is for ordinary home care workers, plan B for day-care drivers who also do home care. Bonus follows the month’s billed amount (unit price × count) bracket; remote allowance = cases in 五峰, 尖石, 關西 or 峨眉 × 600.'))}</div>
+    <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('算法（10/28 給付表）：每個服務項目有固定的計薪金額，平日用「計薪」、國定假日與休息日用「假日總薪」；方案 A 是一般居服員，方案 B 是兼居服的日照司機。業績獎金依當月拆帳薪資累積金額（下表「拆帳薪資」那欄）的區間給（11/25 會議確認）；偏鄉津貼＝服務五峰、尖石、關西、峨眉的個案數 × 600 元。','Rule (28 Oct pay table): each service item has a fixed pay amount; weekday pay on normal days and holiday total pay on national holidays and rest days. Plan A is for ordinary home care workers, plan B for day-care drivers who also do home care. Bonus follows the bracket of the month’s accumulated item pay (the “Item pay” column; confirmed 25 Nov); remote allowance = cases in 五峰, 尖石, 關西 or 峨眉 × 600.'))}</div>
     ${splitExtraNotes(d)}
     ${splitInsCard(d)}
-    <div class="note warn">${esc(both('待確認：業績獎金以「服務金額」為區間基準是我依表格推測（最高服務金額約 98,000 對應區間上限 100,000）；組長津貼＝拆帳金額表「組長津貼 4%」那欄（約為一般區給付額的 4%），我先照「組長自己服務的每一項」加，假日是否同額待確認；勞保、勞退依投保日數 ÷ 30 計、健保整月不按日數，也待確認。','To confirm: the bonus bracket basis (billed amount is my reading of the table); the team-lead allowance is the “組長津貼 4%” column of the pay table (about 4% of the standard price), added for each item the lead personally serves, with holidays treated the same; labor insurance and pension are prorated by insured days ÷ 30, health insurance is charged for the whole month.'))}</div>
-    ${d.tot.bonusPay!==d.tot.bonus?`<div class="note warn">${esc(both(`業績獎金基準待確認：規則文件寫「按服務數的所得區間」。現在用「服務金額」當基準，${d.mo} 的業績獎金合計 ${money(d.tot.bonus)}；若改用「拆帳薪資（所得）」，合計會是 ${money(d.tot.bonusPay)}。請同事確認是哪一個。`,`Bonus basis to confirm: the rule says “bracket of the income from services”. Using the billed amount now gives ${money(d.tot.bonus)} for ${d.mo}; using item pay (income) would give ${money(d.tot.bonusPay)}. Please confirm which one.`))}</div>`:''}
+    <div class="note warn">${esc(both('待確認：組長津貼＝拆帳金額表「組長津貼 4%」那欄（約為一般區給付額的 4%），我先照「組長自己服務的每一項」加，假日是否同額待確認；勞保、勞退依投保日數 ÷ 30 計、健保整月不按日數，也待確認。','To confirm: the team-lead allowance is the “組長津貼 4%” column of the pay table (about 4% of the standard price), added for each item the lead personally serves, with holidays treated the same; labor insurance and pension are prorated by insured days ÷ 30, health insurance is charged for the whole month.'))}</div>
     ${d.tot.un?`<div class="note warn">${esc(both(`有 ${d.tot.un} 筆服務的碼別不在給付表（${un.map(([k,o])=>k+'：'+o.name).join('、')}），沒有計薪，請確認。`,`${d.tot.un} service lines have codes missing from the pay table (${un.map(([k])=>k).join(', ')}) and are not paid; please check.`))}</div>`:''}
     <div class="todostrip"><span class="chip acc">${esc(both('居服員','Workers'))}：${d.workers.length}</span><span class="chip">${esc(both('服務金額','Billed'))}：${money(Math.round(d.tot.amt))}</span><span class="chip">${esc(both('拆帳薪資','Item pay'))}：${money(Math.round(d.tot.pay))}</span><span class="chip">${esc(both('業績獎金','Bonus'))}：${money(d.tot.bonus)}</span><span class="chip">${esc(both('偏鄉津貼','Remote allowance'))}：${money(d.tot.rem)}</span>${d.tot.lead?`<span class="chip">${esc(both('組長津貼','Team-lead'))}：${money(d.tot.lead)}</span>`:''}${d.tot.stat?`<span class="chip">${esc(both('勞健退代扣','Insurance'))}：${money(d.tot.stat)}</span>`:''}${d.ex.has?`<span class="chip">${esc(both('服務獎勵金','AA incentive'))}：${money(d.tot.aa)}</span><span class="chip">${esc(both('交通津貼','Transport'))}：${money(d.tot.trip)}</span><span class="chip">${esc(both('其他加項','Additions'))}：${money(d.tot.add)}</span><span class="chip">${esc(both('其他扣項','Deductions'))}：${money(d.tot.ded)}</span>`:''}<span class="chip acc">${esc(both('實發合計','Net total'))}：${money(Math.round(d.tot.net))}</span></div>
     <div><button class="btn" id="splitXlsx">${esc(both('匯出拆帳制 Excel','Export revenue-share Excel'))}</button></div>
@@ -7693,7 +7698,7 @@ function viewPayMonthly(){
   const month=payDefault(), can_=payEdit(), units=activeUnitIds();
   const list=STAFF.filter(s=>units.includes(s.unit)&&onRoster(s,month)&&!isHourlyPay(s));
   const dm=state.driverMode||{}, ds=state.driverSplit||{};
-  const row=s=>{ const a=proAllow(s), drv=isDriver(s), mode=dm[s.id]||'hourly';
+  const row=s=>{ const a=proAllow(s), drv=isDriver(s)&&paySplitOk(s.unit), mode=dm[s.id]||'hourly';   // 司機的「月薪＋拆帳」只給有拆帳制的公司
     return `<tr><td>${esc(s.id)} ${esc(empName(s.id))}</td><td>${esc(unit(s.unit).zh)}</td><td>${esc(L(TITLES[s.title]))}</td>
       <td class="num">${money(s.salary-a)}</td><td class="num">${money(a)}</td><td class="num"><b>${money(s.salary)}</b></td>
       <td>${drv?`<select data-drvmode="${s.id}" aria-label="${esc(both('司機計薪方式','Driver pay method'))}"${can_?'':' disabled'}>

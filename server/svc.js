@@ -141,7 +141,7 @@ function svcRouter({ db, audit }) {
       if (!rate) { w.unpaid += it.n; unmatched[it.code + '：' + it.item_name] = (unmatched[it.code + '：' + it.item_name] || 0) + it.n; continue; }
       w.pay += (it.n - it.nh) * (plan === 'B' ? rate.B : rate.A) + it.nh * (plan === 'B' ? rate.hB : rate.hA);
     }
-    const workers = [...W.values()].map(w => { const m = wm.get(w.worker) || { amount: 0, remote_cases: 0 }, bo = bonus(m.amount), rem = m.remote_cases * cfg.remote.allow;
+    const workers = [...W.values()].map(w => { const m = wm.get(w.worker) || { amount: 0, remote_cases: 0 }, bo = bonus(Math.round(w.pay)), rem = m.remote_cases * cfg.remote.allow;
       return { worker: w.worker, billed: m.amount, itemPay: w.pay, bonus: bo, remote: rem, remoteCases: m.remote_cases, total: w.pay + bo + rem, unpaidLines: w.unpaid }; }).sort((a, b) => b.total - a.total);
     const sum = k => workers.reduce((a, w) => a + w[k], 0);
     await audit(req, 'svc_pay_view', month, { plan, workers: workers.length });

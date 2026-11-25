@@ -25,7 +25,7 @@ function buildSlip({ month, person, result, rules, version, generatedAt }) {
 /** 拆帳制薪資單：版型沿用時薪制，「加班」換成「服務項目明細」 */
 function buildSplitSlip({ month, person, result, rules, version, generatedAt }) {
   const x = result, p = person;
-  const earnings = [{ item: '拆帳薪資（服務項目 × 給付表）', amount: x.itemPay }, { item: `業績獎金（服務金額 ${Math.round(x.billed).toLocaleString('en-US')} 元的區間）`, amount: x.bonus },
+  const earnings = [{ item: '拆帳薪資（服務項目 × 給付表）', amount: x.itemPay }, { item: `業績獎金（拆帳薪資 ${Math.round(x.itemPay).toLocaleString('en-US')} 元的區間）`, amount: x.bonus },
     { item: `偏鄉津貼（${x.remoteCases} 案）`, amount: x.remote }, ...x.adds.map(a => ({ item: a.item, amount: a.amount }))];
   return { kind: 'split', org: p.org || '（所屬單位尚未設定）', month, empNo: p.empNo, name: p.name, title: '居服員', plan: x.plan, earnings, totalA: x.A,
     services: x.lines.map(l => ({ code: l.code, name: l.name, nWeekday: l.nWeekday, nHoliday: l.nHoliday, price: l.price, holidayPrice: l.holidayPrice, amount: l.amount, unpaid: l.unpaid })),
