@@ -4962,3 +4962,131 @@ test.describe('click a column header to sort', () => {
     for (const w of ['點表頭排序', '第三下', '1 天 = 8 小時', '空白']) await expect(page.locator('#newv35')).toContainText(w);
   });
 });
+
+test.describe('Revenue-share pay: the 25 Nov rules (incentives, transport, additions, deductions)', () => {
+  const HEAD2 = ['案號', '服務項目代碼', '服務項目類別', '項目服務次數', '居服員姓名', '服務日期', '服務時間長度(分)', '項目單價', '加班類型', '居住(區)'];
+  const SVC = [HEAD2,
+    ['T-1', 'BA07', '協助沐浴及洗頭', '1', '測試員甲', '2026-10-05', '60', '325', '正常班', '竹北市'],
+    ['T-2', 'BA07', '協助沐浴及洗頭', '1', '測試員甲', '2026-10-06', '60', '325', '國定假日', '五峰鄉'],
+    ['T-3', 'BA20', '陪伴服務', '2', '測試員乙', '2026-10-07', '30', '175', '正常班', '竹北市'],
+    ['T-4', 'XX99', '未知項目', '1', '測試員乙', '2026-10-08', '30', '100', '正常班', '竹北市']];
+  const AA_H = ['序號', '姓名', '身分證字號', 'AA服務項目', 'AA服務金額', '個案姓名', '服務日期', '原員工拆帳比率', '最優拆帳比率', '員工拆帳金額', '分配比例', '分配金額', '參與員工(2)'];
+  const AA = [['社團法人（測試）'], AA_H,
+    ['1', '測試員甲', 'A000000001', 'AA05', '200', '機密個案甲', '2026/10/05', '0', '0', '0', '0.5', '55', '測試員乙'],
+    ['2', '測試員甲', 'A000000001', 'AA06', '200', '機密個案甲', '2026/10/05', '0', '0', '0', '1', '110', ''],
+    ['3', '測試員乙', 'A000000002', 'AA05', '200', '機密個案乙', '2026/10/06', '0', '0', '0', '1', '60', ''],
+    ['4', '測試員甲', 'A000000001', 'AA05', '200', '機密個案甲', '2026-09-30', '0', '0', '0', '1', '999', ''],      // 九月的一列：不能算進十月
+    ['5', '路人丙', 'A000000003', 'AA05', '200', '機密個案丙', '2026/10/07', '0', '0', '0', '1', '70', '']];        // 不在十月居服員名單
+  const TRIP = [['居服員姓名', '姓名', '交通津貼', '服務趟數', '金額', '備註', '', '居服員', '10公里以上', '20公里以上', '金額'],
+    ['測試員甲', '機密個案甲', '(10公里)', '2', '60', '', '', '測試員甲', '2', '0', '60'],
+    ['測試員甲', '機密個案丁', '(偏鄉區)', '1', '60', '在某地陪洗腎，未至案家', '', '測試員乙', '0', '3', '180'],
+    ['測試員乙', '機密個案乙', '(20公里)', '3', '180', '', '', '', '', '', '']];
+  const ADD = [['員工編號', '員工', '計薪月份', '發放項目', '發放金額', '備註'],
+    ['CSHRT01', '測試員甲', '115年10月', '開案費', '500', '機密備註'], ['CSHRT01', '測試員甲', '115年9月', '開案費', '700', ''], ['CSHRT09', '日照同事', '115年10月', '日照司機', '29500', '']];
+  const DED = [['員工編號', '員工', '計薪月份', '扣除項目', '扣除金額', '備註'],
+    ['CSHRT02', '測試員乙', '115年10月', '長照責任險', '300', ''], ['CSHRT02', '測試員乙', '115年10月', '1001-1010勞保代扣', '120', '']];
+  const book = (over = {}) => ({ svc: SVC, aa: AA, trip: TRIP, add: ADD, ded: DED, ...over });
+  const upload = async (page, b, name = 'pay.xlsx') => {
+    const bytes = await page.evaluate(async b => {
+      const sheets = [{ name: '拆帳金額', rows: [['居服員拆帳金額']] }, { name: '服務紀錄總表', rows: b.svc }];
+      if (b.aa) sheets.push({ name: '員工AA碼拆帳明細', rows: b.aa }); if (b.trip) sheets.push({ name: '交通津貼', rows: b.trip });
+      if (b.add) sheets.push({ name: '其他加項-115年', rows: b.add }); if (b.ded) sheets.push({ name: '其他扣項-115年', rows: b.ded });
+      return Array.from(new Uint8Array(await buildXlsxBook(sheets).arrayBuffer()));
+    }, b);
+    await go(page, 'svc', 'case');
+    await page.setInputFiles('#svcFile', { name, mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) });
+    await expect(page.locator('#svcDash')).toBeVisible();
+  };
+  const data = page => page.evaluate(() => { const d = splitData(state.svcImp); return { w: Object.fromEntries(d.workers.map(x => [x.n, x])), tot: d.tot, ex: d.ex }; });
+
+  test('reads the four extra sheets and adds them up per worker; the service subtotal is unchanged', async ({ page }) => {
+    await openPortal(page); await upload(page, book());
+    await expect(page.locator('#svcMsg')).toContainText('服務獎勵金 5 列');
+    const d = await data(page);
+    expect(d.w['測試員甲']).toMatchObject({ aa: 165, trip: 120, add: 500, ded: 0, total: 958, net: 958 + 165 + 120 + 500 });   // AA：55 + 110（九月那列不算）；交通：10 公里 60 + 偏鄉 60；加項只算十月
+    expect(d.w['測試員乙']).toMatchObject({ aa: 60, trip: 180, add: 0, ded: 420, total: 200, net: 200 + 60 + 180 - 420 });
+    expect(d.tot).toMatchObject({ aa: 225, trip: 300, add: 500, ded: 420, net: 1743 + 20 });
+    await go(page, 'pay', 'split');
+    const card = page.locator('#paySplit');
+    await expect(card).toContainText('服務獎勵金：NT$225'); await expect(card).toContainText('交通津貼：NT$300');
+    await expect(card).toContainText('其他加項：NT$500'); await expect(card).toContainText('其他扣項：NT$420'); await expect(card).toContainText('實發合計：NT$1,763');
+  });
+
+  test('says what could not be matched and what was assumed', async ({ page }) => {
+    await openPortal(page); await upload(page, book()); await go(page, 'pay', 'split');
+    const card = page.locator('#paySplit');
+    await expect(card).toContainText('服務獎勵金有 1 位不在這個月的居服員名單');
+    await expect(card).toContainText('路人丙');
+    await expect(card).toContainText('還有其他月份');                                    // AA 明細混了九月的一列
+    await expect(card).toContainText('交通津貼表沒有月份欄');
+    await expect(card).toContainText('手動登錄的勞保、健保、勞退代扣');                  // 提醒之後接自動代扣會重複
+    await expect(card).not.toContainText('業績獎金基準待確認');                          // 這份資料兩種基準算出來都是 0，不吵人
+  });
+
+  test('when the two possible bonus bases give different totals, both numbers are shown', async ({ page }) => {
+    const big = [...SVC, ['T-9', 'BA07', '協助沐浴及洗頭', '100', '測試員甲', '2026-10-09', '60', '325', '正常班', '竹北市']];   // 服務金額 32,500 → 3,000；拆帳薪資約 16,300 → 0
+    await openPortal(page); await upload(page, book({ svc: big })); await go(page, 'pay', 'split');
+    const card = page.locator('#paySplit');
+    await expect(card).toContainText('業績獎金基準待確認');
+    await expect(card).toContainText('現在用「服務金額」當基準');
+    const d = await data(page); expect(d.tot.bonus).toBe(3000);
+    await expect(card).toContainText('若改用「拆帳薪資（所得）」，合計會是 NT$0');
+  });
+
+  test('keeps only totals: no ID numbers, client names or remarks stay in the page state', async ({ page }) => {
+    await openPortal(page); await upload(page, book());
+    const dump = await page.evaluate(() => JSON.stringify({ x: state.svcExtra, g: state.svcImp, m: state.svcMsg }));
+    for (const secret of ['A000000001', 'A000000003', '機密個案', '機密備註', '在某地陪洗腎']) expect(dump).not.toContain(secret);
+    expect(dump).toContain('測試員甲');                                                  // 只留居服員姓名與金額
+    await page.click('#svcClear');
+    expect(await page.evaluate(() => state.svcExtra)).toBeNull();
+  });
+
+  test('finds columns by their header text, not by letters, so a re-ordered sheet still reads', async ({ page }) => {
+    const swap = r => r.map((x, i) => i === 0 ? x : [x[11], x[1], x[6], ...x.slice(2, 6), ...x.slice(7, 11), x[0], x[12]]);
+    const aa2 = [AA[0], ['分配金額', '姓名', '服務日期', '身分證字號', 'AA服務項目', 'AA服務金額', '個案姓名', '原員工拆帳比率', '最優拆帳比率', '員工拆帳金額', '分配比例', '序號', '參與員工(2)'], ...swap(AA.slice(1)).slice(1)];
+    await openPortal(page); await upload(page, book({ aa: aa2 }));
+    const d = await data(page);
+    expect(d.w['測試員甲'].aa).toBe(165); expect(d.w['測試員乙'].aa).toBe(60);
+  });
+
+  test('a month with no incentive rows says so; a sheet missing its columns is reported, not silently skipped', async ({ page }) => {
+    const aaSep = AA.map((r, i) => i < 2 ? r : [r[0], r[1], r[2], r[3], r[4], r[5], '2026/09/05', ...r.slice(7)]);
+    await openPortal(page); await upload(page, book({ aa: aaSep, trip: [['隨便', '亂填'], ['a', 'b']] })); await go(page, 'pay', 'split');
+    const card = page.locator('#paySplit');
+    await expect(card).toContainText('沒有 2026-10 的資料');
+    await expect(card).toContainText('「交通津貼」找不到');
+    expect((await data(page)).tot.aa).toBe(0);
+  });
+
+  test('names match even with stray spaces, and the transport sheet follows the incentive sheet’s month', async ({ page }) => {
+    const sp = rows => rows.map((r, i) => i < 2 ? r : r.map(c => c === '測試員甲' ? '測試員 甲' : c === '測試員乙' ? '測試員　乙' : c));
+    await openPortal(page); await upload(page, book({ aa: sp(AA), trip: [TRIP[0], ...sp(TRIP.slice(1))], add: ADD.map(r => r.map(c => c === '測試員甲' ? ' 測試員甲 ' : c)) }));
+    const d = await data(page);
+    expect(d.w['測試員甲']).toMatchObject({ aa: 165, trip: 120, add: 500 }); expect(d.w['測試員乙']).toMatchObject({ aa: 60, trip: 180 });
+  });
+
+  test('a transport sheet has no month: it is assumed to be the incentive sheet’s month, so another month gets nothing and says so', async ({ page }) => {
+    const aaSep = AA.map((r, i) => i < 2 ? r : [r[0], r[1], r[2], r[3], r[4], r[5], '2026/09/05', ...r.slice(7)]);
+    await openPortal(page); await upload(page, book({ aa: aaSep })); await go(page, 'pay', 'split');
+    expect((await data(page)).tot.trip).toBe(0);
+    await expect(page.locator('#paySplit')).toContainText('我把它當成 2026-09 的資料，所以 2026-10 沒有帶入');
+  });
+
+  test('without the extra sheets (CSV or a plain workbook) the page works as before and tells how to add them', async ({ page }) => {
+    await openPortal(page); await upload(page, { svc: SVC }); await go(page, 'pay', 'split');
+    const card = page.locator('#paySplit');
+    await expect(card).toContainText('拆帳薪資：NT$558'); await expect(card).toContainText('服務獎勵金、交通津貼、其他加項、其他扣項：上傳');
+    await expect(card).not.toContainText('服務獎勵金：NT$');
+    const d = await data(page); expect(d.tot.net).toBe(d.tot.total);
+  });
+
+  test('the Excel export has the new columns', async ({ page }) => {
+    await openPortal(page); await upload(page, book()); await go(page, 'pay', 'split');
+    await page.evaluate(() => { window.__saved = null; saveBlob = (b, n) => { window.__saved = b.arrayBuffer().then(a => ({ n, t: new TextDecoder().decode(new Uint8Array(a)) })); }; });
+    await page.click('#splitXlsx');
+    const r = await page.evaluate(() => window.__saved);
+    expect(r.n).toContain('拆帳制計薪_2026-10');
+    for (const w of ['服務獎勵金', '交通津貼', '其他加項', '其他扣項', '實發']) expect(r.t).toContain(w);
+  });
+});
