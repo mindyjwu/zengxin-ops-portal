@@ -3427,7 +3427,7 @@ test.describe('11/19 meeting: payroll split into monthly, hourly and revenue-sha
   test('monthly tab: base + allowance per person; drivers get a “monthly + revenue-share” option that changes their pay', async ({ page }) => {
     await openPortal(page); await setRole(page, 'hr'); await go(page, 'pay', 'monthly');
     const first = page.locator('#view table tbody tr').first();
-    await expect(first.locator('td.num')).toHaveCount(4);                          // 底薪、專業加給、月薪、拆帳金額
+    await expect(first.locator('td.num')).toHaveCount(5);                          // 本薪、專業加給、其他加給、月薪、拆帳金額
     const drv = await page.evaluate(() => { const d = STAFF.find(s => isDriver(s)); return d ? d.id : null; });
     expect(drv).not.toBeNull();
     const before = await page.evaluate(id => calcPay(id, payDefault()).lines.map(l => l.zh), drv);
@@ -5193,5 +5193,99 @@ test.describe('Pay systems follow the company (25 Nov meeting)', () => {
     await expect(page.locator('[data-drvmode="A008"]')).toHaveCount(0);                                // 他的「月薪＋拆帳」選項不見了
     await expect(page.locator('[data-drvmode="B007"]')).toHaveCount(1);                                // 誠芯的司機仍然有
     expect(await page.locator('[data-drvmode]').count()).toBe(before - 1);
+  });
+});
+
+/* ================================================================ */
+/* 11/25 會議：人事資料的月薪制三欄（本薪、專業加給、其他加給） */
+test.describe('Monthly pay: base, professional allowance and other allowance (25 Nov meeting)', () => {
+  const monthlyId = page => page.evaluate(() => STAFF.find(s => !isHourlyPay(s) && s.status === 'active' && s.salary > 0).id);
+  const openEmp = async (page, id) => { await page.evaluate(i => openPerson(i), id); await expect(page.locator('aside.drawer')).toBeVisible(); };
+  const form = page => page.locator('aside.drawer form[data-add="paysetting"]');
+  const fillParts = async (page, b, p, o) => { await page.locator('aside.drawer details.addbox:has(form[data-add="paysetting"]) > summary').click(); await form(page).locator('[name="base"]').fill(String(b)); await form(page).locator('[name="prof"]').fill(String(p)); await form(page).locator('[name="other"]').fill(String(o)); await form(page).locator('button[type="submit"]').click(); };
+
+  test('people without a breakdown keep their monthly pay: the three parts add up to it and “other” is 0', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => STAFF.filter(s => !isHourlyPay(s)).slice(0, 12).map(s => { const x = payParts(s); return { sum: x.base + x.prof + x.other, sal: s.salary, other: x.other, prof: x.prof, expect: Math.round(s.salary * 0.12 / 100) * 100 }; }));
+    expect(r.length).toBeGreaterThan(5);
+    for (const x of r) { expect(x.sum).toBe(x.sal); expect(x.other).toBe(0); expect(x.prof).toBe(x.expect); }
+  });
+
+  test('HR sets the three amounts on the employee: the monthly pay becomes their sum and the history keeps an entry', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); const id = await monthlyId(page); await openEmp(page, id);
+    const dl = page.locator('aside.drawer dl').first();
+    for (const w of ['本薪', '專業加給', '其他加給', '月薪']) await expect(dl).toContainText(w);
+    await fillParts(page, 30000, 4000, 2500);
+    const r = await page.evaluate(i => { const p = person(i), x = payParts(p), h = empRecord(i).hist.slice(-1)[0]; return { sal: p.salary, x, h }; }, id);
+    expect(r.sal).toBe(36500); expect(r.x).toMatchObject({ base: 30000, prof: 4000, other: 2500 });
+    expect(r.h).toMatchObject({ salary: 36500, kind: 'raise' }); expect(r.h.note).toContain('其他加給 2500');
+    await expect(page.locator('aside.drawer dl').first()).toContainText('NT$36,500');
+  });
+
+  test('only roles with both the pay and edit permissions get the form; hourly staff do not get it', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); const id = await monthlyId(page); await openEmp(page, id);
+    await expect(form(page)).toHaveCount(1);
+    const hid = await page.evaluate(() => STAFF.find(s => isHourlyPay(s) && s.status === 'active').id);
+    await openEmp(page, hid); await expect(form(page)).toHaveCount(0);                                // 時薪制不用三欄
+    for (const role of ['employee', 'training']) { await setRole(page, role); await page.evaluate(i => openPerson(i), id); await expect(form(page)).toHaveCount(0); }
+  });
+
+  test('amounts are whole numbers and never negative, whatever is passed in', async ({ page }) => {
+    await openPortal(page); const id = await monthlyId(page);
+    const r = await page.evaluate(i => { const p = person(i); const s = setPayParts(p, -5, 100.4, 'x'); return { s, base: p.base, prof: p.prof, other: p.other, sal: p.salary }; }, id);
+    expect(r).toEqual({ s: 100, base: 0, prof: 100, other: 0, sal: 100 });
+  });
+
+  test('payroll: the other allowance is paid as its own line, but leave deductions and overtime use base + professional allowance', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => {
+      const mk = other => { const inp = payInputs(STAFF.find(s => !isHourlyPay(s) && s.status === 'active').id, '2026-10'); Object.assign(inp, { monthly: 40000, allow: 4800, other, wd1: 2, wd2: 0, rd1: 0, rd2: 0, rd3: 0, hol: 0, lateMin: 0, lateDays: 0, missing: 0, leave: {}, adjust: [], settleAnnual: 8, settleComp: 0, eve: 0, night: 0, aReward: 0, incentive: 0, visits: 0, overN: 0, bonus: false }); return payMath(inp); };
+      const a = mk(0), b = mk(3000), find = (c, re) => c.lines.find(l => re.test(l.zh));
+      return { aBase: find(a, /^底薪/).amt, bBase: find(b, /^底薪/).amt, bOther: (find(b, /^其他加給/) || {}).amt, aOT: find(a, /加班/).amt, bOT: find(b, /加班/).amt, aAnn: find(a, /特休結算/).amt, bAnn: find(b, /特休結算/).amt, aHas: !!find(a, /^其他加給/) };
+    });
+    expect(r.aHas).toBe(false);                                                                       // 其他加給是 0 就不出現一行
+    expect(r.aBase).toBe(35200); expect(r.bBase).toBe(32200); expect(r.bOther).toBe(3000);              // 月薪 40,000：底薪＝月薪－專業加給－其他加給
+    expect(r.aOT).toBe(444); expect(r.bOT).toBe(411);                                                 // 加班：2 小時 × 4/3 × 時薪（月薪 40,000 → 166.67；扣掉其他加給 3,000 → 154.17）
+    expect(r.aAnn).toBe(1333); expect(r.bAnn).toBe(1333);                                              // 特休結算 8 小時：以三項加總（40,000 ÷ 240）計，不受其他加給影響
+  });
+
+  test('with the night-shift allowance counted in the overtime base, the other allowance is still left out of it; the professional allowance can never exceed base + professional', async ({ page }) => {
+    await openPortal(page);
+    const r = await page.evaluate(() => {
+      const mk = (other, allow) => { const inp = payInputs(STAFF.find(s => !isHourlyPay(s) && s.status === 'active').id, '2026-10'); Object.assign(inp, { monthly: 40000, allow, other, wd1: 2, wd2: 0, rd1: 0, rd2: 0, rd3: 0, hol: 0, lateMin: 0, lateDays: 0, missing: 0, leave: {}, adjust: [], settleAnnual: 0, settleComp: 0, eve: 1, eveRate: 300, night: 0, nightRate: 0, nightInBase: true, aReward: 0, incentive: 0, visits: 0, overN: 0, bonus: false }); return payMath(inp); };
+      const find = (c, re) => c.lines.find(l => re.test(l.zh));
+      const a = mk(0, 4800), b = mk(3000, 4800), c = mk(39000, 4800);
+      return { aOT: find(a, /加班/).amt, bOT: find(b, /加班/).amt, cBase: find(c, /^底薪/).amt, cAllow: find(c, /^專業加給/).amt, cOther: find(c, /^其他加給/).amt };
+    });
+    expect(r.aOT).toBe(448); expect(r.bOT).toBe(414);                                                  // (40,000＋300) ÷ 240 與 (37,000＋300) ÷ 240，各 × 2 小時 × 4/3
+    expect(r).toMatchObject({ cBase: 0, cAllow: 1000, cOther: 39000 });                                // 其他加給 39,000 → 本薪＋專業加給只剩 1,000：專業加給封頂在 1,000，底薪不會變負數
+  });
+
+  test('saving the pay setting is refused in code too: hourly staff and roles without the permissions are ignored', async ({ page }) => {
+    await openPortal(page); const id = await monthlyId(page);
+    const hid = await page.evaluate(() => STAFF.find(s => isHourlyPay(s) && s.status === 'active').id);
+    const run = (who, role) => page.evaluate(([i, r]) => { state.role = r; const before = person(i).salary, fd = new FormData(); fd.set('base', '1'); fd.set('prof', '1'); fd.set('other', '1'); saveRec(i, 'paysetting', fd); return [before, person(i).salary]; }, [who, role]);
+    let [b, a] = await run(id, 'employee'); expect(a).toBe(b);                                         // 一般員工：沒有薪資與編輯權限
+    [b, a] = await run(hid, 'hr'); expect(a).toBe(b);                                                  // 時薪制：不適用
+    [b, a] = await run(id, 'hr'); expect(a).toBe(3);                                                   // 人資改月薪制人員：生效
+  });
+
+  test('the monthly-pay tab and the pay calculator show the new column and field', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); const id = await monthlyId(page);
+    await page.evaluate(i => setPayParts(person(i), 30000, 4000, 2500), id);
+    await go(page, 'pay', 'monthly');
+    await expect(page.locator('#view thead').first()).toContainText('其他加給');
+    const row = page.locator('#view tbody tr', { hasText: id }).first();
+    await expect(row).toContainText('NT$2,500'); await expect(row).toContainText('NT$36,500');
+    await go(page, 'pay', 'calc'); await expect(page.locator('#calcForm [name="other"]')).toHaveCount(1);
+  });
+
+  test('adding an employee takes the three amounts and stores their sum as the monthly pay', async ({ page }) => {
+    await openPortal(page); await setRole(page, 'hr'); await go(page, 'hr', 'emp'); await page.click('[data-newemp]');
+    await expect(page.locator('#newEmp [name="salary"], [name="salary"]')).toHaveCount(0);            // 舊的單一「月薪」欄不見了
+    await page.fill('[name="name"]', '測試新人'); await page.fill('[name="base"]', '30000'); await page.fill('[name="prof"]', '3000'); await page.fill('[name="other"]', '2000');
+    await page.locator('form:has([name="base"]) button[type="submit"]').click();
+    const r = await page.evaluate(() => { const p = STAFF[STAFF.length - 1]; return { sal: p.salary, x: payParts(p), name: empRecord(p.id).basic.name }; });
+    expect(r.name).toBe('測試新人'); expect(r.sal).toBe(35000); expect(r.x).toMatchObject({ base: 30000, prof: 3000, other: 2000 });
   });
 });
