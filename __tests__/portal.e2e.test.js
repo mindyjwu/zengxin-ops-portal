@@ -4990,7 +4990,7 @@ test.describe('Revenue-share pay: the 25 Nov rules (incentives, transport, addit
     const bytes = await page.evaluate(async b => {
       const sheets = [{ name: '拆帳金額', rows: [['居服員拆帳金額']] }, { name: '服務紀錄總表', rows: b.svc }];
       if (b.aa) sheets.push({ name: '員工AA碼拆帳明細', rows: b.aa }); if (b.trip) sheets.push({ name: '交通津貼', rows: b.trip });
-      if (b.add) sheets.push({ name: '其他加項-115年', rows: b.add }); if (b.ded) sheets.push({ name: '其他扣項-115年', rows: b.ded });
+      if (b.add) sheets.push({ name: '其他加項-115年', rows: b.add }); if (b.ded) sheets.push({ name: '其他扣項-115年', rows: b.ded }); if (b.ins) sheets.push({ name: '投保資料', rows: b.ins });
       return Array.from(new Uint8Array(await buildXlsxBook(sheets).arrayBuffer()));
     }, b);
     await go(page, 'svc', 'case');
@@ -5004,12 +5004,12 @@ test.describe('Revenue-share pay: the 25 Nov rules (incentives, transport, addit
     await expect(page.locator('#svcMsg')).toContainText('服務獎勵金 5 列');
     const d = await data(page);
     expect(d.w['測試員甲']).toMatchObject({ aa: 165, trip: 120, add: 500, ded: 0, total: 958, net: 958 + 165 + 120 + 500 });   // AA：55 + 110（九月那列不算）；交通：10 公里 60 + 偏鄉 60；加項只算十月
-    expect(d.w['測試員乙']).toMatchObject({ aa: 60, trip: 180, add: 0, ded: 420, total: 200, net: 200 + 60 + 180 - 420 });
-    expect(d.tot).toMatchObject({ aa: 225, trip: 300, add: 500, ded: 420, net: 1743 + 20 });
+    expect(d.w['測試員乙']).toMatchObject({ aa: 60, trip: 180, add: 0, ded: 300, stat: 120, total: 200, net: 200 + 60 + 180 - 420 });   // 責任險 300 是「其他扣項」，勞保代扣 120 是「勞健退代扣」
+    expect(d.tot).toMatchObject({ aa: 225, trip: 300, add: 500, ded: 300, stat: 120, net: 1743 + 20 });
     await go(page, 'pay', 'split');
     const card = page.locator('#paySplit');
     await expect(card).toContainText('服務獎勵金：NT$225'); await expect(card).toContainText('交通津貼：NT$300');
-    await expect(card).toContainText('其他加項：NT$500'); await expect(card).toContainText('其他扣項：NT$420'); await expect(card).toContainText('實發合計：NT$1,763');
+    await expect(card).toContainText('其他加項：NT$500'); await expect(card).toContainText('其他扣項：NT$300'); await expect(card).toContainText('勞健退代扣：NT$120'); await expect(card).toContainText('實發合計：NT$1,763');
   });
 
   test('says what could not be matched and what was assumed', async ({ page }) => {
@@ -5088,5 +5088,62 @@ test.describe('Revenue-share pay: the 25 Nov rules (incentives, transport, addit
     const r = await page.evaluate(() => window.__saved);
     expect(r.n).toContain('拆帳制計薪_2026-10');
     for (const w of ['服務獎勵金', '交通津貼', '其他加項', '其他扣項', '實發']) expect(r.t).toContain(w);
+  });
+  /* ---- 勞健退自動代扣與組長津貼（11/25 之後） ---- */
+  const INS = [['姓名', '勞保投保薪資', '健保投保金額', '眷屬口數', '勞退提繳工資', '自提%', '投保日數'], ['測試員乙', '30300', '30300', '1', '30300', '3', ''], ['測試員甲', '0', '0', '0', '0', '0', '']];
+
+  test('insurance data from the workbook: the listed rows are used until “automatic” is chosen, then each person is deducted once', async ({ page }) => {
+    await openPortal(page); await upload(page, book({ ins: INS })); await go(page, 'pay', 'split');
+    await expect(page.locator('#svcMsg').or(page.locator('#paySplit'))).toBeVisible();
+    let d = await data(page);
+    expect(d.w['測試員乙']).toMatchObject({ stat: 120, useAuto: false, man: 120, ded: 300 });           // 預設：照清冊
+    expect(d.w['測試員乙'].auto).toMatchObject({ lab: 758, hel: 940, total: 758 + 940 + 909 });          // 30,300 × 12.5% × 20% ＝ 757.5 → 758；健保 470 × 2 人；勞退自提 3% ＝ 909
+    expect(d.w['測試員甲'].auto).toBeNull();                                                              // 投保薪資 0＝沒有投保資料
+    await page.locator('#splitInsBox summary').click(); await page.selectOption('#splitInsMode', 'auto');
+    d = await data(page);
+    expect(d.w['測試員乙']).toMatchObject({ stat: 2607, useAuto: true, ded: 300, net: 200 + 60 + 180 - 2607 - 300 });   // 清冊那筆 120 不再扣
+    expect(d.w['測試員甲']).toMatchObject({ useAuto: false });                                            // 沒有投保資料的照清冊（甲清冊沒有 → 0）
+    await expect(page.locator('#paySplit')).toContainText('有投保資料的 1 位改用自動計算');
+  });
+
+  test('typing the insurance data on the page works too: days prorate labor insurance and pension but not health; inputs are clamped', async ({ page }) => {
+    await openPortal(page); await upload(page, { svc: SVC }); await go(page, 'pay', 'split');
+    await page.locator('#splitInsBox summary').click();
+    const f = (f, v) => page.locator(`[data-sins="測試員甲"][data-f="${f}"]`);
+    await f('labor').selectOption('30300'); await f('health').selectOption('30300'); await f('pension').selectOption('30300');
+    await f('dep').fill('1'); await f('dep').blur(); await f('selfPct').fill('3'); await f('selfPct').blur(); await f('days').fill('15'); await f('days').blur();
+    await page.selectOption('#splitInsMode', 'auto');
+    const d = await data(page);
+    expect(d.w['測試員甲'].auto).toMatchObject({ lab: 379, hel: 940, pen: 455, total: 1774 });             // 勞保 758 × 15/30；健保整月 940；勞退 909 × 15/30 ＝ 454.5 → 455
+    await f('days').fill('99'); await f('days').blur(); await f('selfPct').fill('99'); await f('selfPct').blur();
+    const o = await page.evaluate(() => state.splitIns['測試員甲']); expect(o.days).toBe(30); expect(o.selfPct).toBe(6);   // 日數最多 30、自提最多 6%
+    await go(page, 'svc', 'case'); await page.click('#svcClear'); expect(await page.evaluate(() => [state.splitIns, state.splitLead])).toEqual([null, null]);   // 清掉匯入時，投保資料與組長勾選也一起清掉
+  });
+
+  test('team-lead allowance: a ticked lead gets the table’s 4% column for each item they served, and the hand-keyed 組長津貼 is not counted twice', async ({ page }) => {
+    const add2 = [...ADD, ['CSHRT01', '測試員甲', '115年10月', '組長津貼', '100', '']];
+    await openPortal(page); await upload(page, book({ add: add2 })); await go(page, 'pay', 'split');
+    let d = await data(page);
+    expect(d.w['測試員甲']).toMatchObject({ isLead: false, lead: 0, leadAvail: 26, add: 600 });            // 沒勾：BA07 × 2 次 × 13＝26 只是可得金額；清冊的 100 照算
+    await page.locator('[data-splead="測試員甲"]').check();
+    d = await data(page);
+    expect(d.w['測試員甲']).toMatchObject({ isLead: true, lead: 26, add: 500, net: 958 + 26 + 165 + 120 + 500 });   // 勾了：加 26，清冊的 100 不再算
+    expect(d.w['測試員乙'].lead).toBe(0);
+    await expect(page.locator('#paySplit')).toContainText('「組長津貼」1 筆不再計入');
+    await expect(page.locator('#paySplit')).toContainText('組長津貼：NT$26');
+  });
+
+  test('the Excel export also has the team-lead and insurance columns', async ({ page }) => {
+    await openPortal(page); await upload(page, book({ ins: INS })); await go(page, 'pay', 'split');
+    await page.locator('[data-splead="測試員甲"]').check();
+    await page.evaluate(() => { window.__saved = null; saveBlob = (b, n) => { window.__saved = b.arrayBuffer().then(a => new TextDecoder().decode(new Uint8Array(a))); }; });
+    await page.click('#splitXlsx'); const t = await page.evaluate(() => window.__saved);
+    for (const w of ['組長津貼', '勞健退代扣', '組長']) expect(t).toContain(w);
+  });
+  test('every kind of hand-keyed insurance withholding row is recognised (labor, health, pension, and combined names), while other deductions are not', async ({ page }) => {
+    const ded2 = [...DED, ['CSHRT02', '測試員乙', '115年10月', '7月健保代扣', '40', ''], ['CSHRT02', '測試員乙', '115年10月', '11410勞退自提', '50', ''], ['CSHRT02', '測試員乙', '115年10月', '0901-0930勞保健保勞退代扣', '10', ''], ['CSHRT02', '測試員乙', '115年10月', '法院強制執行', '70', '']];
+    await openPortal(page); await upload(page, book({ ded: ded2 }));
+    const d = await data(page);
+    expect(d.w['測試員乙']).toMatchObject({ man: 120 + 40 + 50 + 10, stat: 220, ded: 300 + 70 });          // 勞保、健保、勞退（含合併名稱）都算代扣；責任險、強制執行是其他扣項
   });
 });
