@@ -5397,3 +5397,79 @@ test.describe('Revenue-share amounts: HR edits the pay table (25 Nov meeting)', 
     expect(await page.evaluate(() => [splitVers()[0].rates[0].A, !!state.splitDraft])).toEqual([720, false]);   // 就算硬改欄位，程式也擋下，不會產生草稿
   });
 });
+
+/* ================================================================ */
+/* 11/25 會議：勞健保試算工具（HR 輸入投保級距、加退保日期，帶出預扣金額；離職預扣用） */
+test.describe('Insurance estimate tool for leavers (25 Nov meeting)', () => {
+  const calc = (page, over = {}) => page.evaluate(o => insToolCalc({ from: '2026-10', to: '2026-10', labor: 30300, health: 30300, pension: 30300, dep: 1, selfPct: 3, start: '', end: '', hmode: 'full', ...o }), over);
+  const openTool = async (page, role = 'hr') => { await openPortal(page); await setRole(page, role); await go(page, 'pay', 'ins'); await expect(page.locator('#insTool')).toBeVisible(); };
+
+  test('a whole month: 30 days, with the amounts worked out by hand', async ({ page }) => {
+    await openPortal(page); const r = await calc(page);
+    expect(r.errs).toEqual([]); const x = r.rows[0];
+    expect(x.days).toBe(30);                                                                          // 十月有 31 天，整月仍算 30 天
+    expect(x.lab).toEqual({ ee: 758, er: 2651 });                                                     // 30,300 × 12.5% ＝ 3,787.5；個人 20% ＝ 757.5 → 758；雇主 70% ＝ 2,651.25 → 2,651
+    expect(x.hel).toEqual({ ee: 940, er: 1466 });                                                     // 30,300 × 5.17% × 30% ＝ 470 × (1＋1 眷屬)；雇主 60% × (1＋0.56) ＝ 1,466
+    expect(x.pen).toEqual({ ee: 909, er: 1818 });                                                     // 30,300 × 3% 自提；× 6% 雇主
+    expect([x.ee, x.er]).toEqual([758 + 940 + 909, 2651 + 1466 + 1818]);
+  });
+
+  test('a leaver withdrawn on the 18th: labor insurance and pension by 18/30, health for the whole month by default', async ({ page }) => {
+    await openPortal(page);
+    const a = (await calc(page, { end: '2026-10-18' })).rows[0];
+    expect(a.days).toBe(18);
+    expect(a.lab).toEqual({ ee: 455, er: 1591 }); expect(a.pen).toEqual({ ee: 545, er: 1091 });          // 758 × 0.6 ＝ 454.8；2,651 × 0.6 ＝ 1,590.6；909 × 0.6 ＝ 545.4；1,818 × 0.6 ＝ 1,090.8
+    expect(a.hel).toEqual({ ee: 940, er: 1466 }); expect(a.ee).toBe(455 + 940 + 545);                    // 健保整月
+    const b = (await calc(page, { end: '2026-10-18', hmode: 'prorate' })).rows[0]; expect(b.hel).toEqual({ ee: 564, er: 880 });   // 940 × 0.6；1,466 × 0.6 ＝ 879.6
+    const c = (await calc(page, { end: '2026-10-18', hmode: 'none' })).rows[0]; expect(c.hel).toEqual({ ee: 0, er: 0 }); expect(c.ee).toBe(455 + 545);
+  });
+
+  test('enrolled part-way through the month, withdrawn on the last day, and dates outside the month', async ({ page }) => {
+    await openPortal(page);
+    expect((await calc(page, { start: '2026-10-10' })).rows[0].days).toBe(22);                           // 10 日到 31 日共 22 天
+    expect((await calc(page, { end: '2026-10-31' })).rows[0].days).toBe(30);                             // 退保日是月底＝整月
+    expect((await calc(page, { start: '2026-10-01', end: '2026-10-01' })).rows[0].days).toBe(1);         // 同一天加退保＝1 天
+    const out = (await calc(page, { start: '2026-11-05' })).rows[0]; expect(out.days).toBe(0); expect([out.ee, out.er]).toEqual([0, 0]);   // 十一月才加保：十月沒有保費（健保也不收）
+    expect((await calc(page, { from: '2026-02', to: '2026-02', end: '2026-02-28' })).rows[0].days).toBe(30);   // 二月只有 28 天，整月仍是 30 天
+  });
+
+  test('several months at once: each month on its own, the totals add up, and a month after withdrawal is zero', async ({ page }) => {
+    await openPortal(page);
+    const r = await calc(page, { from: '2026-09', to: '2026-11', start: '2026-01-01', end: '2026-10-18' });
+    expect(r.rows.map(x => x.days)).toEqual([30, 18, 0]);
+    expect(r.rows[0].ee).toBe(2607); expect(r.rows[1].ee).toBe(1940); expect(r.rows[2].ee).toBe(0);
+    expect(r.tot).toMatchObject({ days: 48, ee: 2607 + 1940, er: 5935 + 1591 + 1466 + 1091 });
+  });
+
+  test('problems are explained instead of giving a wrong number', async ({ page }) => {
+    await openPortal(page);
+    expect((await calc(page, { labor: 0, health: 0, pension: 0 })).errs.join()).toContain('至少要選一種投保級距');
+    expect((await calc(page, { start: '2026-10-20', end: '2026-10-10' })).errs.join()).toContain('退保日期不能早於加保日期');
+    expect((await calc(page, { from: '2026-10', to: '2026-09' })).errs.join()).toContain('結束月份不能早於開始月份');
+    expect((await calc(page, { from: '2026-01', to: '2028-12' })).errs.join()).toContain('最多試算 24 個月');
+    expect((await calc(page, { from: '', to: '' })).errs.join()).toContain('起訖月份');
+    const r = await calc(page, { dep: 99, selfPct: 99 }); expect([r.rows[0].hel.ee, r.rows[0].pen.ee]).toEqual([470 * 4, 1818]);   // 眷屬最多 3 口（＋本人 4 份）、自提最多 6%
+  });
+
+  test('typing a monthly pay picks the matching grades; the page shows the result and exports it', async ({ page }) => {
+    await openTool(page);
+    await page.fill('[data-instool="salary"]', '36000'); await page.locator('[data-instool="salary"]').blur();
+    await expect(page.locator('[data-instool="labor"]')).toHaveValue('36300'); await expect(page.locator('[data-instool="health"]')).toHaveValue('36300');   // 36,000 落在 36,300 這一級
+    await page.selectOption('[data-instool="labor"]', '30300'); await page.selectOption('[data-instool="health"]', '30300'); await page.selectOption('[data-instool="pension"]', '30300');
+    await page.fill('[data-instool="dep"]', '1'); await page.locator('[data-instool="dep"]').blur(); await page.fill('[data-instool="selfPct"]', '3'); await page.locator('[data-instool="selfPct"]').blur();
+    await page.fill('[data-instool="from"]', '2026-10'); await page.locator('[data-instool="from"]').blur(); await page.fill('[data-instool="to"]', '2026-10'); await page.locator('[data-instool="to"]').blur();
+    await page.fill('[data-instool="end"]', '2026-10-18'); await page.locator('[data-instool="end"]').blur();
+    await expect(page.locator('#insTool')).toContainText('個人負擔合計（預扣）：NT$1,940'); await expect(page.locator('#insTool')).toContainText('雇主負擔合計：NT$4,148');
+    await page.evaluate(() => { window.__t = null; saveBlob = (b) => { window.__t = b.arrayBuffer().then(a => new TextDecoder().decode(new Uint8Array(a))); }; });
+    await page.click('#insToolXlsx'); const x = await page.evaluate(() => window.__t);
+    for (const w of ['勞健保試算', '估算，不是扣款', '投保日數', '1940']) expect(x).toContain(w);
+  });
+
+  test('the form shows a problem instead of a table, and the tool is available only where the payroll pages are', async ({ page }) => {
+    await openTool(page);
+    await page.selectOption('[data-instool="labor"]', '0'); await page.selectOption('[data-instool="health"]', '0'); await page.selectOption('[data-instool="pension"]', '0');
+    await expect(page.locator('#insTool [role="alert"]')).toContainText('至少要選一種投保級距'); await expect(page.locator('#insToolXlsx')).toHaveCount(0);
+    await setRole(page, 'employee');
+    expect(await page.evaluate(() => { const m = MODULES.find(x => x.id === 'pay'); return tabAllowed(m, m.tabs.find(t => t.id === 'ins')); })).toBe(false);
+  });
+});
