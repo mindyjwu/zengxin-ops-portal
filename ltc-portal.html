@@ -7623,6 +7623,70 @@ function insQuarterSheets(qm){
   return [{name:'每季建議', rows:[['每季建議 '+qm+'（前三個月：'+insPrev3(qm).join('、')+'；'+(state.insQOT?'含':'不含')+'加班費）'],['員編','姓名','單位','依據','平均經常性薪資','勞保 現行','勞保 建議','健保 現行','健保 建議','勞退月提繳工資 建議','個人每月變化','雇主每月變化','結果'],
     ...rows.map(r=>[r.s.id,empName(r.s.id),unit(r.s.unit).zh,r.evidence,r.avg==null?'':r.avg,r.cur.labor,r.sugL?r.sugL.amt:'',r.cur.health,r.sugH?r.sugH.amt:'',r.sugP?r.sugP.amt:'',r.changed?r.dEe:0,r.changed?r.dEr:0,r.changed?'需調整':r.enrolled?'不用調':'未加保'])], widths:[10,10,10,60,14,10,10,10,10,14,12,12,10]}];
 }
+/* 勞健保試算工具（需求端 11/25）：人資輸入投保級距、加退保日期，系統帶出勞保、健保、勞退的預扣金額，用在員工離職預扣等情境。
+   正式扣款仍以帳單為準（會議決定：遞延一個月、依帳單扣）；這裡只是事前估算與核對。
+   規則（我的設計選擇，待確認）：勞保、勞退依「投保日數 ÷ 30」計（整月＝30 天）；健保預設有投保的月份整月計，也可選按日數或不計；金額四捨五入到元。 */
+const insToolDefault = () => ({from:CUR_MONTH, to:CUR_MONTH, salary:'', labor:0, health:0, pension:0, dep:0, selfPct:0, start:'', end:'', hmode:'full'});
+const insToolIn = () => state.insTool || (state.insTool=insToolDefault());
+function insToolDays(month, start, end){
+  const [y,m]=month.split('-').map(Number), first=month+'-01', last=month+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
+  const a=start&&start>first?start:first, b=end&&end<last?end:last;
+  if(a>b) return 0;
+  if(a===first&&b===last) return 30;
+  return Math.min(30, Math.round((new Date(b+'T00:00')-new Date(a+'T00:00'))/864e5)+1);
+}
+function insToolCalc(inp){
+  const errs=[], rows=[], ok=v=>/^\d{4}-(0[1-9]|1[0-2])$/.test(v||'');
+  if(!ok(inp.from)||!ok(inp.to)) errs.push(both('請選試算的起訖月份','Pick the first and last month'));
+  else if(inp.to<inp.from) errs.push(both('結束月份不能早於開始月份','The last month cannot be before the first'));
+  else{
+    const [fy,fm]=inp.from.split('-').map(Number), [ty,tm]=inp.to.split('-').map(Number);
+    if((ty-fy)*12+(tm-fm)>23) errs.push(both('一次最多試算 24 個月','At most 24 months at a time'));
+  }
+  if(inp.start&&inp.end&&inp.end<inp.start) errs.push(both('退保日期不能早於加保日期','The withdrawal date cannot be before the enrolment date'));
+  if(!(+inp.labor||+inp.health||+inp.pension)) errs.push(both('至少要選一種投保級距（勞保、健保或勞退）','Choose at least one grade (labor, health or pension)'));
+  if(errs.length) return {errs, rows:[], tot:null};
+  let [y,m]=inp.from.split('-').map(Number); const [ty,tm]=inp.to.split('-').map(Number);
+  while(y<ty||(y===ty&&m<=tm)){
+    const month=y+'-'+String(m).padStart(2,'0'), days=insToolDays(month, inp.start, inp.end), f=days/30;
+    const c=insCalc(month,{labor:+inp.labor||0, health:+inp.health||0, pension:+inp.pension||0, dep:Math.min(Math.max(+inp.dep||0,0),insRate(month).health.maxDep), selfPct:Math.min(Math.max(+inp.selfPct||0,0),6)});
+    const lab={ee:Math.round(c.lab.ee*f), er:Math.round(c.lab.er*f)}, pen={ee:Math.round(c.pen.ee*f), er:Math.round(c.pen.er*f)};
+    const hel=days===0||inp.hmode==='none'?{ee:0,er:0}:inp.hmode==='prorate'?{ee:Math.round(c.hel.ee*f), er:Math.round(c.hel.er*f)}:{ee:c.hel.ee, er:c.hel.er};
+    rows.push({month, days, lab, hel, pen, ee:lab.ee+hel.ee+pen.ee, er:lab.er+hel.er+pen.er});
+    m++; if(m>12){ m=1; y++; }
+  }
+  const sum=fn=>rows.reduce((a,r)=>a+fn(r),0);
+  return {errs, rows, tot:{lab:{ee:sum(r=>r.lab.ee),er:sum(r=>r.lab.er)}, hel:{ee:sum(r=>r.hel.ee),er:sum(r=>r.hel.er)}, pen:{ee:sum(r=>r.pen.ee),er:sum(r=>r.pen.er)}, ee:sum(r=>r.ee), er:sum(r=>r.er), days:sum(r=>r.days)}};
+}
+function insToolCard(){
+  const I=insToolIn(), r=insToolCalc(I), refM=/^\d{4}-\d{2}$/.test(I.from)?I.from:CUR_MONTH;
+  const gsel=(k,kind)=>`<select data-instool="${k}"><option value="0">${esc(both('不投保','None'))}</option>${insAmts(kind,refM).map(g=>`<option ${g==I[k]?'selected':''}>${g}</option>`).join('')}</select>`;
+  const maxDep=insRate(refM).health.maxDep;
+  const lbl=(zh,en,inner)=>`<div><label>${esc(both(zh,en))}</label>${inner}</div>`;
+  return `<section class="card" id="insTool"><div class="card-h"><h2>${esc(both('勞健保試算（離職預扣等）','Insurance estimate (e.g. for a leaver)'))}</h2><span class="chip">${esc(both('估算，不是扣款','Estimate, not a deduction'))}</span></div>
+    <div class="card-b" style="display:grid;gap:10px">
+    <div class="muted" style="font-size:12.5px;line-height:1.7">${esc(both('輸入投保級距與加退保日期，帶出每個月的勞保、健保、勞退（個人負擔與雇主負擔），例如員工離職、還沒收到帳單前先預扣用。級距與費率用下面「分級表版本與費率」依月份生效的版本。勞保、勞退依「投保日數 ÷ 30」計（整月 30 天）；健保預設有投保的月份整月計，也可選按日數或不計；金額四捨五入到元（這些是我的設計選擇，待確認）。正式扣款仍以勞保局、健保署的帳單為準（會議決定：遞延一個月、依帳單扣）；健保與勞退請和帳單核對。','Enter the insured grades and the enrolment/withdrawal dates to get labor, health and pension amounts for each month (employee and employer shares), e.g. to pre-withhold from a leaver before the bill arrives. Grades and rates follow the versions effective for each month below. Labor insurance and pension are prorated by insured days ÷ 30 (a full month is 30 days); health insurance defaults to the whole month for any insured month, or can be prorated or skipped; amounts are rounded to the dollar (my design choices, to be confirmed). The real deduction still follows the bill (agreed: deduct one month later, from the bill); check health and pension against the bill.'))}</div>
+    <div class="row">
+      ${lbl('開始月份','From month',`<input type="month" data-instool="from" value="${esc(I.from)}">`)}${lbl('結束月份','To month',`<input type="month" data-instool="to" value="${esc(I.to)}">`)}
+      ${lbl('加保日期（選填）','Enrolment date (optional)',`<input type="date" data-instool="start" value="${esc(I.start)}">`)}${lbl('退保日期（選填）','Withdrawal date (optional)',`<input type="date" data-instool="end" value="${esc(I.end)}">`)}
+    </div>
+    <div class="row">
+      ${lbl('月薪（選填，自動選級距）','Monthly pay (optional, picks the grades)',`<input type="number" min="0" step="100" data-instool="salary" value="${esc(I.salary)}" placeholder="${esc(both('例如 36000','e.g. 36000'))}">`)}
+      ${lbl('勞保投保薪資','Labor insured salary',gsel('labor','labor'))}${lbl('健保投保金額','Health insured amount',gsel('health','health'))}${lbl('勞退提繳工資','Pension wage',gsel('pension','pension'))}
+    </div>
+    <div class="row">
+      ${lbl('健保眷屬口數（0–'+maxDep+'）','Health dependants (0–'+maxDep+')',`<input type="number" min="0" max="${maxDep}" step="1" data-instool="dep" value="${I.dep}">`)}
+      ${lbl('勞退自提 %（0–6）','Voluntary pension % (0–6)',`<input type="number" min="0" max="6" step="1" data-instool="selfPct" value="${I.selfPct}">`)}
+      ${lbl('健保的計法','Health insurance method',`<select data-instool="hmode"><option value="full" ${I.hmode==='full'?'selected':''}>${esc(both('有投保的月份整月計（預設）','Whole month if insured (default)'))}</option><option value="prorate" ${I.hmode==='prorate'?'selected':''}>${esc(both('按投保日數比例','By insured days'))}</option><option value="none" ${I.hmode==='none'?'selected':''}>${esc(both('不計','Not charged'))}</option></select>`)}
+    </div>
+    ${r.errs.length?`<div class="note warn" role="alert"><ul style="margin:0 0 0 18px">${r.errs.map(e=>`<li>${esc(e)}</li>`).join('')}</ul></div>`:`
+    <div class="tablewrap"><table class="todotbl"><thead><tr><th>${bi('月份','Month')}</th><th>${bi('投保日數','Days')}</th><th>${bi('勞保 個人','Labor (you)')}</th><th>${bi('勞保 雇主','Labor (employer)')}</th><th>${bi('健保 個人','Health (you)')}</th><th>${bi('健保 雇主','Health (employer)')}</th><th>${bi('勞退 自提','Pension (voluntary)')}</th><th>${bi('勞退 雇主','Pension (employer)')}</th><th>${bi('個人負擔合計（預扣）','Your total (pre-withhold)')}</th><th>${bi('雇主負擔合計','Employer total')}</th></tr></thead><tbody>
+      ${r.rows.map(x=>`<tr><td class="mono">${x.month}</td><td class="num">${x.days}</td><td class="num">${money(x.lab.ee)}</td><td class="num">${money(x.lab.er)}</td><td class="num">${money(x.hel.ee)}</td><td class="num">${money(x.hel.er)}</td><td class="num">${money(x.pen.ee)}</td><td class="num">${money(x.pen.er)}</td><td class="num"><b>${money(x.ee)}</b></td><td class="num">${money(x.er)}</td></tr>`).join('')}
+      <tr><td><b>${esc(both('合計','Total'))}</b></td><td class="num"><b>${r.tot.days}</b></td><td class="num"><b>${money(r.tot.lab.ee)}</b></td><td class="num"><b>${money(r.tot.lab.er)}</b></td><td class="num"><b>${money(r.tot.hel.ee)}</b></td><td class="num"><b>${money(r.tot.hel.er)}</b></td><td class="num"><b>${money(r.tot.pen.ee)}</b></td><td class="num"><b>${money(r.tot.pen.er)}</b></td><td class="num"><b>${money(r.tot.ee)}</b></td><td class="num"><b>${money(r.tot.er)}</b></td></tr></tbody></table></div>
+    <div class="todostrip"><span class="chip acc">${esc(both('個人負擔合計（預扣）','Your total (pre-withhold)'))}：${money(r.tot.ee)}</span><span class="chip">${esc(both('雇主負擔合計','Employer total'))}：${money(r.tot.er)}</span><span class="chip warn">${esc(both('不含職災保險（雇主負擔，費率待設定）','Excludes occupational-injury insurance (employer; rate not set)'))}</span></div>
+    <div><button class="btn" type="button" id="insToolXlsx">${esc(both('匯出 Excel','Export Excel'))}</button></div>`}
+    </div></section>`;
+}
 function viewPayIns(){
   const month=insMonthNow(), rows=insRows(month), T=insTotals(rows), R=insRate(month), can_=payEdit();
   const units=[...new Set(rows.map(r=>r.s.unit))].map(u=>ALL_UNITS.find(x=>x.id===u));
@@ -7645,6 +7709,7 @@ function viewPayIns(){
     return `<tr><td><b>${esc(u.zh)}</b></td><td class="num">${t.n}</td><td class="num">${money(t.lab.ee)}</td><td class="num">${money(t.lab.er)}</td><td class="num">${money(t.hel.ee)}</td><td class="num">${money(t.hel.er)}</td><td class="num">${money(t.pen.er)}</td><td class="num">${t.occN?`<span class="chip warn">${esc(both('待設定','Not set'))}</span>`:money(t.occ)}</td><td class="num"><b>${money(t.er)}</b></td></tr>`; };
   const occCell=(u,k)=>{ const v=((state.insOcc||{})[u.id]||{})[k]; return `<input type="number" step="0.01" min="0" max="10" data-insocc="${u.id}:${k}" value="${v==null||v===''?'':+(v*100).toFixed(4)}" placeholder="${esc(both('待設定','not set'))}" style="width:96px"${can_?'':' disabled'}>`; };
   return `<div class="grid">
+    ${insToolCard()}
     <section class="card" id="insVers"><div class="card-h"><h2>${esc(both('分級表版本與費率','Grade-table versions and rates'))}</h2><span class="mono muted" style="font-size:12px">${month}</span></div>
       <div class="card-b" style="display:grid;grid-template-columns:minmax(0,1fr);gap:12px">
         <div class="note">${esc(both('系統依薪資月份自動選用當時有效的分級表與費率；政府公告新版時，到下面「上傳政府公告」上傳，確認後就會從生效日起自動套用。表格資料取自需求端 11/19 提供的政府公告。','The system picks the grade tables and rates in force for the pay month. When the government publishes a new table, upload it below and, once confirmed, it applies from its effective date. The data comes from the official notices supplied on 19 Nov.'))}</div>
@@ -7740,6 +7805,21 @@ function insSheets(month){
   ];
 }
 BINDERS['pay:ins']=function(){
+  document.querySelectorAll('[data-instool]').forEach(i=>i.onchange=()=>{
+    const I=insToolIn(), k=i.dataset.instool, v=i.value;
+    if(k==='salary'){ I.salary=v; const sal=+v||0, mo=/^\d{4}-\d{2}$/.test(I.from)?I.from:CUR_MONTH;
+      if(sal>0){ I.labor=gradeFor(sal,insAmts('labor',mo)); I.health=gradeFor(sal,insAmts('health',mo)); I.pension=gradeFor(sal,insAmts('pension',mo)); } }
+    else if(['labor','health','pension'].includes(k)) I[k]=+v||0;
+    else if(k==='dep') I.dep=Math.max(0,Math.min(+v||0,insRate(/^\d{4}-\d{2}$/.test(I.from)?I.from:CUR_MONTH).health.maxDep));
+    else if(k==='selfPct') I.selfPct=Math.max(0,Math.min(Math.round(+v||0),6));
+    else I[k]=v;
+    render(); });
+  const tx=document.getElementById('insToolXlsx'); if(tx) tx.onclick=()=>{ const I=insToolIn(), r=insToolCalc(I); if(r.errs.length) return;
+    const out=[['勞健保試算（估算，不是扣款）'],['級距：勞保 '+I.labor+'、健保 '+I.health+'、勞退 '+I.pension+'；眷屬 '+I.dep+' 口；勞退自提 '+I.selfPct+'%；加保 '+(I.start||'—')+'、退保 '+(I.end||'—')+'；健保：'+({full:'有投保的月份整月計',prorate:'按投保日數比例',none:'不計'}[I.hmode])+'。勞保、勞退依投保日數 ÷ 30。正式扣款以帳單為準。'],[],
+      ['月份','投保日數','勞保 個人','勞保 雇主','健保 個人','健保 雇主','勞退 自提','勞退 雇主','個人負擔合計（預扣）','雇主負擔合計']];
+    r.rows.forEach(x=>out.push([x.month,x.days,x.lab.ee,x.lab.er,x.hel.ee,x.hel.er,x.pen.ee,x.pen.er,x.ee,x.er]));
+    out.push(['合計',r.tot.days,r.tot.lab.ee,r.tot.lab.er,r.tot.hel.ee,r.tot.hel.er,r.tot.pen.ee,r.tot.pen.er,r.tot.ee,r.tot.er]);
+    saveBlob(buildXlsx(out),'勞健保試算.xlsx'); };
   const sm=document.getElementById('insMonth'); if(sm) sm.onchange=()=>{ state.insMonth=sm.value; render(); };
   const qs=document.getElementById('insQMonth'); if(qs) qs.onchange=()=>{ state.insQMonth=qs.value; state.insQSkip={}; render(); };
   const qo=document.getElementById('insQOT'); if(qo) qo.onchange=()=>{ state.insQOT=qo.checked; render(); };
